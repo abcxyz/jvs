@@ -1,4 +1,4 @@
-// Copyright 2022 Lumberjack authors (see AUTHORS file)
+// Copyright 2022 Google LLC
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -17,18 +17,23 @@ package main
 import (
 	"context"
 	"errors"
-	"fmt"
 	"log"
 	"net/http"
 	"os"
+	"os/signal"
+	"syscall"
 	"time"
 
-	kms "cloud.google.com/go/kms/apiv1"
 	"google-on-gcp/jvs/services/go/pkg/crypto"
+
+	kms "cloud.google.com/go/kms/apiv1"
+	"golang.org/x/sync/errgroup"
 )
 
 func main() {
-	ctx := context.Background()
+	// To capture TERM signal.
+	ctx, stop := signal.NotifyContext(context.Background(), syscall.SIGINT, syscall.SIGTERM)
+	defer stop()
 
 	project := os.Getenv("PROJECT_ID")
 	if project == "" {
@@ -48,7 +53,8 @@ func main() {
 	}
 	defer kmsClient.Close()
 
-	handler := crypto.KmsHandler{
+	// TODO: Read in configuration and pass to handler.
+	handler := crypto.RotationHandler{
 		KmsClient: kmsClient,
 	}
 
@@ -57,33 +63,33 @@ func main() {
 	port := os.Getenv("PORT")
 	if port == "" {
 		port = "8080"
-		log.Printf("Defaulting to port %s", port)
+		log.Printf("Defaulting to port %s\n", port)
 	}
 	// Start HTTP server.
 	srv := &http.Server{Addr: ":" + port}
 
-	serverErrCh := make(chan error, 1)
-	go func() {
+	// It's easier to use errgroup.
+	g, ctx := errgroup.WithContext(ctx)
+	g.Go(func() error {
+		log.Printf("server listening at %v\n", port)
 		if err := srv.ListenAndServe(); err != nil && !errors.Is(err, http.ErrServerClosed) {
-			select {
-			case serverErrCh <- err:
-			default:
-			}
+			return err
 		}
-	}()
+		return nil
+	})
 
-	// Wait for shutdown signal or error from the listener.
-	select {
-	case err := <-serverErrCh:
-		fmt.Errorf("error from server listener: %w", err)
-	case <-ctx.Done():
-	}
+	// Either server returns an error or receiving a TERM
+	<-ctx.Done()
+	stop()
 
-	// Gracefully shut down the server.
 	shutdownCtx, done := context.WithTimeout(context.Background(), 5*time.Second)
 	defer done()
 	if err := srv.Shutdown(shutdownCtx); err != nil {
-		fmt.Errorf("failed to shutdown server: %w", err)
+		log.Printf("failed to gracefully shutdown server: %v", err)
 	}
-}
 
+	if err := g.Wait(); err != nil {
+		log.Fatalf("error running server: %v\n", err)
+	}
+
+}
