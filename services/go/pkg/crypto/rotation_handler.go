@@ -1,37 +1,53 @@
+// Copyright 2022 Google LLC
+//
+// Licensed under the Apache License, Version 2.0 (the "License");
+// you may not use this file except in compliance with the License.
+// You may obtain a copy of the License at
+//
+//      http://www.apache.org/licenses/LICENSE-2.0
+//
+// Unless required by applicable law or agreed to in writing, software
+// distributed under the License is distributed on an "AS IS" BASIS,
+// WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+// See the License for the specific language governing permissions and
+// limitations under the License.
+
 package crypto
 
 import (
 	"context"
 	"encoding/json"
+	"fmt"
 	"io/ioutil"
 	"log"
 	"net/http"
 	"strings"
 	"time"
 
+	"google-on-gcp/jvs/services/go/apis/v1alpha1"
+
 	kms "cloud.google.com/go/kms/apiv1"
 	"github.com/hashicorp/go-multierror"
-	"google-on-gcp/jvs/services/go/apis/v1alpha1"
 	"google.golang.org/api/iterator"
 	kmspb "google.golang.org/genproto/googleapis/cloud/kms/v1"
 	"google.golang.org/protobuf/types/known/fieldmaskpb"
 )
 
-type KmsHandler struct {
-	KmsClient *kms.KeyManagementClient
-	JvsConfig v1alpha1.Config
-	// projects/*/locations/*/keyRings/*/cryptoKeys/*
+type RotationHandler struct {
+	KmsClient    *kms.KeyManagementClient
+	CryptoConfig v1alpha1.CryptoConfig
+	// format: `projects/*/locations/*/keyRings/*/cryptoKeys/*`
 	KeyName string
 }
 
 type PubSubMessage struct {
 	Message struct {
-		Action   string `json:"action"`
+		Action string `json:"action"`
 	} `json:"message"`
 }
 
 // ConsumeMessage is called when a message is pushed to this server.
-func (h *KmsHandler) ConsumeMessage(w http.ResponseWriter, r *http.Request) {
+func (h *RotationHandler) ConsumeMessage(w http.ResponseWriter, r *http.Request) {
 	log.Printf("Received Message.")
 	body, err := ioutil.ReadAll(r.Body)
 	if err != nil {
@@ -77,7 +93,8 @@ const (
 	Destroy
 )
 
-func (h * KmsHandler) determineActions(it *kms.CryptoKeyVersionIterator) (map[*kmspb.CryptoKeyVersion]Action, error) {
+// TODO: unclear if we need to handle import key use cases.
+func (h *RotationHandler) determineActions(it *kms.CryptoKeyVersionIterator) (map[*kmspb.CryptoKeyVersion]Action, error) {
 	// Older Key Version
 	oldVers := map[*kmspb.CryptoKeyVersion]bool{}
 
@@ -114,7 +131,7 @@ func (h * KmsHandler) determineActions(it *kms.CryptoKeyVersionIterator) (map[*k
 // Determine whether the newest key needs to be rotated.
 // The only actions available are NoAction and CreateNew. This is because we never
 // want to disable/delete our newest key if we don't have a newer second one created.
-func (h *KmsHandler) determineActionForNewestVersion(ver *kmspb.CryptoKeyVersion) Action {
+func (h *RotationHandler) determineActionForNewestVersion(ver *kmspb.CryptoKeyVersion) Action {
 	if ver == nil {
 		log.Printf("!! Unable to find any enabled key version !!")
 		// TODO: Do we want to fire a metric/other way to make this more visible?
@@ -122,28 +139,30 @@ func (h *KmsHandler) determineActionForNewestVersion(ver *kmspb.CryptoKeyVersion
 	}
 
 	secondsOld := ver.CreateTime.Seconds - time.Now().Unix()
-	if int(secondsOld) > int(h.JvsConfig.GetRotationAgeSeconds()) {
+	if int(secondsOld) > int(h.CryptoConfig.GetRotationAgeSeconds()) {
 		log.Printf("Time to rotate newest key version.")
 		return CreateNew
 	}
 	return NoAction
 }
 
-func (h *KmsHandler) determineActionsForOlderVersions(vers map[*kmspb.CryptoKeyVersion]bool) map[*kmspb.CryptoKeyVersion]Action {
+// This determines which action to take on key versions that are not the primary one (newest active).
+// Since these aren't the primary key version, they can be disabled, or destroyed as long as sufficient time has passed.
+func (h *RotationHandler) determineActionsForOlderVersions(vers map[*kmspb.CryptoKeyVersion]bool) map[*kmspb.CryptoKeyVersion]Action {
 	actions := make(map[*kmspb.CryptoKeyVersion]Action)
 
-	for ver, _ := range vers {
+	for ver := range vers {
 		secondsOld := ver.CreateTime.Seconds - time.Now().Unix()
 		switch ver.State {
 		case kmspb.CryptoKeyVersion_ENABLED:
-			if int(secondsOld) > int(h.JvsConfig.GetDisableAgeSeconds()) {
+			if int(secondsOld) > int(h.CryptoConfig.GetDisableAgeSeconds()) {
 				log.Printf("Key version %s will be disabled.", ver.Name)
 				actions[ver] = Disable
 			} else {
 				log.Printf("Key version %s still within grace period, no action required.", ver.Name)
 			}
 		case kmspb.CryptoKeyVersion_DISABLED:
-			if int(secondsOld) > int(h.JvsConfig.GetDestroyAgeSeconds()) {
+			if int(secondsOld) > int(h.CryptoConfig.GetDestroyAgeSeconds()) {
 				log.Printf("Key version %s will be destroyed.", ver.Name)
 				actions[ver] = Destroy
 			} else {
@@ -164,7 +183,7 @@ func (h *KmsHandler) determineActionsForOlderVersions(vers map[*kmspb.CryptoKeyV
 	return actions
 }
 
-func (h *KmsHandler) performActions(ctx context.Context, actions map[*kmspb.CryptoKeyVersion]Action) error {
+func (h *RotationHandler) performActions(ctx context.Context, actions map[*kmspb.CryptoKeyVersion]Action) error {
 	var result error
 	for ver, action := range actions {
 		switch action {
@@ -187,14 +206,14 @@ func (h *KmsHandler) performActions(ctx context.Context, actions map[*kmspb.Cryp
 	return result
 }
 
-func (h *KmsHandler) performDisable(ctx context.Context, ver *kmspb.CryptoKeyVersion) error {
+func (h *RotationHandler) performDisable(ctx context.Context, ver *kmspb.CryptoKeyVersion) error {
 	// Make a copy to modify
 	newVerState := ver
 
 	log.Printf("Disabling Key Version %s", ver.Name)
 	newVerState.State = kmspb.CryptoKeyVersion_DISABLED
 	var messageType *kmspb.CryptoKeyVersion
-	mask, err := fieldmaskpb.New(messageType, "State")
+	mask, err := fieldmaskpb.New(messageType, "state")
 	if err != nil {
 		return err
 	}
@@ -206,7 +225,7 @@ func (h *KmsHandler) performDisable(ctx context.Context, ver *kmspb.CryptoKeyVer
 	return err
 }
 
-func (h *KmsHandler) performDestroy(ctx context.Context, ver *kmspb.CryptoKeyVersion) error {
+func (h *RotationHandler) performDestroy(ctx context.Context, ver *kmspb.CryptoKeyVersion) error {
 	log.Printf("Destroying Key Version %s", ver.Name)
 	destroyReq := &kmspb.DestroyCryptoKeyVersionRequest{
 		Name: ver.Name,
@@ -215,21 +234,29 @@ func (h *KmsHandler) performDestroy(ctx context.Context, ver *kmspb.CryptoKeyVer
 	return err
 }
 
-func (h *KmsHandler) performCreate(ctx context.Context, ver *kmspb.CryptoKeyVersion) error {
+func (h *RotationHandler) performCreate(ctx context.Context, ver *kmspb.CryptoKeyVersion) error {
 	log.Printf("Creating new Key Version.")
+	key, err := getKeyNameFromVersion(ver.Name)
+	if err != nil {
+		return err
+	}
 	createReq := &kmspb.CreateCryptoKeyVersionRequest{
-		Parent:           getKeyNameFromVersion(ver.Name),
+		Parent:           key,
 		CryptoKeyVersion: &kmspb.CryptoKeyVersion{},
 	}
-	_, err := h.KmsClient.CreateCryptoKeyVersion(ctx, createReq)
+	_, err = h.KmsClient.CreateCryptoKeyVersion(ctx, createReq)
 	return err
 }
 
+// GetKeyNameFromVersion converts a key version name to a key name.
+// Example:
 // `projects/*/locations/*/keyRings/*/cryptoKeys/*/cryptoKeyVersions/*`
 // -> `projects/*/locations/*/keyRings/*/cryptoKeys/*`
-func getKeyNameFromVersion(keyVersionName string) string {
+func getKeyNameFromVersion(keyVersionName string) (string, error) {
 	split := strings.Split(keyVersionName, "/")
+	if len(split) != 10 {
+		return "", fmt.Errorf("input had unexpected format: \"%s\"", keyVersionName)
+	}
 	// cut off last 2 values, re-combine
-	return strings.Join(split[:len(split)-2], "/")
+	return strings.Join(split[:len(split)-2], "/"), nil
 }
-
