@@ -22,7 +22,6 @@ import (
 	"log"
 	"net/http"
 	"strings"
-	"time"
 
 	"google-on-gcp/jvs/services/go/apis/v1alpha1"
 
@@ -36,13 +35,15 @@ import (
 type RotationHandler struct {
 	KmsClient    *kms.KeyManagementClient
 	CryptoConfig v1alpha1.CryptoConfig
-	// format: `projects/*/locations/*/keyRings/*/cryptoKeys/*`
-	KeyName string
+	// KeyName format: `projects/*/locations/*/keyRings/*/cryptoKeys/*`
+	// https://pkg.go.dev/google.golang.org/genproto/googleapis/cloud/kms/v1#CryptoKey
+	KeyName     string
+	CurrentTime int64
 }
 
 type PubSubMessage struct {
 	Message struct {
-		Action string `json:"action"`
+		// TODO: We should support manual actions through call arguments, such as a rotation before the TTL.
 	} `json:"message"`
 }
 
@@ -70,7 +71,21 @@ func (h *RotationHandler) ConsumeMessage(w http.ResponseWriter, r *http.Request)
 
 	// List the Keys in the KeyRing.
 	it := h.KmsClient.ListCryptoKeyVersions(r.Context(), listKeysReq)
-	actions, err := h.determineActions(it)
+	vers := make([]*kmspb.CryptoKeyVersion, 1)
+	for {
+		ver, err := it.Next()
+		if err == iterator.Done {
+			break
+		}
+		if err != nil {
+			log.Printf("Err while reading crypto key version list: %v", err)
+			http.Error(w, "Err while reading crypto key version list.", http.StatusInternalServerError)
+			return
+		}
+		vers = append(vers, ver)
+	}
+
+	actions, err := h.determineActions(vers)
 	if err != nil {
 		log.Printf("Unable to determine cert actions: %v", err)
 		http.Error(w, "Couldn't determine cert actions.", http.StatusInternalServerError)
@@ -78,8 +93,8 @@ func (h *RotationHandler) ConsumeMessage(w http.ResponseWriter, r *http.Request)
 	}
 
 	if err = h.performActions(r.Context(), actions); err != nil {
-		log.Printf("Unable to perform cert actions: %v", err)
-		http.Error(w, "Couldn't perform cert actions.", http.StatusInternalServerError)
+		log.Printf("Unable to perform some cert actions: %v", err)
+		http.Error(w, "Couldn't perform some cert actions.", http.StatusInternalServerError)
 		return
 	}
 }
@@ -94,7 +109,7 @@ const (
 )
 
 // TODO: unclear if we need to handle import key use cases.
-func (h *RotationHandler) determineActions(it *kms.CryptoKeyVersionIterator) (map[*kmspb.CryptoKeyVersion]Action, error) {
+func (h *RotationHandler) determineActions(vers []*kmspb.CryptoKeyVersion) (map[*kmspb.CryptoKeyVersion]Action, error) {
 	// Older Key Version
 	oldVers := map[*kmspb.CryptoKeyVersion]bool{}
 
@@ -102,19 +117,12 @@ func (h *RotationHandler) determineActions(it *kms.CryptoKeyVersionIterator) (ma
 	var newestEnabledVersion *kmspb.CryptoKeyVersion
 	var newestTime int64
 
-	for {
-		ver, err := it.Next()
-		if err == iterator.Done {
-			break
-		}
-		if err != nil {
-			return nil, err
-		}
-
-		createTime := ver.CreateTime
-		secondsOld := createTime.Seconds - time.Now().Unix()
-		if secondsOld < newestTime && ver.State == kmspb.CryptoKeyVersion_ENABLED {
-			oldVers[newestEnabledVersion] = true
+	for _, ver := range vers {
+		secondsOld := h.CurrentTime - ver.CreateTime.Seconds
+		if newestEnabledVersion == nil || (secondsOld < newestTime && ver.State == kmspb.CryptoKeyVersion_ENABLED) {
+			if newestEnabledVersion != nil {
+				oldVers[newestEnabledVersion] = true
+			}
 			newestEnabledVersion = ver
 			newestTime = secondsOld
 		} else {
@@ -138,7 +146,7 @@ func (h *RotationHandler) determineActionForNewestVersion(ver *kmspb.CryptoKeyVe
 		return CreateNew
 	}
 
-	secondsOld := ver.CreateTime.Seconds - time.Now().Unix()
+	secondsOld := h.CurrentTime - ver.CreateTime.Seconds
 	if int(secondsOld) > int(h.CryptoConfig.GetRotationAgeSeconds()) {
 		log.Printf("Time to rotate newest key version.")
 		return CreateNew
@@ -152,7 +160,7 @@ func (h *RotationHandler) determineActionsForOlderVersions(vers map[*kmspb.Crypt
 	actions := make(map[*kmspb.CryptoKeyVersion]Action)
 
 	for ver := range vers {
-		secondsOld := ver.CreateTime.Seconds - time.Now().Unix()
+		secondsOld := h.CurrentTime - ver.CreateTime.Seconds
 		switch ver.State {
 		case kmspb.CryptoKeyVersion_ENABLED:
 			if int(secondsOld) > int(h.CryptoConfig.GetDisableAgeSeconds()) {
@@ -160,6 +168,7 @@ func (h *RotationHandler) determineActionsForOlderVersions(vers map[*kmspb.Crypt
 				actions[ver] = Disable
 			} else {
 				log.Printf("Key version %s still within grace period, no action required.", ver.Name)
+				actions[ver] = NoAction
 			}
 		case kmspb.CryptoKeyVersion_DISABLED:
 			if int(secondsOld) > int(h.CryptoConfig.GetDestroyAgeSeconds()) {
@@ -167,17 +176,22 @@ func (h *RotationHandler) determineActionsForOlderVersions(vers map[*kmspb.Crypt
 				actions[ver] = Destroy
 			} else {
 				log.Printf("Key version %s still within disable period, no action required.", ver.Name)
+				actions[ver] = NoAction
 			}
 		case kmspb.CryptoKeyVersion_DESTROYED:
 			log.Printf("Key version %s is already destroyed, no action required.", ver.Name)
+			actions[ver] = NoAction
 		case kmspb.CryptoKeyVersion_DESTROY_SCHEDULED:
 			log.Printf("Key version %s is scheduled to be destroyed, no action required.", ver.Name)
+			actions[ver] = NoAction
 		case kmspb.CryptoKeyVersion_PENDING_IMPORT:
 			// TODO: Would we ever import keys?
 			log.Printf("Key version %s is being imported, no action required.", ver.Name)
+			actions[ver] = NoAction
 		case kmspb.CryptoKeyVersion_IMPORT_FAILED:
 			// TODO: do we want to error/metric on this? Would we ever import keys?
 			log.Printf("Key version %s import failed! No automatic action can be performed.", ver.Name)
+			actions[ver] = NoAction
 		}
 	}
 	return actions

@@ -45,16 +45,19 @@ func (cfg *CryptoConfig) SetDefault() {
 	}
 }
 
+// GetRotationAgeSeconds gets the number of seconds after a key has been created that a new key should be created.
 func (cfg *CryptoConfig) GetRotationAgeSeconds() uint64 {
 	ttlSeconds := cfg.KeyTTLDays * 24 * 60 * 60
 	graceSeconds := cfg.GracePeriodMinutes * 60
 	return ttlSeconds - graceSeconds
 }
 
+// GetDisableAgeSeconds gets the number of seconds after a key has been created when it becomes a candidate to be disabled.
 func (cfg *CryptoConfig) GetDisableAgeSeconds() uint64 {
 	return cfg.KeyTTLDays * 24 * 60 * 60
 }
 
+// GetDestroyAgeSeconds gets the number of seconds after a key has been created when it becomes a candidate to be destroyed.
 func (cfg *CryptoConfig) GetDestroyAgeSeconds() uint64 {
 	ttlSeconds := cfg.KeyTTLDays * 24 * 60 * 60
 	disabledPeriod := cfg.DisabledPeriodDays * 24 * 60 * 60

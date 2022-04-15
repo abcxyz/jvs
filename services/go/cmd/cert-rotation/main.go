@@ -35,18 +35,6 @@ func main() {
 	ctx, stop := signal.NotifyContext(context.Background(), syscall.SIGINT, syscall.SIGTERM)
 	defer stop()
 
-	project := os.Getenv("PROJECT_ID")
-	if project == "" {
-		log.Fatal("You must set PROJECT_ID env variable.")
-	}
-	log.Printf("Project: %s", project)
-
-	topic := os.Getenv("TOPIC_ID")
-	if topic == "" {
-		log.Fatal("You must set TOPIC_ID env variable.")
-	}
-	log.Printf("Topic: %s", topic)
-
 	kmsClient, err := kms.NewKeyManagementClient(ctx)
 	if err != nil {
 		log.Fatalf("failed to setup client: %v", err)
@@ -55,7 +43,8 @@ func main() {
 
 	// TODO: Read in configuration and pass to handler.
 	handler := crypto.RotationHandler{
-		KmsClient: kmsClient,
+		KmsClient:   kmsClient,
+		CurrentTime: time.Now().Unix(),
 	}
 
 	http.HandleFunc("/", handler.ConsumeMessage)
@@ -91,5 +80,4 @@ func main() {
 	if err := g.Wait(); err != nil {
 		log.Fatalf("error running server: %v\n", err)
 	}
-
 }
