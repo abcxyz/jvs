@@ -27,6 +27,8 @@ import (
 
 	"google-on-gcp/jvs/services/go/apis/v1alpha1"
 
+	"google.golang.org/protobuf/types/known/timestamppb"
+
 	kms "cloud.google.com/go/kms/apiv1"
 	"github.com/golang/protobuf/proto"
 	"github.com/google/go-cmp/cmp"
@@ -156,9 +158,9 @@ func TestDestroy(t *testing.T) {
 	}
 
 	handler := &RotationHandler{
-		KmsClient: c,
-		JvsConfig: v1alpha1.Config{},
-		KeyName:   "",
+		KmsClient:    c,
+		CryptoConfig: v1alpha1.CryptoConfig{},
+		KeyName:      "",
 	}
 
 	err = handler.performDestroy(ctx, &kmspb.CryptoKeyVersion{Name: formattedName})
@@ -203,9 +205,9 @@ func TestCreate(t *testing.T) {
 	}
 
 	handler := &RotationHandler{
-		KmsClient: c,
-		JvsConfig: v1alpha1.Config{},
-		KeyName:   "",
+		KmsClient:    c,
+		CryptoConfig: v1alpha1.CryptoConfig{},
+		KeyName:      "",
 	}
 
 	err = handler.performCreate(ctx, cryptoKeyVersion)
@@ -252,9 +254,9 @@ func TestDisable(t *testing.T) {
 	}
 
 	handler := &RotationHandler{
-		KmsClient: c,
-		JvsConfig: v1alpha1.Config{},
-		KeyName:   "",
+		KmsClient:    c,
+		CryptoConfig: v1alpha1.CryptoConfig{},
+		KeyName:      "",
 	}
 
 	err = handler.performDisable(ctx, cryptoKeyVersion)
@@ -303,6 +305,111 @@ func TestGetKeyNameFromVersion(t *testing.T) {
 			output, err := getKeyNameFromVersion(tc.input)
 
 			if diff := cmp.Diff(tc.wantOutput, output, protocmp.Transform()); diff != "" {
+				t.Errorf("Got diff (-want, +got): %v", diff)
+			}
+
+			if tc.wantErr != "" {
+				if err != nil {
+					if diff := cmp.Diff(err.Error(), tc.wantErr); diff != "" {
+						t.Errorf("Process got unexpected error substring: %v", diff)
+					}
+				} else {
+					t.Errorf("Expected error, but received nil")
+				}
+			} else if err != nil {
+				t.Errorf("Expected no error, but received \"%v\"", err)
+			}
+		})
+	}
+}
+
+func TestDetermineActions(t *testing.T) {
+	t.Parallel()
+
+	handler := &RotationHandler{
+		KmsClient: nil,
+		CryptoConfig: v1alpha1.CryptoConfig{
+			KeyTTLDays:             10,
+			PropagationTimeMinutes: 30,
+			GracePeriodMinutes:     60,
+			DisabledPeriodDays:     20,
+		},
+		KeyName:     "projects/project_1/locations/location_1/keyRings/keyring_1/cryptoKeys/key_1",
+		CurrentTime: 100 * 60 * 60 * 24, // 100 days after start
+	}
+
+	oldEnabledKey := &kmspb.CryptoKeyVersion{
+		CreateTime: &timestamppb.Timestamp{Seconds: 50 * 60 * 60 * 24}, // 50 days after start,
+		State:      kmspb.CryptoKeyVersion_ENABLED,
+	}
+	newEnabledKey := &kmspb.CryptoKeyVersion{
+		CreateTime: &timestamppb.Timestamp{Seconds: 99 * 60 * 60 * 24}, // 1 days after start,
+		State:      kmspb.CryptoKeyVersion_ENABLED,
+	}
+	newDisabledKey := &kmspb.CryptoKeyVersion{
+		CreateTime: &timestamppb.Timestamp{Seconds: 90 * 60 * 60 * 24}, // 10 days after start,
+		State:      kmspb.CryptoKeyVersion_DISABLED,
+	}
+	oldDisabledKey := &kmspb.CryptoKeyVersion{
+		CreateTime: &timestamppb.Timestamp{Seconds: 1 * 60 * 60 * 24}, // 99 days after start,
+		State:      kmspb.CryptoKeyVersion_DISABLED,
+	}
+	oldDestroyedKey := &kmspb.CryptoKeyVersion{
+		CreateTime: &timestamppb.Timestamp{Seconds: 1 * 60 * 60 * 24}, // 99 days after start,
+		State:      kmspb.CryptoKeyVersion_DESTROYED,
+	}
+
+	tests := []struct {
+		name        string
+		versions    []*kmspb.CryptoKeyVersion
+		wantActions map[*kmspb.CryptoKeyVersion]Action
+		wantErr     string
+	}{
+		{
+			name: "single_key_old",
+			versions: []*kmspb.CryptoKeyVersion{
+				oldEnabledKey,
+			},
+			wantActions: map[*kmspb.CryptoKeyVersion]Action{
+				oldEnabledKey: CreateNew,
+			},
+		},
+		{
+			name: "two_enabled_keys",
+			versions: []*kmspb.CryptoKeyVersion{
+				oldEnabledKey,
+				newEnabledKey,
+			},
+			wantActions: map[*kmspb.CryptoKeyVersion]Action{
+				oldEnabledKey: Disable,
+				newEnabledKey: NoAction,
+			},
+		},
+		{
+			name: "many_keys",
+			versions: []*kmspb.CryptoKeyVersion{
+				oldEnabledKey,
+				newEnabledKey,
+				oldDisabledKey,
+				newDisabledKey,
+				oldDestroyedKey,
+			},
+			wantActions: map[*kmspb.CryptoKeyVersion]Action{
+				oldEnabledKey:   Disable,
+				newEnabledKey:   NoAction,
+				oldDisabledKey:  Destroy,
+				newDisabledKey:  NoAction,
+				oldDestroyedKey: NoAction,
+			},
+		},
+	}
+	for _, tc := range tests {
+		tc := tc
+		t.Run(tc.name, func(t *testing.T) {
+			t.Parallel()
+			output, err := handler.determineActions(tc.versions)
+
+			if diff := cmp.Diff(tc.wantActions, output, protocmp.Transform()); diff != "" {
 				t.Errorf("Got diff (-want, +got): %v", diff)
 			}
 
