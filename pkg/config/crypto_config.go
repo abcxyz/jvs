@@ -13,7 +13,7 @@
 // limitations under the License.
 
 // Package v1alpha1 provides apis that users will interact with.
-package v1alpha1
+package config
 
 import "time"
 
@@ -28,15 +28,16 @@ type CryptoConfig struct {
 	Version string `yaml:"version,omitempty" env:"VERSION,overwrite"`
 
 	// Crypto variables
-	KeyTTL          time.Duration `yaml:"key_ttl_days,omitempty"`
-	PropagationTime time.Duration `yaml:"propagation_time_minutes,omitempty"`
-	GracePeriod     time.Duration `yaml:"grace_period_minutes,omitempty"`
-	DisabledPeriod  time.Duration `yaml:"disabled_period_days,omitempty"`
+	KeyTTL          time.Duration `yaml:"key_ttl,omitempty"`
+	PropagationTime time.Duration `yaml:"propagation_time,omitempty"`
+	GracePeriod     time.Duration `yaml:"grace_period,omitempty"`
+	DisabledPeriod  time.Duration `yaml:"disabled_period,omitempty"`
 }
 
 // Validate checks if the config is valid.
 func (cfg *CryptoConfig) Validate() error {
 	// TODO https://github.com/abcxyz/jvs/issues/2
+	cfg.SetDefault()
 	return nil
 }
 

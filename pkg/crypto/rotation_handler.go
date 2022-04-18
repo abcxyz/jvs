@@ -24,7 +24,7 @@ import (
 	"strings"
 	"time"
 
-	"github.com/abcxyz/jvs/apis/v1alpha1"
+	"github.com/abcxyz/jvs/pkg/config"
 
 	kms "cloud.google.com/go/kms/apiv1"
 	"github.com/hashicorp/go-multierror"
@@ -37,16 +37,16 @@ import (
 // configuration.
 type RotationHandler struct {
 	KmsClient    *kms.KeyManagementClient
-	CryptoConfig *v1alpha1.CryptoConfig
+	CryptoConfig *config.CryptoConfig
 	// KeyName format: `projects/*/locations/*/keyRings/*/cryptoKeys/*`
 	// https://pkg.go.dev/google.golang.org/genproto/googleapis/cloud/kms/v1#CryptoKey
-	KeyName     string
 	CurrentTime time.Time
 }
 
-type PubSubMessage struct {
+type HTTPMessage struct {
 	Message struct {
 		// TODO: We should support manual actions through call arguments, such as a rotation before the TTL. https://github.com/abcxyz/jvs/issues/9
+		KeyName string
 	} `json:"message"`
 }
 
@@ -61,7 +61,7 @@ func (h *RotationHandler) ConsumeMessage(w http.ResponseWriter, r *http.Request)
 		return
 	}
 
-	var msg PubSubMessage
+	var msg HTTPMessage
 	if err := json.Unmarshal(body, &msg); err != nil {
 		log.Printf("json.Unmarshal: %v", err)
 		http.Error(w, "Bad Request", http.StatusBadRequest)
@@ -70,7 +70,7 @@ func (h *RotationHandler) ConsumeMessage(w http.ResponseWriter, r *http.Request)
 
 	// Create the request to list Keys.
 	listKeysReq := &kmspb.ListCryptoKeyVersionsRequest{
-		Parent: h.KeyName,
+		Parent: msg.Message.KeyName,
 	}
 
 	// List the Keys in the KeyRing.
