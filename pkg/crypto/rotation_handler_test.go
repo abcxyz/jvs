@@ -283,7 +283,7 @@ func TestDetermineActions(t *testing.T) {
 }
 
 func TestPerformActions(t *testing.T) {
-	//t.Parallel()
+	t.Parallel()
 	ctx := context.Background()
 
 	serv := grpc.NewServer()
