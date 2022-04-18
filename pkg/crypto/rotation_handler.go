@@ -46,7 +46,7 @@ type RotationHandler struct {
 
 type PubSubMessage struct {
 	Message struct {
-		// TODO: We should support manual actions through call arguments, such as a rotation before the TTL.
+		// TODO: We should support manual actions through call arguments, such as a rotation before the TTL. https://github.com/abcxyz/jvs/issues/9
 	} `json:"message"`
 }
 
@@ -155,7 +155,7 @@ func (h *RotationHandler) determineActionForNewestVersion(ver *kmspb.CryptoKeyVe
 	}
 	if ver == nil {
 		log.Printf("!! Unable to find any enabled key version !!")
-		// TODO: Do we want to fire a metric/other way to make this more visible?
+		// TODO: Do we want to fire a metric/other way to make this more visible? https://github.com/abcxyz/jvs/issues/10
 		return ActionCreate
 	}
 

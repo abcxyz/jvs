@@ -178,24 +178,28 @@ func TestDetermineActions(t *testing.T) {
 	}
 
 	oldEnabledKey := &kmspb.CryptoKeyVersion{
-		CreateTime: &timestamppb.Timestamp{Seconds: 50 * 60 * 60 * 24}, // 50 days after start,
+		CreateTime: &timestamppb.Timestamp{Seconds: 50 * 60 * 60 * 24}, // 50 days old
 		State:      kmspb.CryptoKeyVersion_ENABLED,
 	}
 	newEnabledKey := &kmspb.CryptoKeyVersion{
-		CreateTime: &timestamppb.Timestamp{Seconds: 99 * 60 * 60 * 24}, // 1 days after start,
+		CreateTime: &timestamppb.Timestamp{Seconds: 99 * 60 * 60 * 24}, // 2 days old
 		State:      kmspb.CryptoKeyVersion_ENABLED,
 	}
 	newDisabledKey := &kmspb.CryptoKeyVersion{
-		CreateTime: &timestamppb.Timestamp{Seconds: 90 * 60 * 60 * 24}, // 10 days after start,
+		CreateTime: &timestamppb.Timestamp{Seconds: 90 * 60 * 60 * 24}, // 10 days old
 		State:      kmspb.CryptoKeyVersion_DISABLED,
 	}
 	oldDisabledKey := &kmspb.CryptoKeyVersion{
-		CreateTime: &timestamppb.Timestamp{Seconds: 1 * 60 * 60 * 24}, // 99 days after start,
+		CreateTime: &timestamppb.Timestamp{Seconds: 1 * 60 * 60 * 24}, // 99 days old
 		State:      kmspb.CryptoKeyVersion_DISABLED,
 	}
 	oldDestroyedKey := &kmspb.CryptoKeyVersion{
-		CreateTime: &timestamppb.Timestamp{Seconds: 1 * 60 * 60 * 24}, // 99 days after start,
+		CreateTime: &timestamppb.Timestamp{Seconds: 1 * 60 * 60 * 24}, // 99 days old
 		State:      kmspb.CryptoKeyVersion_DESTROYED,
+	}
+	pendingGenerationKey := &kmspb.CryptoKeyVersion{
+		CreateTime: &timestamppb.Timestamp{Seconds: 99 * 60 * 60 * 24}, // 1 days old,
+		State:      kmspb.CryptoKeyVersion_PENDING_GENERATION,
 	}
 
 	tests := []struct {
@@ -222,6 +226,17 @@ func TestDetermineActions(t *testing.T) {
 			wantActions: map[*kmspb.CryptoKeyVersion]Action{
 				oldEnabledKey: ActionDisable,
 				newEnabledKey: ActionNone,
+			},
+		},
+		{
+			name: "old_key_and_pending",
+			versions: []*kmspb.CryptoKeyVersion{
+				oldEnabledKey,
+				pendingGenerationKey,
+			},
+			wantActions: map[*kmspb.CryptoKeyVersion]Action{
+				oldEnabledKey:        ActionNone,
+				pendingGenerationKey: ActionNone,
 			},
 		},
 		{
@@ -310,7 +325,7 @@ func TestPerformActions(t *testing.T) {
 		{
 			name: "disable",
 			actions: map[*kmspb.CryptoKeyVersion]Action{
-				&kmspb.CryptoKeyVersion{
+				{
 					State: kmspb.CryptoKeyVersion_ENABLED,
 				}: ActionDisable,
 			},
@@ -329,7 +344,7 @@ func TestPerformActions(t *testing.T) {
 		{
 			name: "create",
 			actions: map[*kmspb.CryptoKeyVersion]Action{
-				&kmspb.CryptoKeyVersion{
+				{
 					Name:  versionName,
 					State: kmspb.CryptoKeyVersion_ENABLED,
 				}: ActionCreate,
@@ -345,7 +360,7 @@ func TestPerformActions(t *testing.T) {
 		{
 			name: "destroy",
 			actions: map[*kmspb.CryptoKeyVersion]Action{
-				&kmspb.CryptoKeyVersion{
+				{
 					Name:  versionName,
 					State: kmspb.CryptoKeyVersion_DISABLED,
 				}: ActionDestroy,
@@ -360,14 +375,14 @@ func TestPerformActions(t *testing.T) {
 		{
 			name: "multi_action",
 			actions: map[*kmspb.CryptoKeyVersion]Action{
-				&kmspb.CryptoKeyVersion{
+				{
 					State: kmspb.CryptoKeyVersion_ENABLED,
 				}: ActionDisable,
-				&kmspb.CryptoKeyVersion{
+				{
 					Name:  versionName,
 					State: kmspb.CryptoKeyVersion_ENABLED,
 				}: ActionCreate,
-				&kmspb.CryptoKeyVersion{
+				{
 					Name:  versionName,
 					State: kmspb.CryptoKeyVersion_DISABLED,
 				}: ActionDestroy,
@@ -394,7 +409,7 @@ func TestPerformActions(t *testing.T) {
 		{
 			name: "test_err",
 			actions: map[*kmspb.CryptoKeyVersion]Action{
-				&kmspb.CryptoKeyVersion{
+				{
 					Name:  versionName,
 					State: kmspb.CryptoKeyVersion_DISABLED,
 				}: ActionDestroy,
