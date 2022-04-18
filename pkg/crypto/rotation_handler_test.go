@@ -24,7 +24,7 @@ import (
 	"testing"
 	"time"
 
-	"github.com/abcxyz/jvs/apis/v1alpha1"
+	"github.com/abcxyz/jvs/pkg/config"
 	"google.golang.org/protobuf/types/known/timestamppb"
 
 	kms "cloud.google.com/go/kms/apiv1"
@@ -167,13 +167,12 @@ func TestDetermineActions(t *testing.T) {
 
 	handler := &RotationHandler{
 		KmsClient: nil,
-		CryptoConfig: &v1alpha1.CryptoConfig{
+		CryptoConfig: &config.CryptoConfig{
 			KeyTTL:          keyTTL,
 			PropagationTime: propagationTime,
 			GracePeriod:     gracePeriod,
 			DisabledPeriod:  disablePeriod,
 		},
-		KeyName:     "projects/project_1/locations/location_1/keyRings/keyring_1/cryptoKeys/key_1",
 		CurrentTime: time.Unix(100*60*60*24, 0), // 100 days after start
 	}
 
@@ -308,8 +307,7 @@ func TestPerformActions(t *testing.T) {
 
 	handler := &RotationHandler{
 		KmsClient:    c,
-		CryptoConfig: &v1alpha1.CryptoConfig{},
-		KeyName:      "",
+		CryptoConfig: &config.CryptoConfig{},
 	}
 
 	parent := fmt.Sprintf("projects/%s/locations/%s/keyRings/%s/cryptoKeys/%s", "[PROJECT]", "[LOCATION]", "[KEY_RING]", "[CRYPTO_KEY]")
