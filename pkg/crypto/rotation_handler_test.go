@@ -21,12 +21,10 @@ import (
 	"fmt"
 	"log"
 	"net"
-	"strings"
 	"testing"
 	"time"
 
 	"github.com/abcxyz/jvs/apis/v1alpha1"
-
 	"google.golang.org/protobuf/types/known/timestamppb"
 
 	kms "cloud.google.com/go/kms/apiv1"
@@ -35,7 +33,6 @@ import (
 	"google.golang.org/api/option"
 	kmspb "google.golang.org/genproto/googleapis/cloud/kms/v1"
 	"google.golang.org/grpc"
-	"google.golang.org/grpc/metadata"
 	"google.golang.org/protobuf/testing/protocmp"
 	"google.golang.org/protobuf/types/known/fieldmaskpb"
 )
@@ -56,10 +53,6 @@ type mockKeyManagementServer struct {
 }
 
 func (s *mockKeyManagementServer) ListCryptoKeyVersions(ctx context.Context, req *kmspb.ListCryptoKeyVersionsRequest) (*kmspb.ListCryptoKeyVersionsResponse, error) {
-	md, _ := metadata.FromIncomingContext(ctx)
-	if xg := md["x-goog-api-client"]; len(xg) == 0 || !strings.Contains(xg[0], "gl-go/") {
-		return nil, fmt.Errorf("x-goog-api-client = %v, expected gl-go key", xg)
-	}
 	s.reqs = append(s.reqs, req)
 	if s.err != nil {
 		return nil, s.err
@@ -68,11 +61,6 @@ func (s *mockKeyManagementServer) ListCryptoKeyVersions(ctx context.Context, req
 }
 
 func (s *mockKeyManagementServer) CreateCryptoKeyVersion(ctx context.Context, req *kmspb.CreateCryptoKeyVersionRequest) (*kmspb.CryptoKeyVersion, error) {
-	md, _ := metadata.FromIncomingContext(ctx)
-	if xg := md["x-goog-api-client"]; len(xg) == 0 || !strings.Contains(xg[0], "gl-go/") {
-		return nil, fmt.Errorf("x-goog-api-client = %v, expected gl-go key", xg)
-	}
-	log.Print("adding create request")
 	s.reqs = append(s.reqs, req)
 	if s.err != nil {
 		return nil, s.err
@@ -89,10 +77,6 @@ var mockKeyManagement = &mockKeyManagementServer{
 }
 
 func (s *mockKeyManagementServer) DestroyCryptoKeyVersion(ctx context.Context, req *kmspb.DestroyCryptoKeyVersionRequest) (*kmspb.CryptoKeyVersion, error) {
-	md, _ := metadata.FromIncomingContext(ctx)
-	if xg := md["x-goog-api-client"]; len(xg) == 0 || !strings.Contains(xg[0], "gl-go/") {
-		return nil, fmt.Errorf("x-goog-api-client = %v, expected gl-go key", xg)
-	}
 	s.reqs = append(s.reqs, req)
 	if s.err != nil {
 		return nil, s.err
@@ -101,10 +85,6 @@ func (s *mockKeyManagementServer) DestroyCryptoKeyVersion(ctx context.Context, r
 }
 
 func (s *mockKeyManagementServer) UpdateCryptoKeyVersion(ctx context.Context, req *kmspb.UpdateCryptoKeyVersionRequest) (*kmspb.CryptoKeyVersion, error) {
-	md, _ := metadata.FromIncomingContext(ctx)
-	if xg := md["x-goog-api-client"]; len(xg) == 0 || !strings.Contains(xg[0], "gl-go/") {
-		return nil, fmt.Errorf("x-goog-api-client = %v, expected gl-go key", xg)
-	}
 	s.reqs = append(s.reqs, req)
 	if s.err != nil {
 		return nil, s.err
@@ -322,50 +302,109 @@ func TestPerformActions(t *testing.T) {
 
 	tests := []struct {
 		name             string
-		cryptoKeyVersion *kmspb.CryptoKeyVersion
-		action           Action
-		expectedRequest  proto.Message
+		actions          map[*kmspb.CryptoKeyVersion]Action
+		expectedRequests []proto.Message
 		wantErr          string
+		serverErr        error
 	}{
 		{
 			name: "disable",
-			cryptoKeyVersion: &kmspb.CryptoKeyVersion{
-				State: kmspb.CryptoKeyVersion_DISABLED,
+			actions: map[*kmspb.CryptoKeyVersion]Action{
+				&kmspb.CryptoKeyVersion{
+					State: kmspb.CryptoKeyVersion_ENABLED,
+				}: ActionDisable,
 			},
-			action:  ActionDisable,
 			wantErr: "",
-			expectedRequest: &kmspb.UpdateCryptoKeyVersionRequest{
-				CryptoKeyVersion: &kmspb.CryptoKeyVersion{
-					State: kmspb.CryptoKeyVersion_DISABLED,
-				},
-				UpdateMask: &fieldmaskpb.FieldMask{
-					Paths: []string{"state"},
+			expectedRequests: []proto.Message{
+				&kmspb.UpdateCryptoKeyVersionRequest{
+					CryptoKeyVersion: &kmspb.CryptoKeyVersion{
+						State: kmspb.CryptoKeyVersion_DISABLED,
+					},
+					UpdateMask: &fieldmaskpb.FieldMask{
+						Paths: []string{"state"},
+					},
 				},
 			},
 		},
 		{
 			name: "create",
-			cryptoKeyVersion: &kmspb.CryptoKeyVersion{
-				Name:  versionName,
-				State: kmspb.CryptoKeyVersion_ENABLED,
+			actions: map[*kmspb.CryptoKeyVersion]Action{
+				&kmspb.CryptoKeyVersion{
+					Name:  versionName,
+					State: kmspb.CryptoKeyVersion_ENABLED,
+				}: ActionCreate,
 			},
-			action:  ActionCreate,
 			wantErr: "",
-			expectedRequest: &kmspb.CreateCryptoKeyVersionRequest{
-				Parent:           parent,
-				CryptoKeyVersion: &kmspb.CryptoKeyVersion{},
+			expectedRequests: []proto.Message{
+				&kmspb.CreateCryptoKeyVersionRequest{
+					Parent:           parent,
+					CryptoKeyVersion: &kmspb.CryptoKeyVersion{},
+				},
 			},
 		},
 		{
 			name: "destroy",
-			cryptoKeyVersion: &kmspb.CryptoKeyVersion{
-				Name:  versionName,
-				State: kmspb.CryptoKeyVersion_DISABLED,
+			actions: map[*kmspb.CryptoKeyVersion]Action{
+				&kmspb.CryptoKeyVersion{
+					Name:  versionName,
+					State: kmspb.CryptoKeyVersion_DISABLED,
+				}: ActionDestroy,
 			},
-			action:  ActionDestroy,
 			wantErr: "",
-			expectedRequest: &kmspb.DestroyCryptoKeyVersionRequest{
-				Name: versionName,
+			expectedRequests: []proto.Message{
+				&kmspb.DestroyCryptoKeyVersionRequest{
+					Name: versionName,
+				},
+			},
+		},
+		{
+			name: "multi_action",
+			actions: map[*kmspb.CryptoKeyVersion]Action{
+				&kmspb.CryptoKeyVersion{
+					State: kmspb.CryptoKeyVersion_ENABLED,
+				}: ActionDisable,
+				&kmspb.CryptoKeyVersion{
+					Name:  versionName,
+					State: kmspb.CryptoKeyVersion_ENABLED,
+				}: ActionCreate,
+				&kmspb.CryptoKeyVersion{
+					Name:  versionName,
+					State: kmspb.CryptoKeyVersion_DISABLED,
+				}: ActionDestroy,
+			},
+			wantErr: "",
+			expectedRequests: []proto.Message{
+				&kmspb.UpdateCryptoKeyVersionRequest{
+					CryptoKeyVersion: &kmspb.CryptoKeyVersion{
+						State: kmspb.CryptoKeyVersion_DISABLED,
+					},
+					UpdateMask: &fieldmaskpb.FieldMask{
+						Paths: []string{"state"},
+					},
+				},
+				&kmspb.CreateCryptoKeyVersionRequest{
+					Parent:           parent,
+					CryptoKeyVersion: &kmspb.CryptoKeyVersion{},
+				},
+				&kmspb.DestroyCryptoKeyVersionRequest{
+					Name: versionName,
+				},
+			},
+		},
+		{
+			name: "test_err",
+			actions: map[*kmspb.CryptoKeyVersion]Action{
+				&kmspb.CryptoKeyVersion{
+					Name:  versionName,
+					State: kmspb.CryptoKeyVersion_DISABLED,
+				}: ActionDestroy,
+			},
+			serverErr: fmt.Errorf("test error while disabling"),
+			wantErr:   "1 error occurred:\n\t* key destroy failed: rpc error: code = Unknown desc = test error while disabling\n\n",
+			expectedRequests: []proto.Message{
+				&kmspb.DestroyCryptoKeyVersionRequest{
+					Name: versionName,
+				},
 			},
 		},
 	}
@@ -375,24 +414,42 @@ func TestPerformActions(t *testing.T) {
 		t.Run(tc.name, func(t *testing.T) {
 			mockKeyManagement.err = nil
 			mockKeyManagement.reqs = nil
+			mockKeyManagement.err = tc.serverErr
 
 			mockKeyManagement.resps = append(mockKeyManagement.resps[:0], &kmspb.CryptoKeyVersion{})
 
-			actions := make(map[*kmspb.CryptoKeyVersion]Action)
-			actions[tc.cryptoKeyVersion] = tc.action
-
-			gotErr := handler.performActions(ctx, actions)
+			gotErr := handler.performActions(ctx, tc.actions)
 
 			if err != nil {
 				t.Fatal(err)
 			}
 
-			if want, got := tc.expectedRequest, mockKeyManagement.reqs[0]; !proto.Equal(want, got) {
+			if want, got := tc.expectedRequests, mockKeyManagement.reqs; !slicesEq(want, got) {
 				t.Errorf("wrong request %q, want %q", got, want)
 			}
 			errCmp(t, tc.wantErr, gotErr)
 		})
 	}
+}
+
+func slicesEq(a, b []proto.Message) bool {
+	if len(a) != len(b) {
+		return false
+	}
+	for i := range a {
+		found := false
+		for j := range b {
+			if proto.Equal(a[i], b[j]) {
+				found = true
+				b = append(b[:j], b[j+1:]...) // remove from slice
+				break
+			}
+		}
+		if !found {
+			return false
+		}
+	}
+	return true
 }
 
 func errCmp(t *testing.T, wantErr string, gotErr error) {

@@ -16,17 +16,11 @@ package main
 
 import (
 	"context"
-	"errors"
 	"log"
-	"net/http"
-	"os"
 	"os/signal"
 	"syscall"
-	"time"
 
 	kms "cloud.google.com/go/kms/apiv1"
-	"github.com/abcxyz/jvs/pkg/crypto"
-	"golang.org/x/sync/errgroup"
 )
 
 // TODO: Switch to graceful termination. https://github.com/abcxyz/jvs/issues/3
@@ -41,43 +35,5 @@ func main() {
 	}
 	defer kmsClient.Close()
 
-	// TODO: Read in configuration and pass to handler.
-	handler := crypto.RotationHandler{
-		KmsClient:   kmsClient,
-		CurrentTime: time.Now(),
-	}
-
-	http.HandleFunc("/", handler.ConsumeMessage)
-	// Determine port for HTTP service.
-	port := os.Getenv("PORT")
-	if port == "" {
-		port = "8080"
-		log.Printf("Defaulting to port %s\n", port)
-	}
-	// Start HTTP server.
-	srv := &http.Server{Addr: ":" + port}
-
-	// It's easier to use errgroup.
-	g, ctx := errgroup.WithContext(ctx)
-	g.Go(func() error {
-		log.Printf("server listening at %v\n", port)
-		if err := srv.ListenAndServe(); err != nil && !errors.Is(err, http.ErrServerClosed) {
-			return err
-		}
-		return nil
-	})
-
-	// Either server returns an error or receiving a TERM
-	<-ctx.Done()
-	stop()
-
-	shutdownCtx, done := context.WithTimeout(context.Background(), 5*time.Second)
-	defer done()
-	if err := srv.Shutdown(shutdownCtx); err != nil {
-		log.Printf("failed to gracefully shutdown server: %v", err)
-	}
-
-	if err := g.Wait(); err != nil {
-		log.Fatalf("error running server: %v\n", err)
-	}
+	// TODO: Set up server with mux. https://github.com/abcxyz/jvs/issues/8
 }

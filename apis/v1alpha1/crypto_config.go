@@ -12,6 +12,7 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
+// Package v1alpha1 provides apis that users will interact with.
 package v1alpha1
 
 import "time"
