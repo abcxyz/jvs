@@ -53,6 +53,7 @@ type PubSubMessage struct {
 // ConsumeMessage is called when a message is pushed to this server.
 func (h *RotationHandler) ConsumeMessage(w http.ResponseWriter, r *http.Request) {
 	log.Printf("Received Message.")
+	// TODO: Use LimitReader. https://github.com/abcxyz/jvs/issues/7
 	body, err := ioutil.ReadAll(r.Body)
 	if err != nil {
 		log.Printf("ioutil.ReadAll: %v", err)
