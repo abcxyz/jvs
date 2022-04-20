@@ -33,7 +33,7 @@ const (
 // CryptoConfig is the full jvs config.
 type CryptoConfig struct {
 	// Version is the version of the config.
-	Version int8 `yaml:"version,omitempty" env:"VERSION,overwrite"`
+	Version uint8 `yaml:"version,omitempty" env:"VERSION,overwrite"`
 
 	// Crypto variables
 	KeyTTL         time.Duration `yaml:"key_ttl,omitempty" env:"KEY_TTL,overwrite"`

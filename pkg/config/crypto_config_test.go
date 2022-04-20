@@ -69,13 +69,13 @@ disabled_period: 720h # 30 days
 		{
 			name: "test_wrong_version",
 			cfg: `
-version: -1
+version: 255
 key_ttl: 720h # 30 days
 grace_period: 2h
 disabled_period: 720h # 30 days
 `,
 			wantConfig: nil,
-			wantErr:    "failed validating config: 1 error occurred:\n\t* unexpected Version -1 want 1\n\n",
+			wantErr:    "failed validating config: 1 error occurred:\n\t* unexpected Version 255 want 1\n\n",
 		},
 		{
 			name: "test_empty_ttl",
