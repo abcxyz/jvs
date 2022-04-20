@@ -39,13 +39,13 @@ func TestLoadConfig(t *testing.T) {
 		{
 			name: "all_values_specified",
 			cfg: `
-version: 0.1
+version: 1
 key_ttl: 720h # 30 days
 grace_period: 2h
 disabled_period: 720h # 30 days
 `,
 			wantConfig: &CryptoConfig{
-				Version:        0.1,
+				Version:        1,
 				KeyTTL:         720 * time.Hour, // 30 days
 				GracePeriod:    2 * time.Hour,   // 2 hours
 				DisabledPeriod: 720 * time.Hour, // 30 days
@@ -60,7 +60,7 @@ grace_period: 2h
 disabled_period: 720h # 30 days
 `,
 			wantConfig: &CryptoConfig{
-				Version:        0.1,
+				Version:        1,
 				KeyTTL:         720 * time.Hour, // 30 days
 				GracePeriod:    2 * time.Hour,   // 2 hours
 				DisabledPeriod: 720 * time.Hour, // 30 days
@@ -69,18 +69,18 @@ disabled_period: 720h # 30 days
 		{
 			name: "test_wrong_version",
 			cfg: `
-version: -0.1
+version: -1
 key_ttl: 720h # 30 days
 grace_period: 2h
 disabled_period: 720h # 30 days
 `,
 			wantConfig: nil,
-			wantErr:    "failed validating config: 1 error occurred:\n\t* unexpected Version -0.1 want 0.1\n\n",
+			wantErr:    "failed validating config: 1 error occurred:\n\t* unexpected Version -1 want 1\n\n",
 		},
 		{
 			name: "test_empty_ttl",
 			cfg: `
-version: 0.1
+version: 1
 grace_period: 2h
 disabled_period: 720h # 30 days
 `,
@@ -96,7 +96,7 @@ disabled_period: 720h # 30 days
 		{
 			name: "test_negative",
 			cfg: `
-version: 0.1
+version: 1
 key_ttl: -720h
 grace_period: -2h
 disabled_period: -720h
@@ -107,7 +107,7 @@ disabled_period: -720h
 		{
 			name: "all_values_specified_env_override",
 			cfg: `
-version: 0.1
+version: 1
 key_ttl: 720h # 30 days
 grace_period: 2h
 disabled_period: 720h # 30 days
@@ -117,7 +117,7 @@ disabled_period: 720h # 30 days
 				"JVS_GRACE_PERIOD": "4h",
 			},
 			wantConfig: &CryptoConfig{
-				Version:        0.1,
+				Version:        1,
 				KeyTTL:         1080 * time.Hour, // 45 days
 				GracePeriod:    4 * time.Hour,    // 4 hours
 				DisabledPeriod: 720 * time.Hour,  // 30 days
@@ -132,7 +132,7 @@ disabled_period: 720h # 30 days
 				"JVS_DISABLED_PERIOD": "1080h", // 45 days
 			},
 			wantConfig: &CryptoConfig{
-				Version:        0.1,
+				Version:        1,
 				KeyTTL:         1080 * time.Hour, // 45 days
 				GracePeriod:    4 * time.Hour,    // 4 hours
 				DisabledPeriod: 1080 * time.Hour, // 45 days
@@ -160,7 +160,7 @@ disabled_period: 720h # 30 days
 func TestRotationAge(t *testing.T) {
 	t.Parallel()
 	cfg := &CryptoConfig{
-		Version:        0.1,
+		Version:        1,
 		KeyTTL:         720 * time.Hour, // 30 days
 		GracePeriod:    2 * time.Hour,   // 2 hours
 		DisabledPeriod: 720 * time.Hour, // 30 days
@@ -177,7 +177,7 @@ func TestRotationAge(t *testing.T) {
 func TestDestroyAge(t *testing.T) {
 	t.Parallel()
 	cfg := &CryptoConfig{
-		Version:        0.1,
+		Version:        1,
 		KeyTTL:         720 * time.Hour, // 30 days
 		GracePeriod:    2 * time.Hour,   // 2 hours
 		DisabledPeriod: 720 * time.Hour, // 30 days

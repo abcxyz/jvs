@@ -18,7 +18,6 @@ package config
 import (
 	"context"
 	"fmt"
-	"strconv"
 	"time"
 
 	"github.com/hashicorp/go-multierror"
@@ -28,13 +27,13 @@ import (
 
 const (
 	// Version default for config.
-	Version = 0.1
+	Version = 1
 )
 
 // CryptoConfig is the full jvs config.
 type CryptoConfig struct {
 	// Version is the version of the config.
-	Version float32 `yaml:"version,omitempty" env:"VERSION,overwrite"`
+	Version int8 `yaml:"version,omitempty" env:"VERSION,overwrite"`
 
 	// Crypto variables
 	KeyTTL         time.Duration `yaml:"key_ttl,omitempty" env:"KEY_TTL,overwrite"`
@@ -48,7 +47,7 @@ func (cfg *CryptoConfig) Validate() error {
 
 	var err error
 	if cfg.Version != Version {
-		err = multierror.Append(err, fmt.Errorf("unexpected Version %s want %s", strconv.FormatFloat(float64(cfg.Version), 'f', -1, 32), strconv.FormatFloat(float64(Version), 'f', -1, 32)))
+		err = multierror.Append(err, fmt.Errorf("unexpected Version %d want %d", cfg.Version, Version))
 	}
 
 	if cfg.KeyTTL <= 0 {
