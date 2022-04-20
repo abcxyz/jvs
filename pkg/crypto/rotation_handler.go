@@ -138,8 +138,8 @@ func (h *RotationHandler) determineActions(vers []*kmspb.CryptoKeyVersion) (map[
 		}
 	}
 
-	actions := h.determineActionsForOtherVersions(otherVers)
-	actions[newestEnabledVersion] = h.determineActionForNewestVersion(newestEnabledVersion, newBeingGenerated)
+	actions := h.actionsForOtherVersions(otherVers)
+	actions[newestEnabledVersion] = h.actionForNewestVersion(newestEnabledVersion, newBeingGenerated)
 
 	return actions, nil
 }
@@ -147,7 +147,7 @@ func (h *RotationHandler) determineActions(vers []*kmspb.CryptoKeyVersion) (map[
 // Determine whether the newest key needs to be rotated.
 // The only actions available are ActionNone and ActionCreate. This is because we never
 // want to disable/delete our newest key if we don't have a newer second one created.
-func (h *RotationHandler) determineActionForNewestVersion(ver *kmspb.CryptoKeyVersion, newBeingGenerated bool) Action {
+func (h *RotationHandler) actionForNewestVersion(ver *kmspb.CryptoKeyVersion, newBeingGenerated bool) Action {
 	if newBeingGenerated {
 		log.Printf("Already have a new key being generated, no actions necessary")
 		return ActionNone
@@ -168,7 +168,7 @@ func (h *RotationHandler) determineActionForNewestVersion(ver *kmspb.CryptoKeyVe
 
 // This determines which action to take on key versions that are not the primary one (newest active).
 // Since these aren't the primary key version, they can be disabled, or destroyed as long as sufficient time has passed.
-func (h *RotationHandler) determineActionsForOtherVersions(vers map[*kmspb.CryptoKeyVersion]struct{}) map[*kmspb.CryptoKeyVersion]Action {
+func (h *RotationHandler) actionsForOtherVersions(vers map[*kmspb.CryptoKeyVersion]struct{}) map[*kmspb.CryptoKeyVersion]Action {
 	actions := make(map[*kmspb.CryptoKeyVersion]Action)
 
 	for ver := range vers {
