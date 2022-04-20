@@ -43,6 +43,7 @@ type RotationHandler struct {
 	CurrentTime time.Time
 }
 
+// HTTPMessage is the request format we will send from the cloud scheduler
 type HTTPMessage struct {
 	Message struct {
 		// TODO: We should support manual actions through call arguments, such as a rotation before the TTL. https://github.com/abcxyz/jvs/issues/9
