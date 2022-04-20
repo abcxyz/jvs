@@ -17,17 +17,17 @@
 package testutil
 
 import (
+	"strings"
 	"testing"
-
-	"github.com/google/go-cmp/cmp"
 )
 
 // ErrCmp compares an expected error string with a received error for use in testing.
-func ErrCmp(t *testing.T, wantErr string, gotErr error) {
+func ErrCmp(t testing.TB, wantErr string, gotErr error) {
+	t.Helper()
 	if wantErr != "" {
 		if gotErr != nil {
-			if diff := cmp.Diff(gotErr.Error(), wantErr); diff != "" {
-				t.Errorf("Process got unexpected error substring: %v", diff)
+			if !strings.Contains(gotErr.Error(), wantErr) {
+				t.Errorf("Process got unexpected error: %v, wanted: ", gotErr, wantErr)
 			}
 		} else {
 			t.Errorf("Expected error, but received nil")

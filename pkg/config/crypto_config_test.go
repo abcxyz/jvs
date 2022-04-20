@@ -22,6 +22,7 @@ import (
 
 	"github.com/abcxyz/jvs/pkg/testutil"
 	"github.com/google/go-cmp/cmp"
+	"github.com/sethvargo/go-envconfig"
 )
 
 func TestLoadConfig(t *testing.T) {
@@ -38,16 +39,16 @@ func TestLoadConfig(t *testing.T) {
 		{
 			name: "all_values_specified",
 			cfg: `
-version: v1alpha1
+version: 0.1
 key_ttl: 720h # 30 days
 grace_period: 2h
 disabled_period: 720h # 30 days
 `,
 			wantConfig: &CryptoConfig{
-				Version:        "v1alpha1",
-				KeyTTL:         30 * 24 * 60 * 60 * 1_000_000_000, // 30 days
-				GracePeriod:    2 * 60 * 60 * 1_000_000_000,       // 2 hours
-				DisabledPeriod: 30 * 24 * 60 * 60 * 1_000_000_000, // 30 days
+				Version:        0.1,
+				KeyTTL:         720 * time.Hour, // 30 days
+				GracePeriod:    2 * time.Hour,   // 2 hours
+				DisabledPeriod: 720 * time.Hour, // 30 days
 			},
 		},
 		{
@@ -59,58 +60,54 @@ grace_period: 2h
 disabled_period: 720h # 30 days
 `,
 			wantConfig: &CryptoConfig{
-				Version:        "v1alpha1",
-				KeyTTL:         30 * 24 * 60 * 60 * 1_000_000_000, // 30 days
-				GracePeriod:    2 * 60 * 60 * 1_000_000_000,       // 2 hours
-				DisabledPeriod: 30 * 24 * 60 * 60 * 1_000_000_000, // 30 days
+				Version:        0.1,
+				KeyTTL:         720 * time.Hour, // 30 days
+				GracePeriod:    2 * time.Hour,   // 2 hours
+				DisabledPeriod: 720 * time.Hour, // 30 days
 			},
 		},
 		{
 			name: "test_wrong_version",
 			cfg: `
-version: wrong_ver
+version: -0.1
 key_ttl: 720h # 30 days
 grace_period: 2h
 disabled_period: 720h # 30 days
 `,
-			wantConfig: &CryptoConfig{
-				Version:        "wrong_ver",
-				KeyTTL:         30 * 24 * 60 * 60 * 1_000_000_000, // 30 days
-				GracePeriod:    2 * 60 * 60 * 1_000_000_000,       // 2 hours
-				DisabledPeriod: 30 * 24 * 60 * 60 * 1_000_000_000, // 30 days
-			},
-			wantErr: "failed validating config: 1 error occurred:\n\t* unexpected Version \"wrong_ver\" want \"v1alpha1\"\n\n",
+			wantConfig: nil,
+			wantErr:    "failed validating config: 1 error occurred:\n\t* unexpected Version -0.1 want 0.1\n\n",
 		},
 		{
 			name: "test_empty_ttl",
 			cfg: `
-version: v1alpha1
+version: 0.1
 grace_period: 2h
 disabled_period: 720h # 30 days
 `,
-			wantConfig: &CryptoConfig{
-				Version:        "v1alpha1",
-				KeyTTL:         0,
-				GracePeriod:    2 * 60 * 60 * 1_000_000_000,       // 2 hours
-				DisabledPeriod: 30 * 24 * 60 * 60 * 1_000_000_000, // 30 days
-			},
-			wantErr: "failed validating config: 1 error occurred:\n\t* key ttl is 0\n\n",
+			wantConfig: nil,
+			wantErr:    "failed validating config: 1 error occurred:\n\t* key ttl is invalid: 0s\n\n",
 		},
 		{
-			name: "test_empty",
-			cfg:  "",
-			wantConfig: &CryptoConfig{
-				Version:        "v1alpha1",
-				KeyTTL:         0,
-				GracePeriod:    0,
-				DisabledPeriod: 0,
-			},
-			wantErr: "failed validating config: 3 errors occurred:\n\t* key ttl is 0\n\t* grace period is 0\n\t* disabled period is 0\n\n",
+			name:       "test_empty",
+			cfg:        "",
+			wantConfig: nil,
+			wantErr:    "failed validating config: 3 errors occurred:\n\t* key ttl is invalid: 0s\n\t* grace period is invalid: 0s\n\t* disabled period is invalid: 0s\n\n",
+		},
+		{
+			name: "test_negative",
+			cfg: `
+version: 0.1
+key_ttl: -720h
+grace_period: -2h
+disabled_period: -720h
+`,
+			wantConfig: nil,
+			wantErr:    "failed validating config: 3 errors occurred:\n\t* key ttl is invalid: -720h0m0s\n\t* grace period is invalid: -2h0m0s\n\t* disabled period is invalid: -720h0m0s\n\n",
 		},
 		{
 			name: "all_values_specified_env_override",
 			cfg: `
-version: v1alpha1
+version: 0.1
 key_ttl: 720h # 30 days
 grace_period: 2h
 disabled_period: 720h # 30 days
@@ -120,10 +117,10 @@ disabled_period: 720h # 30 days
 				"JVS_GRACE_PERIOD": "4h",
 			},
 			wantConfig: &CryptoConfig{
-				Version:        "v1alpha1",
-				KeyTTL:         45 * 24 * 60 * 60 * 1_000_000_000, // 45 days
-				GracePeriod:    4 * 60 * 60 * 1_000_000_000,       // 4 hours
-				DisabledPeriod: 30 * 24 * 60 * 60 * 1_000_000_000, // 30 days
+				Version:        0.1,
+				KeyTTL:         1080 * time.Hour, // 45 days
+				GracePeriod:    4 * time.Hour,    // 4 hours
+				DisabledPeriod: 720 * time.Hour,  // 30 days
 			},
 		},
 		{
@@ -135,10 +132,10 @@ disabled_period: 720h # 30 days
 				"JVS_DISABLED_PERIOD": "1080h", // 45 days
 			},
 			wantConfig: &CryptoConfig{
-				Version:        "v1alpha1",
-				KeyTTL:         45 * 24 * 60 * 60 * 1_000_000_000, // 45 days
-				GracePeriod:    4 * 60 * 60 * 1_000_000_000,       // 4 hours
-				DisabledPeriod: 45 * 24 * 60 * 60 * 1_000_000_000, // 45 days
+				Version:        0.1,
+				KeyTTL:         1080 * time.Hour, // 45 days
+				GracePeriod:    4 * time.Hour,    // 4 hours
+				DisabledPeriod: 1080 * time.Hour, // 45 days
 			},
 		},
 	}
@@ -146,51 +143,50 @@ disabled_period: 720h # 30 days
 	for _, tc := range tests {
 		tc := tc
 		t.Run(tc.name, func(t *testing.T) {
-			// No parallel due to testing with env vars.
-			for k, v := range tc.envs {
-				t.Setenv(k, v)
-			}
+			t.Parallel()
+			lookuper := envconfig.MapLookuper(tc.envs)
 			content := bytes.NewBufferString(tc.cfg).Bytes()
-			gotConfig, err := LoadConfig(ctx, content)
+			gotConfig, err := loadConfigFromLookuper(ctx, content, lookuper)
 			if err != nil {
 				testutil.ErrCmp(t, tc.wantErr, err)
-			} else if diff := cmp.Diff(tc.wantConfig, gotConfig); diff != "" {
+			}
+			if diff := cmp.Diff(tc.wantConfig, gotConfig); diff != "" {
 				t.Errorf("Config unexpected diff (-want,+got):\n%s", diff)
 			}
 		})
 	}
 }
 
-func TestGetRotationAge(t *testing.T) {
+func TestRotationAge(t *testing.T) {
 	t.Parallel()
 	cfg := &CryptoConfig{
-		Version:        "v1alpha1",
-		KeyTTL:         30 * 24 * 60 * 60 * 1_000_000_000, // 30 days
-		GracePeriod:    2 * 60 * 60 * 1_000_000_000,       // 2 hours
-		DisabledPeriod: 30 * 24 * 60 * 60 * 1_000_000_000, // 30 days
+		Version:        0.1,
+		KeyTTL:         720 * time.Hour, // 30 days
+		GracePeriod:    2 * time.Hour,   // 2 hours
+		DisabledPeriod: 720 * time.Hour, // 30 days
 	}
 	expected, err := time.ParseDuration("718h") // 29 days, 22 hours
 	if err != nil {
 		t.Error("Couldn't parse duration")
 	}
-	if diff := cmp.Diff(cfg.GetRotationAge(), expected); diff != "" {
+	if diff := cmp.Diff(expected, cfg.RotationAge()); diff != "" {
 		t.Errorf("unexpected rotation age (-want,+got):\n%s", diff)
 	}
 }
 
-func TestGetDestroyAge(t *testing.T) {
+func TestDestroyAge(t *testing.T) {
 	t.Parallel()
 	cfg := &CryptoConfig{
-		Version:        "v1alpha1",
-		KeyTTL:         30 * 24 * 60 * 60 * 1_000_000_000, // 30 days
-		GracePeriod:    2 * 60 * 60 * 1_000_000_000,       // 2 hours
-		DisabledPeriod: 30 * 24 * 60 * 60 * 1_000_000_000, // 30 days
+		Version:        0.1,
+		KeyTTL:         720 * time.Hour, // 30 days
+		GracePeriod:    2 * time.Hour,   // 2 hours
+		DisabledPeriod: 720 * time.Hour, // 30 days
 	}
 	expected, err := time.ParseDuration("1440h") // 60 days
 	if err != nil {
 		t.Error("Couldn't parse duration")
 	}
-	if diff := cmp.Diff(cfg.GetDestroyAge(), expected); diff != "" {
+	if diff := cmp.Diff(expected, cfg.DestroyAge()); diff != "" {
 		t.Errorf("unexpected destroy age (-want,+got):\n%s", diff)
 	}
 }

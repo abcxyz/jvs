@@ -160,7 +160,7 @@ func (h *RotationHandler) determineActionForNewestVersion(ver *kmspb.CryptoKeyVe
 	}
 
 	secondsOld := h.CurrentTime.Unix() - ver.CreateTime.Seconds
-	if int(secondsOld) > int(h.CryptoConfig.GetRotationAge().Seconds()) {
+	if int(secondsOld) > int(h.CryptoConfig.RotationAge().Seconds()) {
 		log.Printf("Time to rotate newest key version.")
 		return ActionCreate
 	}
@@ -184,7 +184,7 @@ func (h *RotationHandler) determineActionsForOtherVersions(vers map[*kmspb.Crypt
 				actions[ver] = ActionNone
 			}
 		case kmspb.CryptoKeyVersion_DISABLED:
-			if int(secondsOld) > int(h.CryptoConfig.GetDestroyAge().Seconds()) {
+			if int(secondsOld) > int(h.CryptoConfig.DestroyAge().Seconds()) {
 				log.Printf("Key version %s will be destroyed.", ver.Name)
 				actions[ver] = ActionDestroy
 			} else {

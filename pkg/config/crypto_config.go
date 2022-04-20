@@ -18,6 +18,7 @@ package config
 import (
 	"context"
 	"fmt"
+	"strconv"
 	"time"
 
 	"github.com/hashicorp/go-multierror"
@@ -27,13 +28,13 @@ import (
 
 const (
 	// Version default for config.
-	Version = "v1alpha1"
+	Version = 0.1
 )
 
 // CryptoConfig is the full jvs config.
 type CryptoConfig struct {
 	// Version is the version of the config.
-	Version string `yaml:"version,omitempty" env:"VERSION,overwrite"`
+	Version float32 `yaml:"version,omitempty" env:"VERSION,overwrite"`
 
 	// Crypto variables
 	KeyTTL         time.Duration `yaml:"key_ttl,omitempty" env:"KEY_TTL,overwrite"`
@@ -47,19 +48,19 @@ func (cfg *CryptoConfig) Validate() error {
 
 	var err error
 	if cfg.Version != Version {
-		err = multierror.Append(err, fmt.Errorf("unexpected Version %q want %q", cfg.Version, Version))
+		err = multierror.Append(err, fmt.Errorf("unexpected Version %s want %s", strconv.FormatFloat(float64(cfg.Version), 'f', -1, 32), strconv.FormatFloat(float64(Version), 'f', -1, 32)))
 	}
 
-	if cfg.KeyTTL == 0 {
-		err = multierror.Append(err, fmt.Errorf("key ttl is 0"))
+	if cfg.KeyTTL <= 0 {
+		err = multierror.Append(err, fmt.Errorf("key ttl is invalid: %v", cfg.KeyTTL))
 	}
 
-	if cfg.GracePeriod == 0 {
-		err = multierror.Append(err, fmt.Errorf("grace period is 0"))
+	if cfg.GracePeriod <= 0 {
+		err = multierror.Append(err, fmt.Errorf("grace period is invalid: %v", cfg.GracePeriod))
 	}
 
-	if cfg.DisabledPeriod == 0 {
-		err = multierror.Append(err, fmt.Errorf("disabled period is 0"))
+	if cfg.DisabledPeriod <= 0 {
+		err = multierror.Append(err, fmt.Errorf("disabled period is invalid: %v", cfg.DisabledPeriod))
 	}
 
 	return err
@@ -68,30 +69,35 @@ func (cfg *CryptoConfig) Validate() error {
 // SetDefault sets default for the config.
 func (cfg *CryptoConfig) SetDefault() {
 	// TODO: set defaults for other fields if necessary.
-	if cfg.Version == "" {
+	if cfg.Version == 0 {
 		cfg.Version = Version
 	}
 }
 
 // GetRotationAge gets the duration after a key has been created that a new key should be created.
-func (cfg *CryptoConfig) GetRotationAge() time.Duration {
+func (cfg *CryptoConfig) RotationAge() time.Duration {
 	return cfg.KeyTTL - cfg.GracePeriod
 }
 
 // GetDestroyAge gets the duration after a key has been created when it becomes a candidate to be destroyed.
-func (cfg *CryptoConfig) GetDestroyAge() time.Duration {
+func (cfg *CryptoConfig) DestroyAge() time.Duration {
 	return cfg.KeyTTL + cfg.DisabledPeriod
 }
 
-// LoadConfig reads in a yaml file, applies ENV config overrides, and finally validates the config.
+// LoadConfig calls the necessary methods to load in config using the OsLookuper which finds env variables specified on the host.
 func LoadConfig(ctx context.Context, b []byte) (*CryptoConfig, error) {
+	return loadConfigFromLookuper(ctx, b, envconfig.OsLookuper())
+}
+
+// loadConfigFromLooker reads in a yaml file, applies ENV config overrides from the lookuper, and finally validates the config.
+func loadConfigFromLookuper(ctx context.Context, b []byte, lookuper envconfig.Lookuper) (*CryptoConfig, error) {
 	cfg := &CryptoConfig{}
 	if err := yaml.Unmarshal(b, cfg); err != nil {
 		return nil, err
 	}
 
 	// Process overrides from env vars.
-	l := envconfig.PrefixLookuper("JVS_", envconfig.OsLookuper())
+	l := envconfig.PrefixLookuper("JVS_", lookuper)
 	if err := envconfig.ProcessWith(ctx, cfg, l); err != nil {
 		return nil, err
 	}
