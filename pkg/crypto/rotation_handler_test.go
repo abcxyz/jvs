@@ -25,6 +25,7 @@ import (
 	"time"
 
 	"github.com/abcxyz/jvs/pkg/config"
+	"github.com/abcxyz/jvs/pkg/testutil"
 	"google.golang.org/protobuf/types/known/timestamppb"
 
 	kms "cloud.google.com/go/kms/apiv1"
@@ -152,10 +153,6 @@ func TestDetermineActions(t *testing.T) {
 	if err != nil {
 		t.Error("Couldn't parse key ttl")
 	}
-	propagationTime, err := time.ParseDuration("30m")
-	if err != nil {
-		t.Error("Couldn't parse propagation time")
-	}
 	gracePeriod, err := time.ParseDuration("60m")
 	if err != nil {
 		t.Error("Couldn't parse grace period")
@@ -168,10 +165,9 @@ func TestDetermineActions(t *testing.T) {
 	handler := &RotationHandler{
 		KmsClient: nil,
 		CryptoConfig: &config.CryptoConfig{
-			KeyTTL:          keyTTL,
-			PropagationTime: propagationTime,
-			GracePeriod:     gracePeriod,
-			DisabledPeriod:  disablePeriod,
+			KeyTTL:         keyTTL,
+			GracePeriod:    gracePeriod,
+			DisabledPeriod: disablePeriod,
 		},
 		CurrentTime: time.Unix(100*60*60*24, 0), // 100 days after start
 	}
@@ -440,7 +436,7 @@ func TestPerformActions(t *testing.T) {
 			if want, got := tc.expectedRequests, mockKeyManagement.reqs; !slicesEq(want, got) {
 				t.Errorf("wrong request %q, want %q", got, want)
 			}
-			errCmp(t, tc.wantErr, gotErr)
+			testutil.ErrCmp(t, tc.wantErr, gotErr)
 		})
 	}
 }
@@ -463,18 +459,4 @@ func slicesEq(a, b []proto.Message) bool {
 		}
 	}
 	return true
-}
-
-func errCmp(t *testing.T, wantErr string, gotErr error) {
-	if wantErr != "" {
-		if gotErr != nil {
-			if diff := cmp.Diff(gotErr.Error(), wantErr); diff != "" {
-				t.Errorf("Process got unexpected error substring: %v", diff)
-			}
-		} else {
-			t.Errorf("Expected error, but received nil")
-		}
-	} else if gotErr != nil {
-		t.Errorf("Expected no error, but received \"%v\"", gotErr)
-	}
 }
