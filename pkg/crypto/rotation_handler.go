@@ -43,6 +43,7 @@ type RotationHandler struct {
 	CurrentTime time.Time
 }
 
+// HTTPMessage is the request format we will send from cloud scheduler.
 type HTTPMessage struct {
 	Message struct {
 		// TODO: We should support manual actions through call arguments, such as a rotation before the TTL. https://github.com/abcxyz/jvs/issues/9
@@ -114,33 +115,32 @@ const (
 
 func (h *RotationHandler) determineActions(vers []*kmspb.CryptoKeyVersion) (map[*kmspb.CryptoKeyVersion]Action, error) {
 	// Older Key Version
-	otherVers := map[*kmspb.CryptoKeyVersion]bool{}
+	var otherVers []*kmspb.CryptoKeyVersion
 
 	// Keep track of newest key version
 	var newestEnabledVersion *kmspb.CryptoKeyVersion
-	var newestTime int64
+	var newestTime time.Time
 
 	// Is there a key version currently in the process of being created.
 	var newBeingGenerated = false
 
 	for _, ver := range vers {
-		secondsOld := h.CurrentTime.Unix() - ver.CreateTime.Seconds
-		if ver.State == kmspb.CryptoKeyVersion_ENABLED && (newestEnabledVersion == nil || secondsOld < newestTime) {
+		if ver.State == kmspb.CryptoKeyVersion_ENABLED && (newestEnabledVersion == nil || ver.CreateTime.AsTime().After(newestTime)) {
 			if newestEnabledVersion != nil {
-				otherVers[newestEnabledVersion] = true
+				otherVers = append(otherVers, newestEnabledVersion)
 			}
 			newestEnabledVersion = ver
-			newestTime = secondsOld
+			newestTime = ver.CreateTime.AsTime()
 		} else {
 			if ver.State == kmspb.CryptoKeyVersion_PENDING_GENERATION || ver.State == kmspb.CryptoKeyVersion_PENDING_IMPORT {
 				newBeingGenerated = true
 			}
-			otherVers[ver] = true
+			otherVers = append(otherVers, ver)
 		}
 	}
 
-	actions := h.determineActionsForOtherVersions(otherVers)
-	actions[newestEnabledVersion] = h.determineActionForNewestVersion(newestEnabledVersion, newBeingGenerated)
+	actions := h.actionsForOtherVersions(otherVers)
+	actions[newestEnabledVersion] = h.actionForNewestVersion(newestEnabledVersion, newBeingGenerated)
 
 	return actions, nil
 }
@@ -148,7 +148,7 @@ func (h *RotationHandler) determineActions(vers []*kmspb.CryptoKeyVersion) (map[
 // Determine whether the newest key needs to be rotated.
 // The only actions available are ActionNone and ActionCreate. This is because we never
 // want to disable/delete our newest key if we don't have a newer second one created.
-func (h *RotationHandler) determineActionForNewestVersion(ver *kmspb.CryptoKeyVersion, newBeingGenerated bool) Action {
+func (h *RotationHandler) actionForNewestVersion(ver *kmspb.CryptoKeyVersion, newBeingGenerated bool) Action {
 	if newBeingGenerated {
 		log.Printf("Already have a new key being generated, no actions necessary")
 		return ActionNone
@@ -159,8 +159,8 @@ func (h *RotationHandler) determineActionForNewestVersion(ver *kmspb.CryptoKeyVe
 		return ActionCreate
 	}
 
-	secondsOld := h.CurrentTime.Unix() - ver.CreateTime.Seconds
-	if int(secondsOld) > int(h.CryptoConfig.RotationAge().Seconds()) {
+	rotateBeforeDate := h.CurrentTime.Add(-h.CryptoConfig.RotationAge())
+	if ver.CreateTime.AsTime().Before(rotateBeforeDate) {
 		log.Printf("Time to rotate newest key version.")
 		return ActionCreate
 	}
@@ -169,14 +169,14 @@ func (h *RotationHandler) determineActionForNewestVersion(ver *kmspb.CryptoKeyVe
 
 // This determines which action to take on key versions that are not the primary one (newest active).
 // Since these aren't the primary key version, they can be disabled, or destroyed as long as sufficient time has passed.
-func (h *RotationHandler) determineActionsForOtherVersions(vers map[*kmspb.CryptoKeyVersion]bool) map[*kmspb.CryptoKeyVersion]Action {
+func (h *RotationHandler) actionsForOtherVersions(vers []*kmspb.CryptoKeyVersion) map[*kmspb.CryptoKeyVersion]Action {
 	actions := make(map[*kmspb.CryptoKeyVersion]Action)
 
-	for ver := range vers {
-		secondsOld := h.CurrentTime.Unix() - ver.CreateTime.Seconds
+	for _, ver := range vers {
 		switch ver.State {
 		case kmspb.CryptoKeyVersion_ENABLED:
-			if int(secondsOld) > int(h.CryptoConfig.KeyTTL.Seconds()) {
+			disableBeforeDate := h.CurrentTime.Add(-h.CryptoConfig.KeyTTL)
+			if ver.CreateTime.AsTime().Before(disableBeforeDate) {
 				log.Printf("Key version %s will be disabled.", ver.Name)
 				actions[ver] = ActionDisable
 			} else {
@@ -184,7 +184,8 @@ func (h *RotationHandler) determineActionsForOtherVersions(vers map[*kmspb.Crypt
 				actions[ver] = ActionNone
 			}
 		case kmspb.CryptoKeyVersion_DISABLED:
-			if int(secondsOld) > int(h.CryptoConfig.DestroyAge().Seconds()) {
+			destroyBeforeDate := h.CurrentTime.Add(-h.CryptoConfig.DestroyAge())
+			if ver.CreateTime.AsTime().Before(destroyBeforeDate) {
 				log.Printf("Key version %s will be destroyed.", ver.Name)
 				actions[ver] = ActionDestroy
 			} else {
