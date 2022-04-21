@@ -21,7 +21,7 @@ option go_package = "github.com/abcxyz/jvs/apis/v1";
 // CreateJustificationRequest provides a justification to the server in order to receive a token.
 message CreateJustificationRequest {
   repeated Justification justifications = 1;
-  optional uint32 ttl_minutes = 2;
+  uint32 ttl_minutes = 2;
 }
 
 // Justification is intended to be used to provide reasons that data access is required.

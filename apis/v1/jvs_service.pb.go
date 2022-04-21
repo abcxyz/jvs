@@ -34,7 +34,7 @@ const (
 	_ = protoimpl.EnforceVersion(protoimpl.MaxVersion - 20)
 )
 
-// This response contains the signed token that can be used in data access requests.
+// CreateJustificationResponse contains a signed justification token.
 type CreateJustificationResponse struct {
 	state         protoimpl.MessageState
 	sizeCache     protoimpl.SizeCache
