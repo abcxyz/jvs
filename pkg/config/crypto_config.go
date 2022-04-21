@@ -12,49 +12,98 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-// Package v1alpha1 provides apis that users will interact with.
+// Package config provides configuration-related files and methods.
 package config
 
-import "time"
+import (
+	"context"
+	"fmt"
+	"time"
+
+	"github.com/hashicorp/go-multierror"
+	"github.com/sethvargo/go-envconfig"
+	"gopkg.in/yaml.v2"
+)
 
 const (
-	// Version of the API and config.
-	Version = "v1alpha1"
+	// Version default for config.
+	Version = 1
 )
 
 // CryptoConfig is the full jvs config.
 type CryptoConfig struct {
 	// Version is the version of the config.
-	Version string `yaml:"version,omitempty" env:"VERSION,overwrite"`
+	Version uint8 `yaml:"version,omitempty" env:"VERSION,overwrite"`
 
 	// Crypto variables
-	KeyTTL          time.Duration `yaml:"key_ttl,omitempty"`
-	PropagationTime time.Duration `yaml:"propagation_time,omitempty"`
-	GracePeriod     time.Duration `yaml:"grace_period,omitempty"`
-	DisabledPeriod  time.Duration `yaml:"disabled_period,omitempty"`
+	KeyTTL         time.Duration `yaml:"key_ttl,omitempty" env:"KEY_TTL,overwrite"`
+	GracePeriod    time.Duration `yaml:"grace_period,omitempty" env:"GRACE_PERIOD,overwrite"`
+	DisabledPeriod time.Duration `yaml:"disabled_period,omitempty" env:"DISABLED_PERIOD,overwrite"`
 }
 
 // Validate checks if the config is valid.
 func (cfg *CryptoConfig) Validate() error {
-	// TODO https://github.com/abcxyz/jvs/issues/2
 	cfg.SetDefault()
-	return nil
+
+	var err error
+	if cfg.Version != Version {
+		err = multierror.Append(err, fmt.Errorf("unexpected Version %d want %d", cfg.Version, Version))
+	}
+
+	if cfg.KeyTTL <= 0 {
+		err = multierror.Append(err, fmt.Errorf("key ttl is invalid: %v", cfg.KeyTTL))
+	}
+
+	if cfg.GracePeriod <= 0 {
+		err = multierror.Append(err, fmt.Errorf("grace period is invalid: %v", cfg.GracePeriod))
+	}
+
+	if cfg.DisabledPeriod <= 0 {
+		err = multierror.Append(err, fmt.Errorf("disabled period is invalid: %v", cfg.DisabledPeriod))
+	}
+
+	return err
 }
 
 // SetDefault sets default for the config.
 func (cfg *CryptoConfig) SetDefault() {
 	// TODO: set defaults for other fields if necessary.
-	if cfg.Version == "" {
+	if cfg.Version == 0 {
 		cfg.Version = Version
 	}
 }
 
 // GetRotationAge gets the duration after a key has been created that a new key should be created.
-func (cfg *CryptoConfig) GetRotationAge() time.Duration {
+func (cfg *CryptoConfig) RotationAge() time.Duration {
 	return cfg.KeyTTL - cfg.GracePeriod
 }
 
 // GetDestroyAge gets the duration after a key has been created when it becomes a candidate to be destroyed.
-func (cfg *CryptoConfig) GetDestroyAge() time.Duration {
+func (cfg *CryptoConfig) DestroyAge() time.Duration {
 	return cfg.KeyTTL + cfg.DisabledPeriod
+}
+
+// LoadConfig calls the necessary methods to load in config using the OsLookuper which finds env variables specified on the host.
+func LoadConfig(ctx context.Context, b []byte) (*CryptoConfig, error) {
+	return loadConfigFromLookuper(ctx, b, envconfig.OsLookuper())
+}
+
+// loadConfigFromLooker reads in a yaml file, applies ENV config overrides from the lookuper, and finally validates the config.
+func loadConfigFromLookuper(ctx context.Context, b []byte, lookuper envconfig.Lookuper) (*CryptoConfig, error) {
+	cfg := &CryptoConfig{}
+	if err := yaml.Unmarshal(b, cfg); err != nil {
+		return nil, err
+	}
+
+	// Process overrides from env vars.
+	l := envconfig.PrefixLookuper("JVS_", lookuper)
+	if err := envconfig.ProcessWith(ctx, cfg, l); err != nil {
+		return nil, err
+	}
+
+	if err := cfg.Validate(); err != nil {
+		return nil, fmt.Errorf("failed validating config: %w", err)
+	}
+
+	return cfg, nil
 }
