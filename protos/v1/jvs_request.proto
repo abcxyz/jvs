@@ -29,4 +29,3 @@ message Justification {
   string category = 1; // In MVP, the only supported category is "explanation".
   string value = 2;
 }
-
