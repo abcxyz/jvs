@@ -169,8 +169,8 @@ func TestRotationAge(t *testing.T) {
 	if err != nil {
 		t.Error("Couldn't parse duration")
 	}
-	if diff := cmp.Diff(expected, cfg.RotationAge()); diff != "" {
-		t.Errorf("unexpected rotation age (-want,+got):\n%s", diff)
+	if expected != cfg.RotationAge() {
+		t.Errorf("unexpected rotation age. Want: %s, but got: %s\n", expected, cfg.RotationAge())
 	}
 }
 
@@ -186,7 +186,7 @@ func TestDestroyAge(t *testing.T) {
 	if err != nil {
 		t.Error("Couldn't parse duration")
 	}
-	if diff := cmp.Diff(expected, cfg.DestroyAge()); diff != "" {
-		t.Errorf("unexpected destroy age (-want,+got):\n%s", diff)
+	if expected != cfg.DestroyAge() {
+		t.Errorf("unexpected destroy age. Want: %s, but got: %s\n", expected, cfg.DestroyAge())
 	}
 }
