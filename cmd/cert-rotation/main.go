@@ -28,6 +28,7 @@ import (
 	kms "cloud.google.com/go/kms/apiv1"
 	"github.com/abcxyz/jvs/pkg/config"
 	"github.com/abcxyz/jvs/pkg/crypto"
+	"github.com/hashicorp/go-multierror"
 )
 
 type server struct {
@@ -43,14 +44,19 @@ type HTTPMessage struct {
 func (s *server) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	log.Printf("received request at %s\n", r.URL)
 
+	var errs error
 	// TODO: load keys from DB instead. https://github.com/abcxyz/jvs/issues/17
 	for _, key := range s.handler.CryptoConfig.KeyNames {
 		if err := s.handler.RotateKey(r.Context(), key); err != nil {
-			log.Printf("error while rotating key %s : %v\n", key, err)
-			http.Error(w, "error while rotating keys", http.StatusInternalServerError)
-			return
+			errs = multierror.Append(errs, fmt.Errorf("error while rotating key %s : %v\n", key, err))
+			continue
 		}
 		log.Printf("successfully performed actions (if necessary) on key: %s.\n", key)
+	}
+	if errs != nil {
+		log.Printf("Ran into errors while rotating keys. %v\n", errs)
+		http.Error(w, "error while rotating keys", http.StatusInternalServerError)
+		return
 	}
 	fmt.Fprint(w, "finished with all keys successfully.\n") // automatically calls `w.WriteHeader(http.StatusOK)`
 }

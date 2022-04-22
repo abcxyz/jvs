@@ -42,6 +42,8 @@ type CryptoConfig struct {
 
 	// TODO: This is intended to be temporary, and will eventually be retrieved from a persistent external datastore
 	// https://github.com/abcxyz/jvs/issues/17
+	// KeyName format: `projects/*/locations/*/keyRings/*/cryptoKeys/*`
+	// https://pkg.go.dev/google.golang.org/genproto/googleapis/cloud/kms/v1#CryptoKey
 	KeyNames []string `yaml:"key_names,omitempty" env:"KEY_NAMES,overwrite,delimiter=;"`
 }
 
