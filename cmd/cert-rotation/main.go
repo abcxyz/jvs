@@ -52,7 +52,7 @@ func (s *server) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 		}
 		log.Printf("successfully performed actions (if necessary) on key: %s.\n", key)
 	}
-	fmt.Fprint(w, "Finished with all keys successfully.\n") // automatically calls `w.WriteHeader(http.StatusOK)`
+	fmt.Fprint(w, "finished with all keys successfully.\n") // automatically calls `w.WriteHeader(http.StatusOK)`
 }
 
 func main() {
