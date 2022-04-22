@@ -16,11 +16,8 @@ package crypto
 
 import (
 	"context"
-	"encoding/json"
 	"fmt"
-	"io/ioutil"
 	"log"
-	"net/http"
 	"strings"
 	"time"
 
@@ -43,65 +40,36 @@ type RotationHandler struct {
 	CurrentTime time.Time
 }
 
-// HTTPMessage is the request format we will send from cloud scheduler.
-type HTTPMessage struct {
-	Message struct {
-		// TODO: We should support manual actions through call arguments, such as a rotation before the TTL. https://github.com/abcxyz/jvs/issues/9
-		KeyName string
-	} `json:"message"`
-}
-
-// ConsumeMessage is called when a message is pushed to this server.
-func (h *RotationHandler) ConsumeMessage(w http.ResponseWriter, r *http.Request) {
-	log.Printf("Received Message.")
-	// TODO: Use LimitReader. https://github.com/abcxyz/jvs/issues/7
-	body, err := ioutil.ReadAll(r.Body)
-	if err != nil {
-		log.Printf("ioutil.ReadAll: %v", err)
-		http.Error(w, "Bad Request", http.StatusBadRequest)
-		return
-	}
-
-	var msg HTTPMessage
-	if err := json.Unmarshal(body, &msg); err != nil {
-		log.Printf("json.Unmarshal: %v", err)
-		http.Error(w, "Bad Request", http.StatusBadRequest)
-		return
-	}
-
+// RotateKey is called to determine and perform rotation actions on versions for a key.
+func (h *RotationHandler) RotateKey(ctx context.Context, key string) error {
 	// Create the request to list Keys.
 	listKeysReq := &kmspb.ListCryptoKeyVersionsRequest{
-		Parent: msg.Message.KeyName,
+		Parent: key,
 	}
 
 	// List the Keys in the KeyRing.
-	it := h.KmsClient.ListCryptoKeyVersions(r.Context(), listKeysReq)
-	vers := make([]*kmspb.CryptoKeyVersion, 1)
+	it := h.KmsClient.ListCryptoKeyVersions(ctx, listKeysReq)
+	var vers []*kmspb.CryptoKeyVersion
 	for {
 		ver, err := it.Next()
 		if err == iterator.Done {
 			break
 		}
 		if err != nil {
-			log.Printf("Err while reading crypto key version list: %v", err)
-			http.Error(w, "Err while reading crypto key version list.", http.StatusInternalServerError)
-			return
+			return fmt.Errorf("Err while reading crypto key version list: %v", err)
 		}
 		vers = append(vers, ver)
 	}
 
 	actions, err := h.determineActions(vers)
 	if err != nil {
-		log.Printf("Unable to determine cert actions: %v", err)
-		http.Error(w, "Couldn't determine cert actions.", http.StatusInternalServerError)
-		return
+		return fmt.Errorf("Unable to determine cert actions: %v", err)
 	}
 
-	if err = h.performActions(r.Context(), actions); err != nil {
-		log.Printf("Unable to perform some cert actions: %v", err)
-		http.Error(w, "Couldn't perform some cert actions.", http.StatusInternalServerError)
-		return
+	if err = h.performActions(ctx, actions); err != nil {
+		return fmt.Errorf("Unable to perform some cert actions: %v", err)
 	}
+	return nil
 }
 
 type Action int8
@@ -125,6 +93,7 @@ func (h *RotationHandler) determineActions(vers []*kmspb.CryptoKeyVersion) (map[
 	var newBeingGenerated = false
 
 	for _, ver := range vers {
+		log.Printf("Checking version %v", ver)
 		if ver.State == kmspb.CryptoKeyVersion_ENABLED && (newestEnabledVersion == nil || ver.CreateTime.AsTime().After(newestTime)) {
 			if newestEnabledVersion != nil {
 				otherVers = append(otherVers, newestEnabledVersion)
@@ -161,9 +130,10 @@ func (h *RotationHandler) actionForNewestVersion(ver *kmspb.CryptoKeyVersion, ne
 
 	rotateBeforeDate := h.CurrentTime.Add(-h.CryptoConfig.RotationAge())
 	if ver.CreateTime.AsTime().Before(rotateBeforeDate) {
-		log.Printf("Time to rotate newest key version.")
+		log.Printf("Version created [%s] before cutoff date [%s], will rotate.\n", ver.CreateTime.AsTime(), rotateBeforeDate)
 		return ActionCreate
 	}
+	log.Printf("Version created [%s] after cutoff date [%s], no action necessary.\n", ver.CreateTime.AsTime(), rotateBeforeDate)
 	return ActionNone
 }
 
@@ -177,24 +147,24 @@ func (h *RotationHandler) actionsForOtherVersions(vers []*kmspb.CryptoKeyVersion
 		case kmspb.CryptoKeyVersion_ENABLED:
 			disableBeforeDate := h.CurrentTime.Add(-h.CryptoConfig.KeyTTL)
 			if ver.CreateTime.AsTime().Before(disableBeforeDate) {
-				log.Printf("Key version %s will be disabled.", ver.Name)
+				log.Printf("Version [%s] created [%s] before cutoff date [%s], will disable.\n", ver.Name, ver.CreateTime.AsTime(), disableBeforeDate)
 				actions[ver] = ActionDisable
 			} else {
-				log.Printf("Key version %s still within grace period, no action required.", ver.Name)
+				log.Printf("Version [%s] created [%s] after disabled cutoff date [%s], no action necessary.\n", ver.Name, ver.CreateTime.AsTime(), disableBeforeDate)
 				actions[ver] = ActionNone
 			}
 		case kmspb.CryptoKeyVersion_DISABLED:
 			destroyBeforeDate := h.CurrentTime.Add(-h.CryptoConfig.DestroyAge())
 			if ver.CreateTime.AsTime().Before(destroyBeforeDate) {
-				log.Printf("Key version %s will be destroyed.", ver.Name)
+				log.Printf("Version [%s] created [%s] before cutoff date [%s], will disable.\n", ver.Name, ver.CreateTime.AsTime(), destroyBeforeDate)
 				actions[ver] = ActionDestroy
 			} else {
-				log.Printf("Key version %s still within disable period, no action required.", ver.Name)
+				log.Printf("Version [%s] created [%s] after cutoff date [%s], no action necessary.\n", ver.Name, ver.CreateTime.AsTime(), destroyBeforeDate)
 				actions[ver] = ActionNone
 			}
 		default:
 			// TODO: handle import cases. https://github.com/abcxyz/jvs/issues/5
-			log.Printf("Key version state: %v. No action", ver.State)
+			log.Printf("Key version in state: %v. No action necessary.", ver.State)
 			actions[ver] = ActionNone
 		}
 	}
