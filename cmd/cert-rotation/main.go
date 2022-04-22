@@ -44,7 +44,7 @@ type HTTPMessage struct {
 	} `json:"message"`
 }
 
-// ServeHTTP receives a message through
+// ServeHTTP rotates a single key's versions.
 func (s *server) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	log.Printf("Received request at %s\n", r.URL)
 
@@ -84,9 +84,8 @@ func main() {
 	}
 }
 
-// realMain creates an HTTP server that emits an application audit log
-// with a traceID on the `/` handle. This server supports graceful
-// stopping and cancellation by:
+// realMain creates an HTTP server for use with rotating certificates.
+// This server supports graceful stopping and cancellation by:
 //   - using a cancellable context
 //   - listening to incoming requests in a goroutine
 func realMain(ctx context.Context) error {
