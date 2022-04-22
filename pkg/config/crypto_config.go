@@ -39,6 +39,10 @@ type CryptoConfig struct {
 	KeyTTL         time.Duration `yaml:"key_ttl,omitempty" env:"KEY_TTL,overwrite"`
 	GracePeriod    time.Duration `yaml:"grace_period,omitempty" env:"GRACE_PERIOD,overwrite"`
 	DisabledPeriod time.Duration `yaml:"disabled_period,omitempty" env:"DISABLED_PERIOD,overwrite"`
+
+	// TODO: This is intended to be temporary, and will eventually be retrieved from a persistent external datastore
+	// https://github.com/abcxyz/jvs/issues/17
+	KeyNames []string `yaml:"key_names,omitempty" env:"KEY_NAMES,overwrite,delimiter=;"`
 }
 
 // Validate checks if the config is valid.

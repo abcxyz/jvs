@@ -16,10 +16,8 @@ package main
 
 import (
 	"context"
-	"encoding/json"
 	"errors"
 	"fmt"
-	"io/ioutil"
 	"log"
 	"net/http"
 	"os"
@@ -38,40 +36,23 @@ type server struct {
 
 // HTTPMessage is the request format we will send from cloud scheduler.
 type HTTPMessage struct {
-	Message struct {
-		// TODO: We should support manual actions through call arguments, such as a rotation before the TTL. https://github.com/abcxyz/jvs/issues/9
-		KeyName string `json:"key_name"`
-	} `json:"message"`
+	// TODO: We should support manual actions through call arguments, such as a rotation before the TTL. https://github.com/abcxyz/jvs/issues/9
 }
 
 // ServeHTTP rotates a single key's versions.
 func (s *server) ServeHTTP(w http.ResponseWriter, r *http.Request) {
-	log.Printf("Received request at %s\n", r.URL)
+	log.Printf("received request at %s\n", r.URL)
 
-	// TODO: Use LimitReader. https://github.com/abcxyz/jvs/issues/7
-	body, err := ioutil.ReadAll(r.Body)
-	if err != nil {
-		log.Printf("ioutil.ReadAll: %v\n", err)
-		http.Error(w, "Bad Request", http.StatusBadRequest)
-		return
+	// TODO: load keys from DB instead. https://github.com/abcxyz/jvs/issues/17
+	for _, key := range s.handler.CryptoConfig.KeyNames {
+		if err := s.handler.RotateKey(r.Context(), key); err != nil {
+			log.Printf("error while rotating key %s : %v\n", key, err)
+			http.Error(w, "error while rotating keys", http.StatusInternalServerError)
+			return
+		}
+		log.Printf("successfully performed actions (if necessary) on key: %s.\n", key)
 	}
-
-	var msg HTTPMessage
-	if err := json.Unmarshal(body, &msg); err != nil {
-		log.Printf("json.Unmarshal: %v\n", err)
-		http.Error(w, "Bad Request", http.StatusBadRequest)
-		return
-	}
-
-	if err := s.handler.RotateKey(r.Context(), msg.Message.KeyName); err != nil {
-		log.Printf("error while rotating key versions: %v\n", err)
-		http.Error(w, "Error while rotating key versions", http.StatusInternalServerError)
-		return
-	}
-
-	success := fmt.Sprintf("Successfully rotated key %s.\n", msg.Message.KeyName)
-	log.Print(success)
-	fmt.Fprint(w, success) // automatically calls `w.WriteHeader(http.StatusOK)`
+	fmt.Fprint(w, "Finished with all keys successfully.\n") // automatically calls `w.WriteHeader(http.StatusOK)`
 }
 
 func main() {
