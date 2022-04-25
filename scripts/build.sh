@@ -30,11 +30,11 @@ if [ -z "${TAG:-}" ]; then
   exit 1
 fi
 
-ROOT="$(cd "$(dirname "$0")/../.." &>/dev/null; pwd -P)"
+ROOT="$(cd "$(dirname "$0")/.." &>/dev/null; pwd -P)"
 IMAGE_NAME=${REPO}/${APP_NAME}:${TAG}
 
 docker build \
-  --file="$(dirname "$0")/Dockerfile" \
+  --file="${ROOT}/Dockerfile" \
   --tag=${IMAGE_NAME} \
   ${ROOT}
 docker push ${IMAGE_NAME}
