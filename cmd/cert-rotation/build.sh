@@ -31,7 +31,6 @@ if [ -z "${TAG:-}" ]; then
 fi
 
 ROOT="$(cd "$(dirname "$0")/../.." &>/dev/null; pwd -P)"
-echo $ROOT
 IMAGE_NAME=${REPO}/${APP_NAME}:${TAG}
 
 docker build \
