@@ -16,16 +16,16 @@ syntax = "proto3";
 
 package jvs;
 
-option go_package = "github.com/abcxyz/jvs/apis/v1";
+import "protos/v0/jvs_request.proto";
 
-// CreateJustificationRequest provides a justification to the server in order to receive a token.
-message CreateJustificationRequest {
-  repeated Justification justifications = 1;
-  uint32 ttl_minutes = 2;
+option go_package = "github.com/abcxyz/jvs/apis/v0";
+
+// JVSService processes CreateJustificationRequests and provides signed tokens.
+service JVSService {
+  rpc CreateJustification(CreateJustificationRequest) returns (CreateJustificationResponse);
 }
 
-// Justification is intended to be used to provide reasons that data access is required.
-message Justification {
-  string category = 1; // In MVP, the only supported category is "explanation".
-  string value = 2;
+// CreateJustificationResponse contains a signed justification token.
+message CreateJustificationResponse {
+  string token = 1;
 }
