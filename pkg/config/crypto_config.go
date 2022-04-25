@@ -44,7 +44,7 @@ type CryptoConfig struct {
 	// https://github.com/abcxyz/jvs/issues/17
 	// KeyName format: `projects/*/locations/*/keyRings/*/cryptoKeys/*`
 	// https://pkg.go.dev/google.golang.org/genproto/googleapis/cloud/kms/v1#CryptoKey
-	KeyNames []string `yaml:"key_names,omitempty" env:"KEY_NAMES,overwrite,delimiter=;"`
+	KeyNames []string `yaml:"key_names,omitempty" env:"KEY_NAMES,overwrite"`
 }
 
 // Validate checks if the config is valid.
