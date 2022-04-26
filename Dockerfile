@@ -4,6 +4,8 @@ FROM golang:1.18 AS builder
 # Disable CGO to get a static go binary.
 ENV CGO_ENABLED=0
 
+ARG APP
+
 # Create and change to the app directory.
 WORKDIR /go/src/app
 
@@ -19,7 +21,7 @@ RUN go build \
   -trimpath \
   -ldflags "-s -w -extldflags '-static'" \
   -o /go/bin/app \
-  ./cmd/stuff
+  ./cmd/$APP
 
 # Strip symbols from binary to make it smaller.
 RUN strip -s /go/bin/app
