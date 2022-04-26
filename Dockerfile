@@ -19,7 +19,7 @@ RUN go build \
   -trimpath \
   -ldflags "-s -w -extldflags '-static'" \
   -o /go/bin/app \
-  ./cmd/justification
+  ./cmd/stuff
 
 # Strip symbols from binary to make it smaller.
 RUN strip -s /go/bin/app
