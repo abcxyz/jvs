@@ -146,7 +146,7 @@ disabled_period: 720h # 30 days
 			t.Parallel()
 			lookuper := envconfig.MapLookuper(tc.envs)
 			content := bytes.NewBufferString(tc.cfg).Bytes()
-			gotConfig, err := loadConfigFromLookuper(ctx, content, lookuper)
+			gotConfig, err := loadCryptoConfigFromLookuper(ctx, content, lookuper)
 			if err != nil {
 				testutil.ErrCmp(t, tc.wantErr, err)
 			}

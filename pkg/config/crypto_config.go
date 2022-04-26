@@ -84,12 +84,12 @@ func (cfg *CryptoConfig) DestroyAge() time.Duration {
 }
 
 // LoadConfig calls the necessary methods to load in config using the OsLookuper which finds env variables specified on the host.
-func LoadConfig(ctx context.Context, b []byte) (*CryptoConfig, error) {
-	return loadConfigFromLookuper(ctx, b, envconfig.OsLookuper())
+func LoadCryptoConfig(ctx context.Context, b []byte) (*CryptoConfig, error) {
+	return loadCryptoConfigFromLookuper(ctx, b, envconfig.OsLookuper())
 }
 
 // loadConfigFromLooker reads in a yaml file, applies ENV config overrides from the lookuper, and finally validates the config.
-func loadConfigFromLookuper(ctx context.Context, b []byte, lookuper envconfig.Lookuper) (*CryptoConfig, error) {
+func loadCryptoConfigFromLookuper(ctx context.Context, b []byte, lookuper envconfig.Lookuper) (*CryptoConfig, error) {
 	cfg := &CryptoConfig{}
 	if err := yaml.Unmarshal(b, cfg); err != nil {
 		return nil, err
