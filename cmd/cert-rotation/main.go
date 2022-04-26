@@ -54,7 +54,7 @@ func (s *server) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 		log.Printf("successfully performed actions (if necessary) on key: %s.\n", key)
 	}
 	if errs != nil {
-		log.Printf("Ran into errors while rotating keys. %v\n", errs)
+		log.Printf("ran into errors while rotating keys. %v\n", errs)
 		http.Error(w, "error while rotating keys", http.StatusInternalServerError)
 		return
 	}
@@ -78,12 +78,12 @@ func main() {
 func realMain(ctx context.Context) error {
 	kmsClient, err := kms.NewKeyManagementClient(ctx)
 	if err != nil {
-		log.Fatalf("failed to setup kms client: %v", err)
+		return fmt.Errorf("failed to setup kms client: %v", err)
 	}
 
 	config, err := config.LoadConfig(ctx, []byte{})
 	if err != nil {
-		log.Fatalf("failed to load config: %v", err)
+		return fmt.Errorf("failed to load config: %v", err)
 	}
 
 	defer kmsClient.Close()

@@ -56,18 +56,19 @@ func (h *RotationHandler) RotateKey(ctx context.Context, key string) error {
 			break
 		}
 		if err != nil {
-			return fmt.Errorf("err while reading crypto key version list: %v", err)
+			return fmt.Errorf("err while reading crypto key version list: %w", err)
+
 		}
 		vers = append(vers, ver)
 	}
 
 	actions, err := h.determineActions(vers)
 	if err != nil {
-		return fmt.Errorf("unable to determine cert actions: %v", err)
+		return fmt.Errorf("unable to determine cert actions: %w", err)
 	}
 
 	if err = h.performActions(ctx, actions); err != nil {
-		return fmt.Errorf("unable to perform some cert actions: %v", err)
+		return fmt.Errorf("unable to perform some cert actions: %w", err)
 	}
 	return nil
 }
@@ -130,10 +131,10 @@ func (h *RotationHandler) actionForNewestVersion(ver *kmspb.CryptoKeyVersion, ne
 
 	rotateBeforeDate := h.CurrentTime.Add(-h.CryptoConfig.RotationAge())
 	if ver.CreateTime.AsTime().Before(rotateBeforeDate) {
-		log.Printf("version created [%s] before cutoff date [%s], will rotate.\n", ver.CreateTime.AsTime(), rotateBeforeDate)
+		log.Printf("version created %q before cutoff date %q, will rotate.\n", ver.CreateTime.AsTime(), rotateBeforeDate)
 		return ActionCreate
 	}
-	log.Printf("version created [%s] after cutoff date [%s], no action necessary.\n", ver.CreateTime.AsTime(), rotateBeforeDate)
+	log.Printf("version created %q after cutoff date %q, no action necessary.\n", ver.CreateTime.AsTime(), rotateBeforeDate)
 	return ActionNone
 }
 
@@ -147,19 +148,19 @@ func (h *RotationHandler) actionsForOtherVersions(vers []*kmspb.CryptoKeyVersion
 		case kmspb.CryptoKeyVersion_ENABLED:
 			disableBeforeDate := h.CurrentTime.Add(-h.CryptoConfig.KeyTTL)
 			if ver.CreateTime.AsTime().Before(disableBeforeDate) {
-				log.Printf("version [%s] created [%s] before cutoff date [%s], will disable.\n", ver.Name, ver.CreateTime.AsTime(), disableBeforeDate)
+				log.Printf("version %q created %q before cutoff date %q, will disable.\n", ver.Name, ver.CreateTime.AsTime(), disableBeforeDate)
 				actions[ver] = ActionDisable
 			} else {
-				log.Printf("version [%s] created [%s] after disabled cutoff date [%s], no action necessary.\n", ver.Name, ver.CreateTime.AsTime(), disableBeforeDate)
+				log.Printf("version %q created %q after disabled cutoff date %q, no action necessary.\n", ver.Name, ver.CreateTime.AsTime(), disableBeforeDate)
 				actions[ver] = ActionNone
 			}
 		case kmspb.CryptoKeyVersion_DISABLED:
 			destroyBeforeDate := h.CurrentTime.Add(-h.CryptoConfig.DestroyAge())
 			if ver.CreateTime.AsTime().Before(destroyBeforeDate) {
-				log.Printf("version [%s] created [%s] before cutoff date [%s], will disable.\n", ver.Name, ver.CreateTime.AsTime(), destroyBeforeDate)
+				log.Printf("version %q created %q before cutoff date %q, will disable.\n", ver.Name, ver.CreateTime.AsTime(), destroyBeforeDate)
 				actions[ver] = ActionDestroy
 			} else {
-				log.Printf("version [%s] created [%s] after cutoff date [%s], no action necessary.\n", ver.Name, ver.CreateTime.AsTime(), destroyBeforeDate)
+				log.Printf("version %q created %q after cutoff date %q, no action necessary.\n", ver.Name, ver.CreateTime.AsTime(), destroyBeforeDate)
 				actions[ver] = ActionNone
 			}
 		default:
