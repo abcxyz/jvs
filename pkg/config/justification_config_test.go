@@ -42,7 +42,7 @@ port: 123
 version: 1
 `,
 			wantConfig: &JustificationConfig{
-				Port:    123,
+				Port:    "123",
 				Version: 1,
 			},
 		},
@@ -50,7 +50,7 @@ version: 1
 			name: "test_default",
 			cfg:  ``,
 			wantConfig: &JustificationConfig{
-				Port:    8080,
+				Port:    "8080",
 				Version: 1,
 			},
 		},
@@ -66,17 +66,15 @@ version: 255
 			name: "all_values_specified_env_override",
 			cfg: `
 version: 1
-key_ttl: 720h # 30 days
-grace_period: 2h
-disabled_period: 720h # 30 days
+port: 8080
 `,
 			envs: map[string]string{
 				"JVS_VERSION": "1",
-				"JVS_PORT":    "8081",
+				"JVS_PORT":    "tcp",
 			},
 			wantConfig: &JustificationConfig{
 				Version: 1,
-				Port:    8081,
+				Port:    "tcp",
 			},
 		},
 	}
@@ -88,9 +86,7 @@ disabled_period: 720h # 30 days
 			lookuper := envconfig.MapLookuper(tc.envs)
 			content := bytes.NewBufferString(tc.cfg).Bytes()
 			gotConfig, err := loadJustificationConfigFromLookuper(ctx, content, lookuper)
-			if err != nil {
-				testutil.ErrCmp(t, tc.wantErr, err)
-			}
+			testutil.ErrCmp(t, tc.wantErr, err)
 			if diff := cmp.Diff(tc.wantConfig, gotConfig); diff != "" {
 				t.Errorf("Config unexpected diff (-want,+got):\n%s", diff)
 			}

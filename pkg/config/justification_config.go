@@ -35,23 +35,23 @@ type JustificationConfig struct {
 	Version uint8 `yaml:"version,omitempty" env:"VERSION,overwrite"`
 
 	// Service configuration.
-	Port uint16 `yaml:"port,omitempty" env:"PORT,overwrite"`
+	Port string `yaml:"port,omitempty" env:"PORT,overwrite"`
 }
 
 // Validate checks if the config is valid.
 func (cfg *JustificationConfig) Validate() error {
 	cfg.SetDefault()
-	var err error
+	err := new(multierror.Error)
 	if cfg.Version != CurrentVersion {
 		err = multierror.Append(err, fmt.Errorf("unexpected Version %d want %d", cfg.Version, CurrentVersion))
 	}
-	return err
+	return err.ErrorOrNil()
 }
 
 // SetDefault sets default for the config.
 func (cfg *JustificationConfig) SetDefault() {
-	if cfg.Port == 0 {
-		cfg.Port = 8080
+	if cfg.Port == "" {
+		cfg.Port = "8080"
 	}
 	if cfg.Version == 0 {
 		cfg.Version = Version

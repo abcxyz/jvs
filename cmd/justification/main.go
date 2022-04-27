@@ -59,7 +59,7 @@ func realMain(ctx context.Context) error {
 	jvspb.RegisterJVSServiceServer(s, jvsAgent)
 	reflection.Register(s)
 
-	lis, err := net.Listen("tcp", fmt.Sprintf(":%d", cfg.Port))
+	lis, err := net.Listen("tcp", ":"+cfg.Port)
 	if err != nil {
 		return fmt.Errorf("failed to listen on port %d: %w", cfg.Port, err)
 	}
