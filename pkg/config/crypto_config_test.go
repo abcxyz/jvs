@@ -25,7 +25,7 @@ import (
 	"github.com/sethvargo/go-envconfig"
 )
 
-func TestLoadConfig(t *testing.T) {
+func TestLoadCryptoConfig(t *testing.T) {
 	t.Parallel()
 	ctx := context.Background()
 

@@ -24,29 +24,37 @@ import (
 	"gopkg.in/yaml.v2"
 )
 
+const (
+	// Version default for config.
+	CurrentVersion = 1
+)
+
 // JustificationConfig is the full jvs config.
 type JustificationConfig struct {
+	// Version is the version of the config.
+	Version uint8 `yaml:"version,omitempty" env:"VERSION,overwrite"`
+
 	// Service configuration.
-	Port uint16 `yaml:"port,omitempty" env:"VERSION,overwrite"`
+	Port uint16 `yaml:"port,omitempty" env:"PORT,overwrite"`
 }
 
 // Validate checks if the config is valid.
 func (cfg *JustificationConfig) Validate() error {
 	cfg.SetDefault()
-
 	var err error
-	if cfg.Port <= 0 {
-		err = multierror.Append(err, fmt.Errorf("port is invalid: %v", cfg.Port))
+	if cfg.Version != CurrentVersion {
+		err = multierror.Append(err, fmt.Errorf("unexpected Version %d want %d", cfg.Version, CurrentVersion))
 	}
-
 	return err
 }
 
 // SetDefault sets default for the config.
 func (cfg *JustificationConfig) SetDefault() {
-	// TODO: set defaults for other fields if necessary.
 	if cfg.Port == 0 {
 		cfg.Port = 8080
+	}
+	if cfg.Version == 0 {
+		cfg.Version = Version
 	}
 }
 

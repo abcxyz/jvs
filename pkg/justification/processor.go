@@ -28,5 +28,5 @@ type Processor struct {
 
 func (p *Processor) CreateToken(ctx context.Context, request *jvspb.CreateJustificationRequest) (string, error) {
 	// TODO
-	return "", nil
+	return "TODO", nil
 }
