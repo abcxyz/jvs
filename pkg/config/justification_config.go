@@ -41,7 +41,7 @@ type JustificationConfig struct {
 // Validate checks if the config is valid.
 func (cfg *JustificationConfig) Validate() error {
 	cfg.SetDefault()
-	err := new(multierror.Error)
+	var err *multierror.Error
 	if cfg.Version != CurrentVersion {
 		err = multierror.Append(err, fmt.Errorf("unexpected Version %d want %d", cfg.Version, CurrentVersion))
 	}
