@@ -14,6 +14,8 @@
 
 syntax = "proto3";
 
+import "google/protobuf/duration.proto";
+
 package jvs;
 
 option go_package = "github.com/abcxyz/jvs/apis/v0";
@@ -21,7 +23,7 @@ option go_package = "github.com/abcxyz/jvs/apis/v0";
 // CreateJustificationRequest provides a justification to the server in order to receive a token.
 message CreateJustificationRequest {
   repeated Justification justifications = 1;
-  uint32 ttl_minutes = 2;
+  google.protobuf.Duration ttl = 2;
 }
 
 // Justification is intended to be used to provide reasons that data access is required.
