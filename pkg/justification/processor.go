@@ -12,22 +12,21 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-syntax = "proto3";
+package justification
 
-import "google/protobuf/duration.proto";
+import (
+	"context"
 
-package jvs;
+	jvspb "github.com/abcxyz/jvs/apis/v0"
+	"github.com/abcxyz/jvs/pkg/config"
+)
 
-option go_package = "github.com/abcxyz/jvs/apis/v0";
-
-// CreateJustificationRequest provides a justification to the server in order to receive a token.
-message CreateJustificationRequest {
-  repeated Justification justifications = 1;
-  google.protobuf.Duration ttl = 2;
+// Processor performs the necessary logic to validate a justification, then mints a token.
+type Processor struct {
+	Config *config.JustificationConfig
 }
 
-// Justification is intended to be used to provide reasons that data access is required.
-message Justification {
-  string category = 1; // In MVP, the only supported category is "explanation".
-  string value = 2;
+func (p *Processor) CreateToken(ctx context.Context, request *jvspb.CreateJustificationRequest) (string, error) {
+	// TODO
+	return "TODO", nil
 }

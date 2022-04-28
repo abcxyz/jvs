@@ -15,6 +15,13 @@
 
 set -eEuo pipefail
 
+app=$1
+
+if [ -z "${app}" ]; then
+  echo "Missing app! must be specified like so: ./build.sh app_name" >&2
+  exit 1
+fi
+
 if [ -z "${REPO:-}" ]; then
   echo "✋ Missing REPO!" >&2
   exit 1
@@ -36,5 +43,6 @@ IMAGE_NAME=${REPO}/${APP_NAME}:${TAG}
 docker build \
   --file="${ROOT}/Dockerfile" \
   --tag=${IMAGE_NAME} \
+  --build-arg APP=$app \
   ${ROOT}
 docker push ${IMAGE_NAME}
