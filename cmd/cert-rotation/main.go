@@ -81,7 +81,7 @@ func realMain(ctx context.Context) error {
 		return fmt.Errorf("failed to setup kms client: %v", err)
 	}
 
-	config, err := config.LoadConfig(ctx, []byte{})
+	config, err := config.LoadCryptoConfig(ctx, []byte{})
 	if err != nil {
 		return fmt.Errorf("failed to load config: %v", err)
 	}

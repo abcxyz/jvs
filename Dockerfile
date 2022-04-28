@@ -4,8 +4,10 @@ FROM golang:1.18 AS builder
 # Disable CGO to get a static go binary.
 ENV CGO_ENABLED=0
 
+ARG APP
+
 # Create and change to the app directory.
-WORKDIR /go/src/app
+WORKDIR /go/src/server
 
 # Copy local code to the container image.
 COPY . .
@@ -18,11 +20,11 @@ RUN go build \
   -a \
   -trimpath \
   -ldflags "-s -w -extldflags '-static'" \
-  -o /go/bin/app \
-  ./cmd/cert-rotation
+  -o /go/bin/server \
+  ./cmd/$APP
 
 # Strip symbols from binary to make it smaller.
-RUN strip -s /go/bin/app
+RUN strip -s /go/bin/server
 
 # Create the user `nobody`.
 RUN echo "nobody:*:65534:65534:nobody:/:/bin/false" > /tmp/etc-passwd
@@ -31,8 +33,9 @@ RUN echo "nobody:*:65534:65534:nobody:/:/bin/false" > /tmp/etc-passwd
 FROM scratch
 COPY --from=builder /tmp/etc-passwd /etc/passwd
 COPY --from=builder /etc/ssl/certs/ca-certificates.crt /etc/ssl/certs/
-COPY --from=builder /go/bin/app /app
+COPY --from=builder /go/bin/server /server
 USER nobody
 
 # Run the web service on container startup.
-ENTRYPOINT ["/app"]
+ENV PORT 8080
+ENTRYPOINT ["/server"]
