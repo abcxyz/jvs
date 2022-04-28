@@ -25,7 +25,7 @@ import (
 	"github.com/sethvargo/go-envconfig"
 )
 
-func TestLoadConfig(t *testing.T) {
+func TestLoadCryptoConfig(t *testing.T) {
 	t.Parallel()
 	ctx := context.Background()
 
@@ -146,10 +146,8 @@ disabled_period: 720h # 30 days
 			t.Parallel()
 			lookuper := envconfig.MapLookuper(tc.envs)
 			content := bytes.NewBufferString(tc.cfg).Bytes()
-			gotConfig, err := loadConfigFromLookuper(ctx, content, lookuper)
-			if err != nil {
-				testutil.ErrCmp(t, tc.wantErr, err)
-			}
+			gotConfig, err := loadCryptoConfigFromLookuper(ctx, content, lookuper)
+			testutil.ErrCmp(t, tc.wantErr, err)
 			if diff := cmp.Diff(tc.wantConfig, gotConfig); diff != "" {
 				t.Errorf("Config unexpected diff (-want,+got):\n%s", diff)
 			}
