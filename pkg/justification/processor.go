@@ -75,47 +75,51 @@ func (p *Processor) runValidations(ctx context.Context, request *jvspb.CreateJus
 	return err.ErrorOrNil()
 }
 
-func (p *Processor) mintToken(ctx context.Context, request *jvspb.CreateJustificationRequest) (string, error) {
-	claims := &jwt.StandardClaims{
-		Audience:  "TODO",
-		ExpiresAt: time.Now().Add(request.Ttl.AsDuration()).Unix(),
-		Id:        uuid.New().String(),
-		IssuedAt:  time.Now().Unix(),
-		Issuer:    "jvs-service",
-		NotBefore: time.Now().Unix(),
-		Subject:   "TODO",
-	}
-	/*
-		jwt.MapClaims{
-			"iss": "jvs-service",
-			"sub": "TODO",
-			"aud": "TODO",
-			"exp": time.Now().Add(request.Ttl.AsDuration()).Unix(),
-			"nbf": time.Now().Unix(),
-			"iat": time.Now().Unix(),
-			"jti": uuid.New().String(),
-			"jus": fmt.Sprint(request.Justifications),
-		}
-	*/
-	token := jwt.NewWithClaims(gcpjwt.SigningMethodKMSES256, claims)
+type CustomClaims struct {
+	*jwt.StandardClaims
+	Justifications []*jvspb.Justification
+}
 
-	// Prepare to sign
-	ver, err := p.getLatestKeyVersion(ctx)
+// create a key with the correct claims and sign it using KMS key
+func (p *Processor) mintToken(ctx context.Context, request *jvspb.CreateJustificationRequest) (string, error) {
+	claims := &CustomClaims{
+		&jwt.StandardClaims{
+			Audience:  "TODO",
+			ExpiresAt: time.Now().Add(request.Ttl.AsDuration()).Unix(),
+			Id:        uuid.New().String(),
+			IssuedAt:  time.Now().Unix(),
+			Issuer:    "jvs-service",
+			NotBefore: time.Now().Unix(),
+			Subject:   "TODO",
+		},
+		request.Justifications,
+	}
+	token := jwt.NewWithClaims(gcpjwt.SigningMethodKMSES256, claims)
+	keyCtx, err := p.getKeyContext(ctx)
 	if err != nil {
 		return "", err
+	}
+
+	// Sign and return token
+	return token.SignedString(keyCtx)
+}
+
+// Set up a context with the correct values for use in the JWT signing library
+func (p *Processor) getKeyContext(ctx context.Context) (context.Context, error) {
+	ver, err := p.getLatestKeyVersion(ctx)
+	if err != nil {
+		return nil, err
 	}
 
 	config := &gcpjwt.KMSConfig{
 		KeyPath: ver.Name,
 	}
-	key := gcpjwt.NewKMSContext(ctx, config)
-
-	// Sign and return token
-	return token.SignedString(key)
+	keyCtx := gcpjwt.NewKMSContext(ctx, config)
+	return keyCtx, nil
 }
 
+// Look up the newest enabled key version
 func (p *Processor) getLatestKeyVersion(ctx context.Context) (*kmspb.CryptoKeyVersion, error) {
-	// List the Keys in the KeyRing.
 	it := p.KmsClient.ListCryptoKeyVersions(ctx, &kmspb.ListCryptoKeyVersionsRequest{
 		Parent: p.Config.KeyName,
 	})
