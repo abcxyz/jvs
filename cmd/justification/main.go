@@ -22,6 +22,7 @@ import (
 	"os/signal"
 	"syscall"
 
+	kms "cloud.google.com/go/kms/apiv1"
 	jvspb "github.com/abcxyz/jvs/apis/v0"
 	"github.com/abcxyz/jvs/pkg/config"
 	"github.com/abcxyz/jvs/pkg/justification"
@@ -52,8 +53,14 @@ func realMain(ctx context.Context) error {
 		log.Fatalf("failed to load config: %v", err)
 	}
 
+	kmsClient, err := kms.NewKeyManagementClient(ctx)
+	if err != nil {
+		return fmt.Errorf("failed to setup kms client: %v", err)
+	}
+
 	p := &justification.Processor{
-		Config: cfg,
+		Config:    cfg,
+		KmsClient: kmsClient,
 	}
 	jvsAgent := justification.NewJVSAgent(p)
 	jvspb.RegisterJVSServiceServer(s, jvsAgent)
