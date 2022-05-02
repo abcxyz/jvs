@@ -14,7 +14,7 @@
 
 // much of the below code is only slightly modified from https://github.com/googleapis/google-cloud-go/blob/main/kms/apiv1/mock_test.go
 
-package crypto
+package jvs_crypto
 
 import (
 	"context"

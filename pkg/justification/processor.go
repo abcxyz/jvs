@@ -50,7 +50,7 @@ func (p *Processor) CreateToken(ctx context.Context, request *jvspb.CreateJustif
 		return "", status.Error(codes.InvalidArgument, "couldn't validate request")
 	}
 	token := p.createToken(ctx, request)
-	signedToken, err := p.signToken(token)
+	signedToken, err := p.signToken(ctx, token)
 	if err != nil {
 		log.Printf("Ran into error while signing: %v", err)
 		return "", status.Error(codes.Internal, "ran into error while minting token")
@@ -61,7 +61,7 @@ func (p *Processor) CreateToken(ctx context.Context, request *jvspb.CreateJustif
 
 // TODO: Each category should have its own validator struct, with a shared interface.
 func (p *Processor) runValidations(request *jvspb.CreateJustificationRequest) error {
-	if request.Justifications == nil || len(request.Justifications) < 1 {
+	if len(request.Justifications) < 1 {
 		return fmt.Errorf("no justifications specified")
 	}
 
@@ -88,7 +88,7 @@ func (p *Processor) runValidations(request *jvspb.CreateJustificationRequest) er
 
 // create a key with the correct claims and sign it using KMS key
 func (p *Processor) createToken(ctx context.Context, request *jvspb.CreateJustificationRequest) *jwt.Token {
-	now := time.Now()
+	now := time.Now().UTC()
 	claims := &v0.JVSClaims{
 		StandardClaims: &jwt.StandardClaims{
 			Audience:  "TODO",
@@ -105,13 +105,14 @@ func (p *Processor) createToken(ctx context.Context, request *jvspb.CreateJustif
 }
 
 // Much of this is taken from here: https://github.com/google/exposure-notifications-verification-server/blob/main/pkg/jwthelper/jwthelper.go
-func (p *Processor) signToken(token *jwt.Token) (string, error) {
+func (p *Processor) signToken(ctx context.Context, token *jwt.Token) (string, error) {
 	signingString, err := token.SigningString()
 	if err != nil {
 		return "", err
 	}
 
 	digest := sha256.Sum256([]byte(signingString))
+
 	sig, err := p.Signer.Sign(rand.Reader, digest[:], nil)
 	if err != nil {
 		return "", fmt.Errorf("error signing token: %w", err)

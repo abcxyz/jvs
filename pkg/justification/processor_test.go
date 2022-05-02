@@ -16,12 +16,12 @@ import (
 	kms "cloud.google.com/go/kms/apiv1"
 	v0 "github.com/abcxyz/jvs/api/v0"
 	jvspb "github.com/abcxyz/jvs/apis/v0"
-	"github.com/abcxyz/jvs/pkg/config"
-	crypto2 "github.com/abcxyz/jvs/pkg/crypto"
+	"github.com/abcxyz/jvs/pkg/jvs-crypto"
 	"github.com/abcxyz/jvs/pkg/testutil"
 	"github.com/golang-jwt/jwt"
 	"github.com/golang/protobuf/proto"
 	"github.com/hashicorp/go-multierror"
+	"github.com/sethvargo/go-gcpkms/pkg/gcpkms"
 	"google.golang.org/api/option"
 	kmspb "google.golang.org/genproto/googleapis/cloud/kms/v1"
 	"google.golang.org/grpc"
@@ -46,6 +46,8 @@ type mockKeyManagementServer struct {
 	publicKey  string
 }
 
+const testKeyName = "projects/proj1/locations/loc1/keyRings/kr1/cryptoKeys/key1"
+
 func (s *mockKeyManagementServer) ListCryptoKeyVersions(ctx context.Context, req *kmspb.ListCryptoKeyVersionsRequest) (*kmspb.ListCryptoKeyVersionsResponse, error) {
 	s.reqs = append(s.reqs, req)
 	if s.err != nil {
@@ -54,9 +56,22 @@ func (s *mockKeyManagementServer) ListCryptoKeyVersions(ctx context.Context, req
 	return &kmspb.ListCryptoKeyVersionsResponse{
 		CryptoKeyVersions: []*kmspb.CryptoKeyVersion{
 			{
-				Name:  "testkey",
+				Name:  testKeyName,
 				State: kmspb.CryptoKeyVersion_ENABLED,
 			},
+		},
+	}, nil
+}
+
+func (s *mockKeyManagementServer) GetCryptoKey(ctx context.Context, req *kmspb.GetCryptoKeyRequest) (*kmspb.CryptoKey, error) {
+	s.reqs = append(s.reqs, req)
+	if s.err != nil {
+		return nil, s.err
+	}
+	return &kmspb.CryptoKey{
+		Primary: &kmspb.CryptoKeyVersion{
+			Name:  testKeyName,
+			State: kmspb.CryptoKeyVersion_ENABLED,
 		},
 	}, nil
 }
@@ -73,7 +88,8 @@ func (s *mockKeyManagementServer) AsymmetricSign(ctx context.Context, req *kmspb
 
 func (s *mockKeyManagementServer) GetPublicKey(ctx context.Context, req *kmspb.GetPublicKeyRequest) (*kmspb.PublicKey, error) {
 	return &kmspb.PublicKey{
-		Pem: s.publicKey,
+		Pem:       s.publicKey,
+		Algorithm: kmspb.CryptoKeyVersion_EC_SIGN_P256_SHA256,
 	}, nil
 }
 
@@ -121,9 +137,15 @@ func TestCreateToken(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	signer := &crypto2.KMSSigner{
-		Config:    &config.JustificationConfig{},
-		KMSClient: c,
+	/*
+		signer := &crypto2.KMSUtil{
+			Config:    &config.JustificationConfig{},
+			KMSClient: c,
+		}
+	*/
+	signer, err := gcpkms.NewSigner(ctx, c, testKeyName)
+	if err != nil {
+		log.Fatal(err)
 	}
 	processor := &Processor{
 		Signer: signer,
@@ -185,7 +207,7 @@ func TestCreateToken(t *testing.T) {
 			testutil.ErrCmp(t, tc.wantErr, gotErr)
 
 			if gotErr == nil {
-				if err := signer.VerifyJWTString(ctx, response); err != nil {
+				if err := jvs_crypto.VerifyJWTString(ctx, c, testKeyName, response); err != nil {
 					t.Errorf("Unable to verify signed jwt. %v", err)
 				}
 
