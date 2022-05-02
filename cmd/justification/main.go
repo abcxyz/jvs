@@ -60,7 +60,7 @@ func realMain(ctx context.Context) error {
 		return fmt.Errorf("failed to setup kms client: %w", err)
 	}
 
-	// TODO: This is expensive to check every time. Instead, we should have a way of asynchronously updating.
+	// TODO: We should have a way of asynchronously updating.
 	ver, err := jvs_crypto.GetLatestKeyVersion(ctx, kmsClient, cfg.KeyName)
 	if err != nil {
 		log.Fatalf("failed to get key version: %v", err)
