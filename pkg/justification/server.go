@@ -29,7 +29,6 @@ type JVSAgent struct {
 
 // NewJVSAgent creates a new JVSAgent.
 func NewJVSAgent(p *Processor) *JVSAgent {
-	// gcpjwt.SigningMethodKMSES256.Override()
 	return &JVSAgent{Processor: p}
 }
 
