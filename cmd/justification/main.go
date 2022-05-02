@@ -25,6 +25,7 @@ import (
 	kms "cloud.google.com/go/kms/apiv1"
 	jvspb "github.com/abcxyz/jvs/apis/v0"
 	"github.com/abcxyz/jvs/pkg/config"
+	"github.com/abcxyz/jvs/pkg/crypto"
 	"github.com/abcxyz/jvs/pkg/justification"
 	"go.opentelemetry.io/contrib/instrumentation/google.golang.org/grpc/otelgrpc"
 	"golang.org/x/sync/errgroup"
@@ -55,12 +56,14 @@ func realMain(ctx context.Context) error {
 
 	kmsClient, err := kms.NewKeyManagementClient(ctx)
 	if err != nil {
-		return fmt.Errorf("failed to setup kms client: %v", err)
+		return fmt.Errorf("failed to setup kms client: %w", err)
 	}
 
 	p := &justification.Processor{
-		Config:    cfg,
-		KmsClient: kmsClient,
+		Signer: &crypto.KMSSigner{
+			Config:    cfg,
+			KMSClient: kmsClient,
+		},
 	}
 	jvsAgent := justification.NewJVSAgent(p)
 	jvspb.RegisterJVSServiceServer(s, jvsAgent)

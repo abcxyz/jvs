@@ -16,46 +16,55 @@ package justification
 
 import (
 	"context"
+	"crypto"
+	"crypto/rand"
+	"crypto/sha256"
+	"encoding/asn1"
 	"fmt"
 	"log"
+	"math/big"
+	"strings"
 	"time"
 
-	kms "cloud.google.com/go/kms/apiv1"
+	v0 "github.com/abcxyz/jvs/api/v0"
 	jvspb "github.com/abcxyz/jvs/apis/v0"
-	"github.com/abcxyz/jvs/pkg/config"
 	"github.com/golang-jwt/jwt"
 	"github.com/google/uuid"
 	"github.com/hashicorp/go-multierror"
-	gcpjwt "github.com/someone1/gcp-jwt-go/v2"
-	"google.golang.org/api/iterator"
-	kmspb "google.golang.org/genproto/googleapis/cloud/kms/v1"
 	"google.golang.org/grpc/codes"
 	"google.golang.org/grpc/status"
 )
 
 // Processor performs the necessary logic to validate a justification, then mints a token.
 type Processor struct {
-	Config    *config.JustificationConfig
-	KmsClient *kms.KeyManagementClient
+	Signer crypto.Signer
 }
 
+const jvs_issuer = "jvs-service"
+
 func (p *Processor) CreateToken(ctx context.Context, request *jvspb.CreateJustificationRequest) (string, error) {
-	if err := p.runValidations(ctx, request); err != nil {
+	if err := p.runValidations(request); err != nil {
 		log.Printf("Couldn't validate request: %v", err)
 		return "", status.Error(codes.InvalidArgument, "couldn't validate request")
 	}
-	token, err := p.mintToken(ctx, request)
+	token := p.createToken(ctx, request)
+	signedToken, err := p.signToken(token)
 	if err != nil {
 		log.Printf("Ran into error while signing: %v", err)
 		return "", status.Error(codes.Internal, "ran into error while minting token")
 	}
-	return token, nil
+
+	return signedToken, nil
 }
 
-// TODO: Break this out into its own class, each validator should be its own class as well, with a shared interface.
-func (p *Processor) runValidations(ctx context.Context, request *jvspb.CreateJustificationRequest) error {
-	if len(request.Justifications) < 1 {
+// TODO: Each category should have its own validator struct, with a shared interface.
+func (p *Processor) runValidations(request *jvspb.CreateJustificationRequest) error {
+	if request.Justifications == nil || len(request.Justifications) < 1 {
 		return fmt.Errorf("no justifications specified")
+	}
+
+	if request.Ttl == nil {
+		return fmt.Errorf("no ttl specified")
 	}
 
 	var err *multierror.Error
@@ -75,70 +84,76 @@ func (p *Processor) runValidations(ctx context.Context, request *jvspb.CreateJus
 	return err.ErrorOrNil()
 }
 
-type CustomClaims struct {
-	*jwt.StandardClaims
-	Justifications []*jvspb.Justification
-}
-
 // create a key with the correct claims and sign it using KMS key
-func (p *Processor) mintToken(ctx context.Context, request *jvspb.CreateJustificationRequest) (string, error) {
-	claims := &CustomClaims{
+func (p *Processor) createToken(ctx context.Context, request *jvspb.CreateJustificationRequest) *jwt.Token {
+	now := time.Now()
+	claims := &v0.JVSClaims{
 		&jwt.StandardClaims{
 			Audience:  "TODO",
-			ExpiresAt: time.Now().Add(request.Ttl.AsDuration()).Unix(),
+			ExpiresAt: now.Add(request.Ttl.AsDuration()).Unix(),
 			Id:        uuid.New().String(),
-			IssuedAt:  time.Now().Unix(),
-			Issuer:    "jvs-service",
-			NotBefore: time.Now().Unix(),
+			IssuedAt:  now.Unix(),
+			Issuer:    jvs_issuer,
+			NotBefore: now.Unix(),
 			Subject:   "TODO",
 		},
 		request.Justifications,
 	}
-	token := jwt.NewWithClaims(gcpjwt.SigningMethodKMSES256, claims)
-	keyCtx, err := p.getKeyContext(ctx)
+	return jwt.NewWithClaims(jwt.SigningMethodES256, claims)
+}
+
+func (p *Processor) signToken(token *jwt.Token) (string, error) {
+	signingString, err := token.SigningString()
 	if err != nil {
 		return "", err
 	}
 
-	// Sign and return token
-	return token.SignedString(keyCtx)
-}
-
-// Set up a context with the correct values for use in the JWT signing library
-func (p *Processor) getKeyContext(ctx context.Context) (context.Context, error) {
-	ver, err := p.getLatestKeyVersion(ctx)
+	digest := sha256.Sum256([]byte(signingString))
+	sig, err := p.Signer.Sign(rand.Reader, digest[:], nil)
 	if err != nil {
-		return nil, err
+		return "", fmt.Errorf("error signing token: %w", err)
 	}
 
-	config := &gcpjwt.KMSConfig{
-		KeyPath: ver.Name,
+	// Unpack the ASN1 signature. ECDSA signers are supposed to return this format
+	// https://golang.org/pkg/crypto/#Signer
+	// All supported signers in thise codebase are verified to return ASN1.
+	var parsedSig struct{ R, S *big.Int }
+	// ASN1 is not the expected format for an ES256 JWT signature.
+	// The output format is specified here, https://tools.ietf.org/html/rfc7518#section-3.4
+	// Reproduced here for reference.
+	//    The ECDSA P-256 SHA-256 digital signature is generated as follows:
+	//
+	// 1 .  Generate a digital signature of the JWS Signing Input using ECDSA
+	//      P-256 SHA-256 with the desired private key.  The output will be
+	//      the pair (R, S), where R and S are 256-bit unsigned integers.
+	_, err = asn1.Unmarshal(sig, &parsedSig)
+	if err != nil {
+		return "", fmt.Errorf("unable to unmarshal signature: %w", err)
 	}
-	keyCtx := gcpjwt.NewKMSContext(ctx, config)
-	return keyCtx, nil
-}
 
-// Look up the newest enabled key version
-func (p *Processor) getLatestKeyVersion(ctx context.Context) (*kmspb.CryptoKeyVersion, error) {
-	it := p.KmsClient.ListCryptoKeyVersions(ctx, &kmspb.ListCryptoKeyVersionsRequest{
-		Parent: p.Config.KeyName,
-	})
-
-	var newestEnabledVersion *kmspb.CryptoKeyVersion
-	var newestTime time.Time
-	for {
-		ver, err := it.Next()
-		if err == iterator.Done {
-			break
-		}
-		if err != nil {
-			return nil, fmt.Errorf("err while reading crypto key version list: %w", err)
-
-		}
-		if ver.State == kmspb.CryptoKeyVersion_ENABLED && (newestEnabledVersion == nil || ver.CreateTime.AsTime().After(newestTime)) {
-			newestEnabledVersion = ver
-			newestTime = ver.CreateTime.AsTime()
-		}
+	keyBytes := 256 / 8
+	if 256%8 > 0 {
+		keyBytes++
 	}
-	return newestEnabledVersion, nil
+
+	// 2. Turn R and S into octet sequences in big-endian order, with each
+	// 		array being be 32 octets long.  The octet sequence
+	// 		representations MUST NOT be shortened to omit any leading zero
+	// 		octets contained in the values.
+	rBytes := parsedSig.R.Bytes()
+	rBytesPadded := make([]byte, keyBytes)
+	copy(rBytesPadded[keyBytes-len(rBytes):], rBytes)
+
+	sBytes := parsedSig.S.Bytes()
+	sBytesPadded := make([]byte, keyBytes)
+	copy(sBytesPadded[keyBytes-len(sBytes):], sBytes)
+
+	// 3. Concatenate the two octet sequences in the order R and then S.
+	//	 	(Note that many ECDSA implementations will directly produce this
+	//	 	concatenation as their output.)
+	sig = make([]byte, 0, len(rBytesPadded)+len(sBytesPadded))
+	sig = append(sig, rBytesPadded...)
+	sig = append(sig, sBytesPadded...)
+
+	return strings.Join([]string{signingString, jwt.EncodeSegment(sig)}, "."), nil
 }

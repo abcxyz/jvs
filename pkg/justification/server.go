@@ -18,7 +18,6 @@ import (
 	"context"
 
 	jvspb "github.com/abcxyz/jvs/apis/v0"
-	gcpjwt "github.com/someone1/gcp-jwt-go"
 )
 
 // JVSAgent is the implementation of the justification verification server.
@@ -30,7 +29,7 @@ type JVSAgent struct {
 
 // NewJVSAgent creates a new JVSAgent.
 func NewJVSAgent(p *Processor) *JVSAgent {
-	gcpjwt.SigningMethodKMSES256.Override()
+	// gcpjwt.SigningMethodKMSES256.Override()
 	return &JVSAgent{Processor: p}
 }
 
