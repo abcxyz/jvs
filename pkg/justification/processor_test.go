@@ -16,7 +16,7 @@ import (
 	kms "cloud.google.com/go/kms/apiv1"
 	v0 "github.com/abcxyz/jvs/api/v0"
 	jvspb "github.com/abcxyz/jvs/apis/v0"
-	"github.com/abcxyz/jvs/pkg/jvs-crypto"
+	jvs_crypto "github.com/abcxyz/jvs/pkg/jvs-crypto"
 	"github.com/abcxyz/jvs/pkg/testutil"
 	"github.com/golang-jwt/jwt"
 	"github.com/golang/protobuf/proto"

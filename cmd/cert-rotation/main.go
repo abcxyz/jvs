@@ -27,7 +27,7 @@ import (
 
 	kms "cloud.google.com/go/kms/apiv1"
 	"github.com/abcxyz/jvs/pkg/config"
-	"github.com/abcxyz/jvs/pkg/jvs-crypto"
+	jvs_crypto "github.com/abcxyz/jvs/pkg/jvs-crypto"
 	"github.com/hashicorp/go-multierror"
 )
 

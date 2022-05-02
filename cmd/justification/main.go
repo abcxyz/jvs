@@ -26,7 +26,7 @@ import (
 	jvspb "github.com/abcxyz/jvs/apis/v0"
 	"github.com/abcxyz/jvs/pkg/config"
 	"github.com/abcxyz/jvs/pkg/justification"
-	"github.com/abcxyz/jvs/pkg/jvs-crypto"
+	jvs_crypto "github.com/abcxyz/jvs/pkg/jvs-crypto"
 	"github.com/sethvargo/go-gcpkms/pkg/gcpkms"
 	"go.opentelemetry.io/contrib/instrumentation/google.golang.org/grpc/otelgrpc"
 	"golang.org/x/sync/errgroup"
