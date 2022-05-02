@@ -134,11 +134,10 @@ func TestCreateToken(t *testing.T) {
 	}
 
 	tests := []struct {
-		name               string
-		request            *jvspb.CreateJustificationRequest
-		wantJustifications []*jvspb.Justification
-		wantErr            string
-		serverErr          error
+		name      string
+		request   *jvspb.CreateJustificationRequest
+		wantErr   string
+		serverErr error
 	}{
 		{
 			name: "happy_path",
@@ -206,8 +205,8 @@ func TestCreateToken(t *testing.T) {
 func validateClaims(t testing.TB, provided *v0.JVSClaims, expectedJustifications []*jvspb.Justification) {
 	// test the standard claims filled by processor
 	var err *multierror.Error
-	if provided.StandardClaims.Issuer != jvs_issuer {
-		err = multierror.Append(err, fmt.Errorf("audience value %s incorrect, expected %s", provided.StandardClaims.Issuer, jvs_issuer))
+	if provided.StandardClaims.Issuer != jvsIssuer {
+		err = multierror.Append(err, fmt.Errorf("audience value %s incorrect, expected %s", provided.StandardClaims.Issuer, jvsIssuer))
 	}
 	// TODO: as we add more standard claims, add more validations.
 

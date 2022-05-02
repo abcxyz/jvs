@@ -40,8 +40,10 @@ type Processor struct {
 	Signer crypto.Signer
 }
 
-const jvs_issuer = "jvs-service"
+const jvsIssuer = "jvs-service"
 
+// CreateToken implements the create token API which creates and signs a JWT token if the provided justifications
+// are valid.
 func (p *Processor) CreateToken(ctx context.Context, request *jvspb.CreateJustificationRequest) (string, error) {
 	if err := p.runValidations(request); err != nil {
 		log.Printf("Couldn't validate request: %v", err)
@@ -88,20 +90,21 @@ func (p *Processor) runValidations(request *jvspb.CreateJustificationRequest) er
 func (p *Processor) createToken(ctx context.Context, request *jvspb.CreateJustificationRequest) *jwt.Token {
 	now := time.Now()
 	claims := &v0.JVSClaims{
-		&jwt.StandardClaims{
+		StandardClaims: &jwt.StandardClaims{
 			Audience:  "TODO",
 			ExpiresAt: now.Add(request.Ttl.AsDuration()).Unix(),
 			Id:        uuid.New().String(),
 			IssuedAt:  now.Unix(),
-			Issuer:    jvs_issuer,
+			Issuer:    jvsIssuer,
 			NotBefore: now.Unix(),
 			Subject:   "TODO",
 		},
-		request.Justifications,
+		Justifications: request.Justifications,
 	}
 	return jwt.NewWithClaims(jwt.SigningMethodES256, claims)
 }
 
+// Much of this is taken from here: https://github.com/google/exposure-notifications-verification-server/blob/main/pkg/jwthelper/jwthelper.go
 func (p *Processor) signToken(token *jwt.Token) (string, error) {
 	signingString, err := token.SigningString()
 	if err != nil {
