@@ -12,7 +12,6 @@ import (
 	"testing"
 
 	kms "cloud.google.com/go/kms/apiv1"
-	"github.com/abcxyz/jvs/pkg/justification"
 	"github.com/abcxyz/jvs/pkg/testutil"
 	"github.com/golang-jwt/jwt"
 	"github.com/golang/protobuf/proto"
@@ -71,9 +70,6 @@ func TestVerifyJWTString(t *testing.T) {
 	if err != nil {
 		log.Fatal(err)
 	}
-	processor := &justification.Processor{
-		Signer: signer,
-	}
 
 	claims := &jwt.StandardClaims{
 		Audience:  "test_aud",
@@ -86,7 +82,7 @@ func TestVerifyJWTString(t *testing.T) {
 	}
 	token := jwt.NewWithClaims(jwt.SigningMethodES256, claims)
 
-	validJWT, err := processor.SignToken(token)
+	validJWT, err := SignToken(token, signer)
 	if err != nil {
 		t.Fatal("Couldn't sign token.")
 	}
@@ -96,7 +92,7 @@ func TestVerifyJWTString(t *testing.T) {
 		t.Fatal("Couldn't get signing string.")
 	}
 
-	invalidSignatureJWT := unsignedJWT + ".SflKxwRJSMeKKF2QT4fwpMeJf36POk6yJV_adQssw5c"
+	invalidSignatureJWT := unsignedJWT + ".SflKxwRJSMeKKF2QT4fwpMeJf36POk6yJV_adQssw5c" // signature from a different JWT
 
 	tests := []struct {
 		name    string
