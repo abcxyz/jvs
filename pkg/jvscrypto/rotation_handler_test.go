@@ -14,7 +14,7 @@
 
 // much of the below code is only slightly modified from https://github.com/googleapis/google-cloud-go/blob/main/kms/apiv1/mock_test.go
 
-package jvs_crypto
+package jvscrypto
 
 import (
 	"context"
@@ -38,59 +38,12 @@ import (
 	"google.golang.org/protobuf/types/known/fieldmaskpb"
 )
 
-type mockKeyManagementServer struct {
-	// Embed for forward compatibility.
-	// Tests will keep working if more methods are added
-	// in the future.
-	kmspb.UnimplementedKeyManagementServiceServer
-
-	reqs []proto.Message
-
-	// If set, all calls return this error.
-	err error
-
-	// responses to return if err == nil
-	resps []proto.Message
-}
-
-func (s *mockKeyManagementServer) ListCryptoKeyVersions(ctx context.Context, req *kmspb.ListCryptoKeyVersionsRequest) (*kmspb.ListCryptoKeyVersionsResponse, error) {
-	s.reqs = append(s.reqs, req)
-	if s.err != nil {
-		return nil, s.err
-	}
-	return s.resps[0].(*kmspb.ListCryptoKeyVersionsResponse), nil
-}
-
-func (s *mockKeyManagementServer) CreateCryptoKeyVersion(ctx context.Context, req *kmspb.CreateCryptoKeyVersionRequest) (*kmspb.CryptoKeyVersion, error) {
-	s.reqs = append(s.reqs, req)
-	if s.err != nil {
-		return nil, s.err
-	}
-	return s.resps[0].(*kmspb.CryptoKeyVersion), nil
-}
-
 var clientOpt option.ClientOption
-var mockKeyManagement = &mockKeyManagementServer{
+var mockKeyManagement = &testutil.MockKeyManagementServer{
 	UnimplementedKeyManagementServiceServer: kmspb.UnimplementedKeyManagementServiceServer{},
-	reqs:                                    make([]proto.Message, 1),
-	err:                                     nil,
-	resps:                                   make([]proto.Message, 1),
-}
-
-func (s *mockKeyManagementServer) DestroyCryptoKeyVersion(ctx context.Context, req *kmspb.DestroyCryptoKeyVersionRequest) (*kmspb.CryptoKeyVersion, error) {
-	s.reqs = append(s.reqs, req)
-	if s.err != nil {
-		return nil, s.err
-	}
-	return s.resps[0].(*kmspb.CryptoKeyVersion), nil
-}
-
-func (s *mockKeyManagementServer) UpdateCryptoKeyVersion(ctx context.Context, req *kmspb.UpdateCryptoKeyVersionRequest) (*kmspb.CryptoKeyVersion, error) {
-	s.reqs = append(s.reqs, req)
-	if s.err != nil {
-		return nil, s.err
-	}
-	return s.resps[0].(*kmspb.CryptoKeyVersion), nil
+	Reqs:                                    make([]proto.Message, 1),
+	Err:                                     nil,
+	Resps:                                   make([]proto.Message, 1),
 }
 
 func TestGetKeyNameFromVersion(t *testing.T) {
@@ -421,11 +374,10 @@ func TestPerformActions(t *testing.T) {
 	for _, tc := range tests {
 		tc := tc
 		t.Run(tc.name, func(t *testing.T) {
-			mockKeyManagement.err = nil
-			mockKeyManagement.reqs = nil
-			mockKeyManagement.err = tc.serverErr
+			mockKeyManagement.Reqs = nil
+			mockKeyManagement.Err = tc.serverErr
 
-			mockKeyManagement.resps = append(mockKeyManagement.resps[:0], &kmspb.CryptoKeyVersion{})
+			mockKeyManagement.Resps = append(mockKeyManagement.Resps[:0], &kmspb.CryptoKeyVersion{})
 
 			gotErr := handler.performActions(ctx, tc.actions)
 
@@ -433,7 +385,7 @@ func TestPerformActions(t *testing.T) {
 				t.Fatal(err)
 			}
 
-			if want, got := tc.expectedRequests, mockKeyManagement.reqs; !slicesEq(want, got) {
+			if want, got := tc.expectedRequests, mockKeyManagement.Reqs; !slicesEq(want, got) {
 				t.Errorf("wrong request %q, want %q", got, want)
 			}
 			testutil.ErrCmp(t, tc.wantErr, gotErr)

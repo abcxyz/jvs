@@ -7,7 +7,6 @@ import (
 	"crypto/rand"
 	"crypto/x509"
 	"encoding/pem"
-	"fmt"
 	"log"
 	"net"
 	"testing"
@@ -16,11 +15,10 @@ import (
 	kms "cloud.google.com/go/kms/apiv1"
 	v0 "github.com/abcxyz/jvs/api/v0"
 	jvspb "github.com/abcxyz/jvs/apis/v0"
-	jvs_crypto "github.com/abcxyz/jvs/pkg/jvs-crypto"
+	jvs_crypto "github.com/abcxyz/jvs/pkg/jvscrypto"
 	"github.com/abcxyz/jvs/pkg/testutil"
 	"github.com/golang-jwt/jwt"
 	"github.com/golang/protobuf/proto"
-	"github.com/hashicorp/go-multierror"
 	"github.com/sethvargo/go-gcpkms/pkg/gcpkms"
 	"google.golang.org/api/option"
 	kmspb "google.golang.org/genproto/googleapis/cloud/kms/v1"
@@ -28,94 +26,29 @@ import (
 	"google.golang.org/protobuf/types/known/durationpb"
 )
 
-type mockKeyManagementServer struct {
-	// Embed for forward compatibility.
-	// Tests will keep working if more methods are added
-	// in the future.
-	kmspb.UnimplementedKeyManagementServiceServer
-
-	reqs []proto.Message
-
-	// If set, all calls return this error.
-	err error
-
-	// responses to return if err == nil
-	resps []proto.Message
-
-	privateKey *ecdsa.PrivateKey
-	publicKey  string
-}
-
-const testKeyName = "projects/proj1/locations/loc1/keyRings/kr1/cryptoKeys/key1"
-
-func (s *mockKeyManagementServer) ListCryptoKeyVersions(ctx context.Context, req *kmspb.ListCryptoKeyVersionsRequest) (*kmspb.ListCryptoKeyVersionsResponse, error) {
-	s.reqs = append(s.reqs, req)
-	if s.err != nil {
-		return nil, s.err
-	}
-	return &kmspb.ListCryptoKeyVersionsResponse{
-		CryptoKeyVersions: []*kmspb.CryptoKeyVersion{
-			{
-				Name:  testKeyName,
-				State: kmspb.CryptoKeyVersion_ENABLED,
-			},
-		},
-	}, nil
-}
-
-func (s *mockKeyManagementServer) GetCryptoKey(ctx context.Context, req *kmspb.GetCryptoKeyRequest) (*kmspb.CryptoKey, error) {
-	s.reqs = append(s.reqs, req)
-	if s.err != nil {
-		return nil, s.err
-	}
-	return &kmspb.CryptoKey{
-		Primary: &kmspb.CryptoKeyVersion{
-			Name:  testKeyName,
-			State: kmspb.CryptoKeyVersion_ENABLED,
-		},
-	}, nil
-}
-
-func (s *mockKeyManagementServer) AsymmetricSign(ctx context.Context, req *kmspb.AsymmetricSignRequest) (*kmspb.AsymmetricSignResponse, error) {
-	sig, err := ecdsa.SignASN1(rand.Reader, s.privateKey, req.Digest.GetSha256())
-	if err != nil {
-		return nil, s.err
-	}
-	return &kmspb.AsymmetricSignResponse{
-		Signature: sig,
-	}, nil
-}
-
-func (s *mockKeyManagementServer) GetPublicKey(ctx context.Context, req *kmspb.GetPublicKeyRequest) (*kmspb.PublicKey, error) {
-	return &kmspb.PublicKey{
-		Pem:       s.publicKey,
-		Algorithm: kmspb.CryptoKeyVersion_EC_SIGN_P256_SHA256,
-	}, nil
-}
-
-var clientOpt option.ClientOption
-var mockKeyManagement = &mockKeyManagementServer{
-	UnimplementedKeyManagementServiceServer: kmspb.UnimplementedKeyManagementServiceServer{},
-	reqs:                                    make([]proto.Message, 1),
-	err:                                     nil,
-	resps:                                   make([]proto.Message, 1),
-}
-
 func TestCreateToken(t *testing.T) {
 	t.Parallel()
 	ctx := context.Background()
+
+	var clientOpt option.ClientOption
+	var mockKeyManagement = &testutil.MockKeyManagementServer{
+		UnimplementedKeyManagementServiceServer: kmspb.UnimplementedKeyManagementServiceServer{},
+		Reqs:                                    make([]proto.Message, 1),
+		Err:                                     nil,
+		Resps:                                   make([]proto.Message, 1),
+	}
 
 	privateKey, err := ecdsa.GenerateKey(elliptic.P256(), rand.Reader)
 	if err != nil {
 		t.Fatal(err)
 	}
-	mockKeyManagement.privateKey = privateKey
+	mockKeyManagement.PrivateKey = privateKey
 	x509EncodedPub, err := x509.MarshalPKIXPublicKey(privateKey.Public())
 	if err != nil {
 		t.Fatal(err)
 	}
 	pemEncodedPub := pem.EncodeToMemory(&pem.Block{Type: "PUBLIC KEY", Bytes: x509EncodedPub})
-	mockKeyManagement.publicKey = string(pemEncodedPub)
+	mockKeyManagement.PublicKey = string(pemEncodedPub)
 
 	serv := grpc.NewServer()
 	kmspb.RegisterKeyManagementServiceServer(serv, mockKeyManagement)
@@ -137,13 +70,7 @@ func TestCreateToken(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	/*
-		signer := &crypto2.KMSUtil{
-			Config:    &config.JustificationConfig{},
-			KMSClient: c,
-		}
-	*/
-	signer, err := gcpkms.NewSigner(ctx, c, testKeyName)
+	signer, err := gcpkms.NewSigner(ctx, c, testutil.TestKeyName)
 	if err != nil {
 		log.Fatal(err)
 	}
@@ -197,17 +124,16 @@ func TestCreateToken(t *testing.T) {
 	for _, tc := range tests {
 		tc := tc
 		t.Run(tc.name, func(t *testing.T) {
-			mockKeyManagement.err = nil
-			mockKeyManagement.reqs = nil
-			mockKeyManagement.err = tc.serverErr
+			mockKeyManagement.Reqs = nil
+			mockKeyManagement.Err = tc.serverErr
 
-			mockKeyManagement.resps = append(mockKeyManagement.resps[:0], &kmspb.CryptoKeyVersion{})
+			mockKeyManagement.Resps = append(mockKeyManagement.Resps[:0], &kmspb.CryptoKeyVersion{})
 
 			response, gotErr := processor.CreateToken(ctx, tc.request)
 			testutil.ErrCmp(t, tc.wantErr, gotErr)
 
 			if gotErr == nil {
-				if err := jvs_crypto.VerifyJWTString(ctx, c, testKeyName, response); err != nil {
+				if err := jvs_crypto.VerifyJWTString(ctx, c, testutil.TestKeyName, response); err != nil {
 					t.Errorf("Unable to verify signed jwt. %v", err)
 				}
 
@@ -226,15 +152,10 @@ func TestCreateToken(t *testing.T) {
 
 func validateClaims(t testing.TB, provided *v0.JVSClaims, expectedJustifications []*jvspb.Justification) {
 	// test the standard claims filled by processor
-	var err *multierror.Error
 	if provided.StandardClaims.Issuer != jvsIssuer {
-		err = multierror.Append(err, fmt.Errorf("audience value %s incorrect, expected %s", provided.StandardClaims.Issuer, jvsIssuer))
+		t.Errorf("audience value %s incorrect, expected %s", provided.StandardClaims.Issuer, jvsIssuer)
 	}
 	// TODO: as we add more standard claims, add more validations.
-
-	if err.ErrorOrNil() != nil {
-		t.Errorf("standard claims weren't set correctly. %v", err)
-	}
 
 	if len(provided.Justifications) != len(expectedJustifications) {
 		t.Errorf("Number of justifications was incorrect.\n got: %v\n want: %v", provided.Justifications, expectedJustifications)
@@ -251,6 +172,7 @@ func validateClaims(t testing.TB, provided *v0.JVSClaims, expectedJustifications
 		}
 		if !found {
 			t.Errorf("Justifications didn't match.\n got: %v\n want: %v", provided.Justifications, expectedJustifications)
+			return
 		}
 	}
 }

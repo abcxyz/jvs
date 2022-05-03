@@ -15,12 +15,12 @@
 package v0
 
 import (
-	v0 "github.com/abcxyz/jvs/apis/v0"
+	jvsapi "github.com/abcxyz/jvs/apis/v0"
 	"github.com/golang-jwt/jwt"
 )
 
 // JVSClaims are the claims that will be held within a JWT minted by the JVS server.
 type JVSClaims struct {
 	*jwt.StandardClaims
-	Justifications []*v0.Justification
+	Justifications []*jvsapi.Justification
 }
