@@ -128,41 +128,51 @@ func TestDetermineActions(t *testing.T) {
 	oldEnabledKey := &kmspb.CryptoKeyVersion{
 		CreateTime: &timestamppb.Timestamp{Seconds: 50 * 60 * 60 * 24}, // 50 days old
 		State:      kmspb.CryptoKeyVersion_ENABLED,
+		Name:       "oldEnabledKey",
 	}
 	newEnabledKey := &kmspb.CryptoKeyVersion{
 		CreateTime: &timestamppb.Timestamp{Seconds: 99 * 60 * 60 * 24}, // 2 days old
 		State:      kmspb.CryptoKeyVersion_ENABLED,
+		Name:       "newEnabledKey",
 	}
 	newDisabledKey := &kmspb.CryptoKeyVersion{
 		CreateTime: &timestamppb.Timestamp{Seconds: 90 * 60 * 60 * 24}, // 10 days old
 		State:      kmspb.CryptoKeyVersion_DISABLED,
+		Name:       "newDisabledKey",
 	}
 	oldDisabledKey := &kmspb.CryptoKeyVersion{
 		CreateTime: &timestamppb.Timestamp{Seconds: 1 * 60 * 60 * 24}, // 99 days old
 		State:      kmspb.CryptoKeyVersion_DISABLED,
+		Name:       "oldDisabledKey",
 	}
 	oldDestroyedKey := &kmspb.CryptoKeyVersion{
 		CreateTime: &timestamppb.Timestamp{Seconds: 1 * 60 * 60 * 24}, // 99 days old
 		State:      kmspb.CryptoKeyVersion_DESTROYED,
+		Name:       "oldDestroyedKey",
 	}
 	pendingGenerationKey := &kmspb.CryptoKeyVersion{
 		CreateTime: &timestamppb.Timestamp{Seconds: 99 * 60 * 60 * 24}, // 1 days old,
 		State:      kmspb.CryptoKeyVersion_PENDING_GENERATION,
+		Name:       "pendingGenerationKey",
 	}
 
 	tests := []struct {
-		name        string
-		versions    []*kmspb.CryptoKeyVersion
-		wantActions map[*kmspb.CryptoKeyVersion]Action
-		wantErr     string
+		name         string
+		versions     []*kmspb.CryptoKeyVersion
+		activeStates map[string]VersionState
+		wantActions  map[*kmspb.CryptoKeyVersion]Action
+		wantErr      string
 	}{
 		{
 			name: "single_key_old",
 			versions: []*kmspb.CryptoKeyVersion{
 				oldEnabledKey,
 			},
+			activeStates: map[string]VersionState{
+				oldEnabledKey.Name: VER_STATE_PRIMARY,
+			},
 			wantActions: map[*kmspb.CryptoKeyVersion]Action{
-				oldEnabledKey: ActionCreate,
+				oldEnabledKey: ActionCreateNew,
 			},
 		},
 		{
@@ -170,6 +180,10 @@ func TestDetermineActions(t *testing.T) {
 			versions: []*kmspb.CryptoKeyVersion{
 				oldEnabledKey,
 				newEnabledKey,
+			},
+			activeStates: map[string]VersionState{
+				newEnabledKey.Name: VER_STATE_PRIMARY,
+				oldEnabledKey.Name: VER_STATE_OLD,
 			},
 			wantActions: map[*kmspb.CryptoKeyVersion]Action{
 				oldEnabledKey: ActionDisable,
@@ -181,6 +195,10 @@ func TestDetermineActions(t *testing.T) {
 			versions: []*kmspb.CryptoKeyVersion{
 				oldEnabledKey,
 				pendingGenerationKey,
+			},
+			activeStates: map[string]VersionState{
+				pendingGenerationKey.Name: VER_STATE_NEW,
+				oldEnabledKey.Name:        VER_STATE_PRIMARY,
 			},
 			wantActions: map[*kmspb.CryptoKeyVersion]Action{
 				oldEnabledKey:        ActionNone,
@@ -196,6 +214,10 @@ func TestDetermineActions(t *testing.T) {
 				newDisabledKey,
 				oldDestroyedKey,
 			},
+			activeStates: map[string]VersionState{
+				newEnabledKey.Name: VER_STATE_PRIMARY,
+				oldEnabledKey.Name: VER_STATE_OLD,
+			},
 			wantActions: map[*kmspb.CryptoKeyVersion]Action{
 				oldEnabledKey:   ActionDisable,
 				newEnabledKey:   ActionNone,
@@ -209,7 +231,7 @@ func TestDetermineActions(t *testing.T) {
 		tc := tc
 		t.Run(tc.name, func(t *testing.T) {
 			t.Parallel()
-			output, err := handler.determineActions(tc.versions)
+			output, err := handler.determineActions(tc.versions, tc.activeStates)
 
 			if diff := cmp.Diff(tc.wantActions, output, protocmp.Transform()); diff != "" {
 				t.Errorf("Got diff (-want, +got): %v", diff)
@@ -294,7 +316,7 @@ func TestPerformActions(t *testing.T) {
 				{
 					Name:  versionName,
 					State: kmspb.CryptoKeyVersion_ENABLED,
-				}: ActionCreate,
+				}: ActionCreateNew,
 			},
 			wantErr: "",
 			expectedRequests: []proto.Message{
@@ -328,7 +350,7 @@ func TestPerformActions(t *testing.T) {
 				{
 					Name:  versionName,
 					State: kmspb.CryptoKeyVersion_ENABLED,
-				}: ActionCreate,
+				}: ActionCreateNew,
 				{
 					Name:  versionName,
 					State: kmspb.CryptoKeyVersion_DISABLED,
@@ -379,7 +401,7 @@ func TestPerformActions(t *testing.T) {
 
 			mockKeyManagement.Resps = append(mockKeyManagement.Resps[:0], &kmspb.CryptoKeyVersion{})
 
-			gotErr := handler.performActions(ctx, tc.actions)
+			gotErr := handler.performActions(ctx, parent, tc.actions)
 
 			if err != nil {
 				t.Fatal(err)

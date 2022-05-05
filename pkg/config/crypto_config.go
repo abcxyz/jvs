@@ -36,9 +36,10 @@ type CryptoConfig struct {
 	Version uint8 `yaml:"version,omitempty" env:"VERSION,overwrite"`
 
 	// Crypto variables
-	KeyTTL         time.Duration `yaml:"key_ttl,omitempty" env:"KEY_TTL,overwrite"`
-	GracePeriod    time.Duration `yaml:"grace_period,omitempty" env:"GRACE_PERIOD,overwrite"`
-	DisabledPeriod time.Duration `yaml:"disabled_period,omitempty" env:"DISABLED_PERIOD,overwrite"`
+	KeyTTL           time.Duration `yaml:"key_ttl,omitempty" env:"KEY_TTL,overwrite"`
+	GracePeriod      time.Duration `yaml:"grace_period,omitempty" env:"GRACE_PERIOD,overwrite"`
+	PropagationDelay time.Duration `yaml:"propagation_delay,omitempty" env:"PROPAGATION_DELAY,overwrite"`
+	DisabledPeriod   time.Duration `yaml:"disabled_period,omitempty" env:"DISABLED_PERIOD,overwrite"`
 
 	// TODO: This is intended to be temporary, and will eventually be retrieved from a persistent external datastore
 	// https://github.com/abcxyz/jvs/issues/17
@@ -66,6 +67,11 @@ func (cfg *CryptoConfig) Validate() error {
 
 	if cfg.DisabledPeriod <= 0 {
 		err = multierror.Append(err, fmt.Errorf("disabled period is invalid: %v", cfg.DisabledPeriod))
+	}
+
+	// Propagation delay must be lower than grace period.
+	if cfg.PropagationDelay <= 0 || cfg.PropagationDelay > cfg.GracePeriod {
+		err = multierror.Append(err, fmt.Errorf("propagation delay is invalid: %v", cfg.PropagationDelay))
 	}
 
 	return err
