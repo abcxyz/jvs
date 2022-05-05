@@ -133,19 +133,20 @@ func TestCreateToken(t *testing.T) {
 			response, gotErr := processor.CreateToken(ctx, tc.request)
 			testutil.ErrCmp(t, tc.wantErr, gotErr)
 
-			if gotErr == nil {
-				if err := jvscrypto.VerifyJWTString(ctx, c, testutil.TestKeyName, response); err != nil {
-					t.Errorf("Unable to verify signed jwt. %v", err)
-				}
-
-				claims := &jvspb.JVSClaims{}
-				if _, err := jwt.ParseWithClaims(response, claims, func(token *jwt.Token) (interface{}, error) {
-					return privateKey.Public(), nil
-				}); err != nil {
-					t.Errorf("Unable to parse created jwt string. %v", err)
-				}
-				validateClaims(t, claims, tc.request.Justifications)
+			if gotErr != nil {
+				return
 			}
+			if err := jvscrypto.VerifyJWTString(ctx, c, testutil.TestKeyName, response); err != nil {
+				t.Errorf("Unable to verify signed jwt. %v", err)
+			}
+
+			claims := &jvspb.JVSClaims{}
+			if _, err := jwt.ParseWithClaims(response, claims, func(token *jwt.Token) (interface{}, error) {
+				return privateKey.Public(), nil
+			}); err != nil {
+				t.Errorf("Unable to parse created jwt string. %v", err)
+			}
+			validateClaims(t, claims, tc.request.Justifications)
 		})
 	}
 }

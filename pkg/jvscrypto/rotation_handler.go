@@ -96,20 +96,23 @@ const (
 func (h *RotationHandler) determineActions(vers []*kmspb.CryptoKeyVersion, activeStates map[string]VersionState) (map[*kmspb.CryptoKeyVersion]Action, error) {
 	var primary *kmspb.CryptoKeyVersion
 	var newVers []*kmspb.CryptoKeyVersion
-	// Older Key Version
+	var oldVers []*kmspb.CryptoKeyVersion
 	var inactiveVers []*kmspb.CryptoKeyVersion
 
 	for _, ver := range vers {
 		log.Printf("checking version %v", ver)
 		if state, ok := activeStates[ver.Name]; ok {
-
+			// Key is in the database, we consider it active.
 			switch state {
 			case VER_STATE_PRIMARY:
 				primary = ver
-			case VER_STATE_NEW
+			case VER_STATE_NEW:
+				newVers = append(newVers, ver)
+			case VER_STATE_OLD:
+				oldVers = append(oldVers, ver)
 			}
-
 		} else {
+			// Key isn't in the db, we consider it inactive.
 			inactiveVers = append(inactiveVers, ver)
 		}
 	}
