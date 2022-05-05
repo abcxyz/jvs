@@ -95,25 +95,20 @@ const (
 
 func (h *RotationHandler) determineActions(vers []*kmspb.CryptoKeyVersion, activeStates map[string]VersionState) (map[*kmspb.CryptoKeyVersion]Action, error) {
 	var primary *kmspb.CryptoKeyVersion
-	otherActiveVers := make(map[*kmspb.CryptoKeyVersion]VersionState)
+	var newVers []*kmspb.CryptoKeyVersion
 	// Older Key Version
 	var inactiveVers []*kmspb.CryptoKeyVersion
 
 	for _, ver := range vers {
 		log.Printf("checking version %v", ver)
 		if state, ok := activeStates[ver.Name]; ok {
-			if state == VER_STATE_PRIMARY {
-				if primary != nil {
-					return nil, fmt.Errorf("more than one primary version in database")
-				}
-				if ver.State != kmspb.CryptoKeyVersion_ENABLED {
-					// TODO: likely should have a metric or other way of making this visible.
-					return nil, fmt.Errorf("primary is not enabled in KMS")
-				}
+
+			switch state {
+			case VER_STATE_PRIMARY:
 				primary = ver
-			} else {
-				otherActiveVers[ver] = state
+			case VER_STATE_NEW
 			}
+
 		} else {
 			inactiveVers = append(inactiveVers, ver)
 		}
@@ -134,59 +129,65 @@ func (h *RotationHandler) determineActions(vers []*kmspb.CryptoKeyVersion, activ
 // Determine whether the newest key needs to be rotated.
 // The only actions available are ActionNone and ActionCreate. This is because we never
 // want to disable/delete our newest key if we don't have a newer second one created.
-func (h *RotationHandler) actionsForActiveVersions(primary *kmspb.CryptoKeyVersion, otherActiveVers map[*kmspb.CryptoKeyVersion]VersionState) (map[*kmspb.CryptoKeyVersion]Action, error) {
+func (h *RotationHandler) actionsForNewVersions(newVers []*kmspb.CryptoKeyVersion) (map[*kmspb.CryptoKeyVersion]Action, bool, error) {
 	actions := make(map[*kmspb.CryptoKeyVersion]Action)
-	noPrimary := primary == nil
 
 	promotingNewKey := false
-	for ver, state := range otherActiveVers {
-		if state == VER_STATE_NEW && ver.State == kmspb.CryptoKeyVersion_ENABLED {
+	for _, ver := range newVers {
+		if ver.State == kmspb.CryptoKeyVersion_ENABLED {
 			promoteBeforeDate := h.CurrentTime.Add(-h.CryptoConfig.PropagationDelay)
 			if ver.CreateTime.AsTime().Before(promoteBeforeDate) {
 				log.Printf("version created %q before cutoff date %q, will promote to primary.\n", ver.CreateTime.AsTime(), promoteBeforeDate)
-				actions[ver] = ActionPromote
-				promotingNewKey = true
-			} else if noPrimary {
-				log.Printf("no primary found, immediately promoting. \n")
 				actions[ver] = ActionPromote
 				promotingNewKey = true
 			} else {
 				log.Printf("version created %q after cutoff date %q, no action necessary.\n", ver.CreateTime.AsTime(), promoteBeforeDate)
 				actions[ver] = ActionNone
 			}
-		} else if state == VER_STATE_OLD {
-			disableBeforeDate := h.CurrentTime.Add(-h.CryptoConfig.KeyTTL)
-			if ver.CreateTime.AsTime().Before(disableBeforeDate) {
-				log.Printf("version %q created %q before cutoff date %q, will disable.\n", ver.Name, ver.CreateTime.AsTime(), disableBeforeDate)
-				actions[ver] = ActionDisable
-			} else {
-				log.Printf("version %q created %q after disabled cutoff date %q, no action necessary.\n", ver.Name, ver.CreateTime.AsTime(), disableBeforeDate)
-				actions[ver] = ActionNone
-			}
 		} else {
-			return nil, fmt.Errorf("unexpected state for key marked active.\n KMS state: %s\n BigTable State: %s", ver.State, state)
+			log.Printf("version is disabled, no action necessary.\n")
+			actions[ver] = ActionNone
 		}
-
 	}
+	return actions, promotingNewKey, nil
+}
 
-	if noPrimary && !promotingNewKey {
-		log.Printf("no primary or new keys found, creating a new key and immediately promoting to primary.")
-		actions[&kmspb.CryptoKeyVersion{}] = ActionCreateNewAndPromote
-	}
+func (h *RotationHandler) actionsForOldVersions(oldVers []*kmspb.CryptoKeyVersion) (map[*kmspb.CryptoKeyVersion]Action, error) {
+	actions := make(map[*kmspb.CryptoKeyVersion]Action)
 
-	if promotingNewKey {
-		actions[primary] = ActionDemote
-	} else {
-		rotateBeforeDate := h.CurrentTime.Add(-h.CryptoConfig.RotationAge())
-		if primary.CreateTime.AsTime().Before(rotateBeforeDate) {
-			log.Printf("version created %q before cutoff date %q, will rotate.\n", primary.CreateTime.AsTime(), rotateBeforeDate)
-			actions[primary] = ActionCreateNew
+	for _, ver := range oldVers {
+		disableBeforeDate := h.CurrentTime.Add(-h.CryptoConfig.KeyTTL)
+		if ver.CreateTime.AsTime().Before(disableBeforeDate) {
+			log.Printf("version %q created %q before cutoff date %q, will disable.\n", ver.Name, ver.CreateTime.AsTime(), disableBeforeDate)
+			actions[ver] = ActionDisable
 		} else {
-			log.Printf("version created %q after cutoff date %q, no action necessary.\n", primary.CreateTime.AsTime(), rotateBeforeDate)
-			actions[primary] = ActionNone
+			log.Printf("version %q created %q after disabled cutoff date %q, no action necessary.\n", ver.Name, ver.CreateTime.AsTime(), disableBeforeDate)
+			actions[ver] = ActionNone
 		}
 	}
 	return actions, nil
+}
+
+func (h *RotationHandler) actionsForPrimaryVersion(primary *kmspb.CryptoKeyVersion, promotingNewKey bool) Action {
+	if primary == nil && !promotingNewKey {
+		log.Printf("no primary or new keys found, creating a new key and immediately promoting to primary.")
+		return ActionCreateNewAndPromote
+	}
+
+	// We're promoting another key to primary, demote the current primary.
+	if promotingNewKey {
+		return ActionDemote
+	}
+
+	// We don't have a new key we're promoting, see if we should create a new key.
+	rotateBeforeDate := h.CurrentTime.Add(-h.CryptoConfig.RotationAge())
+	if primary.CreateTime.AsTime().Before(rotateBeforeDate) {
+		log.Printf("version created %q before cutoff date %q, will rotate.\n", primary.CreateTime.AsTime(), rotateBeforeDate)
+		return ActionCreateNew
+	} else {
+		log.Printf("version created %q after cutoff date %q, no action necessary.\n", primary.CreateTime.AsTime(), rotateBeforeDate)
+		return ActionNone
+	}
 }
 
 // This determines which action to take on key versions that are not the primary one (newest active).
