@@ -27,12 +27,12 @@ import (
 
 	kms "cloud.google.com/go/kms/apiv1"
 	"github.com/abcxyz/jvs/pkg/config"
-	jvs_crypto "github.com/abcxyz/jvs/pkg/jvscrypto"
+	jvscrypto "github.com/abcxyz/jvs/pkg/jvscrypto"
 	"github.com/hashicorp/go-multierror"
 )
 
 type server struct {
-	handler *jvs_crypto.RotationHandler
+	handler *jvscrypto.RotationHandler
 }
 
 // HTTPMessage is the request format we will send from cloud scheduler.
@@ -87,7 +87,7 @@ func realMain(ctx context.Context) error {
 	}
 
 	defer kmsClient.Close()
-	handler := &jvs_crypto.RotationHandler{
+	handler := &jvscrypto.RotationHandler{
 		KmsClient:    kmsClient,
 		CryptoConfig: config,
 		CurrentTime:  time.Now(),

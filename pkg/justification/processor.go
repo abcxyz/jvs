@@ -21,7 +21,6 @@ import (
 	"log"
 	"time"
 
-	jvsapi "github.com/abcxyz/jvs/api/v0"
 	jvspb "github.com/abcxyz/jvs/apis/v0"
 	"github.com/abcxyz/jvs/pkg/jvscrypto"
 	"github.com/golang-jwt/jwt"
@@ -37,7 +36,7 @@ type Processor struct {
 	Signer crypto.Signer
 }
 
-const jvsIssuer = "jvs-service"
+const jvsIssuer = "abcxyz-justification-verification-service"
 
 // CreateToken implements the create token API which creates and signs a JWT token if the provided justifications
 // are valid.
@@ -86,15 +85,15 @@ func (p *Processor) runValidations(request *jvspb.CreateJustificationRequest) er
 // create a key with the correct claims and sign it using KMS key
 func (p *Processor) createToken(ctx context.Context, request *jvspb.CreateJustificationRequest) *jwt.Token {
 	now := time.Now().UTC()
-	claims := &jvsapi.JVSClaims{
+	claims := &jvspb.JVSClaims{
 		StandardClaims: &jwt.StandardClaims{
-			Audience:  "TODO",
+			Audience:  "TODO #22",
 			ExpiresAt: now.Add(request.Ttl.AsDuration()).Unix(),
 			Id:        uuid.New().String(),
 			IssuedAt:  now.Unix(),
 			Issuer:    jvsIssuer,
 			NotBefore: now.Unix(),
-			Subject:   "TODO",
+			Subject:   "TODO #22",
 		},
 		Justifications: request.Justifications,
 	}

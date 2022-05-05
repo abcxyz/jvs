@@ -7,7 +7,6 @@ import (
 	"crypto/rand"
 	"crypto/x509"
 	"encoding/pem"
-	"log"
 	"net"
 	"testing"
 
@@ -51,13 +50,13 @@ func TestVerifyJWTString(t *testing.T) {
 
 	lis, err := net.Listen("tcp", "localhost:0")
 	if err != nil {
-		log.Fatal(err)
+		t.Fatal(err)
 	}
 	go serv.Serve(lis)
 
 	conn, err := grpc.Dial(lis.Addr().String(), grpc.WithInsecure())
 	if err != nil {
-		log.Fatal(err)
+		t.Fatal(err)
 	}
 	clientOpt = option.WithGRPCConn(conn)
 
@@ -68,7 +67,7 @@ func TestVerifyJWTString(t *testing.T) {
 
 	signer, err := gcpkms.NewSigner(ctx, kms, testutil.TestKeyName)
 	if err != nil {
-		log.Fatal(err)
+		t.Fatal(err)
 	}
 
 	claims := &jwt.StandardClaims{

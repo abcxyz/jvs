@@ -7,15 +7,13 @@ import (
 	"crypto/rand"
 	"crypto/x509"
 	"encoding/pem"
-	"log"
 	"net"
 	"testing"
 	"time"
 
 	kms "cloud.google.com/go/kms/apiv1"
-	v0 "github.com/abcxyz/jvs/api/v0"
 	jvspb "github.com/abcxyz/jvs/apis/v0"
-	jvs_crypto "github.com/abcxyz/jvs/pkg/jvscrypto"
+	jvscrypto "github.com/abcxyz/jvs/pkg/jvscrypto"
 	"github.com/abcxyz/jvs/pkg/testutil"
 	"github.com/golang-jwt/jwt"
 	"github.com/golang/protobuf/proto"
@@ -55,15 +53,16 @@ func TestCreateToken(t *testing.T) {
 
 	lis, err := net.Listen("tcp", "localhost:0")
 	if err != nil {
-		log.Fatal(err)
+		t.Fatal(err)
 	}
 	go serv.Serve(lis)
 
 	conn, err := grpc.Dial(lis.Addr().String(), grpc.WithInsecure())
 	if err != nil {
-		log.Fatal(err)
+		t.Fatal(err)
 	}
 	clientOpt = option.WithGRPCConn(conn)
+	defer conn.Close()
 
 	c, err := kms.NewKeyManagementClient(ctx, clientOpt)
 	if err != nil {
@@ -72,7 +71,7 @@ func TestCreateToken(t *testing.T) {
 
 	signer, err := gcpkms.NewSigner(ctx, c, testutil.TestKeyName)
 	if err != nil {
-		log.Fatal(err)
+		t.Fatal(err)
 	}
 	processor := &Processor{
 		Signer: signer,
@@ -133,15 +132,14 @@ func TestCreateToken(t *testing.T) {
 			testutil.ErrCmp(t, tc.wantErr, gotErr)
 
 			if gotErr == nil {
-				if err := jvs_crypto.VerifyJWTString(ctx, c, testutil.TestKeyName, response); err != nil {
+				if err := jvscrypto.VerifyJWTString(ctx, c, testutil.TestKeyName, response); err != nil {
 					t.Errorf("Unable to verify signed jwt. %v", err)
 				}
 
-				claims := &v0.JVSClaims{}
-				_, err := jwt.ParseWithClaims(response, claims, func(token *jwt.Token) (interface{}, error) {
+				claims := &jvspb.JVSClaims{}
+				if _, err := jwt.ParseWithClaims(response, claims, func(token *jwt.Token) (interface{}, error) {
 					return privateKey.Public(), nil
-				})
-				if err != nil {
+				}); err != nil {
 					t.Errorf("Unable to parse created jwt string. %v", err)
 				}
 				validateClaims(t, claims, tc.request.Justifications)
@@ -150,7 +148,7 @@ func TestCreateToken(t *testing.T) {
 	}
 }
 
-func validateClaims(t testing.TB, provided *v0.JVSClaims, expectedJustifications []*jvspb.Justification) {
+func validateClaims(t testing.TB, provided *jvspb.JVSClaims, expectedJustifications []*jvspb.Justification) {
 	// test the standard claims filled by processor
 	if provided.StandardClaims.Issuer != jvsIssuer {
 		t.Errorf("audience value %s incorrect, expected %s", provided.StandardClaims.Issuer, jvsIssuer)

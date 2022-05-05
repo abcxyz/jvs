@@ -26,7 +26,7 @@ import (
 	jvspb "github.com/abcxyz/jvs/apis/v0"
 	"github.com/abcxyz/jvs/pkg/config"
 	"github.com/abcxyz/jvs/pkg/justification"
-	jvs_crypto "github.com/abcxyz/jvs/pkg/jvscrypto"
+	jvscrypto "github.com/abcxyz/jvs/pkg/jvscrypto"
 	"github.com/sethvargo/go-gcpkms/pkg/gcpkms"
 	"go.opentelemetry.io/contrib/instrumentation/google.golang.org/grpc/otelgrpc"
 	"golang.org/x/sync/errgroup"
@@ -61,7 +61,7 @@ func realMain(ctx context.Context) error {
 	}
 
 	// TODO: We should have a way of asynchronously updating.
-	ver, err := jvs_crypto.GetLatestKeyVersion(ctx, kmsClient, cfg.KeyName)
+	ver, err := jvscrypto.GetLatestKeyVersion(ctx, kmsClient, cfg.KeyName)
 	if err != nil {
 		log.Fatalf("failed to get key version: %v", err)
 	}
