@@ -13,7 +13,7 @@ import (
 
 	kms "cloud.google.com/go/kms/apiv1"
 	jvspb "github.com/abcxyz/jvs/apis/v0"
-	jvscrypto "github.com/abcxyz/jvs/pkg/jvscrypto"
+	"github.com/abcxyz/jvs/pkg/jvscrypto"
 	"github.com/abcxyz/jvs/pkg/testutil"
 	"github.com/golang-jwt/jwt"
 	"github.com/golang/protobuf/proto"
@@ -62,7 +62,9 @@ func TestCreateToken(t *testing.T) {
 		t.Fatal(err)
 	}
 	clientOpt = option.WithGRPCConn(conn)
-	defer conn.Close()
+	t.Cleanup(func() {
+		conn.Close()
+	})
 
 	c, err := kms.NewKeyManagementClient(ctx, clientOpt)
 	if err != nil {

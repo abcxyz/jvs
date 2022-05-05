@@ -59,6 +59,9 @@ func TestVerifyJWTString(t *testing.T) {
 		t.Fatal(err)
 	}
 	clientOpt = option.WithGRPCConn(conn)
+	t.Cleanup(func() {
+		conn.Close()
+	})
 
 	kms, err := kms.NewKeyManagementClient(ctx, clientOpt)
 	if err != nil {
