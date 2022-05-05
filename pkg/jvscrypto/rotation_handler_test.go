@@ -248,6 +248,7 @@ func TestPerformActions(t *testing.T) {
 		log.Fatal(err)
 	}
 	clientOpt = option.WithGRPCConn(conn)
+	defer conn.Close()
 
 	c, err := kms.NewKeyManagementClient(ctx, clientOpt)
 	if err != nil {
