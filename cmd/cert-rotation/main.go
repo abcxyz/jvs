@@ -92,6 +92,7 @@ func realMain(ctx context.Context) error {
 	if err != nil {
 		log.Fatalln(err)
 	}
+	defer bt.Close()
 
 	handler := &jvscrypto.RotationHandler{
 		KmsClient:    kmsClient,
