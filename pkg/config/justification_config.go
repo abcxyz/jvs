@@ -36,6 +36,10 @@ type JustificationConfig struct {
 
 	// Service configuration.
 	Port string `yaml:"port,omitempty" env:"PORT,overwrite"`
+
+	// KeyName format: `projects/*/locations/*/keyRings/*/cryptoKeys/*`
+	// https://pkg.go.dev/google.golang.org/genproto/googleapis/cloud/kms/v1#CryptoKey
+	KeyName string `yaml:"key,omitempty" env:"KEY,overwrite"`
 }
 
 // Validate checks if the config is valid.
