@@ -21,7 +21,7 @@ const (
 )
 
 const (
-	TableName  = "jvs-certificates.certificate-states"
+	TableName  = "certificate-states"
 	FamilyName = "version-info"
 )
 
@@ -37,6 +37,7 @@ func (v VersionState) String() string {
 	return "UNKNOWN"
 }
 
+// GetVersionState converts a string to a VersionState.
 func GetVersionState(s string) VersionState {
 	switch s {
 	case "PRIMARY":
@@ -49,9 +50,10 @@ func GetVersionState(s string) VersionState {
 	return VersionStateUnknown
 }
 
+// GetActiveVersionStates returns a map from key version name to VersionState from BigTable.
 func GetActiveVersionStates(ctx context.Context, client *bigtable.Client) (map[string]VersionState, error) {
-	tbl := client.Open(FamilyName)
-	var vers map[string]VersionState
+	tbl := client.Open(TableName)
+	vers := make(map[string]VersionState)
 	err := tbl.ReadRows(ctx, bigtable.RowRange{}, func(row bigtable.Row) bool {
 		vers[row.Key()] = GetVersionState(string(row[FamilyName][0].Value))
 		return true
@@ -62,6 +64,7 @@ func GetActiveVersionStates(ctx context.Context, client *bigtable.Client) (map[s
 	return vers, nil
 }
 
+// WriteVersionState writes a key version name and VersionState to BigTable.
 func WriteVersionState(ctx context.Context, client *bigtable.Client, versionName string, state VersionState) error {
 	tbl := client.Open(TableName)
 	timestamp := bigtable.Now()
@@ -78,7 +81,8 @@ func WriteVersionState(ctx context.Context, client *bigtable.Client, versionName
 	return nil
 }
 
-func RemoveVersionState(ctx context.Context, client *bigtable.Client, versionName string) error {
+// RemoveVersion removes the version from BigTable.
+func RemoveVersion(ctx context.Context, client *bigtable.Client, versionName string) error {
 	tbl := client.Open(TableName)
 
 	mut := bigtable.NewMutation()

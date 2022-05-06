@@ -275,7 +275,7 @@ func (h *RotationHandler) performActions(ctx context.Context, keyName string, ac
 			if err := h.performDisable(ctx, ver); err != nil {
 				result = multierror.Append(result, err)
 			} else {
-				if err := RemoveVersionState(ctx, h.BTClient, ver.Name); err != nil {
+				if err := RemoveVersion(ctx, h.BTClient, ver.Name); err != nil {
 					result = multierror.Append(result, err)
 				}
 			}

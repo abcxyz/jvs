@@ -515,7 +515,7 @@ func TestPerformActions(t *testing.T) {
 			t.Log(tbl.SampleRowKeys(ctx))
 			if err := tbl.ReadRows(ctx, bigtable.RowRange{}, func(row bigtable.Row) bool {
 				got[row.Key()] = GetVersionState(string(row[FamilyName][0].Value))
-				RemoveVersionState(ctx, bt, row.Key()) // remove so other tests aren't messed with.
+				RemoveVersion(ctx, bt, row.Key()) // remove so other tests aren't messed with.
 				return true
 			}); err != nil {
 				t.Errorf("issue while reading from test big table, %v", err)

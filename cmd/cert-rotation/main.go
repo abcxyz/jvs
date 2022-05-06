@@ -25,6 +25,7 @@ import (
 	"syscall"
 	"time"
 
+	"cloud.google.com/go/bigtable"
 	kms "cloud.google.com/go/kms/apiv1"
 	"github.com/abcxyz/jvs/pkg/config"
 	"github.com/abcxyz/jvs/pkg/jvscrypto"
@@ -80,15 +81,21 @@ func realMain(ctx context.Context) error {
 	if err != nil {
 		return fmt.Errorf("failed to setup kms client: %v", err)
 	}
+	defer kmsClient.Close()
 
 	config, err := config.LoadCryptoConfig(ctx, []byte{})
 	if err != nil {
 		return fmt.Errorf("failed to load config: %v", err)
 	}
 
-	defer kmsClient.Close()
+	bt, err := bigtable.NewClient(ctx, config.ProjectID, config.BigTableInstanceId)
+	if err != nil {
+		log.Fatalln(err)
+	}
+
 	handler := &jvscrypto.RotationHandler{
 		KmsClient:    kmsClient,
+		BTClient:     bt,
 		CryptoConfig: config,
 		CurrentTime:  time.Now(),
 	}

@@ -35,6 +35,9 @@ type CryptoConfig struct {
 	// Version is the version of the config.
 	Version uint8 `yaml:"version,omitempty" env:"VERSION,overwrite"`
 
+	ProjectID          string `yaml:"project_id,omitempty" env:"PROJECT,overwrite"`
+	BigTableInstanceId string `yaml:"bt_instance_id,omitempty" env:"BT_INSTANCE_ID,overwrite"`
+
 	// Crypto variables
 	KeyTTL           time.Duration `yaml:"key_ttl,omitempty" env:"KEY_TTL,overwrite"`
 	GracePeriod      time.Duration `yaml:"grace_period,omitempty" env:"GRACE_PERIOD,overwrite"`
