@@ -225,6 +225,7 @@ func (h *RotationHandler) actionsForInactiveVersions(vers []*kmspb.CryptoKeyVers
 
 	for _, ver := range vers {
 		if ver.State == kmspb.CryptoKeyVersion_DISABLED {
+
 			destroyBeforeDate := h.CurrentTime.Add(-h.CryptoConfig.DestroyAge())
 			if ver.CreateTime.AsTime().Before(destroyBeforeDate) {
 				log.Printf("version %q created %q before cutoff date %q, will disable.\n", ver.Name, ver.CreateTime.AsTime(), destroyBeforeDate)
@@ -234,6 +235,7 @@ func (h *RotationHandler) actionsForInactiveVersions(vers []*kmspb.CryptoKeyVers
 				actions[ver] = ActionNone
 			}
 		} else {
+
 			// TODO: handle import cases. https://github.com/abcxyz/jvs/issues/5
 			log.Printf("key version in state: %v. No action necessary.", ver.State)
 			actions[ver] = ActionNone
