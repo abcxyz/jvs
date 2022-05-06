@@ -104,11 +104,11 @@ func (h *RotationHandler) determineActions(vers []*kmspb.CryptoKeyVersion, activ
 		if state, ok := activeStates[ver.Name]; ok {
 			// Key is in the database, we consider it active.
 			switch state {
-			case VER_STATE_PRIMARY:
+			case VersionStatePrimary:
 				primary = ver
-			case VER_STATE_NEW:
+			case VersionStateNew:
 				newVers = append(newVers, ver)
-			case VER_STATE_OLD:
+			case VersionStateOld:
 				oldVers = append(oldVers, ver)
 			}
 		} else {
@@ -117,13 +117,32 @@ func (h *RotationHandler) determineActions(vers []*kmspb.CryptoKeyVersion, activ
 		}
 	}
 
+	primaryExists := primary != nil
+
 	actions := h.actionsForInactiveVersions(inactiveVers)
-	activeActions, err := h.actionsForActiveVersions(primary, otherActiveVers)
+
+	newActions, promoting, err := h.actionsForNewVersions(newVers, primaryExists)
 	if err != nil {
 		return nil, err
 	}
-	for k, v := range activeActions {
+	for k, v := range newActions {
 		actions[k] = v
+	}
+
+	oldActions, err := h.actionsForOldVersions(oldVers)
+	if err != nil {
+		return nil, err
+	}
+	for k, v := range oldActions {
+		actions[k] = v
+	}
+
+	if !primaryExists && !promoting {
+		// We don't have a primary, and don't have another version eligible for promotion.
+		// we should immediately create and promote a new version.
+		actions[nil] = ActionCreateNewAndPromote
+	} else {
+		actions[primary] = h.actionsForPrimaryVersion(primary, promoting)
 	}
 
 	return actions, nil
@@ -132,7 +151,7 @@ func (h *RotationHandler) determineActions(vers []*kmspb.CryptoKeyVersion, activ
 // Determine whether the newest key needs to be rotated.
 // The only actions available are ActionNone and ActionCreate. This is because we never
 // want to disable/delete our newest key if we don't have a newer second one created.
-func (h *RotationHandler) actionsForNewVersions(newVers []*kmspb.CryptoKeyVersion) (map[*kmspb.CryptoKeyVersion]Action, bool, error) {
+func (h *RotationHandler) actionsForNewVersions(newVers []*kmspb.CryptoKeyVersion, primaryExists bool) (map[*kmspb.CryptoKeyVersion]Action, bool, error) {
 	actions := make(map[*kmspb.CryptoKeyVersion]Action)
 
 	promotingNewKey := false
@@ -144,8 +163,14 @@ func (h *RotationHandler) actionsForNewVersions(newVers []*kmspb.CryptoKeyVersio
 				actions[ver] = ActionPromote
 				promotingNewKey = true
 			} else {
-				log.Printf("version created %q after cutoff date %q, no action necessary.\n", ver.CreateTime.AsTime(), promoteBeforeDate)
-				actions[ver] = ActionNone
+				if primaryExists {
+					log.Printf("version created %q after cutoff date %q, no action necessary.\n", ver.CreateTime.AsTime(), promoteBeforeDate)
+					actions[ver] = ActionNone
+				} else {
+					log.Printf("version created %q after cutoff date %q, but no primary current exists. will promote to primary.\n", ver.CreateTime.AsTime(), promoteBeforeDate)
+					actions[ver] = ActionPromote
+					promotingNewKey = true
+				}
 			}
 		} else {
 			log.Printf("version is disabled, no action necessary.\n")
@@ -217,27 +242,32 @@ func (h *RotationHandler) actionsForInactiveVersions(vers []*kmspb.CryptoKeyVers
 	return actions
 }
 
+// TODO: it may be worth adding rollback functionality for cases where multiple actions are expected to occur.
+// for example, if we are demoting a key, we also need to ensure we've marked another as primary, and may end up
+// in an odd state if one action occurs and the other does not.
 func (h *RotationHandler) performActions(ctx context.Context, keyName string, actions map[*kmspb.CryptoKeyVersion]Action) error {
 	var result error
 	for ver, action := range actions {
 		switch action {
 		case ActionCreateNew:
-			if err := h.performCreateNew(ctx, keyName); err != nil {
+			newVer, err := h.performCreateNew(ctx, keyName)
+			if err != nil {
 				result = multierror.Append(result, err)
 			} else {
-				if err := h.setState(ctx, ver, VER_STATE_NEW); err != nil {
+				if err := h.setState(ctx, newVer, VersionStateNew); err != nil {
 					result = multierror.Append(result, err)
 				}
 			}
 		case ActionPromote:
-			if err := h.setState(ctx, ver, VER_STATE_PRIMARY); err != nil {
+			if err := h.setState(ctx, ver, VersionStatePrimary); err != nil {
 				result = multierror.Append(result, err)
 			}
 		case ActionCreateNewAndPromote:
-			if err := h.performCreateNew(ctx, keyName); err != nil {
+			newVer, err := h.performCreateNew(ctx, keyName)
+			if err != nil {
 				result = multierror.Append(result, err)
 			} else {
-				if err := h.setState(ctx, ver, VER_STATE_PRIMARY); err != nil {
+				if err := h.setState(ctx, newVer, VersionStatePrimary); err != nil {
 					result = multierror.Append(result, err)
 				}
 			}
@@ -254,7 +284,7 @@ func (h *RotationHandler) performActions(ctx context.Context, keyName string, ac
 				result = multierror.Append(result, err)
 			}
 		case ActionDemote:
-			if err := h.setState(ctx, ver, VER_STATE_OLD); err != nil {
+			if err := h.setState(ctx, ver, VersionStateOld); err != nil {
 				result = multierror.Append(result, err)
 			}
 		case ActionNone:
@@ -296,16 +326,17 @@ func (h *RotationHandler) performDestroy(ctx context.Context, ver *kmspb.CryptoK
 	return nil
 }
 
-func (h *RotationHandler) performCreateNew(ctx context.Context, keyName string) error {
+func (h *RotationHandler) performCreateNew(ctx context.Context, keyName string) (*kmspb.CryptoKeyVersion, error) {
 	log.Printf("creating new key version.")
 	createReq := &kmspb.CreateCryptoKeyVersionRequest{
 		Parent:           keyName,
 		CryptoKeyVersion: &kmspb.CryptoKeyVersion{},
 	}
-	if _, err := h.KmsClient.CreateCryptoKeyVersion(ctx, createReq); err != nil {
-		return fmt.Errorf("key creation failed: %w", err)
+	resp, err := h.KmsClient.CreateCryptoKeyVersion(ctx, createReq)
+	if err != nil {
+		return nil, fmt.Errorf("key creation failed: %w", err)
 	}
-	return nil
+	return resp, nil
 }
 
 func (h *RotationHandler) setState(ctx context.Context, ver *kmspb.CryptoKeyVersion, state VersionState) error {

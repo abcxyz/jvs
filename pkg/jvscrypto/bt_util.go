@@ -9,23 +9,30 @@ import (
 	"cloud.google.com/go/bigtable"
 )
 
-// These states are independent of KMS states. This allows us to distinguish which key (regardless of KMS state)
+// VersionState is independent of KMS states. This allows us to distinguish which key (regardless of KMS state)
 // to use when signing.
 type VersionState int64
 
 const (
-	VER_STATE_PRIMARY VersionState = iota
-	VER_STATE_NEW
-	VER_STATE_OLD
-	VER_STATE_UNKOWN
+	VersionStatePrimary VersionState = iota
+	VersionStateNew
+	VersionStateOld
+	VersionStateUnknown
+)
+
+const (
+	TableName  = "jvs-certificates.certificate-states"
+	FamilyName = "version-info"
 )
 
 func (v VersionState) String() string {
 	switch v {
-	case VER_STATE_PRIMARY:
+	case VersionStatePrimary:
 		return "PRIMARY"
-	case VER_STATE_NEW:
+	case VersionStateNew:
 		return "NEW"
+	case VersionStateOld:
+		return "OLD"
 	}
 	return "UNKNOWN"
 }
@@ -33,18 +40,20 @@ func (v VersionState) String() string {
 func GetVersionState(s string) VersionState {
 	switch s {
 	case "PRIMARY":
-		return VER_STATE_PRIMARY
+		return VersionStatePrimary
 	case "NEW":
-		return VER_STATE_NEW
+		return VersionStateNew
+	case "OLD":
+		return VersionStateOld
 	}
-	return VER_STATE_UNKOWN
+	return VersionStateUnknown
 }
 
 func GetActiveVersionStates(ctx context.Context, client *bigtable.Client) (map[string]VersionState, error) {
-	tbl := client.Open("jvs-certificates.certificate-states")
+	tbl := client.Open(FamilyName)
 	var vers map[string]VersionState
-	err := tbl.ReadRows(ctx, bigtable.RowList{"name", "state"}, func(row bigtable.Row) bool {
-		vers[row.Key()] = GetVersionState(string(row["version-info"][0].Value))
+	err := tbl.ReadRows(ctx, bigtable.RowRange{}, func(row bigtable.Row) bool {
+		vers[row.Key()] = GetVersionState(string(row[FamilyName][0].Value))
 		return true
 	})
 	if err != nil {
@@ -54,11 +63,11 @@ func GetActiveVersionStates(ctx context.Context, client *bigtable.Client) (map[s
 }
 
 func WriteVersionState(ctx context.Context, client *bigtable.Client, versionName string, state VersionState) error {
-	tbl := client.Open("jvs-certificates.certificate-states")
+	tbl := client.Open(TableName)
 	timestamp := bigtable.Now()
 
 	mut := bigtable.NewMutation()
-	mut.Set("version-info", "state", timestamp, []byte(state.String()))
+	mut.Set(FamilyName, "state", timestamp, []byte(state.String()))
 
 	buf := new(bytes.Buffer)
 	binary.Write(buf, binary.BigEndian, int64(1))
@@ -70,7 +79,7 @@ func WriteVersionState(ctx context.Context, client *bigtable.Client, versionName
 }
 
 func RemoveVersionState(ctx context.Context, client *bigtable.Client, versionName string) error {
-	tbl := client.Open("jvs-certificates.certificate-states")
+	tbl := client.Open(TableName)
 
 	mut := bigtable.NewMutation()
 	mut.DeleteRow()
