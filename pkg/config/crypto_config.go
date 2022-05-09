@@ -35,10 +35,6 @@ type CryptoConfig struct {
 	// Version is the version of the config.
 	Version uint8 `yaml:"version,omitempty" env:"VERSION,overwrite"`
 
-	// TODO: TEST new VARS!
-	ProjectID          string `yaml:"project_id,omitempty" env:"PROJECT,overwrite"`
-	BigTableInstanceId string `yaml:"bt_instance_id,omitempty" env:"BT_INSTANCE_ID,overwrite"`
-
 	// Crypto variables
 	KeyTTL           time.Duration `yaml:"key_ttl,omitempty" env:"KEY_TTL,overwrite"`
 	GracePeriod      time.Duration `yaml:"grace_period,omitempty" env:"GRACE_PERIOD,overwrite"`
@@ -76,14 +72,6 @@ func (cfg *CryptoConfig) Validate() error {
 	// Propagation delay must be lower than grace period.
 	if cfg.PropagationDelay <= 0 || cfg.PropagationDelay > cfg.GracePeriod {
 		err = multierror.Append(err, fmt.Errorf("propagation delay is invalid: %v", cfg.PropagationDelay))
-	}
-
-	if cfg.ProjectID == "" {
-		err = multierror.Append(err, fmt.Errorf("project id must be set"))
-	}
-
-	if cfg.BigTableInstanceId == "" {
-		err = multierror.Append(err, fmt.Errorf("big table instance id must be set"))
 	}
 
 	return err

@@ -44,17 +44,13 @@ key_ttl: 720h # 30 days
 grace_period: 2h
 disabled_period: 720h # 30 days
 propagation_delay: 1h
-project_id: my-project
-bt_instance_id: my-table
 `,
 			wantConfig: &CryptoConfig{
-				Version:            1,
-				KeyTTL:             720 * time.Hour, // 30 days
-				GracePeriod:        2 * time.Hour,   // 2 hours
-				DisabledPeriod:     720 * time.Hour, // 30 days
-				PropagationDelay:   time.Hour,       // 1 hour
-				ProjectID:          "my-project",
-				BigTableInstanceId: "my-table",
+				Version:          1,
+				KeyTTL:           720 * time.Hour, // 30 days
+				GracePeriod:      2 * time.Hour,   // 2 hours
+				DisabledPeriod:   720 * time.Hour, // 30 days
+				PropagationDelay: time.Hour,       // 1 hour
 			},
 		},
 		{
@@ -65,17 +61,13 @@ propagation_time: 30m
 grace_period: 2h
 disabled_period: 720h # 30 days
 propagation_delay: 1h
-project_id: my-project
-bt_instance_id: my-table
 `,
 			wantConfig: &CryptoConfig{
-				Version:            1,
-				KeyTTL:             720 * time.Hour, // 30 days
-				GracePeriod:        2 * time.Hour,   // 2 hours
-				DisabledPeriod:     720 * time.Hour, // 30 days
-				PropagationDelay:   time.Hour,       // 1 hour
-				ProjectID:          "my-project",
-				BigTableInstanceId: "my-table",
+				Version:          1,
+				KeyTTL:           720 * time.Hour, // 30 days
+				GracePeriod:      2 * time.Hour,   // 2 hours
+				DisabledPeriod:   720 * time.Hour, // 30 days
+				PropagationDelay: time.Hour,       // 1 hour
 			},
 		},
 		{
@@ -86,8 +78,6 @@ key_ttl: 720h # 30 days
 grace_period: 2h
 disabled_period: 720h # 30 days
 propagation_delay: 1h
-project_id: my-project
-bt_instance_id: my-table
 `,
 			wantConfig: nil,
 			wantErr:    "failed validating config: 1 error occurred:\n\t* unexpected Version 255 want 1\n\n",
@@ -100,8 +90,6 @@ key_ttl: 720h # 30 days
 grace_period: 2h
 disabled_period: 720h # 30 days
 propagation_delay: 3h
-project_id: my-project
-bt_instance_id: my-table
 `,
 			wantConfig: nil,
 			wantErr:    "failed validating config: 1 error occurred:\n\t* propagation delay is invalid: 3h0m0s\n\n",
@@ -113,8 +101,6 @@ version: 1
 grace_period: 2h
 disabled_period: 720h # 30 days
 propagation_delay: 1h
-project_id: my-project
-bt_instance_id: my-table
 `,
 			wantConfig: nil,
 			wantErr:    "failed validating config: 1 error occurred:\n\t* key ttl is invalid: 0s\n\n",
@@ -123,7 +109,7 @@ bt_instance_id: my-table
 			name:       "test_empty",
 			cfg:        "",
 			wantConfig: nil,
-			wantErr:    "failed validating config: 6 errors occurred:\n\t* key ttl is invalid: 0s\n\t* grace period is invalid: 0s\n\t* disabled period is invalid: 0s\n\t* propagation delay is invalid: 0s\n\t* project id must be set\n\t* big table instance id must be set\n\n",
+			wantErr:    "failed validating config: 4 errors occurred:\n\t* key ttl is invalid: 0s\n\t* grace period is invalid: 0s\n\t* disabled period is invalid: 0s\n\t* propagation delay is invalid: 0s\n\n",
 		},
 		{
 			name: "test_negative",
@@ -133,8 +119,6 @@ key_ttl: -720h
 grace_period: -2h
 disabled_period: -720h
 propagation_delay: -1h
-project_id: my-project
-bt_instance_id: my-table
 `,
 			wantConfig: nil,
 			wantErr:    "failed validating config: 4 errors occurred:\n\t* key ttl is invalid: -720h0m0s\n\t* grace period is invalid: -2h0m0s\n\t* disabled period is invalid: -720h0m0s\n\t* propagation delay is invalid: -1h0m0s\n\n",
@@ -147,21 +131,17 @@ key_ttl: 720h # 30 days
 grace_period: 2h
 disabled_period: 720h # 30 days
 propagation_delay: 1h
-project_id: my-project
-bt_instance_id: my-table
 `,
 			envs: map[string]string{
 				"JVS_KEY_TTL":      "1080h", // 45 days
 				"JVS_GRACE_PERIOD": "4h",
 			},
 			wantConfig: &CryptoConfig{
-				Version:            1,
-				KeyTTL:             1080 * time.Hour, // 45 days
-				GracePeriod:        4 * time.Hour,    // 4 hours
-				DisabledPeriod:     720 * time.Hour,  // 30 days
-				PropagationDelay:   time.Hour,        // 1 hour
-				ProjectID:          "my-project",
-				BigTableInstanceId: "my-table",
+				Version:          1,
+				KeyTTL:           1080 * time.Hour, // 45 days
+				GracePeriod:      4 * time.Hour,    // 4 hours
+				DisabledPeriod:   720 * time.Hour,  // 30 days
+				PropagationDelay: time.Hour,        // 1 hour
 			},
 		},
 		{
@@ -172,17 +152,13 @@ bt_instance_id: my-table
 				"JVS_GRACE_PERIOD":      "4h",
 				"JVS_DISABLED_PERIOD":   "1080h", // 45 days
 				"JVS_PROPAGATION_DELAY": "1h",
-				"JVS_PROJECT":           "my-project",
-				"JVS_BT_INSTANCE_ID":    "my-table",
 			},
 			wantConfig: &CryptoConfig{
-				Version:            1,
-				KeyTTL:             1080 * time.Hour, // 45 days
-				GracePeriod:        4 * time.Hour,    // 4 hours
-				DisabledPeriod:     1080 * time.Hour, // 45 days
-				PropagationDelay:   time.Hour,        // 1 hour
-				ProjectID:          "my-project",
-				BigTableInstanceId: "my-table",
+				Version:          1,
+				KeyTTL:           1080 * time.Hour, // 45 days
+				GracePeriod:      4 * time.Hour,    // 4 hours
+				DisabledPeriod:   1080 * time.Hour, // 45 days
+				PropagationDelay: time.Hour,        // 1 hour
 			},
 		},
 	}
