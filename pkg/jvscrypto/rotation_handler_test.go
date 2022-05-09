@@ -24,8 +24,6 @@ import (
 	"testing"
 	"time"
 
-	"cloud.google.com/go/bigtable"
-	"cloud.google.com/go/bigtable/bttest"
 	"github.com/abcxyz/jvs/pkg/config"
 	"github.com/abcxyz/jvs/pkg/testutil"
 	"google.golang.org/protobuf/types/known/timestamppb"
@@ -324,34 +322,8 @@ func TestPerformActions(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	serv2, err := bttest.NewServer("127.0.0.2:0")
-	if err != nil {
-		log.Fatal(err)
-	}
-	conn2, err := grpc.Dial(serv2.Addr, grpc.WithInsecure())
-	if err != nil {
-		log.Fatal(err)
-	}
-
-	proj, instance := "proj", "instance"
-
-	adminClient, err := bigtable.NewAdminClient(ctx, proj, instance, option.WithGRPCConn(conn2))
-	if err != nil {
-		log.Fatalln(err)
-	}
-
-	if err = adminClient.CreateTable(ctx, TableName); err != nil {
-		t.Fatal(err)
-	}
-
-	if err = adminClient.CreateColumnFamily(ctx, TableName, FamilyName); err != nil {
-		log.Fatalln(err)
-	}
-
-	bt, err := bigtable.NewClient(ctx, proj, instance, option.WithGRPCConn(conn2))
 	handler := &RotationHandler{
 		KmsClient:    c,
-		BTClient:     bt,
 		CryptoConfig: &config.CryptoConfig{},
 	}
 
@@ -359,13 +331,13 @@ func TestPerformActions(t *testing.T) {
 	versionName := fmt.Sprintf("%s/cryptoKeyVersions/%s", parent, "[VERSION]")
 
 	tests := []struct {
-		name                    string
-		actions                 map[*kmspb.CryptoKeyVersion]Action
-		priorDatabaseEntries    map[string]VersionState
-		expectedRequests        []proto.Message
-		expectedDatabaseEntries map[string]VersionState
-		wantErr                 string
-		serverErr               error
+		name             string
+		actions          map[*kmspb.CryptoKeyVersion]Action
+		priorStates      map[string]VersionState
+		expectedRequests []proto.Message
+		expectedStates   map[string]VersionState
+		wantErr          string
+		serverErr        error
 	}{
 		{
 			name: "disable",
@@ -375,7 +347,7 @@ func TestPerformActions(t *testing.T) {
 					Name:  versionName,
 				}: ActionDisable,
 			},
-			priorDatabaseEntries: map[string]VersionState{
+			priorStates: map[string]VersionState{
 				versionName: VersionStatePrimary, // should be in db before, but not after.
 			},
 			wantErr: "",
@@ -387,6 +359,18 @@ func TestPerformActions(t *testing.T) {
 					},
 					UpdateMask: &fieldmaskpb.FieldMask{
 						Paths: []string{"state"},
+					},
+				},
+				&kmspb.GetCryptoKeyRequest{
+					Name: parent,
+				},
+				&kmspb.UpdateCryptoKeyRequest{
+					CryptoKey: &kmspb.CryptoKey{
+						Labels: nil,
+						Name:   parent,
+					},
+					UpdateMask: &fieldmaskpb.FieldMask{
+						Paths: []string{"labels"},
 					},
 				},
 			},
@@ -405,8 +389,20 @@ func TestPerformActions(t *testing.T) {
 					Parent:           parent,
 					CryptoKeyVersion: &kmspb.CryptoKeyVersion{},
 				},
+				&kmspb.GetCryptoKeyRequest{
+					Name: parent,
+				},
+				&kmspb.UpdateCryptoKeyRequest{
+					CryptoKey: &kmspb.CryptoKey{
+						Labels: map[string]string{versionName + "-new": VersionStateNew.String()},
+						Name:   parent,
+					},
+					UpdateMask: &fieldmaskpb.FieldMask{
+						Paths: []string{"labels"},
+					},
+				},
 			},
-			expectedDatabaseEntries: map[string]VersionState{
+			expectedStates: map[string]VersionState{
 				versionName + "-new": VersionStateNew,
 			},
 		},
@@ -431,41 +427,42 @@ func TestPerformActions(t *testing.T) {
 				{
 					Name:  versionName,
 					State: kmspb.CryptoKeyVersion_ENABLED,
-				}: ActionDisable,
-				{
-					Name:  versionName + "2",
-					State: kmspb.CryptoKeyVersion_ENABLED,
 				}: ActionCreateNew,
 				{
-					Name:  versionName + "3",
+					Name:  versionName + "2",
 					State: kmspb.CryptoKeyVersion_DISABLED,
 				}: ActionDestroy,
 			},
-			priorDatabaseEntries: map[string]VersionState{
-				versionName + "2": VersionStatePrimary,
-				versionName:       VersionStateOld, // should be in db before, but not after.
+			priorStates: map[string]VersionState{
+				versionName: VersionStatePrimary,
 			},
-			expectedDatabaseEntries: map[string]VersionState{
-				versionName + "2":    VersionStatePrimary,
+			expectedStates: map[string]VersionState{
+				versionName:          VersionStatePrimary,
 				versionName + "-new": VersionStateNew,
 			},
 			wantErr: "",
 			expectedRequests: []proto.Message{
-				&kmspb.UpdateCryptoKeyVersionRequest{
-					CryptoKeyVersion: &kmspb.CryptoKeyVersion{
-						State: kmspb.CryptoKeyVersion_DISABLED,
-						Name:  versionName,
-					},
-					UpdateMask: &fieldmaskpb.FieldMask{
-						Paths: []string{"state"},
-					},
-				},
 				&kmspb.CreateCryptoKeyVersionRequest{
 					Parent:           parent,
 					CryptoKeyVersion: &kmspb.CryptoKeyVersion{},
 				},
+				&kmspb.GetCryptoKeyRequest{
+					Name: parent,
+				},
+				&kmspb.UpdateCryptoKeyRequest{
+					CryptoKey: &kmspb.CryptoKey{
+						Labels: map[string]string{
+							versionName + "-new": VersionStateNew.String(),
+							versionName:          VersionStatePrimary.String(),
+						},
+						Name: parent,
+					},
+					UpdateMask: &fieldmaskpb.FieldMask{
+						Paths: []string{"labels"},
+					},
+				},
 				&kmspb.DestroyCryptoKeyVersionRequest{
-					Name: versionName + "3",
+					Name: versionName + "2",
 				},
 			},
 		},
@@ -492,11 +489,14 @@ func TestPerformActions(t *testing.T) {
 		t.Run(tc.name, func(t *testing.T) {
 			mockKeyManagement.Reqs = nil
 			mockKeyManagement.Err = tc.serverErr
+			mockKeyManagement.KeyName = parent
+			mockKeyManagement.VersionName = versionName
 
 			mockKeyManagement.Resps = append(mockKeyManagement.Resps[:0], &kmspb.CryptoKeyVersion{Name: versionName + "-new"})
 
-			for key, state := range tc.priorDatabaseEntries {
-				WriteVersionState(ctx, bt, key, state)
+			mockKeyManagement.Labels = make(map[string]string)
+			for key, state := range tc.priorStates {
+				mockKeyManagement.Labels[key] = state.String()
 			}
 
 			gotErr := handler.performActions(ctx, parent, tc.actions)
@@ -506,25 +506,25 @@ func TestPerformActions(t *testing.T) {
 			}
 
 			if want, got := tc.expectedRequests, mockKeyManagement.Reqs; !slicesEq(want, got) {
-				t.Errorf("wrong request %q, want %q", got, want)
+				for _, msg := range got {
+					t.Errorf("gotty: %s", msg)
+				}
+				for _, msg := range want {
+					t.Errorf("wanty: %s", msg)
+				}
+				t.Errorf("wrong requests %v, want %v", got, want)
 			}
 			testutil.ErrCmp(t, tc.wantErr, gotErr)
 
 			got := make(map[string]VersionState)
-			tbl := bt.Open(TableName)
-			t.Log(tbl.SampleRowKeys(ctx))
-			if err := tbl.ReadRows(ctx, bigtable.RowRange{}, func(row bigtable.Row) bool {
-				got[row.Key()] = GetVersionState(string(row[FamilyName][0].Value))
-				RemoveVersion(ctx, bt, row.Key()) // remove so other tests aren't messed with.
-				return true
-			}); err != nil {
-				t.Errorf("issue while reading from test big table, %v", err)
+			for key, value := range mockKeyManagement.Labels {
+				got[key] = GetVersionState(value)
 			}
 
 			if len(got) == 0 {
 				got = nil
 			}
-			if diff := cmp.Diff(tc.expectedDatabaseEntries, got); diff != "" {
+			if diff := cmp.Diff(tc.expectedStates, got); diff != "" {
 				t.Errorf("Got diff (-want, +got): %v", diff)
 			}
 

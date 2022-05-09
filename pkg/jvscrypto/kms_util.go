@@ -19,6 +19,7 @@ import (
 
 // GetLatestKeyVersion looks up the newest enabled key version. If there is no enabled version, this returns nil.
 func GetLatestKeyVersion(ctx context.Context, kms *kms.KeyManagementClient, keyName string) (*kmspb.CryptoKeyVersion, error) {
+
 	it := kms.ListCryptoKeyVersions(ctx, &kmspb.ListCryptoKeyVersionsRequest{
 		Parent: keyName,
 		Filter: "state=ENABLED",

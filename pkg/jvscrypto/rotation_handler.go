@@ -21,7 +21,6 @@ import (
 	"strings"
 	"time"
 
-	"cloud.google.com/go/bigtable"
 	"github.com/abcxyz/jvs/pkg/config"
 
 	kms "cloud.google.com/go/kms/apiv1"
@@ -35,7 +34,6 @@ import (
 // configuration.
 type RotationHandler struct {
 	KmsClient    *kms.KeyManagementClient
-	BTClient     *bigtable.Client
 	CryptoConfig *config.CryptoConfig
 	CurrentTime  time.Time
 }
@@ -65,7 +63,7 @@ func (h *RotationHandler) RotateKey(ctx context.Context, key string) error {
 	}
 
 	// Get any relevant Key Version information from the BigTable
-	states, err := GetActiveVersionStates(ctx, h.BTClient)
+	states, err := h.getActiveVersionStates(ctx, key)
 	if err != nil {
 		return fmt.Errorf("err while reading big table: %w", err)
 	}
@@ -137,13 +135,7 @@ func (h *RotationHandler) determineActions(vers []*kmspb.CryptoKeyVersion, activ
 		actions[k] = v
 	}
 
-	if !primaryExists && !promoting {
-		// We don't have a primary, and don't have another version eligible for promotion.
-		// we should immediately create and promote a new version.
-		actions[nil] = ActionCreateNewAndPromote
-	} else {
-		actions[primary] = h.actionsForPrimaryVersion(primary, promoting)
-	}
+	actions[primary] = h.actionsForPrimaryVersion(primary, promoting)
 
 	return actions, nil
 }
@@ -256,12 +248,12 @@ func (h *RotationHandler) performActions(ctx context.Context, keyName string, ac
 			if err != nil {
 				result = multierror.Append(result, err)
 			} else {
-				if err := h.setState(ctx, newVer, VersionStateNew); err != nil {
+				if err := h.writeVersionState(ctx, keyName, newVer.Name, VersionStateNew); err != nil {
 					result = multierror.Append(result, err)
 				}
 			}
 		case ActionPromote:
-			if err := h.setState(ctx, ver, VersionStatePrimary); err != nil {
+			if err := h.writeVersionState(ctx, keyName, ver.Name, VersionStatePrimary); err != nil {
 				result = multierror.Append(result, err)
 			}
 		case ActionCreateNewAndPromote:
@@ -269,7 +261,8 @@ func (h *RotationHandler) performActions(ctx context.Context, keyName string, ac
 			if err != nil {
 				result = multierror.Append(result, err)
 			} else {
-				if err := h.setState(ctx, newVer, VersionStatePrimary); err != nil {
+				log.Printf("Promoting immediately.")
+				if err := h.writeVersionState(ctx, keyName, newVer.Name, VersionStatePrimary); err != nil {
 					result = multierror.Append(result, err)
 				}
 			}
@@ -277,7 +270,7 @@ func (h *RotationHandler) performActions(ctx context.Context, keyName string, ac
 			if err := h.performDisable(ctx, ver); err != nil {
 				result = multierror.Append(result, err)
 			} else {
-				if err := RemoveVersion(ctx, h.BTClient, ver.Name); err != nil {
+				if err := h.removeVersion(ctx, keyName, ver.Name); err != nil {
 					result = multierror.Append(result, err)
 				}
 			}
@@ -286,7 +279,7 @@ func (h *RotationHandler) performActions(ctx context.Context, keyName string, ac
 				result = multierror.Append(result, err)
 			}
 		case ActionDemote:
-			if err := h.setState(ctx, ver, VersionStateOld); err != nil {
+			if err := h.writeVersionState(ctx, keyName, ver.Name, VersionStateOld); err != nil {
 				result = multierror.Append(result, err)
 			}
 		case ActionNone:
@@ -341,10 +334,6 @@ func (h *RotationHandler) performCreateNew(ctx context.Context, keyName string) 
 	return resp, nil
 }
 
-func (h *RotationHandler) setState(ctx context.Context, ver *kmspb.CryptoKeyVersion, state VersionState) error {
-	return WriteVersionState(ctx, h.BTClient, ver.Name, state)
-}
-
 // GetKeyNameFromVersion converts a key version name to a key name.
 // Example:
 // `projects/*/locations/*/keyRings/*/cryptoKeys/*/cryptoKeyVersions/*`
@@ -356,4 +345,62 @@ func getKeyNameFromVersion(keyVersionName string) (string, error) {
 	}
 	// cut off last 2 values, re-combine
 	return strings.Join(split[:len(split)-2], "/"), nil
+}
+
+func (h *RotationHandler) writeVersionState(ctx context.Context, key string, versionName string, state VersionState) error {
+	response, err := h.KmsClient.GetCryptoKey(ctx, &kmspb.GetCryptoKeyRequest{Name: key})
+	if err != nil {
+		return fmt.Errorf("issue while getting key from KMS: %w", err)
+	}
+
+	// update label
+	labels := response.Labels
+	if labels == nil {
+		labels = make(map[string]string)
+	}
+	labels[versionName] = state.String()
+	response.Labels = labels
+
+	var messageType *kmspb.CryptoKey
+	mask, err := fieldmaskpb.New(messageType, "labels")
+	if err != nil {
+		return err
+	}
+	_, err = h.KmsClient.UpdateCryptoKey(ctx, &kmspb.UpdateCryptoKeyRequest{CryptoKey: response, UpdateMask: mask})
+	if err != nil {
+		return fmt.Errorf("issue while setting labels in kms %w", err)
+	}
+	return nil
+}
+
+func (h *RotationHandler) removeVersion(ctx context.Context, key string, versionName string) error {
+	response, err := h.KmsClient.GetCryptoKey(ctx, &kmspb.GetCryptoKeyRequest{Name: key})
+	if err != nil {
+		return fmt.Errorf("issue while getting key from KMS: %w", err)
+	}
+
+	// delete label
+	labels := response.Labels
+	delete(labels, versionName)
+	response.Labels = labels
+
+	var messageType *kmspb.CryptoKey
+	mask, err := fieldmaskpb.New(messageType, "labels")
+	if err != nil {
+		return err
+	}
+	h.KmsClient.UpdateCryptoKey(ctx, &kmspb.UpdateCryptoKeyRequest{CryptoKey: response, UpdateMask: mask})
+	return nil
+}
+
+func (h *RotationHandler) getActiveVersionStates(ctx context.Context, key string) (map[string]VersionState, error) {
+	response, err := h.KmsClient.GetCryptoKey(ctx, &kmspb.GetCryptoKeyRequest{Name: key})
+	if err != nil {
+		return nil, fmt.Errorf("issue while getting key from KMS: %w", err)
+	}
+	vers := make(map[string]VersionState)
+	for ver, state := range response.Labels {
+		vers[ver] = GetVersionState(state)
+	}
+	return vers, nil
 }
