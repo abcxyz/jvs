@@ -248,7 +248,7 @@ func (h *RotationHandler) performActions(ctx context.Context, keyName string, ac
 			if err != nil {
 				result = multierror.Append(result, err)
 			} else {
-				if err := h.writeVersionState(ctx, keyName, newVer.Name, VersionStateNew); err != nil {
+				if err := h.writeVersionState(ctx, keyName, newVer.GetName(), VersionStateNew); err != nil {
 					result = multierror.Append(result, err)
 				}
 			}
@@ -347,18 +347,31 @@ func getKeyNameFromVersion(keyVersionName string) (string, error) {
 	return strings.Join(split[:len(split)-2], "/"), nil
 }
 
+func getVersionWithoutPrefix(versionName string) (string, error) {
+	split := strings.Split(versionName, "/")
+	if len(split) != 10 {
+		return "", fmt.Errorf("input had unexpected format: \"%s\"", versionName)
+	}
+	versionWithoutPrefix := "ver_" + split[len(split)-1]
+	return versionWithoutPrefix, nil
+}
+
 func (h *RotationHandler) writeVersionState(ctx context.Context, key string, versionName string, state VersionState) error {
 	response, err := h.KmsClient.GetCryptoKey(ctx, &kmspb.GetCryptoKeyRequest{Name: key})
 	if err != nil {
 		return fmt.Errorf("issue while getting key from KMS: %w", err)
 	}
 
+	verName, err := getVersionWithoutPrefix(versionName)
+	if err != nil {
+		return err
+	}
 	// update label
 	labels := response.Labels
 	if labels == nil {
 		labels = make(map[string]string)
 	}
-	labels[versionName] = state.String()
+	labels[verName] = state.String()
 	response.Labels = labels
 
 	var messageType *kmspb.CryptoKey
@@ -379,9 +392,14 @@ func (h *RotationHandler) removeVersion(ctx context.Context, key string, version
 		return fmt.Errorf("issue while getting key from KMS: %w", err)
 	}
 
+	verName, err := getVersionWithoutPrefix(versionName)
+	if err != nil {
+		return err
+	}
+
 	// delete label
 	labels := response.Labels
-	delete(labels, versionName)
+	delete(labels, verName)
 	response.Labels = labels
 
 	var messageType *kmspb.CryptoKey
@@ -400,7 +418,9 @@ func (h *RotationHandler) getActiveVersionStates(ctx context.Context, key string
 	}
 	vers := make(map[string]VersionState)
 	for ver, state := range response.Labels {
-		vers[ver] = GetVersionState(state)
+		ver = strings.TrimPrefix(ver, "ver_")
+		verNameWithPrefix := fmt.Sprintf("%s/cryptoKeyVersions/%s", key, ver)
+		vers[verNameWithPrefix] = GetVersionState(state)
 	}
 	return vers, nil
 }

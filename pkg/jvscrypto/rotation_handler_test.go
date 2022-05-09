@@ -328,7 +328,8 @@ func TestPerformActions(t *testing.T) {
 	}
 
 	parent := fmt.Sprintf("projects/%s/locations/%s/keyRings/%s/cryptoKeys/%s", "[PROJECT]", "[LOCATION]", "[KEY_RING]", "[CRYPTO_KEY]")
-	versionName := fmt.Sprintf("%s/cryptoKeyVersions/%s", parent, "[VERSION]")
+	versionSuffix := "[VERSION]"
+	versionName := fmt.Sprintf("%s/cryptoKeyVersions/%s", parent, versionSuffix)
 
 	tests := []struct {
 		name             string
@@ -348,7 +349,7 @@ func TestPerformActions(t *testing.T) {
 				}: ActionDisable,
 			},
 			priorStates: map[string]VersionState{
-				versionName: VersionStatePrimary, // should be in db before, but not after.
+				"ver_" + versionSuffix: VersionStatePrimary, // should be in db before, but not after.
 			},
 			wantErr: "",
 			expectedRequests: []proto.Message{
@@ -394,7 +395,7 @@ func TestPerformActions(t *testing.T) {
 				},
 				&kmspb.UpdateCryptoKeyRequest{
 					CryptoKey: &kmspb.CryptoKey{
-						Labels: map[string]string{versionName + "-new": VersionStateNew.String()},
+						Labels: map[string]string{"ver_" + versionSuffix + "-new": VersionStateNew.String()},
 						Name:   parent,
 					},
 					UpdateMask: &fieldmaskpb.FieldMask{
@@ -403,7 +404,7 @@ func TestPerformActions(t *testing.T) {
 				},
 			},
 			expectedStates: map[string]VersionState{
-				versionName + "-new": VersionStateNew,
+				"ver_" + versionSuffix + "-new": VersionStateNew,
 			},
 		},
 		{
@@ -434,11 +435,11 @@ func TestPerformActions(t *testing.T) {
 				}: ActionDestroy,
 			},
 			priorStates: map[string]VersionState{
-				versionName: VersionStatePrimary,
+				"ver_" + versionSuffix: VersionStatePrimary,
 			},
 			expectedStates: map[string]VersionState{
-				versionName:          VersionStatePrimary,
-				versionName + "-new": VersionStateNew,
+				"ver_" + versionSuffix:          VersionStatePrimary,
+				"ver_" + versionSuffix + "-new": VersionStateNew,
 			},
 			wantErr: "",
 			expectedRequests: []proto.Message{
@@ -452,8 +453,8 @@ func TestPerformActions(t *testing.T) {
 				&kmspb.UpdateCryptoKeyRequest{
 					CryptoKey: &kmspb.CryptoKey{
 						Labels: map[string]string{
-							versionName + "-new": VersionStateNew.String(),
-							versionName:          VersionStatePrimary.String(),
+							"ver_" + versionSuffix + "-new": VersionStateNew.String(),
+							"ver_" + versionSuffix:          VersionStatePrimary.String(),
 						},
 						Name: parent,
 					},

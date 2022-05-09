@@ -14,23 +14,23 @@ const (
 func (v VersionState) String() string {
 	switch v {
 	case VersionStatePrimary:
-		return "PRIMARY"
+		return "primary"
 	case VersionStateNew:
-		return "NEW"
+		return "new"
 	case VersionStateOld:
-		return "OLD"
+		return "old"
 	}
-	return "UNKNOWN"
+	return "unknown"
 }
 
 // GetVersionState converts a string to a VersionState.
 func GetVersionState(s string) VersionState {
 	switch s {
-	case "PRIMARY":
+	case "primary":
 		return VersionStatePrimary
-	case "NEW":
+	case "new":
 		return VersionStateNew
-	case "OLD":
+	case "old":
 		return VersionStateOld
 	}
 	return VersionStateUnknown
