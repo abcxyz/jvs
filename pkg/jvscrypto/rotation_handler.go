@@ -347,7 +347,8 @@ func getKeyNameFromVersion(keyVersionName string) (string, error) {
 	return strings.Join(split[:len(split)-2], "/"), nil
 }
 
-func getVersionWithoutPrefix(versionName string) (string, error) {
+// This returns the key version name with "ver_" prefixed. This is because labels must start with a lowercase letter, and can't go over 64 chars.
+func getLabelKey(versionName string) (string, error) {
 	split := strings.Split(versionName, "/")
 	if len(split) != 10 {
 		return "", fmt.Errorf("input had unexpected format: \"%s\"", versionName)
@@ -362,7 +363,7 @@ func (h *RotationHandler) writeVersionState(ctx context.Context, key string, ver
 		return fmt.Errorf("issue while getting key from KMS: %w", err)
 	}
 
-	verName, err := getVersionWithoutPrefix(versionName)
+	verName, err := getLabelKey(versionName)
 	if err != nil {
 		return err
 	}
@@ -392,7 +393,7 @@ func (h *RotationHandler) removeVersion(ctx context.Context, key string, version
 		return fmt.Errorf("issue while getting key from KMS: %w", err)
 	}
 
-	verName, err := getVersionWithoutPrefix(versionName)
+	verName, err := getLabelKey(versionName)
 	if err != nil {
 		return err
 	}
