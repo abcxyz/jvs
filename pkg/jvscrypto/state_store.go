@@ -11,8 +11,13 @@ import (
 )
 
 type StateStore interface {
+	// WriteVersionState writes a state for a version to the state store.
 	WriteVersionState(ctx context.Context, key string, versionName string, state VersionState) error
+
+	// RemoveVersion removes a version from the state store.
 	RemoveVersion(ctx context.Context, key string, versionName string) error
+
+	// GetActiveVersionStates returns a map from version name (full KMS name) to VersionState for active versions.
 	GetActiveVersionStates(ctx context.Context, key string) (map[string]VersionState, error)
 }
 
