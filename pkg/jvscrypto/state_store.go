@@ -129,3 +129,13 @@ func (k *KeyLabelStateStore) GetActiveVersionStates(ctx context.Context, key str
 	}
 	return vers, nil
 }
+
+// This returns the key version name with "ver_" prefixed. This is because labels must start with a lowercase letter, and can't go over 64 chars.
+func getLabelKey(versionName string) (string, error) {
+	split := strings.Split(versionName, "/")
+	if len(split) != 10 {
+		return "", fmt.Errorf("input had unexpected format: \"%s\"", versionName)
+	}
+	versionWithoutPrefix := "ver_" + split[len(split)-1]
+	return versionWithoutPrefix, nil
+}
