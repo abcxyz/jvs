@@ -64,7 +64,7 @@ func (h *RotationHandler) RotateKey(ctx context.Context, key string) error {
 		vers = append(vers, ver)
 	}
 
-	// Get any relevant Key Version information from the BigTable
+	// Get any relevant Key Version information from the StateStore
 	states, err := h.StateStore.GetActiveVersionStates(ctx, key)
 	if err != nil {
 		return fmt.Errorf("err while reading big table: %w", err)
@@ -85,11 +85,11 @@ type Action int8
 
 const (
 	ActionNone                Action = iota
-	ActionCreateNew                  // New version should be created. Will be marked as new in BigTable (BT).
-	ActionCreateNewAndPromote        // New version should be created. Will be marked as primary in BT.
-	ActionPromote                    // Mark version as primary in BT.
-	ActionDemote                     // Mark version as old in BT.
-	ActionDisable                    // Disable version. Will be removed from BT.
+	ActionCreateNew                  // New version should be created. Will be marked as new in StateStore (SS).
+	ActionCreateNewAndPromote        // New version should be created. Will be marked as primary in SS.
+	ActionPromote                    // Mark version as primary in SS.
+	ActionDemote                     // Mark version as old in SS.
+	ActionDisable                    // Disable version. Will be removed from SS.
 	ActionDestroy                    // Destroy version.
 )
 
@@ -249,10 +249,10 @@ func (h *RotationHandler) performActions(ctx context.Context, keyName string, ac
 			newVer, err := h.performCreateNew(ctx, keyName)
 			if err != nil {
 				result = multierror.Append(result, err)
-			} else {
-				if err := h.StateStore.WriteVersionState(ctx, keyName, newVer.GetName(), VersionStateNew); err != nil {
-					result = multierror.Append(result, err)
-				}
+				continue
+			}
+			if err := h.StateStore.WriteVersionState(ctx, keyName, newVer.GetName(), VersionStateNew); err != nil {
+				result = multierror.Append(result, err)
 			}
 		case ActionPromote:
 			if err := h.StateStore.WriteVersionState(ctx, keyName, ver.Name, VersionStatePrimary); err != nil {
@@ -262,19 +262,19 @@ func (h *RotationHandler) performActions(ctx context.Context, keyName string, ac
 			newVer, err := h.performCreateNew(ctx, keyName)
 			if err != nil {
 				result = multierror.Append(result, err)
-			} else {
-				log.Printf("Promoting immediately.")
-				if err := h.StateStore.WriteVersionState(ctx, keyName, newVer.Name, VersionStatePrimary); err != nil {
-					result = multierror.Append(result, err)
-				}
+				continue
+			}
+			log.Printf("Promoting immediately.")
+			if err := h.StateStore.WriteVersionState(ctx, keyName, newVer.Name, VersionStatePrimary); err != nil {
+				result = multierror.Append(result, err)
 			}
 		case ActionDisable:
 			if err := h.performDisable(ctx, ver); err != nil {
 				result = multierror.Append(result, err)
-			} else {
-				if err := h.StateStore.RemoveVersion(ctx, keyName, ver.Name); err != nil {
-					result = multierror.Append(result, err)
-				}
+				continue
+			}
+			if err := h.StateStore.RemoveVersion(ctx, keyName, ver.Name); err != nil {
+				result = multierror.Append(result, err)
 			}
 		case ActionDestroy:
 			if err := h.performDestroy(ctx, ver); err != nil {

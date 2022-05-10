@@ -58,11 +58,11 @@ func GetVersionState(s string) VersionState {
 }
 
 type KeyLabelStateStore struct {
-	KmsClient *kms.KeyManagementClient
+	KMSClient *kms.KeyManagementClient
 }
 
 func (k *KeyLabelStateStore) WriteVersionState(ctx context.Context, key string, versionName string, state VersionState) error {
-	response, err := k.KmsClient.GetCryptoKey(ctx, &kmspb.GetCryptoKeyRequest{Name: key})
+	response, err := k.KMSClient.GetCryptoKey(ctx, &kmspb.GetCryptoKeyRequest{Name: key})
 	if err != nil {
 		return fmt.Errorf("issue while getting key from KMS: %w", err)
 	}
@@ -84,7 +84,7 @@ func (k *KeyLabelStateStore) WriteVersionState(ctx context.Context, key string, 
 	if err != nil {
 		return err
 	}
-	_, err = k.KmsClient.UpdateCryptoKey(ctx, &kmspb.UpdateCryptoKeyRequest{CryptoKey: response, UpdateMask: mask})
+	_, err = k.KMSClient.UpdateCryptoKey(ctx, &kmspb.UpdateCryptoKeyRequest{CryptoKey: response, UpdateMask: mask})
 	if err != nil {
 		return fmt.Errorf("issue while setting labels in kms %w", err)
 	}
@@ -92,7 +92,7 @@ func (k *KeyLabelStateStore) WriteVersionState(ctx context.Context, key string, 
 }
 
 func (k *KeyLabelStateStore) RemoveVersion(ctx context.Context, key string, versionName string) error {
-	response, err := k.KmsClient.GetCryptoKey(ctx, &kmspb.GetCryptoKeyRequest{Name: key})
+	response, err := k.KMSClient.GetCryptoKey(ctx, &kmspb.GetCryptoKeyRequest{Name: key})
 	if err != nil {
 		return fmt.Errorf("issue while getting key from KMS: %w", err)
 	}
@@ -112,12 +112,12 @@ func (k *KeyLabelStateStore) RemoveVersion(ctx context.Context, key string, vers
 	if err != nil {
 		return err
 	}
-	k.KmsClient.UpdateCryptoKey(ctx, &kmspb.UpdateCryptoKeyRequest{CryptoKey: response, UpdateMask: mask})
+	k.KMSClient.UpdateCryptoKey(ctx, &kmspb.UpdateCryptoKeyRequest{CryptoKey: response, UpdateMask: mask})
 	return nil
 }
 
 func (k *KeyLabelStateStore) GetActiveVersionStates(ctx context.Context, key string) (map[string]VersionState, error) {
-	response, err := k.KmsClient.GetCryptoKey(ctx, &kmspb.GetCryptoKeyRequest{Name: key})
+	response, err := k.KMSClient.GetCryptoKey(ctx, &kmspb.GetCryptoKeyRequest{Name: key})
 	if err != nil {
 		return nil, fmt.Errorf("issue while getting key from KMS: %w", err)
 	}
