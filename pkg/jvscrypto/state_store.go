@@ -11,8 +11,13 @@ import (
 )
 
 type StateStore interface {
+	// WriteVersionState writes a state for a version to the state store.
 	WriteVersionState(ctx context.Context, key string, versionName string, state VersionState) error
+
+	// RemoveVersion removes a version from the state store.
 	RemoveVersion(ctx context.Context, key string, versionName string) error
+
+	// GetActiveVersionStates returns a map from version name (full KMS name) to VersionState for active versions.
 	GetActiveVersionStates(ctx context.Context, key string) (map[string]VersionState, error)
 }
 
@@ -53,11 +58,11 @@ func GetVersionState(s string) VersionState {
 }
 
 type KeyLabelStateStore struct {
-	KmsClient *kms.KeyManagementClient
+	KMSClient *kms.KeyManagementClient
 }
 
 func (k *KeyLabelStateStore) WriteVersionState(ctx context.Context, key string, versionName string, state VersionState) error {
-	response, err := k.KmsClient.GetCryptoKey(ctx, &kmspb.GetCryptoKeyRequest{Name: key})
+	response, err := k.KMSClient.GetCryptoKey(ctx, &kmspb.GetCryptoKeyRequest{Name: key})
 	if err != nil {
 		return fmt.Errorf("issue while getting key from KMS: %w", err)
 	}
@@ -79,7 +84,7 @@ func (k *KeyLabelStateStore) WriteVersionState(ctx context.Context, key string, 
 	if err != nil {
 		return err
 	}
-	_, err = k.KmsClient.UpdateCryptoKey(ctx, &kmspb.UpdateCryptoKeyRequest{CryptoKey: response, UpdateMask: mask})
+	_, err = k.KMSClient.UpdateCryptoKey(ctx, &kmspb.UpdateCryptoKeyRequest{CryptoKey: response, UpdateMask: mask})
 	if err != nil {
 		return fmt.Errorf("issue while setting labels in kms %w", err)
 	}
@@ -87,7 +92,7 @@ func (k *KeyLabelStateStore) WriteVersionState(ctx context.Context, key string, 
 }
 
 func (k *KeyLabelStateStore) RemoveVersion(ctx context.Context, key string, versionName string) error {
-	response, err := k.KmsClient.GetCryptoKey(ctx, &kmspb.GetCryptoKeyRequest{Name: key})
+	response, err := k.KMSClient.GetCryptoKey(ctx, &kmspb.GetCryptoKeyRequest{Name: key})
 	if err != nil {
 		return fmt.Errorf("issue while getting key from KMS: %w", err)
 	}
@@ -107,12 +112,12 @@ func (k *KeyLabelStateStore) RemoveVersion(ctx context.Context, key string, vers
 	if err != nil {
 		return err
 	}
-	k.KmsClient.UpdateCryptoKey(ctx, &kmspb.UpdateCryptoKeyRequest{CryptoKey: response, UpdateMask: mask})
+	k.KMSClient.UpdateCryptoKey(ctx, &kmspb.UpdateCryptoKeyRequest{CryptoKey: response, UpdateMask: mask})
 	return nil
 }
 
 func (k *KeyLabelStateStore) GetActiveVersionStates(ctx context.Context, key string) (map[string]VersionState, error) {
-	response, err := k.KmsClient.GetCryptoKey(ctx, &kmspb.GetCryptoKeyRequest{Name: key})
+	response, err := k.KMSClient.GetCryptoKey(ctx, &kmspb.GetCryptoKeyRequest{Name: key})
 	if err != nil {
 		return nil, fmt.Errorf("issue while getting key from KMS: %w", err)
 	}
@@ -123,4 +128,14 @@ func (k *KeyLabelStateStore) GetActiveVersionStates(ctx context.Context, key str
 		vers[verNameWithPrefix] = GetVersionState(state)
 	}
 	return vers, nil
+}
+
+// This returns the key version name with "ver_" prefixed. This is because labels must start with a lowercase letter, and can't go over 64 chars.
+func getLabelKey(versionName string) (string, error) {
+	split := strings.Split(versionName, "/")
+	if len(split) != 10 {
+		return "", fmt.Errorf("input had unexpected format: \"%s\"", versionName)
+	}
+	versionWithoutPrefix := "ver_" + split[len(split)-1]
+	return versionWithoutPrefix, nil
 }

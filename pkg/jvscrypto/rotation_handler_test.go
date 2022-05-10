@@ -324,7 +324,7 @@ func TestPerformActions(t *testing.T) {
 
 	handler := &RotationHandler{
 		KmsClient:    c,
-		StateStore:   &KeyLabelStateStore{KmsClient: c},
+		StateStore:   &KeyLabelStateStore{KMSClient: c},
 		CryptoConfig: &config.CryptoConfig{},
 	}
 
