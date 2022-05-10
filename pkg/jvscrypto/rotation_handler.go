@@ -35,6 +35,7 @@ import (
 type RotationHandler struct {
 	KmsClient    *kms.KeyManagementClient
 	CryptoConfig *config.CryptoConfig
+	StateStore   StateStore
 	CurrentTime  time.Time
 }
 
@@ -64,7 +65,7 @@ func (h *RotationHandler) RotateKey(ctx context.Context, key string) error {
 	}
 
 	// Get any relevant Key Version information from the BigTable
-	states, err := h.getActiveVersionStates(ctx, key)
+	states, err := h.StateStore.GetActiveVersionStates(ctx, key)
 	if err != nil {
 		return fmt.Errorf("err while reading big table: %w", err)
 	}
@@ -249,12 +250,12 @@ func (h *RotationHandler) performActions(ctx context.Context, keyName string, ac
 			if err != nil {
 				result = multierror.Append(result, err)
 			} else {
-				if err := h.writeVersionState(ctx, keyName, newVer.GetName(), VersionStateNew); err != nil {
+				if err := h.StateStore.WriteVersionState(ctx, keyName, newVer.GetName(), VersionStateNew); err != nil {
 					result = multierror.Append(result, err)
 				}
 			}
 		case ActionPromote:
-			if err := h.writeVersionState(ctx, keyName, ver.Name, VersionStatePrimary); err != nil {
+			if err := h.StateStore.WriteVersionState(ctx, keyName, ver.Name, VersionStatePrimary); err != nil {
 				result = multierror.Append(result, err)
 			}
 		case ActionCreateNewAndPromote:
@@ -263,7 +264,7 @@ func (h *RotationHandler) performActions(ctx context.Context, keyName string, ac
 				result = multierror.Append(result, err)
 			} else {
 				log.Printf("Promoting immediately.")
-				if err := h.writeVersionState(ctx, keyName, newVer.Name, VersionStatePrimary); err != nil {
+				if err := h.StateStore.WriteVersionState(ctx, keyName, newVer.Name, VersionStatePrimary); err != nil {
 					result = multierror.Append(result, err)
 				}
 			}
@@ -271,7 +272,7 @@ func (h *RotationHandler) performActions(ctx context.Context, keyName string, ac
 			if err := h.performDisable(ctx, ver); err != nil {
 				result = multierror.Append(result, err)
 			} else {
-				if err := h.removeVersion(ctx, keyName, ver.Name); err != nil {
+				if err := h.StateStore.RemoveVersion(ctx, keyName, ver.Name); err != nil {
 					result = multierror.Append(result, err)
 				}
 			}
@@ -280,7 +281,7 @@ func (h *RotationHandler) performActions(ctx context.Context, keyName string, ac
 				result = multierror.Append(result, err)
 			}
 		case ActionDemote:
-			if err := h.writeVersionState(ctx, keyName, ver.Name, VersionStateOld); err != nil {
+			if err := h.StateStore.WriteVersionState(ctx, keyName, ver.Name, VersionStateOld); err != nil {
 				result = multierror.Append(result, err)
 			}
 		case ActionNone:
@@ -356,73 +357,4 @@ func getLabelKey(versionName string) (string, error) {
 	}
 	versionWithoutPrefix := "ver_" + split[len(split)-1]
 	return versionWithoutPrefix, nil
-}
-
-func (h *RotationHandler) writeVersionState(ctx context.Context, key string, versionName string, state VersionState) error {
-	response, err := h.KmsClient.GetCryptoKey(ctx, &kmspb.GetCryptoKeyRequest{Name: key})
-	if err != nil {
-		return fmt.Errorf("issue while getting key from KMS: %w", err)
-	}
-
-	verName, err := getLabelKey(versionName)
-	if err != nil {
-		return err
-	}
-	// update label
-	labels := response.Labels
-	if labels == nil {
-		labels = make(map[string]string)
-	}
-	labels[verName] = state.String()
-	response.Labels = labels
-
-	var messageType *kmspb.CryptoKey
-	mask, err := fieldmaskpb.New(messageType, "labels")
-	if err != nil {
-		return err
-	}
-	_, err = h.KmsClient.UpdateCryptoKey(ctx, &kmspb.UpdateCryptoKeyRequest{CryptoKey: response, UpdateMask: mask})
-	if err != nil {
-		return fmt.Errorf("issue while setting labels in kms %w", err)
-	}
-	return nil
-}
-
-func (h *RotationHandler) removeVersion(ctx context.Context, key string, versionName string) error {
-	response, err := h.KmsClient.GetCryptoKey(ctx, &kmspb.GetCryptoKeyRequest{Name: key})
-	if err != nil {
-		return fmt.Errorf("issue while getting key from KMS: %w", err)
-	}
-
-	verName, err := getLabelKey(versionName)
-	if err != nil {
-		return err
-	}
-
-	// delete label
-	labels := response.Labels
-	delete(labels, verName)
-	response.Labels = labels
-
-	var messageType *kmspb.CryptoKey
-	mask, err := fieldmaskpb.New(messageType, "labels")
-	if err != nil {
-		return err
-	}
-	h.KmsClient.UpdateCryptoKey(ctx, &kmspb.UpdateCryptoKeyRequest{CryptoKey: response, UpdateMask: mask})
-	return nil
-}
-
-func (h *RotationHandler) getActiveVersionStates(ctx context.Context, key string) (map[string]VersionState, error) {
-	response, err := h.KmsClient.GetCryptoKey(ctx, &kmspb.GetCryptoKeyRequest{Name: key})
-	if err != nil {
-		return nil, fmt.Errorf("issue while getting key from KMS: %w", err)
-	}
-	vers := make(map[string]VersionState)
-	for ver, state := range response.Labels {
-		ver = strings.TrimPrefix(ver, "ver_")
-		verNameWithPrefix := fmt.Sprintf("%s/cryptoKeyVersions/%s", key, ver)
-		vers[verNameWithPrefix] = GetVersionState(state)
-	}
-	return vers, nil
 }
