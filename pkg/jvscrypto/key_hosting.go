@@ -2,8 +2,12 @@ package jvscrypto
 
 import (
 	"context"
+	"crypto/x509"
 	"encoding/json"
+	"encoding/pem"
 	"fmt"
+	"log"
+	"sort"
 
 	kms "cloud.google.com/go/kms/apiv1"
 	"github.com/abcxyz/jvs/pkg/config"
@@ -28,7 +32,7 @@ func (k *KeyServer) getJWKSetFormattedString(ctx context.Context, keyName string
 	jwkMap := make(map[string][]*jwk.Key)
 	jwkMap["keys"] = wks
 
-	json, err := json.MarshalIndent(jwkMap, "", "  ")
+	json, err := json.Marshal(jwkMap)
 	if err != nil {
 		return "", fmt.Errorf("err while converting jwk to json: %w", err)
 	}
@@ -43,14 +47,25 @@ func (k *KeyServer) getJWKList(ctx context.Context, keyName string) ([]*jwk.Key,
 		return nil, fmt.Errorf("err while reading states: %w", err)
 	}
 
-	var jwkList []*jwk.Key
+	jwkList := make([]*jwk.Key, 0)
 
 	for ver, _ := range states {
 		key, err := k.KmsClient.GetPublicKey(ctx, &kmspb.GetPublicKeyRequest{Name: ver})
 		if err != nil {
 			return nil, fmt.Errorf("err while getting public key from kms: %w", err)
 		}
-		wk, err := jwk.New(key.Pem)
+
+		block, _ := pem.Decode([]byte(key.Pem))
+		if block == nil || block.Type != "PUBLIC KEY" {
+			log.Fatal("failed to decode PEM block containing public key")
+		}
+
+		pub, err := x509.ParsePKIXPublicKey(block.Bytes)
+		if err != nil {
+			log.Fatal(err)
+		}
+
+		wk, err := jwk.New(pub)
 		if err != nil {
 			return nil, fmt.Errorf("err while converting public key to jwk: %w", err)
 		}
@@ -62,5 +77,8 @@ func (k *KeyServer) getJWKList(ctx context.Context, keyName string) ([]*jwk.Key,
 		wk.Set(jwk.KeyIDKey, id)
 		jwkList = append(jwkList, &wk)
 	}
+	sort.Slice(jwkList, func(i, j int) bool {
+		return (*jwkList[i]).KeyID() < (*jwkList[j]).KeyID()
+	})
 	return jwkList, nil
 }

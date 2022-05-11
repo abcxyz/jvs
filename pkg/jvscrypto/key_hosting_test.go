@@ -6,6 +6,7 @@ import (
 	"crypto/elliptic"
 	"crypto/rand"
 	"crypto/x509"
+	"encoding/base64"
 	"encoding/pem"
 	"fmt"
 	"net"
@@ -71,20 +72,43 @@ func TestGetJWKSetFormattedString(t *testing.T) {
 	ks := &KeyServer{
 		KmsClient:    kms,
 		CryptoConfig: &config.CryptoConfig{},
-		StateStore:   &KeyLabelStateStore{KmsClient: kms},
+		StateStore:   &KeyLabelStateStore{KMSClient: kms},
 	}
 
 	key := fmt.Sprintf("projects/%s/locations/%s/keyRings/%s/cryptoKeys/%s", "[PROJECT]", "[LOCATION]", "[KEY_RING]", "[CRYPTO_KEY]")
-	versionName := fmt.Sprintf("%s/cryptoKeyVersions/[VERSION]", key)
+	versionSuffix := "[VERSION]"
 
 	tests := []struct {
-		name       string
-		wantOutput string
-		wantErr    string
+		name         string
+		storageState map[string]string
+		wantOutput   string
+		wantErr      string
 	}{
 		{
-			name:       "happy-path",
-			wantOutput: "err",
+			name: "happy-path",
+			storageState: map[string]string{
+				"ver_" + versionSuffix: VersionStatePrimary.String(),
+			},
+			wantOutput: fmt.Sprintf("{\"keys\":[{\"crv\":\"P-256\",\"kid\":\"ver_[VERSION]\",\"kty\":\"EC\",\"x\":\"%s\",\"y\":\"%s\"}]}",
+				base64.RawURLEncoding.EncodeToString(privateKey.PublicKey.X.Bytes()),
+				base64.RawURLEncoding.EncodeToString(privateKey.PublicKey.Y.Bytes())),
+		},
+		{
+			name: "multi-key",
+			storageState: map[string]string{
+				"ver_" + versionSuffix:       VersionStatePrimary.String(),
+				"ver_" + versionSuffix + "2": VersionStateNew.String(),
+			},
+			wantOutput: fmt.Sprintf("{\"keys\":[{\"crv\":\"P-256\",\"kid\":\"ver_[VERSION]\",\"kty\":\"EC\",\"x\":\"%s\",\"y\":\"%s\"},{\"crv\":\"P-256\",\"kid\":\"ver_[VERSION]2\",\"kty\":\"EC\",\"x\":\"%s\",\"y\":\"%s\"}]}",
+				base64.RawURLEncoding.EncodeToString(privateKey.PublicKey.X.Bytes()),
+				base64.RawURLEncoding.EncodeToString(privateKey.PublicKey.Y.Bytes()),
+				base64.RawURLEncoding.EncodeToString(privateKey.PublicKey.X.Bytes()),
+				base64.RawURLEncoding.EncodeToString(privateKey.PublicKey.Y.Bytes())),
+		},
+		{
+			name:         "no-primary",
+			storageState: map[string]string{},
+			wantOutput:   "{\"keys\":[]}",
 		},
 	}
 
@@ -93,7 +117,10 @@ func TestGetJWKSetFormattedString(t *testing.T) {
 		t.Run(tc.name, func(t *testing.T) {
 			mockKMSServer.KeyName = key
 			mockKMSServer.Labels = make(map[string]string)
-			mockKMSServer.Labels[versionName] = VersionStatePrimary.String()
+			for key, val := range tc.storageState {
+				mockKMSServer.Labels[key] = val
+			}
+
 			got, err := ks.getJWKSetFormattedString(ctx, key)
 			testutil.ErrCmp(t, tc.wantErr, err)
 
