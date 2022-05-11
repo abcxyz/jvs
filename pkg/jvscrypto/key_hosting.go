@@ -22,26 +22,9 @@ type KeyServer struct {
 	StateStore   StateStore
 }
 
-// Creates a JWK Set converted to string.
-// https://datatracker.ietf.org/doc/html/rfc7517#section-5
-func (k *KeyServer) getJWKSetFormattedString(ctx context.Context, keyName string) (string, error) {
-	wks, err := k.getJWKList(ctx, keyName)
-	if err != nil {
-		return "", err
-	}
-	jwkMap := make(map[string][]*jwk.Key)
-	jwkMap["keys"] = wks
-
-	json, err := json.Marshal(jwkMap)
-	if err != nil {
-		return "", fmt.Errorf("err while converting jwk to json: %w", err)
-	}
-	return string(json), nil
-}
-
-// Creates a list of public keys in JWK format.
+// JWKList creates a list of public keys in JWK format.
 // https://datatracker.ietf.org/doc/html/rfc7517#section-4
-func (k *KeyServer) getJWKList(ctx context.Context, keyName string) ([]*jwk.Key, error) {
+func (k *KeyServer) JWKList(ctx context.Context, keyName string) ([]*jwk.Key, error) {
 	states, err := k.StateStore.GetActiveVersionStates(ctx, keyName)
 	if err != nil {
 		return nil, fmt.Errorf("err while reading states: %w", err)
@@ -69,7 +52,7 @@ func (k *KeyServer) getJWKList(ctx context.Context, keyName string) ([]*jwk.Key,
 		if err != nil {
 			return nil, fmt.Errorf("err while converting public key to jwk: %w", err)
 		}
-		// TODO: Should we have something else for key id?
+		// TODO: We should set something else for Key ID. #27
 		id, err := getLabelKey(ver)
 		if err != nil {
 			return nil, fmt.Errorf("err while determining key id: %w", err)
@@ -81,4 +64,17 @@ func (k *KeyServer) getJWKList(ctx context.Context, keyName string) ([]*jwk.Key,
 		return (*jwkList[i]).KeyID() < (*jwkList[j]).KeyID()
 	})
 	return jwkList, nil
+}
+
+// FormatJWKString creates a JWK Set converted to string.
+// https://datatracker.ietf.org/doc/html/rfc7517#section-5
+func FormatJWKString(wks []*jwk.Key) (string, error) {
+	jwkMap := make(map[string][]*jwk.Key)
+	jwkMap["keys"] = wks
+
+	json, err := json.Marshal(jwkMap)
+	if err != nil {
+		return "", fmt.Errorf("err while converting jwk to json: %w", err)
+	}
+	return string(json), nil
 }

@@ -27,18 +27,35 @@ import (
 
 	kms "cloud.google.com/go/kms/apiv1"
 	"github.com/abcxyz/jvs/pkg/config"
+	"github.com/abcxyz/jvs/pkg/jvscrypto"
+	"github.com/lestrrat-go/jwx/jwk"
 )
 
 type server struct {
-	kms    *kms.KeyManagementClient
-	config *config.JustificationConfig
+	ks *jvscrypto.KeyServer
 }
 
 // ServeHTTP rotates a single key's versions.
 func (s *server) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	log.Printf("received request at %s\n", r.URL)
 
-	// do stuff
+	jwks := make([]*jwk.Key, 0)
+	for _, key := range s.ks.CryptoConfig.KeyNames {
+		list, err := s.ks.JWKList(r.Context(), key)
+		if err != nil {
+			log.Printf("ran into error while determining public keys. %v\n", err)
+			http.Error(w, "error determining public keys", http.StatusInternalServerError)
+			return
+		}
+		jwks = append(jwks, list...)
+	}
+	json, err := jvscrypto.FormatJWKString(jwks)
+	if err != nil {
+		log.Printf("ran into error while formatting public keys. %v\n", err)
+		http.Error(w, "error formatting public keys", http.StatusInternalServerError)
+		return
+	}
+	fmt.Fprintf(w, json)
 }
 
 func main() {
@@ -60,18 +77,22 @@ func realMain(ctx context.Context) error {
 	if err != nil {
 		return fmt.Errorf("failed to setup kms client: %v", err)
 	}
+	defer kmsClient.Close()
 
-	config, err := config.LoadJustificationConfig(ctx, []byte{})
+	config, err := config.LoadCryptoConfig(ctx, []byte{})
 	if err != nil {
 		return fmt.Errorf("failed to load config: %v", err)
 	}
 
-	defer kmsClient.Close()
+	ks := &jvscrypto.KeyServer{
+		KmsClient:    kmsClient,
+		CryptoConfig: config,
+		StateStore:   &jvscrypto.KeyLabelStateStore{KMSClient: kmsClient},
+	}
 
 	mux := http.NewServeMux()
 	mux.Handle("/.well-known/jwks", &server{
-		kms:    kmsClient,
-		config: config,
+		ks: ks,
 	})
 
 	// Determine port for HTTP service.

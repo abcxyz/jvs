@@ -22,7 +22,7 @@ import (
 	"google.golang.org/grpc"
 )
 
-func TestGetJWKSetFormattedString(t *testing.T) {
+func TestJWKSetFormattedString(t *testing.T) {
 	t.Parallel()
 	ctx := context.Background()
 
@@ -121,7 +121,8 @@ func TestGetJWKSetFormattedString(t *testing.T) {
 				mockKMSServer.Labels[key] = val
 			}
 
-			got, err := ks.getJWKSetFormattedString(ctx, key)
+			keys, err := ks.JWKList(ctx, key)
+			got, err := FormatJWKString(keys)
 			testutil.ErrCmp(t, tc.wantErr, err)
 
 			if err != nil {
