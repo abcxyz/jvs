@@ -28,35 +28,7 @@ import (
 	kms "cloud.google.com/go/kms/apiv1"
 	"github.com/abcxyz/jvs/pkg/config"
 	"github.com/abcxyz/jvs/pkg/jvscrypto"
-	"github.com/lestrrat-go/jwx/jwk"
 )
-
-type server struct {
-	ks *jvscrypto.KeyServer
-}
-
-// ServeHTTP rotates a single key's versions.
-func (s *server) ServeHTTP(w http.ResponseWriter, r *http.Request) {
-	log.Printf("received request at %s\n", r.URL)
-
-	jwks := make([]*jwk.Key, 0)
-	for _, key := range s.ks.CryptoConfig.KeyNames {
-		list, err := s.ks.JWKList(r.Context(), key)
-		if err != nil {
-			log.Printf("ran into error while determining public keys. %v\n", err)
-			http.Error(w, "error determining public keys", http.StatusInternalServerError)
-			return
-		}
-		jwks = append(jwks, list...)
-	}
-	json, err := jvscrypto.FormatJWKString(jwks)
-	if err != nil {
-		log.Printf("ran into error while formatting public keys. %v\n", err)
-		http.Error(w, "error formatting public keys", http.StatusInternalServerError)
-		return
-	}
-	fmt.Fprintf(w, json)
-}
 
 func main() {
 	ctx, done := signal.NotifyContext(context.Background(), syscall.SIGINT, syscall.SIGTERM)
@@ -68,7 +40,7 @@ func main() {
 	}
 }
 
-// realMain creates an HTTP server for use with rotating certificates.
+// realMain creates an HTTP server for use with hosting public certs.
 // This server supports graceful stopping and cancellation by:
 //   - using a cancellable context
 //   - listening to incoming requests in a goroutine
@@ -91,9 +63,7 @@ func realMain(ctx context.Context) error {
 	}
 
 	mux := http.NewServeMux()
-	mux.Handle("/.well-known/jwks", &server{
-		ks: ks,
-	})
+	mux.Handle("/.well-known/jwks", ks)
 
 	// Determine port for HTTP service.
 	port := os.Getenv("PORT")
