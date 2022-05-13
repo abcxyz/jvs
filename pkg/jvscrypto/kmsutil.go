@@ -15,6 +15,7 @@ import (
 	"github.com/golang-jwt/jwt"
 	"google.golang.org/api/iterator"
 	kmspb "google.golang.org/genproto/googleapis/cloud/kms/v1"
+	"google.golang.org/protobuf/types/known/fieldmaskpb"
 )
 
 // GetLatestKeyVersion looks up the newest enabled key version. If there is no enabled version, this returns nil.
@@ -134,4 +135,60 @@ func SignToken(token *jwt.Token, signer crypto.Signer) (string, error) {
 	sig = append(sig, sBytesPadded...)
 
 	return strings.Join([]string{signingString, jwt.EncodeSegment(sig)}, "."), nil
+}
+
+const primaryKey = "primary"
+const valuePrefix = "ver_"
+
+func GetPrimary(ctx context.Context, kms *kms.KeyManagementClient, key string) (string, error) {
+	response, err := kms.GetCryptoKey(ctx, &kmspb.GetCryptoKeyRequest{Name: key})
+	if err != nil {
+		return "", fmt.Errorf("issue while getting key from KMS: %w", err)
+	}
+	if primary, ok := response.Labels[primaryKey]; ok {
+		primary = strings.TrimPrefix(primary, valuePrefix)
+		return fmt.Sprintf("%s/cryptoKeyVersions/%s", key, primary), nil
+	}
+	// no primary found
+	return "", nil
+}
+
+func SetPrimary(ctx context.Context, kms *kms.KeyManagementClient, key string, versionName string) error {
+	response, err := kms.GetCryptoKey(ctx, &kmspb.GetCryptoKeyRequest{Name: key})
+	if err != nil {
+		return fmt.Errorf("issue while getting key from KMS: %w", err)
+	}
+
+	value, err := getLabelValue(versionName)
+	if err != nil {
+		return err
+	}
+	// update label
+	labels := response.Labels
+	if labels == nil {
+		labels = make(map[string]string)
+	}
+	labels[primaryKey] = value
+	response.Labels = labels
+
+	var messageType *kmspb.CryptoKey
+	mask, err := fieldmaskpb.New(messageType, "labels")
+	if err != nil {
+		return err
+	}
+	_, err = kms.UpdateCryptoKey(ctx, &kmspb.UpdateCryptoKeyRequest{CryptoKey: response, UpdateMask: mask})
+	if err != nil {
+		return fmt.Errorf("issue while setting labels in kms %w", err)
+	}
+	return nil
+}
+
+// This returns the key version name with "ver_" prefixed. This is because labels must start with a lowercase letter, and can't go over 64 chars.
+func getLabelValue(versionName string) (string, error) {
+	split := strings.Split(versionName, "/")
+	if len(split) != 10 {
+		return "", fmt.Errorf("input had unexpected format: \"%s\"", versionName)
+	}
+	versionValue := valuePrefix + split[len(split)-1]
+	return versionValue, nil
 }

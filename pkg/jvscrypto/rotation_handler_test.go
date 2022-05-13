@@ -157,16 +157,15 @@ func TestDetermineActions(t *testing.T) {
 	}
 
 	tests := []struct {
-		name         string
-		versions     []*kmspb.CryptoKeyVersion
-		activeStates map[string]VersionState
-		wantActions  map[*kmspb.CryptoKeyVersion]Action
-		wantErr      string
+		name        string
+		versions    []*kmspb.CryptoKeyVersion
+		primary     string
+		wantActions map[*kmspb.CryptoKeyVersion]Action
+		wantErr     string
 	}{
 		{
-			name:         "no_key",
-			versions:     []*kmspb.CryptoKeyVersion{},
-			activeStates: map[string]VersionState{},
+			name:     "no_key",
+			versions: []*kmspb.CryptoKeyVersion{},
 			wantActions: map[*kmspb.CryptoKeyVersion]Action{
 				nil: ActionCreateNewAndPromote,
 			},
@@ -176,9 +175,7 @@ func TestDetermineActions(t *testing.T) {
 			versions: []*kmspb.CryptoKeyVersion{
 				oldEnabledKey,
 			},
-			activeStates: map[string]VersionState{
-				oldEnabledKey.Name: VersionStatePrimary,
-			},
+			primary: oldEnabledKey.Name,
 			wantActions: map[*kmspb.CryptoKeyVersion]Action{
 				oldEnabledKey: ActionCreateNew,
 			},
@@ -189,29 +186,9 @@ func TestDetermineActions(t *testing.T) {
 				oldEnabledKey,
 				newEnabledKey,
 			},
-			activeStates: map[string]VersionState{
-				newEnabledKey.Name: VersionStatePrimary,
-				oldEnabledKey.Name: VersionStateOld,
-			},
+			primary: newEnabledKey.Name,
 			wantActions: map[*kmspb.CryptoKeyVersion]Action{
 				oldEnabledKey: ActionDisable,
-				newEnabledKey: ActionNone,
-			},
-		},
-		{
-			// this is intended to replicate the state if we had rolled back a key. we expect the old key to be primary, and the newer
-			// key to be marked as "old" in the database.
-			name: "two_enabled_keys_rollback",
-			versions: []*kmspb.CryptoKeyVersion{
-				oldEnabledKey,
-				newEnabledKey,
-			},
-			activeStates: map[string]VersionState{
-				newEnabledKey.Name: VersionStateOld,
-				oldEnabledKey.Name: VersionStatePrimary,
-			},
-			wantActions: map[*kmspb.CryptoKeyVersion]Action{
-				oldEnabledKey: ActionCreateNew,
 				newEnabledKey: ActionNone,
 			},
 		},
@@ -221,13 +198,10 @@ func TestDetermineActions(t *testing.T) {
 				oldEnabledKey,
 				newEnabledKey,
 			},
-			activeStates: map[string]VersionState{
-				newEnabledKey.Name: VersionStateNew,
-				oldEnabledKey.Name: VersionStatePrimary,
-			},
+			primary: oldEnabledKey.Name,
 			wantActions: map[*kmspb.CryptoKeyVersion]Action{
-				oldEnabledKey: ActionDemote,
 				newEnabledKey: ActionPromote,
+				oldEnabledKey: ActionNone,
 			},
 		},
 		{
@@ -237,13 +211,9 @@ func TestDetermineActions(t *testing.T) {
 				newEnabledKey,
 				oldEnabledKey2,
 			},
-			activeStates: map[string]VersionState{
-				newEnabledKey.Name:  VersionStateNew,
-				oldEnabledKey.Name:  VersionStatePrimary,
-				oldEnabledKey2.Name: VersionStateOld,
-			},
+			primary: oldEnabledKey.Name,
 			wantActions: map[*kmspb.CryptoKeyVersion]Action{
-				oldEnabledKey:  ActionDemote,
+				oldEnabledKey:  ActionNone,
 				newEnabledKey:  ActionPromote,
 				oldEnabledKey2: ActionDisable,
 			},
@@ -257,10 +227,7 @@ func TestDetermineActions(t *testing.T) {
 				newDisabledKey,
 				oldDestroyedKey,
 			},
-			activeStates: map[string]VersionState{
-				newEnabledKey.Name: VersionStatePrimary,
-				oldEnabledKey.Name: VersionStateOld,
-			},
+			primary: newEnabledKey.Name,
 			wantActions: map[*kmspb.CryptoKeyVersion]Action{
 				oldEnabledKey:   ActionDisable,
 				newEnabledKey:   ActionNone,
@@ -274,7 +241,7 @@ func TestDetermineActions(t *testing.T) {
 		tc := tc
 		t.Run(tc.name, func(t *testing.T) {
 			t.Parallel()
-			output, err := handler.determineActions(tc.versions, tc.activeStates)
+			output, err := handler.determineActions(tc.versions, tc.primary)
 
 			if diff := cmp.Diff(tc.wantActions, output, protocmp.Transform()); diff != "" {
 				t.Errorf("Got diff (-want, +got): %v", diff)
@@ -324,7 +291,6 @@ func TestPerformActions(t *testing.T) {
 
 	handler := &RotationHandler{
 		KmsClient:    c,
-		StateStore:   &KeyLabelStateStore{KMSClient: c},
 		CryptoConfig: &config.CryptoConfig{},
 	}
 
@@ -335,9 +301,9 @@ func TestPerformActions(t *testing.T) {
 	tests := []struct {
 		name             string
 		actions          map[*kmspb.CryptoKeyVersion]Action
-		priorStates      map[string]VersionState
+		priorPrimary     string
 		expectedRequests []proto.Message
-		expectedStates   map[string]VersionState
+		expectedPrimary  string
 		wantErr          string
 		serverErr        error
 	}{
@@ -348,9 +314,6 @@ func TestPerformActions(t *testing.T) {
 					State: kmspb.CryptoKeyVersion_ENABLED,
 					Name:  versionName,
 				}: ActionDisable,
-			},
-			priorStates: map[string]VersionState{
-				"ver_" + versionSuffix: VersionStatePrimary, // should be in db before, but not after.
 			},
 			wantErr: "",
 			expectedRequests: []proto.Message{
@@ -363,18 +326,6 @@ func TestPerformActions(t *testing.T) {
 						Paths: []string{"state"},
 					},
 				},
-				&kmspb.GetCryptoKeyRequest{
-					Name: parent,
-				},
-				&kmspb.UpdateCryptoKeyRequest{
-					CryptoKey: &kmspb.CryptoKey{
-						Labels: nil,
-						Name:   parent,
-					},
-					UpdateMask: &fieldmaskpb.FieldMask{
-						Paths: []string{"labels"},
-					},
-				},
 			},
 		},
 		{
@@ -383,7 +334,7 @@ func TestPerformActions(t *testing.T) {
 				{
 					Name:  versionName,
 					State: kmspb.CryptoKeyVersion_ENABLED,
-				}: ActionCreateNew,
+				}: ActionCreateNewAndPromote,
 			},
 			wantErr: "",
 			expectedRequests: []proto.Message{
@@ -396,7 +347,7 @@ func TestPerformActions(t *testing.T) {
 				},
 				&kmspb.UpdateCryptoKeyRequest{
 					CryptoKey: &kmspb.CryptoKey{
-						Labels: map[string]string{"ver_" + versionSuffix + "-new": VersionStateNew.String()},
+						Labels: map[string]string{"primary": "ver_" + versionSuffix + "-new"},
 						Name:   parent,
 					},
 					UpdateMask: &fieldmaskpb.FieldMask{
@@ -404,9 +355,7 @@ func TestPerformActions(t *testing.T) {
 					},
 				},
 			},
-			expectedStates: map[string]VersionState{
-				"ver_" + versionSuffix + "-new": VersionStateNew,
-			},
+			expectedPrimary: "ver_" + versionSuffix + "-new",
 		},
 		{
 			name: "destroy",
@@ -435,33 +384,13 @@ func TestPerformActions(t *testing.T) {
 					State: kmspb.CryptoKeyVersion_DISABLED,
 				}: ActionDestroy,
 			},
-			priorStates: map[string]VersionState{
-				"ver_" + versionSuffix: VersionStatePrimary,
-			},
-			expectedStates: map[string]VersionState{
-				"ver_" + versionSuffix:          VersionStatePrimary,
-				"ver_" + versionSuffix + "-new": VersionStateNew,
-			},
-			wantErr: "",
+			priorPrimary:    "ver_" + versionSuffix,
+			expectedPrimary: "ver_" + versionSuffix,
+			wantErr:         "",
 			expectedRequests: []proto.Message{
 				&kmspb.CreateCryptoKeyVersionRequest{
 					Parent:           parent,
 					CryptoKeyVersion: &kmspb.CryptoKeyVersion{},
-				},
-				&kmspb.GetCryptoKeyRequest{
-					Name: parent,
-				},
-				&kmspb.UpdateCryptoKeyRequest{
-					CryptoKey: &kmspb.CryptoKey{
-						Labels: map[string]string{
-							"ver_" + versionSuffix + "-new": VersionStateNew.String(),
-							"ver_" + versionSuffix:          VersionStatePrimary.String(),
-						},
-						Name: parent,
-					},
-					UpdateMask: &fieldmaskpb.FieldMask{
-						Paths: []string{"labels"},
-					},
 				},
 				&kmspb.DestroyCryptoKeyVersionRequest{
 					Name: versionName + "2",
@@ -497,9 +426,7 @@ func TestPerformActions(t *testing.T) {
 			mockKeyManagement.Resps = append(mockKeyManagement.Resps[:0], &kmspb.CryptoKeyVersion{Name: versionName + "-new"})
 
 			mockKeyManagement.Labels = make(map[string]string)
-			for key, state := range tc.priorStates {
-				mockKeyManagement.Labels[key] = state.String()
-			}
+			mockKeyManagement.Labels["primary"] = tc.priorPrimary
 
 			gotErr := handler.performActions(ctx, parent, tc.actions)
 
@@ -518,15 +445,7 @@ func TestPerformActions(t *testing.T) {
 			}
 			testutil.ErrCmp(t, tc.wantErr, gotErr)
 
-			got := make(map[string]VersionState)
-			for key, value := range mockKeyManagement.Labels {
-				got[key] = GetVersionState(value)
-			}
-
-			if len(got) == 0 {
-				got = nil
-			}
-			if diff := cmp.Diff(tc.expectedStates, got); diff != "" {
+			if diff := cmp.Diff(tc.expectedPrimary, mockKeyManagement.Labels["primary"]); diff != "" {
 				t.Errorf("Got diff (-want, +got): %v", diff)
 			}
 
