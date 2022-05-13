@@ -4,6 +4,7 @@ import (
 	"context"
 	"crypto/ecdsa"
 	"crypto/rand"
+	"fmt"
 
 	"github.com/golang/protobuf/proto"
 	kmspb "google.golang.org/genproto/googleapis/cloud/kms/v1"
@@ -29,6 +30,7 @@ type MockKeyManagementServer struct {
 	PublicKey   string
 	KeyName     string
 	VersionName string
+	NumVersions int
 }
 
 func (s *MockKeyManagementServer) CreateCryptoKeyVersion(ctx context.Context, req *kmspb.CreateCryptoKeyVersionRequest) (*kmspb.CryptoKeyVersion, error) {
@@ -44,13 +46,15 @@ func (s *MockKeyManagementServer) ListCryptoKeyVersions(ctx context.Context, req
 	if s.Err != nil {
 		return nil, s.Err
 	}
+	list := make([]*kmspb.CryptoKeyVersion, 0)
+	for i := 0; i < s.NumVersions; i++ {
+		list = append(list, &kmspb.CryptoKeyVersion{
+			Name:  fmt.Sprintf("%s-%d", s.VersionName, i),
+			State: kmspb.CryptoKeyVersion_ENABLED,
+		})
+	}
 	return &kmspb.ListCryptoKeyVersionsResponse{
-		CryptoKeyVersions: []*kmspb.CryptoKeyVersion{
-			{
-				Name:  s.VersionName,
-				State: kmspb.CryptoKeyVersion_ENABLED,
-			},
-		},
+		CryptoKeyVersions: list,
 	}, nil
 }
 

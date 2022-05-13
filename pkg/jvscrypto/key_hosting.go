@@ -15,6 +15,7 @@ import (
 	kms "cloud.google.com/go/kms/apiv1"
 	"github.com/abcxyz/jvs/pkg/cache"
 	"github.com/abcxyz/jvs/pkg/config"
+	"google.golang.org/api/iterator"
 	kmspb "google.golang.org/genproto/googleapis/cloud/kms/v1"
 )
 
@@ -22,7 +23,6 @@ import (
 type KeyServer struct {
 	KmsClient    *kms.KeyManagementClient
 	CryptoConfig *config.CryptoConfig
-	StateStore   StateStore
 	Cache        *cache.Cache[string]
 }
 
@@ -67,15 +67,21 @@ func (k *KeyServer) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 // JWKList creates a list of public keys in JWK format.
 // https://datatracker.ietf.org/doc/html/rfc7517#section-4
 func (k *KeyServer) JWKList(ctx context.Context, keyName string) ([]*ECDSAKey, error) {
-	states, err := k.StateStore.GetActiveVersionStates(ctx, keyName)
-	if err != nil {
-		return nil, fmt.Errorf("err while reading states: %w", err)
-	}
+	it := k.KmsClient.ListCryptoKeyVersions(ctx, &kmspb.ListCryptoKeyVersionsRequest{
+		Parent: keyName,
+		Filter: "state=ENABLED",
+	})
 
 	jwkList := make([]*ECDSAKey, 0)
-
-	for ver, _ := range states {
-		key, err := k.KmsClient.GetPublicKey(ctx, &kmspb.GetPublicKeyRequest{Name: ver})
+	for {
+		ver, err := it.Next()
+		if err == iterator.Done {
+			break
+		}
+		if err != nil {
+			return nil, fmt.Errorf("err while reading crypto key version list: %w", err)
+		}
+		key, err := k.KmsClient.GetPublicKey(ctx, &kmspb.GetPublicKeyRequest{Name: ver.Name})
 		if err != nil {
 			return nil, fmt.Errorf("err while getting public key from kms: %w", err)
 		}
@@ -91,7 +97,7 @@ func (k *KeyServer) JWKList(ctx context.Context, keyName string) ([]*ECDSAKey, e
 		}
 
 		// TODO: We should set something else for Key ID. #27
-		id, err := getLabelKey(ver)
+		id, err := getLabelValue(ver.Name)
 		if err != nil {
 			return nil, fmt.Errorf("err while determining key id: %w", err)
 		}

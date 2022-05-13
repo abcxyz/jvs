@@ -79,7 +79,6 @@ func TestJWKSetFormattedString(t *testing.T) {
 	ks := &KeyServer{
 		KmsClient:    kms,
 		CryptoConfig: &config.CryptoConfig{},
-		StateStore:   &KeyLabelStateStore{KMSClient: kms},
 		Cache:        cache,
 	}
 
@@ -87,36 +86,34 @@ func TestJWKSetFormattedString(t *testing.T) {
 	versionSuffix := "[VERSION]"
 
 	tests := []struct {
-		name         string
-		storageState map[string]string
-		wantOutput   string
-		wantErr      string
+		name       string
+		primary    string
+		numKeys    int
+		wantOutput string
+		wantErr    string
 	}{
 		{
-			name: "happy-path",
-			storageState: map[string]string{
-				"ver_" + versionSuffix: VersionStatePrimary.String(),
-			},
-			wantOutput: fmt.Sprintf("{\"keys\":[{\"crv\":\"P-256\",\"kid\":\"ver_[VERSION]\",\"kty\":\"EC\",\"x\":\"%s\",\"y\":\"%s\"}]}",
+			name:    "happy-path",
+			primary: "ver_" + versionSuffix,
+			numKeys: 1,
+			wantOutput: fmt.Sprintf("{\"keys\":[{\"crv\":\"P-256\",\"kid\":\"ver_[VERSION]-0\",\"kty\":\"EC\",\"x\":\"%s\",\"y\":\"%s\"}]}",
 				base64.RawURLEncoding.EncodeToString(privateKey.PublicKey.X.Bytes()),
 				base64.RawURLEncoding.EncodeToString(privateKey.PublicKey.Y.Bytes())),
 		},
 		{
-			name: "multi-key",
-			storageState: map[string]string{
-				"ver_" + versionSuffix:       VersionStatePrimary.String(),
-				"ver_" + versionSuffix + "2": VersionStateNew.String(),
-			},
-			wantOutput: fmt.Sprintf("{\"keys\":[{\"crv\":\"P-256\",\"kid\":\"ver_[VERSION]\",\"kty\":\"EC\",\"x\":\"%s\",\"y\":\"%s\"},{\"crv\":\"P-256\",\"kid\":\"ver_[VERSION]2\",\"kty\":\"EC\",\"x\":\"%s\",\"y\":\"%s\"}]}",
+			name:    "multi-key",
+			primary: "ver_" + versionSuffix,
+			numKeys: 2,
+			wantOutput: fmt.Sprintf("{\"keys\":[{\"crv\":\"P-256\",\"kid\":\"ver_[VERSION]-0\",\"kty\":\"EC\",\"x\":\"%s\",\"y\":\"%s\"},{\"crv\":\"P-256\",\"kid\":\"ver_[VERSION]-1\",\"kty\":\"EC\",\"x\":\"%s\",\"y\":\"%s\"}]}",
 				base64.RawURLEncoding.EncodeToString(privateKey.PublicKey.X.Bytes()),
 				base64.RawURLEncoding.EncodeToString(privateKey.PublicKey.Y.Bytes()),
 				base64.RawURLEncoding.EncodeToString(privateKey.PublicKey.X.Bytes()),
 				base64.RawURLEncoding.EncodeToString(privateKey.PublicKey.Y.Bytes())),
 		},
 		{
-			name:         "no-primary",
-			storageState: map[string]string{},
-			wantOutput:   "{\"keys\":[]}",
+			name:       "no-primary",
+			numKeys:    0,
+			wantOutput: "{\"keys\":[]}",
 		},
 	}
 
@@ -124,10 +121,10 @@ func TestJWKSetFormattedString(t *testing.T) {
 		tc := tc
 		t.Run(tc.name, func(t *testing.T) {
 			mockKMSServer.KeyName = key
+			mockKMSServer.VersionName = key + "/cryptoKeyVersions/" + versionSuffix
 			mockKMSServer.Labels = make(map[string]string)
-			for key, val := range tc.storageState {
-				mockKMSServer.Labels[key] = val
-			}
+			mockKMSServer.Labels["primary"] = tc.primary
+			mockKMSServer.NumVersions = tc.numKeys
 
 			keys, err := ks.JWKList(ctx, key)
 			got, err := FormatJWKString(keys)
