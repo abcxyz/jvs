@@ -28,6 +28,7 @@ import (
 	kms "cloud.google.com/go/kms/apiv1"
 	"github.com/abcxyz/jvs/pkg/config"
 	"github.com/abcxyz/jvs/pkg/jvscrypto"
+	"github.com/patrickmn/go-cache"
 )
 
 func main() {
@@ -56,10 +57,14 @@ func realMain(ctx context.Context) error {
 		return fmt.Errorf("failed to load config: %v", err)
 	}
 
+	// First number is default expiration. second is the interval purges run on.
+	cache := cache.New(5*time.Minute, 10*time.Minute)
+
 	ks := &jvscrypto.KeyServer{
 		KmsClient:    kmsClient,
 		CryptoConfig: config,
 		StateStore:   &jvscrypto.KeyLabelStateStore{KMSClient: kmsClient},
+		Cache:        cache,
 	}
 
 	mux := http.NewServeMux()
