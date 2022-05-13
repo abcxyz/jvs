@@ -65,7 +65,6 @@ func realMain(ctx context.Context) error {
 	ks := &jvscrypto.KeyServer{
 		KmsClient:    kmsClient,
 		CryptoConfig: config,
-		StateStore:   &jvscrypto.KeyLabelStateStore{KMSClient: kmsClient},
 		Cache:        cache,
 	}
 
