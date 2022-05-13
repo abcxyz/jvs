@@ -13,8 +13,8 @@ import (
 	"sort"
 
 	kms "cloud.google.com/go/kms/apiv1"
+	"github.com/abcxyz/jvs/pkg/cache"
 	"github.com/abcxyz/jvs/pkg/config"
-	"github.com/patrickmn/go-cache"
 	kmspb "google.golang.org/genproto/googleapis/cloud/kms/v1"
 )
 
@@ -23,7 +23,7 @@ type KeyServer struct {
 	KmsClient    *kms.KeyManagementClient
 	CryptoConfig *config.CryptoConfig
 	StateStore   StateStore
-	Cache        *cache.Cache
+	Cache        *cache.Cache[string]
 }
 
 type ECDSAKey struct {
@@ -38,9 +38,9 @@ const cacheKey = "jwks"
 
 // ServeHTTP returns the public keys in JWK format
 func (k *KeyServer) ServeHTTP(w http.ResponseWriter, r *http.Request) {
-	val, found := k.Cache.Get(cacheKey)
+	val, found := k.Cache.Lookup(cacheKey)
 	if found {
-		fmt.Fprintf(w, val.(string))
+		fmt.Fprintf(w, val)
 		return
 	}
 
@@ -60,7 +60,7 @@ func (k *KeyServer) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 		http.Error(w, "error formatting public keys", http.StatusInternalServerError)
 		return
 	}
-	k.Cache.Set(cacheKey, json, cache.DefaultExpiration)
+	k.Cache.Set(cacheKey, json)
 	fmt.Fprintf(w, json)
 }
 
