@@ -18,11 +18,11 @@ import (
 	"context"
 	"crypto"
 	"fmt"
-	"log"
 	"time"
 
 	jvspb "github.com/abcxyz/jvs/apis/v0"
 	"github.com/abcxyz/jvs/pkg/jvscrypto"
+	"github.com/abcxyz/jvs/pkg/zlogger"
 	"github.com/golang-jwt/jwt"
 	"github.com/google/uuid"
 	"github.com/hashicorp/go-multierror"
@@ -30,7 +30,7 @@ import (
 	"google.golang.org/grpc/status"
 )
 
-// Processor performs the necessary logic to validate a justification, then mints a token.
+// Processor performs the necessary loggeric to validate a justification, then mints a token.
 type Processor struct {
 	jvspb.UnimplementedJVSServiceServer
 	Signer crypto.Signer
@@ -41,14 +41,15 @@ const jvsIssuer = "abcxyz-justification-verification-service"
 // CreateToken implements the create token API which creates and signs a JWT token if the provided justifications
 // are valid.
 func (p *Processor) CreateToken(ctx context.Context, request *jvspb.CreateJustificationRequest) (string, error) {
+	logger := zlogger.FromContext(ctx)
 	if err := p.runValidations(request); err != nil {
-		log.Printf("Couldn't validate request: %v\n", err)
+		logger.Errorf("Couldn't validate request: %v\n", err)
 		return "", status.Error(codes.InvalidArgument, "couldn't validate request")
 	}
 	token := p.createToken(ctx, request)
 	signedToken, err := jvscrypto.SignToken(token, p.Signer)
 	if err != nil {
-		log.Printf("Ran into error while signing: %v\n", err)
+		logger.Errorf("Ran into error while signing: %v\n", err)
 		return "", status.Error(codes.Internal, "ran into error while minting token")
 	}
 
