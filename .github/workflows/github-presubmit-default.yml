@@ -1,5 +1,5 @@
 # Default action to pass required checks when no testable changes are made
-name: CI - Default Tests
+name: 'CI - Default Tests'
 
 on:
   push:
@@ -12,7 +12,7 @@ on:
     - '!scripts/test_go.sh'
   pull_request:
     branches:
-    - main
+    - 'main'
     paths:
     - '**/'
     - '!pkg/**'
@@ -26,15 +26,15 @@ concurrency:
 
 jobs:
   lint:
-    name: Lint
-    runs-on: ubuntu-latest
+    name: 'Lint'
+    runs-on: 'ubuntu-latest'
     steps:
-    - name: No lint required
+    - name: 'No lint required'
       run: 'echo "No lint-able files were changed."'
 
   test:
-    name: Tests
-    runs-on: ubuntu-latest
+    name: 'Tests'
+    runs-on: 'ubuntu-latest'
     steps:
-    - name: No tests required
+    - name: 'No tests required'
       run: 'echo "No testable files were changed."'

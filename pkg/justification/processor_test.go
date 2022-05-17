@@ -56,12 +56,12 @@ func TestCreateToken(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
+	// not checked, but makes linter happy
+	errs := make(chan error, 1)
 	go func() {
-		err = serv.Serve(lis)
+		errs <- serv.Serve(lis)
+		close(errs)
 	}()
-	if err != nil {
-		t.Fatal("Server error")
-	}
 
 	conn, err := grpc.Dial(lis.Addr().String(), grpc.WithTransportCredentials(insecure.NewCredentials()))
 	if err != nil {

@@ -36,11 +36,6 @@ type server struct {
 	handler *jvscrypto.RotationHandler
 }
 
-// HTTPMessage is the request format we will send from cloud scheduler.
-type HTTPMessage struct {
-	// TODO: We should support manual actions through call arguments, such as a rotation before the TTL. https://github.com/abcxyz/jvs/issues/9
-}
-
 // ServeHTTP rotates a single key's versions.
 func (s *server) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	logger := zlogger.FromContext(r.Context())
