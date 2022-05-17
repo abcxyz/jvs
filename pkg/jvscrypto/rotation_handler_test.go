@@ -241,7 +241,12 @@ func TestPerformActions(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	go serv.Serve(lis)
+	go func() {
+		err := serv.Serve(lis)
+		if err != nil {
+			t.Fatal("Server error")
+		}
+	}()
 
 	conn, err := grpc.Dial(lis.Addr().String(), grpc.WithInsecure())
 	if err != nil {
