@@ -26,6 +26,7 @@ import (
 	"github.com/golang-jwt/jwt"
 	"github.com/google/uuid"
 	"github.com/hashicorp/go-multierror"
+	"go.uber.org/zap"
 	"google.golang.org/grpc/codes"
 	"google.golang.org/grpc/status"
 )
@@ -43,13 +44,13 @@ const jvsIssuer = "abcxyz-justification-verification-service"
 func (p *Processor) CreateToken(ctx context.Context, request *jvspb.CreateJustificationRequest) (string, error) {
 	logger := zlogger.FromContext(ctx)
 	if err := p.runValidations(request); err != nil {
-		logger.Errorf("Couldn't validate request: %v\n", err)
+		logger.Error("Couldn't validate request", zap.Error(err))
 		return "", status.Error(codes.InvalidArgument, "couldn't validate request")
 	}
 	token := p.createToken(ctx, request)
 	signedToken, err := jvscrypto.SignToken(token, p.Signer)
 	if err != nil {
-		logger.Errorf("Ran into error while signing: %v\n", err)
+		logger.Error("Ran into error while signing", zap.Error(err))
 		return "", status.Error(codes.Internal, "ran into error while minting token")
 	}
 

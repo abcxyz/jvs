@@ -29,6 +29,7 @@ import (
 	"github.com/abcxyz/jvs/pkg/jvscrypto"
 	"github.com/abcxyz/jvs/pkg/zlogger"
 	"github.com/hashicorp/go-multierror"
+	"go.uber.org/zap"
 )
 
 type server struct {
@@ -43,7 +44,7 @@ type HTTPMessage struct {
 // ServeHTTP rotates a single key's versions.
 func (s *server) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	logger := zlogger.FromContext(r.Context())
-	logger.Debugf("received request at %s\n", r.URL)
+	logger.Info("received request", zap.Any("url", r.URL))
 
 	var errs error
 	// TODO: load keys from DB instead. https://github.com/abcxyz/jvs/issues/17
@@ -52,10 +53,10 @@ func (s *server) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 			errs = multierror.Append(errs, fmt.Errorf("error while rotating key %s : %v\n", key, err))
 			continue
 		}
-		logger.Infof("successfully performed actions (if necessary) on key: %s.\n", key)
+		logger.Info("successfully performed actions (if necessary) on key.", zap.String("key", key))
 	}
 	if errs != nil {
-		logger.Errorf("ran into errors while rotating keys. %v\n", errs)
+		logger.Error("ran into errors while rotating keys", zap.Error(errs))
 		http.Error(w, "error while rotating keys", http.StatusInternalServerError)
 		return
 	}
@@ -107,7 +108,7 @@ func realMain(ctx context.Context) error {
 	port := os.Getenv("PORT")
 	if port == "" {
 		port = "8080"
-		logger.Debugf("defaulting to port %s", port)
+		logger.Debug("defaulting to port ", zap.String("port", port))
 	}
 
 	// Create the server and listen in a goroutine.

@@ -29,6 +29,7 @@ import (
 	"github.com/abcxyz/jvs/pkg/zlogger"
 	"github.com/sethvargo/go-gcpkms/pkg/gcpkms"
 	"go.opentelemetry.io/contrib/instrumentation/google.golang.org/grpc/otelgrpc"
+	"go.uber.org/zap"
 	"golang.org/x/sync/errgroup"
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/reflection"
@@ -56,7 +57,7 @@ func realMain(ctx context.Context) error {
 
 	cfg, err := config.LoadJustificationConfig(ctx, []byte{})
 	if err != nil {
-		logger.Fatalf("failed to load config: %v", err)
+		logger.Fatal("failed to load config", zap.Error(err))
 	}
 
 	kmsClient, err := kms.NewKeyManagementClient(ctx)
@@ -67,11 +68,11 @@ func realMain(ctx context.Context) error {
 	// TODO: We should have a way of asynchronously updating.
 	ver, err := jvscrypto.GetLatestKeyVersion(ctx, kmsClient, cfg.KeyName)
 	if err != nil {
-		logger.Fatalf("failed to get key version: %v", err)
+		logger.Fatal("failed to get key version", zap.Error(err))
 	}
 	signer, err := gcpkms.NewSigner(ctx, kmsClient, ver.Name)
 	if err != nil {
-		logger.Fatalf("failed to create signer: %v", err)
+		logger.Fatalf("failed to create signer", zap.Error(err))
 	}
 
 	p := &justification.Processor{
@@ -90,7 +91,7 @@ func realMain(ctx context.Context) error {
 	// https://github.com/grpc/grpc/blob/master/doc/health-checking.md
 	g, ctx := errgroup.WithContext(ctx)
 	g.Go(func() error {
-		logger.Debugf("server listening at %v", lis.Addr())
+		logger.Debugf("server listening at", zap.Any("address", lis.Addr()))
 		return s.Serve(lis)
 	})
 
