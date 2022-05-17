@@ -29,11 +29,15 @@ import (
 	"github.com/abcxyz/jvs/pkg/cache"
 	"github.com/abcxyz/jvs/pkg/config"
 	"github.com/abcxyz/jvs/pkg/jvscrypto"
+	"github.com/abcxyz/jvs/pkg/zlogger"
 )
 
 func main() {
 	ctx, done := signal.NotifyContext(context.Background(), syscall.SIGINT, syscall.SIGTERM)
 	defer done()
+
+	logger := zlogger.NewFromEnv("")
+	ctx = zlogger.WithLogger(ctx, logger)
 
 	if err := realMain(ctx); err != nil {
 		done()

@@ -8,13 +8,14 @@ import (
 	"encoding/json"
 	"encoding/pem"
 	"fmt"
-	"log"
 	"net/http"
 	"sort"
 
 	kms "cloud.google.com/go/kms/apiv1"
 	"github.com/abcxyz/jvs/pkg/cache"
 	"github.com/abcxyz/jvs/pkg/config"
+	"github.com/abcxyz/jvs/pkg/zlogger"
+	"go.uber.org/zap"
 	"google.golang.org/api/iterator"
 	kmspb "google.golang.org/genproto/googleapis/cloud/kms/v1"
 )
@@ -38,6 +39,7 @@ const cacheKey = "jwks"
 
 // ServeHTTP returns the public keys in JWK format
 func (k *KeyServer) ServeHTTP(w http.ResponseWriter, r *http.Request) {
+	logger := zlogger.FromContext(r.Context())
 	val, found := k.Cache.Lookup(cacheKey)
 	if found {
 		fmt.Fprintf(w, val)
@@ -48,7 +50,7 @@ func (k *KeyServer) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	for _, key := range k.CryptoConfig.KeyNames {
 		list, err := k.JWKList(r.Context(), key)
 		if err != nil {
-			log.Printf("ran into error while determining public keys. %v\n", err)
+			logger.Error("ran into error while determining public keys", zap.Error(err))
 			http.Error(w, "error determining public keys", http.StatusInternalServerError)
 			return
 		}
@@ -56,7 +58,7 @@ func (k *KeyServer) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	}
 	json, err := FormatJWKString(jwks)
 	if err != nil {
-		log.Printf("ran into error while formatting public keys. %v\n", err)
+		logger.Error("ran into error while formatting public keys", zap.Error(err))
 		http.Error(w, "error formatting public keys", http.StatusInternalServerError)
 		return
 	}
