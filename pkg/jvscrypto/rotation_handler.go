@@ -17,12 +17,14 @@ package jvscrypto
 import (
 	"context"
 	"fmt"
-	"log"
 	"strings"
 	"time"
 
-	kms "cloud.google.com/go/kms/apiv1"
 	"github.com/abcxyz/jvs/pkg/config"
+	"github.com/abcxyz/jvs/pkg/zlogger"
+	"go.uber.org/zap"
+
+	kms "cloud.google.com/go/kms/apiv1"
 	"github.com/golang/protobuf/proto"
 	"github.com/hashicorp/go-multierror"
 	"google.golang.org/api/iterator"
@@ -68,7 +70,7 @@ func (h *RotationHandler) RotateKey(ctx context.Context, key string) error {
 	if err != nil {
 		return fmt.Errorf("unable to determine primary: %w", err)
 	}
-	actions, err := h.determineActions(vers, primaryName)
+	actions, err := h.determineActions(ctx, vers, primaryName)
 	if err != nil {
 		return fmt.Errorf("unable to determine cert actions: %w", err)
 	}
@@ -90,13 +92,14 @@ const (
 	ActionDestroy                    // Destroy version.
 )
 
-func (h *RotationHandler) determineActions(vers []*kmspb.CryptoKeyVersion, primaryName string) (map[*kmspb.CryptoKeyVersion]Action, error) {
+func (h *RotationHandler) determineActions(ctx context.Context, vers []*kmspb.CryptoKeyVersion, primaryName string) (map[*kmspb.CryptoKeyVersion]Action, error) {
+	logger := zlogger.FromContext(ctx)
 	var primary *kmspb.CryptoKeyVersion
 	var olderVers []*kmspb.CryptoKeyVersion
 	var newerVers []*kmspb.CryptoKeyVersion
 
 	for _, ver := range vers {
-		log.Printf("checking version %v", ver)
+		logger.Debug("checking version", zap.Any("version", ver))
 		if primaryName != "" && ver.Name == primaryName {
 			primary = ver
 			break
@@ -112,23 +115,23 @@ func (h *RotationHandler) determineActions(vers []*kmspb.CryptoKeyVersion, prima
 				continue
 			}
 			if createdBefore(ver, primary) {
-				log.Printf("version is older: %v", ver)
+				logger.Debug("version is older", zap.Any("version", ver))
 				olderVers = append(olderVers, ver)
 			} else {
-				log.Printf("version is newer: %v", ver)
+				logger.Debug("version is newer", zap.Any("version", ver))
 				newerVers = append(newerVers, ver)
 			}
 		}
 	}
 
-	actions := h.actionsForOlderVersions(olderVers)
+	actions := h.actionsForOlderVersions(ctx, olderVers)
 
-	newActions, promoting := h.actionsForNewVersions(newerVers, primary)
+	newActions, promoting := h.actionsForNewVersions(ctx, newerVers, primary)
 	for k, v := range newActions {
 		actions[k] = v
 	}
 
-	actions[primary] = h.actionsForPrimaryVersion(primary, promoting)
+	actions[primary] = h.actionsForPrimaryVersion(ctx, primary, promoting)
 
 	return actions, nil
 }
@@ -138,7 +141,7 @@ func createdBefore(ver1 *kmspb.CryptoKeyVersion, ver2 *kmspb.CryptoKeyVersion) b
 }
 
 // Determine actions for non-primary enabled versions.
-func (h *RotationHandler) actionsForNewVersions(vers []*kmspb.CryptoKeyVersion, primary *kmspb.CryptoKeyVersion) (map[*kmspb.CryptoKeyVersion]Action, bool) {
+func (h *RotationHandler) actionsForNewVersions(ctx context.Context, vers []*kmspb.CryptoKeyVersion, primary *kmspb.CryptoKeyVersion) (map[*kmspb.CryptoKeyVersion]Action, bool) {
 	actions := make(map[*kmspb.CryptoKeyVersion]Action)
 	promotingNewKey := false
 
@@ -149,7 +152,7 @@ func (h *RotationHandler) actionsForNewVersions(vers []*kmspb.CryptoKeyVersion, 
 	}
 
 	// if primary is nil, promote newest
-	if primary == nil || h.shouldPromote(newest) {
+	if primary == nil || h.shouldPromote(ctx, newest) {
 		actions[newest] = ActionPromote
 		promotingNewKey = true
 	}
@@ -179,19 +182,20 @@ func getNewestEnabledVer(vers []*kmspb.CryptoKeyVersion) *kmspb.CryptoKeyVersion
 }
 
 // Determine actions for primary version.
-func (h *RotationHandler) actionsForPrimaryVersion(primary *kmspb.CryptoKeyVersion, promotingNewKey bool) Action {
+func (h *RotationHandler) actionsForPrimaryVersion(ctx context.Context, primary *kmspb.CryptoKeyVersion, promotingNewKey bool) Action {
+	logger := zlogger.FromContext(ctx)
 	if primary == nil && !promotingNewKey {
-		log.Printf("no primary or new keys found, creating a new key and immediately promoting to primary.")
+		logger.Info("no primary or new keys found, creating a new key and immediately promoting to primary.")
 		return ActionCreateNewAndPromote
 	}
 
 	if promotingNewKey {
-		log.Printf("promoting new key, no action on current primary.\n")
+		logger.Info("promoting new key, no action on current primary.")
 		return ActionNone
 	}
 
 	// We don't have a new key we're promoting, see if we should create a new key.
-	if h.shouldRotate(primary) {
+	if h.shouldRotate(ctx, primary) {
 		return ActionCreateNew
 	} else {
 		return ActionNone
@@ -199,71 +203,76 @@ func (h *RotationHandler) actionsForPrimaryVersion(primary *kmspb.CryptoKeyVersi
 }
 
 // Determine actions for disabled versions.
-func (h *RotationHandler) actionsForOlderVersions(vers []*kmspb.CryptoKeyVersion) map[*kmspb.CryptoKeyVersion]Action {
+func (h *RotationHandler) actionsForOlderVersions(ctx context.Context, vers []*kmspb.CryptoKeyVersion) map[*kmspb.CryptoKeyVersion]Action {
+	logger := zlogger.FromContext(ctx)
 	actions := make(map[*kmspb.CryptoKeyVersion]Action)
 
 	for _, ver := range vers {
 		switch ver.State {
 		case kmspb.CryptoKeyVersion_ENABLED:
-			if h.disableAge(ver) {
+			if h.disableAge(ctx, ver) {
 				actions[ver] = ActionDisable
 			} else {
 				actions[ver] = ActionNone
 			}
 		case kmspb.CryptoKeyVersion_DISABLED:
-			if h.destroyAge(ver) {
+			if h.destroyAge(ctx, ver) {
 				actions[ver] = ActionDestroy
 			} else {
 				actions[ver] = ActionNone
 			}
 		default:
-			log.Printf("version %q in state %s, no action necessary.\n", ver.Name, ver.State.String())
+			logger.Info("no action needed for key version in current state.", zap.Any("version", ver), zap.Any("state", ver.State))
 			actions[ver] = ActionNone
 		}
 	}
 	return actions
 }
 
-func (h *RotationHandler) destroyAge(ver *kmspb.CryptoKeyVersion) bool {
+func (h *RotationHandler) destroyAge(ctx context.Context, ver *kmspb.CryptoKeyVersion) bool {
+	logger := zlogger.FromContext(ctx)
 	destroyBeforeDate := h.CurrentTime.Add(-h.CryptoConfig.DestroyAge())
 	shouldDestroy := ver.CreateTime.AsTime().Before(destroyBeforeDate)
 	if shouldDestroy {
-		log.Printf("version %q created %q before cutoff date %q, should destroy.\n", ver.Name, ver.CreateTime.AsTime(), destroyBeforeDate)
+		logger.Info("version created before cutoff date, should destroy.", zap.Any("version", ver), zap.Any("destroyBeforeDate", destroyBeforeDate))
 	} else {
-		log.Printf("version %q created %q after cutoff date %q, no action necessary.\n", ver.Name, ver.CreateTime.AsTime(), destroyBeforeDate)
+		logger.Debug("version created after cutoff date, no action necessary.", zap.Any("version", ver), zap.Any("destroyBeforeDate", destroyBeforeDate))
 	}
 	return shouldDestroy
 }
 
-func (h *RotationHandler) disableAge(ver *kmspb.CryptoKeyVersion) bool {
+func (h *RotationHandler) disableAge(ctx context.Context, ver *kmspb.CryptoKeyVersion) bool {
+	logger := zlogger.FromContext(ctx)
 	disableBeforeDate := h.CurrentTime.Add(-h.CryptoConfig.KeyTTL)
 	shouldDisable := ver.CreateTime.AsTime().Before(disableBeforeDate)
 	if shouldDisable {
-		log.Printf("version %q created %q before cutoff date %q, should disable.\n", ver.Name, ver.CreateTime.AsTime(), disableBeforeDate)
+		logger.Info("version created before cutoff date, should disable.", zap.Any("version", ver), zap.Any("disableBeforeDate", disableBeforeDate))
 	} else {
-		log.Printf("version %q created %q after cutoff date %q, no action necessary.\n", ver.Name, ver.CreateTime.AsTime(), disableBeforeDate)
+		logger.Debug("version created before cutoff date, no action necessary.", zap.Any("version", ver), zap.Any("disableBeforeDate", disableBeforeDate))
 	}
 	return shouldDisable
 }
 
-func (h *RotationHandler) shouldRotate(ver *kmspb.CryptoKeyVersion) bool {
+func (h *RotationHandler) shouldRotate(ctx context.Context, ver *kmspb.CryptoKeyVersion) bool {
+	logger := zlogger.FromContext(ctx)
 	rotateBeforeDate := h.CurrentTime.Add(-h.CryptoConfig.RotationAge())
 	shouldRotate := ver.CreateTime.AsTime().Before(rotateBeforeDate)
 	if shouldRotate {
-		log.Printf("version created %q before cutoff date %q, should rotate.\n", ver.CreateTime.AsTime(), rotateBeforeDate)
+		logger.Info("version created before cutoff date, should rotate.", zap.Any("version", ver), zap.Any("rotateBeforeDate", rotateBeforeDate))
 	} else {
-		log.Printf("version created %q after cutoff date %q, no action necessary.\n", ver.CreateTime.AsTime(), rotateBeforeDate)
+		logger.Debug("version created before cutoff date, no action necessary.", zap.Any("version", ver), zap.Any("rotateBeforeDate", rotateBeforeDate))
 	}
 	return shouldRotate
 }
 
-func (h *RotationHandler) shouldPromote(ver *kmspb.CryptoKeyVersion) bool {
+func (h *RotationHandler) shouldPromote(ctx context.Context, ver *kmspb.CryptoKeyVersion) bool {
+	logger := zlogger.FromContext(ctx)
 	promoteBeforeDate := h.CurrentTime.Add(-h.CryptoConfig.PropagationDelay)
 	canPromote := ver.CreateTime.AsTime().Before(promoteBeforeDate)
 	if canPromote {
-		log.Printf("version created %q before cutoff date %q, should promote to primary.\n", ver.CreateTime.AsTime(), promoteBeforeDate)
+		logger.Info("version created before cutoff date, should promote to primary.", zap.Any("version", ver), zap.Any("promoteBeforeDate", promoteBeforeDate))
 	} else {
-		log.Printf("version created %q after cutoff date %q, not eligible for promotion.\n", ver.CreateTime.AsTime(), promoteBeforeDate)
+		logger.Debug("version created after cutoff date, no action necessary.", zap.Any("version", ver), zap.Any("promoteBeforeDate", promoteBeforeDate))
 	}
 	return canPromote
 }
@@ -272,6 +281,7 @@ func (h *RotationHandler) shouldPromote(ver *kmspb.CryptoKeyVersion) bool {
 // for example, if we are demoting a key, we also need to ensure we've marked another as primary, and may end up
 // in an odd state if one action occurs and the other does not.
 func (h *RotationHandler) performActions(ctx context.Context, keyName string, actions map[*kmspb.CryptoKeyVersion]Action) error {
+	logger := zlogger.FromContext(ctx)
 	var result error
 	for ver, action := range actions {
 		switch action {
@@ -291,7 +301,7 @@ func (h *RotationHandler) performActions(ctx context.Context, keyName string, ac
 				result = multierror.Append(result, err)
 				continue
 			}
-			log.Printf("Promoting immediately.")
+			logger.Info("Promoting immediately.")
 			if err := SetPrimary(ctx, h.KMSClient, keyName, newVer.Name); err != nil {
 				result = multierror.Append(result, err)
 			}
@@ -312,10 +322,12 @@ func (h *RotationHandler) performActions(ctx context.Context, keyName string, ac
 }
 
 func (h *RotationHandler) performDisable(ctx context.Context, ver *kmspb.CryptoKeyVersion) error {
+	logger := zlogger.FromContext(ctx)
+
 	// Make a copy to modify
 	newVerState := ver
 
-	log.Printf("disabling key version %s", ver.Name)
+	logger.Info("disabling key version", zap.String("versionName", ver.Name))
 	newVerState.State = kmspb.CryptoKeyVersion_DISABLED
 	var messageType *kmspb.CryptoKeyVersion
 	mask, err := fieldmaskpb.New(messageType, "state")
@@ -333,7 +345,8 @@ func (h *RotationHandler) performDisable(ctx context.Context, ver *kmspb.CryptoK
 }
 
 func (h *RotationHandler) performDestroy(ctx context.Context, ver *kmspb.CryptoKeyVersion) error {
-	log.Printf("destroying key version %s", ver.Name)
+	logger := zlogger.FromContext(ctx)
+	logger.Info("destroying key version", zap.String("versionName", ver.Name))
 	destroyReq := &kmspb.DestroyCryptoKeyVersionRequest{
 		Name: ver.Name,
 	}
@@ -344,7 +357,9 @@ func (h *RotationHandler) performDestroy(ctx context.Context, ver *kmspb.CryptoK
 }
 
 func (h *RotationHandler) performCreateNew(ctx context.Context, keyName string) (*kmspb.CryptoKeyVersion, error) {
-	log.Printf("creating new key version.")
+	logger := zlogger.FromContext(ctx)
+	logger.Info("creating new key version.")
+
 	createReq := &kmspb.CreateCryptoKeyVersionRequest{
 		Parent:           keyName,
 		CryptoKeyVersion: &kmspb.CryptoKeyVersion{},
