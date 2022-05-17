@@ -33,7 +33,7 @@ jobs:
     - name: golangci-lint
       uses: golangci/golangci-lint-action@v2
       with:
-        working-directory: clients/go
+        working-directory: pkg
 
     - name: Set up Go
       uses: actions/setup-go@v2
