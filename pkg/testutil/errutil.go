@@ -27,7 +27,7 @@ func ErrCmp(t testing.TB, wantErr string, gotErr error) {
 	if wantErr != "" {
 		if gotErr != nil {
 			if !strings.Contains(gotErr.Error(), wantErr) {
-				t.Errorf("Process got unexpected error: %v, wanted: ", gotErr, wantErr)
+				t.Errorf("Process got unexpected error: %v, wanted: %v", gotErr, wantErr)
 			}
 		} else {
 			t.Errorf("Expected error, but received nil")
