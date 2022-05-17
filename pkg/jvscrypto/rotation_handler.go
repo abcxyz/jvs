@@ -22,10 +22,10 @@ import (
 
 	"github.com/abcxyz/jvs/pkg/config"
 	"github.com/abcxyz/jvs/pkg/zlogger"
+	"github.com/golang/protobuf/proto"
 	"go.uber.org/zap"
 
 	kms "cloud.google.com/go/kms/apiv1"
-	"github.com/golang/protobuf/proto"
 	"github.com/hashicorp/go-multierror"
 	"google.golang.org/api/iterator"
 	kmspb "google.golang.org/genproto/googleapis/cloud/kms/v1"
@@ -92,7 +92,19 @@ const (
 	ActionDestroy                    // Destroy version.
 )
 
-func (h *RotationHandler) determineActions(ctx context.Context, vers []*kmspb.CryptoKeyVersion, primaryName string) (map[*kmspb.CryptoKeyVersion]Action, error) {
+type ActionTuple struct {
+	Action  Action
+	Version *kmspb.CryptoKeyVersion
+}
+
+func newActionTuple(action Action, ver *kmspb.CryptoKeyVersion) *ActionTuple {
+	return &ActionTuple{
+		Action:  action,
+		Version: ver,
+	}
+}
+
+func (h *RotationHandler) determineActions(ctx context.Context, vers []*kmspb.CryptoKeyVersion, primaryName string) ([]*ActionTuple, error) {
 	logger := zlogger.FromContext(ctx)
 	var primary *kmspb.CryptoKeyVersion
 	var olderVers []*kmspb.CryptoKeyVersion
@@ -126,12 +138,8 @@ func (h *RotationHandler) determineActions(ctx context.Context, vers []*kmspb.Cr
 
 	actions := h.actionsForOlderVersions(ctx, olderVers)
 
-	newActions, promoting := h.actionsForNewVersions(ctx, newerVers, primary)
-	for k, v := range newActions {
-		actions[k] = v
-	}
-
-	actions[primary] = h.actionsForPrimaryVersion(ctx, primary, promoting)
+	newActions := h.actionsForNewVersions(ctx, newerVers, primary)
+	actions = append(actions, newActions...)
 
 	return actions, nil
 }
@@ -141,28 +149,41 @@ func createdBefore(ver1 *kmspb.CryptoKeyVersion, ver2 *kmspb.CryptoKeyVersion) b
 }
 
 // Determine actions for non-primary enabled versions.
-func (h *RotationHandler) actionsForNewVersions(ctx context.Context, vers []*kmspb.CryptoKeyVersion, primary *kmspb.CryptoKeyVersion) (map[*kmspb.CryptoKeyVersion]Action, bool) {
-	actions := make(map[*kmspb.CryptoKeyVersion]Action)
-	promotingNewKey := false
-
+func (h *RotationHandler) actionsForNewVersions(ctx context.Context, vers []*kmspb.CryptoKeyVersion, primary *kmspb.CryptoKeyVersion) []*ActionTuple {
+	logger := zlogger.FromContext(ctx)
+	actions := make([]*ActionTuple, 0)
 	newest := getNewestEnabledVer(vers)
 
-	if newest == nil {
-		return actions, false
+	// We never make any direct actions on primary.
+	if primary != nil {
+		actions = append(actions, newActionTuple(ActionNone, primary))
 	}
 
-	// if primary is nil, promote newest
-	if primary == nil || h.shouldPromote(ctx, newest) {
-		actions[newest] = ActionPromote
-		promotingNewKey = true
-	}
-
+	// All non-newest versions should have no actions taken.
 	for _, ver := range vers {
 		if !proto.Equal(newest, ver) {
-			actions[ver] = ActionNone
+			actions = append(actions, newActionTuple(ActionNone, ver))
 		}
 	}
-	return actions, promotingNewKey
+
+	// If newest is eligible for promotion, promote and don't do anything with the current primary.
+	if h.shouldPromote(ctx, newest) {
+		actions = append(actions, newActionTuple(ActionPromote, newest))
+		return actions
+	}
+
+	if primary == nil {
+		logger.Info("no primary or new keys found, creating a new key and immediately promoting to primary.")
+		actions = append(actions, newActionTuple(ActionCreateNewAndPromote, nil))
+		return actions
+	}
+
+	// We don't have a new key we're promoting, see if we should create a new key.
+	if h.shouldRotate(ctx, primary) {
+		actions = append(actions, newActionTuple(ActionCreateNew, nil))
+	}
+	return actions
+
 }
 
 func getNewestEnabledVer(vers []*kmspb.CryptoKeyVersion) *kmspb.CryptoKeyVersion {
@@ -181,50 +202,27 @@ func getNewestEnabledVer(vers []*kmspb.CryptoKeyVersion) *kmspb.CryptoKeyVersion
 	return newest
 }
 
-// Determine actions for primary version.
-func (h *RotationHandler) actionsForPrimaryVersion(ctx context.Context, primary *kmspb.CryptoKeyVersion, promotingNewKey bool) Action {
-	logger := zlogger.FromContext(ctx)
-	if primary == nil && !promotingNewKey {
-		logger.Info("no primary or new keys found, creating a new key and immediately promoting to primary.")
-		return ActionCreateNewAndPromote
-	}
-
-	if promotingNewKey {
-		logger.Info("promoting new key, no action on current primary.")
-		return ActionNone
-	}
-
-	// We don't have a new key we're promoting, see if we should create a new key.
-	if h.shouldRotate(ctx, primary) {
-		return ActionCreateNew
-	} else {
-		return ActionNone
-	}
-}
-
 // Determine actions for disabled versions.
-func (h *RotationHandler) actionsForOlderVersions(ctx context.Context, vers []*kmspb.CryptoKeyVersion) map[*kmspb.CryptoKeyVersion]Action {
+func (h *RotationHandler) actionsForOlderVersions(ctx context.Context, vers []*kmspb.CryptoKeyVersion) []*ActionTuple {
 	logger := zlogger.FromContext(ctx)
-	actions := make(map[*kmspb.CryptoKeyVersion]Action)
+	actions := make([]*ActionTuple, 0)
 
 	for _, ver := range vers {
 		switch ver.State {
 		case kmspb.CryptoKeyVersion_ENABLED:
 			if h.disableAge(ctx, ver) {
-				actions[ver] = ActionDisable
-			} else {
-				actions[ver] = ActionNone
+				actions = append(actions, newActionTuple(ActionDisable, ver))
+				continue
 			}
 		case kmspb.CryptoKeyVersion_DISABLED:
 			if h.destroyAge(ctx, ver) {
-				actions[ver] = ActionDestroy
-			} else {
-				actions[ver] = ActionNone
+				actions = append(actions, newActionTuple(ActionDestroy, ver))
+				continue
 			}
 		default:
 			logger.Info("no action needed for key version in current state.", zap.Any("version", ver), zap.Any("state", ver.State))
-			actions[ver] = ActionNone
 		}
+		actions = append(actions, newActionTuple(ActionNone, ver))
 	}
 	return actions
 }
@@ -267,6 +265,9 @@ func (h *RotationHandler) shouldRotate(ctx context.Context, ver *kmspb.CryptoKey
 
 func (h *RotationHandler) shouldPromote(ctx context.Context, ver *kmspb.CryptoKeyVersion) bool {
 	logger := zlogger.FromContext(ctx)
+	if ver == nil {
+		return false
+	}
 	promoteBeforeDate := h.CurrentTime.Add(-h.CryptoConfig.PropagationDelay)
 	canPromote := ver.CreateTime.AsTime().Before(promoteBeforeDate)
 	if canPromote {
@@ -280,11 +281,11 @@ func (h *RotationHandler) shouldPromote(ctx context.Context, ver *kmspb.CryptoKe
 // TODO: it may be worth adding rollback functionality for cases where multiple actions are expected to occur.
 // for example, if we are demoting a key, we also need to ensure we've marked another as primary, and may end up
 // in an odd state if one action occurs and the other does not.
-func (h *RotationHandler) performActions(ctx context.Context, keyName string, actions map[*kmspb.CryptoKeyVersion]Action) error {
+func (h *RotationHandler) performActions(ctx context.Context, keyName string, actions []*ActionTuple) error {
 	logger := zlogger.FromContext(ctx)
 	var result error
-	for ver, action := range actions {
-		switch action {
+	for _, action := range actions {
+		switch action.Action {
 		case ActionCreateNew:
 			_, err := h.performCreateNew(ctx, keyName)
 			if err != nil {
@@ -292,7 +293,7 @@ func (h *RotationHandler) performActions(ctx context.Context, keyName string, ac
 				continue
 			}
 		case ActionPromote:
-			if err := SetPrimary(ctx, h.KMSClient, keyName, ver.Name); err != nil {
+			if err := SetPrimary(ctx, h.KMSClient, keyName, action.Version.Name); err != nil {
 				result = multierror.Append(result, err)
 			}
 		case ActionCreateNewAndPromote:
@@ -306,12 +307,12 @@ func (h *RotationHandler) performActions(ctx context.Context, keyName string, ac
 				result = multierror.Append(result, err)
 			}
 		case ActionDisable:
-			if err := h.performDisable(ctx, ver); err != nil {
+			if err := h.performDisable(ctx, action.Version); err != nil {
 				result = multierror.Append(result, err)
 				continue
 			}
 		case ActionDestroy:
-			if err := h.performDestroy(ctx, ver); err != nil {
+			if err := h.performDestroy(ctx, action.Version); err != nil {
 				result = multierror.Append(result, err)
 			}
 		case ActionNone:

@@ -71,7 +71,7 @@ func TestCreateToken(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	signer, err := gcpkms.NewSigner(ctx, c, testutil.TestKeyName)
+	signer, err := gcpkms.NewSigner(ctx, c, "keyName")
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -136,7 +136,7 @@ func TestCreateToken(t *testing.T) {
 			if gotErr != nil {
 				return
 			}
-			if err := jvscrypto.VerifyJWTString(ctx, c, testutil.TestKeyName, response); err != nil {
+			if err := jvscrypto.VerifyJWTString(ctx, c, "keyName", response); err != nil {
 				t.Errorf("Unable to verify signed jwt. %v", err)
 			}
 
