@@ -18,6 +18,11 @@ import (
 	"google.golang.org/protobuf/types/known/fieldmaskpb"
 )
 
+const (
+	primaryKey  = "primary"
+	valuePrefix = "ver_"
+)
+
 // GetLatestKeyVersion looks up the newest enabled key version. If there is no enabled version, this returns nil.
 func GetLatestKeyVersion(ctx context.Context, kms *kms.KeyManagementClient, keyName string) (*kmspb.CryptoKeyVersion, error) {
 
@@ -137,9 +142,7 @@ func SignToken(token *jwt.Token, signer crypto.Signer) (string, error) {
 	return strings.Join([]string{signingString, jwt.EncodeSegment(sig)}, "."), nil
 }
 
-const primaryKey = "primary"
-const valuePrefix = "ver_"
-
+// GetPrimary gets the key version name marked as primary in the key labels
 func GetPrimary(ctx context.Context, kms *kms.KeyManagementClient, key string) (string, error) {
 	response, err := kms.GetCryptoKey(ctx, &kmspb.GetCryptoKeyRequest{Name: key})
 	if err != nil {
@@ -153,6 +156,7 @@ func GetPrimary(ctx context.Context, kms *kms.KeyManagementClient, key string) (
 	return "", nil
 }
 
+// SetPrimary sets the key version name as primary in the key labels
 func SetPrimary(ctx context.Context, kms *kms.KeyManagementClient, key string, versionName string) error {
 	response, err := kms.GetCryptoKey(ctx, &kmspb.GetCryptoKeyRequest{Name: key})
 	if err != nil {
@@ -184,6 +188,7 @@ func SetPrimary(ctx context.Context, kms *kms.KeyManagementClient, key string, v
 }
 
 // This returns the key version name with "ver_" prefixed. This is because labels must start with a lowercase letter, and can't go over 64 chars.
+// Example:  projects/*/locations/location1/keyRings/keyring1/cryptoKeys/key1/cryptoKeyVersions/1 -> ver_1
 func getLabelValue(versionName string) (string, error) {
 	split := strings.Split(versionName, "/")
 	if len(split) != 10 {

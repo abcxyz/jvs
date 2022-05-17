@@ -88,7 +88,7 @@ func realMain(ctx context.Context) error {
 	}
 
 	handler := &jvscrypto.RotationHandler{
-		KmsClient:    kmsClient,
+		KMSClient:    kmsClient,
 		CryptoConfig: config,
 		CurrentTime:  time.Now(),
 	}

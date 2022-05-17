@@ -116,7 +116,7 @@ func TestDetermineActions(t *testing.T) {
 	}
 
 	handler := &RotationHandler{
-		KmsClient: nil,
+		KMSClient: nil,
 		CryptoConfig: &config.CryptoConfig{
 			KeyTTL:         keyTTL,
 			GracePeriod:    gracePeriod,
@@ -131,7 +131,7 @@ func TestDetermineActions(t *testing.T) {
 		Name:       "oldEnabledKey",
 	}
 	oldEnabledKey2 := &kmspb.CryptoKeyVersion{
-		CreateTime: &timestamppb.Timestamp{Seconds: 50 * 60 * 60 * 24}, // 50 days old
+		CreateTime: &timestamppb.Timestamp{Seconds: 49 * 60 * 60 * 24}, // 51 days old
 		State:      kmspb.CryptoKeyVersion_ENABLED,
 		Name:       "oldEnabledKey2",
 	}
@@ -290,7 +290,7 @@ func TestPerformActions(t *testing.T) {
 	}
 
 	handler := &RotationHandler{
-		KmsClient:    c,
+		KMSClient:    c,
 		CryptoConfig: &config.CryptoConfig{},
 	}
 
