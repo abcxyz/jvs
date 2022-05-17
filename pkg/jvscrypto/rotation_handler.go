@@ -162,17 +162,6 @@ func (h *RotationHandler) actionsForNewVersions(vers []*kmspb.CryptoKeyVersion, 
 	return actions, promotingNewKey
 }
 
-func (h *RotationHandler) shouldPromote(ver *kmspb.CryptoKeyVersion) bool {
-	promoteBeforeDate := h.CurrentTime.Add(-h.CryptoConfig.PropagationDelay)
-	canPromote := ver.CreateTime.AsTime().Before(promoteBeforeDate)
-	if canPromote {
-		log.Printf("version created %q before cutoff date %q, should promote to primary.\n", ver.CreateTime.AsTime(), promoteBeforeDate)
-	} else {
-		log.Printf("version created %q after cutoff date %q, not eligible for promotion.\n", ver.CreateTime.AsTime(), promoteBeforeDate)
-	}
-	return canPromote
-}
-
 func getNewestEnabledVer(vers []*kmspb.CryptoKeyVersion) *kmspb.CryptoKeyVersion {
 	var newest *kmspb.CryptoKeyVersion
 	var newestTime time.Time
@@ -207,17 +196,6 @@ func (h *RotationHandler) actionsForPrimaryVersion(primary *kmspb.CryptoKeyVersi
 	} else {
 		return ActionNone
 	}
-}
-
-func (h *RotationHandler) shouldRotate(ver *kmspb.CryptoKeyVersion) bool {
-	rotateBeforeDate := h.CurrentTime.Add(-h.CryptoConfig.RotationAge())
-	shouldRotate := ver.CreateTime.AsTime().Before(rotateBeforeDate)
-	if shouldRotate {
-		log.Printf("version created %q before cutoff date %q, should rotate.\n", ver.CreateTime.AsTime(), rotateBeforeDate)
-	} else {
-		log.Printf("version created %q after cutoff date %q, no action necessary.\n", ver.CreateTime.AsTime(), rotateBeforeDate)
-	}
-	return shouldRotate
 }
 
 // Determine actions for disabled versions.
@@ -266,6 +244,28 @@ func (h *RotationHandler) disableAge(ver *kmspb.CryptoKeyVersion) bool {
 		log.Printf("version %q created %q after cutoff date %q, no action necessary.\n", ver.Name, ver.CreateTime.AsTime(), disableBeforeDate)
 	}
 	return shouldDisable
+}
+
+func (h *RotationHandler) shouldRotate(ver *kmspb.CryptoKeyVersion) bool {
+	rotateBeforeDate := h.CurrentTime.Add(-h.CryptoConfig.RotationAge())
+	shouldRotate := ver.CreateTime.AsTime().Before(rotateBeforeDate)
+	if shouldRotate {
+		log.Printf("version created %q before cutoff date %q, should rotate.\n", ver.CreateTime.AsTime(), rotateBeforeDate)
+	} else {
+		log.Printf("version created %q after cutoff date %q, no action necessary.\n", ver.CreateTime.AsTime(), rotateBeforeDate)
+	}
+	return shouldRotate
+}
+
+func (h *RotationHandler) shouldPromote(ver *kmspb.CryptoKeyVersion) bool {
+	promoteBeforeDate := h.CurrentTime.Add(-h.CryptoConfig.PropagationDelay)
+	canPromote := ver.CreateTime.AsTime().Before(promoteBeforeDate)
+	if canPromote {
+		log.Printf("version created %q before cutoff date %q, should promote to primary.\n", ver.CreateTime.AsTime(), promoteBeforeDate)
+	} else {
+		log.Printf("version created %q after cutoff date %q, not eligible for promotion.\n", ver.CreateTime.AsTime(), promoteBeforeDate)
+	}
+	return canPromote
 }
 
 // TODO: it may be worth adding rollback functionality for cases where multiple actions are expected to occur.
