@@ -17,7 +17,6 @@ package main
 import (
 	"context"
 	"fmt"
-	"log"
 	"net"
 	"os/signal"
 	"syscall"
@@ -27,8 +26,10 @@ import (
 	"github.com/abcxyz/jvs/pkg/config"
 	"github.com/abcxyz/jvs/pkg/justification"
 	"github.com/abcxyz/jvs/pkg/jvscrypto"
+	"github.com/abcxyz/jvs/pkg/zlogger"
 	"github.com/sethvargo/go-gcpkms/pkg/gcpkms"
 	"go.opentelemetry.io/contrib/instrumentation/google.golang.org/grpc/otelgrpc"
+	"go.uber.org/zap"
 	"golang.org/x/sync/errgroup"
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/reflection"
@@ -38,21 +39,25 @@ func main() {
 	ctx, done := signal.NotifyContext(context.Background(), syscall.SIGINT, syscall.SIGTERM)
 	defer done()
 
+	logger := zlogger.NewFromEnv("")
+	ctx = zlogger.WithLogger(ctx, logger)
+
 	if err := realMain(ctx); err != nil {
 		done()
-		log.Fatal(err)
+		logger.Fatal(err)
 	}
-	log.Printf("successful shutdown")
+	logger.Infof("successful shutdown")
 }
 
 func realMain(ctx context.Context) error {
+	logger := zlogger.FromContext(ctx)
 	s := grpc.NewServer(grpc.ChainUnaryInterceptor(
 		otelgrpc.UnaryServerInterceptor(),
 	))
 
 	cfg, err := config.LoadJustificationConfig(ctx, []byte{})
 	if err != nil {
-		log.Fatalf("failed to load config: %v", err)
+		logger.Fatal("failed to load config", zap.Error(err))
 	}
 
 	kmsClient, err := kms.NewKeyManagementClient(ctx)
@@ -63,11 +68,11 @@ func realMain(ctx context.Context) error {
 	// TODO: We should have a way of asynchronously updating.
 	ver, err := jvscrypto.GetLatestKeyVersion(ctx, kmsClient, cfg.KeyName)
 	if err != nil {
-		log.Fatalf("failed to get key version: %v", err)
+		logger.Fatal("failed to get key version", zap.Error(err))
 	}
 	signer, err := gcpkms.NewSigner(ctx, kmsClient, ver.Name)
 	if err != nil {
-		log.Fatalf("failed to create signer: %v", err)
+		logger.Fatalf("failed to create signer", zap.Error(err))
 	}
 
 	p := &justification.Processor{
@@ -86,7 +91,7 @@ func realMain(ctx context.Context) error {
 	// https://github.com/grpc/grpc/blob/master/doc/health-checking.md
 	g, ctx := errgroup.WithContext(ctx)
 	g.Go(func() error {
-		log.Printf("server listening at %v", lis.Addr())
+		logger.Debugf("server listening at", zap.Any("address", lis.Addr()))
 		return s.Serve(lis)
 	})
 
