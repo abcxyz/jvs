@@ -19,7 +19,6 @@ package jvscrypto
 import (
 	"context"
 	"fmt"
-	"log"
 	"net"
 	"testing"
 	"time"
@@ -100,6 +99,7 @@ func TestGetKeyNameFromVersion(t *testing.T) {
 }
 
 func TestDetermineActions(t *testing.T) {
+	ctx := context.Background()
 	t.Parallel()
 
 	keyTTL, err := time.ParseDuration("240h") // 10 days
@@ -116,7 +116,7 @@ func TestDetermineActions(t *testing.T) {
 	}
 
 	handler := &RotationHandler{
-		KmsClient: nil,
+		KMSClient: nil,
 		CryptoConfig: &config.CryptoConfig{
 			KeyTTL:         keyTTL,
 			GracePeriod:    gracePeriod,
@@ -131,7 +131,7 @@ func TestDetermineActions(t *testing.T) {
 		Name:       "oldEnabledKey",
 	}
 	oldEnabledKey2 := &kmspb.CryptoKeyVersion{
-		CreateTime: &timestamppb.Timestamp{Seconds: 50 * 60 * 60 * 24}, // 50 days old
+		CreateTime: &timestamppb.Timestamp{Seconds: 49 * 60 * 60 * 24}, // 51 days old
 		State:      kmspb.CryptoKeyVersion_ENABLED,
 		Name:       "oldEnabledKey2",
 	}
@@ -241,7 +241,7 @@ func TestDetermineActions(t *testing.T) {
 		tc := tc
 		t.Run(tc.name, func(t *testing.T) {
 			t.Parallel()
-			output, err := handler.determineActions(tc.versions, tc.primary)
+			output, err := handler.determineActions(ctx, tc.versions, tc.primary)
 
 			if diff := cmp.Diff(tc.wantActions, output, protocmp.Transform()); diff != "" {
 				t.Errorf("Got diff (-want, +got): %v", diff)
@@ -271,13 +271,13 @@ func TestPerformActions(t *testing.T) {
 
 	lis, err := net.Listen("tcp", "localhost:0")
 	if err != nil {
-		log.Fatal(err)
+		t.Fatal(err)
 	}
 	go serv.Serve(lis)
 
 	conn, err := grpc.Dial(lis.Addr().String(), grpc.WithInsecure())
 	if err != nil {
-		log.Fatal(err)
+		t.Fatal(err)
 	}
 	clientOpt = option.WithGRPCConn(conn)
 	t.Cleanup(func() {
@@ -290,7 +290,7 @@ func TestPerformActions(t *testing.T) {
 	}
 
 	handler := &RotationHandler{
-		KmsClient:    c,
+		KMSClient:    c,
 		CryptoConfig: &config.CryptoConfig{},
 	}
 

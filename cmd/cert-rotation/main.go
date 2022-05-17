@@ -18,7 +18,6 @@ import (
 	"context"
 	"errors"
 	"fmt"
-	"log"
 	"net/http"
 	"os"
 	"os/signal"
@@ -28,7 +27,9 @@ import (
 	kms "cloud.google.com/go/kms/apiv1"
 	"github.com/abcxyz/jvs/pkg/config"
 	"github.com/abcxyz/jvs/pkg/jvscrypto"
+	"github.com/abcxyz/jvs/pkg/zlogger"
 	"github.com/hashicorp/go-multierror"
+	"go.uber.org/zap"
 )
 
 type server struct {
@@ -42,7 +43,8 @@ type HTTPMessage struct {
 
 // ServeHTTP rotates a single key's versions.
 func (s *server) ServeHTTP(w http.ResponseWriter, r *http.Request) {
-	log.Printf("received request at %s\n", r.URL)
+	logger := zlogger.FromContext(r.Context())
+	logger.Info("received request", zap.Any("url", r.URL))
 
 	var errs error
 	// TODO: load keys from DB instead. https://github.com/abcxyz/jvs/issues/17
@@ -51,10 +53,10 @@ func (s *server) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 			errs = multierror.Append(errs, fmt.Errorf("error while rotating key %s : %v\n", key, err))
 			continue
 		}
-		log.Printf("successfully performed actions (if necessary) on key: %s.\n", key)
+		logger.Info("successfully performed actions (if necessary) on key.", zap.String("key", key))
 	}
 	if errs != nil {
-		log.Printf("ran into errors while rotating keys. %v\n", errs)
+		logger.Error("ran into errors while rotating keys", zap.Error(errs))
 		http.Error(w, "error while rotating keys", http.StatusInternalServerError)
 		return
 	}
@@ -65,9 +67,12 @@ func main() {
 	ctx, done := signal.NotifyContext(context.Background(), syscall.SIGINT, syscall.SIGTERM)
 	defer done()
 
+	logger := zlogger.NewFromEnv("")
+	ctx = zlogger.WithLogger(ctx, logger)
+
 	if err := realMain(ctx); err != nil {
 		done()
-		log.Fatal(err)
+		logger.Fatal(err)
 	}
 }
 
@@ -76,6 +81,7 @@ func main() {
 //   - using a cancellable context
 //   - listening to incoming requests in a goroutine
 func realMain(ctx context.Context) error {
+	logger := zlogger.FromContext(ctx)
 	kmsClient, err := kms.NewKeyManagementClient(ctx)
 	if err != nil {
 		return fmt.Errorf("failed to setup kms client: %v", err)
@@ -88,7 +94,7 @@ func realMain(ctx context.Context) error {
 	}
 
 	handler := &jvscrypto.RotationHandler{
-		KmsClient:    kmsClient,
+		KMSClient:    kmsClient,
 		CryptoConfig: config,
 		CurrentTime:  time.Now(),
 	}
@@ -102,7 +108,7 @@ func realMain(ctx context.Context) error {
 	port := os.Getenv("PORT")
 	if port == "" {
 		port = "8080"
-		log.Printf("defaulting to port %s", port)
+		logger.Debug("defaulting to port ", zap.String("port", port))
 	}
 
 	// Create the server and listen in a goroutine.
