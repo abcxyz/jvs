@@ -68,13 +68,10 @@ func (p *Processor) runValidations(request *jvspb.CreateJustificationRequest) er
 	}
 
 	var err *multierror.Error
-	verifications := make([]string, 0)
 	for _, j := range request.Justifications {
 		switch j.Category {
 		case "explanation":
-			if j.Value != "" {
-				verifications = append(verifications, j.Category)
-			} else {
+			if j.Value == "" {
 				err = multierror.Append(err, fmt.Errorf("no value specified for 'explanation' category"))
 			}
 		default:

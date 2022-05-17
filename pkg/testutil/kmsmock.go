@@ -5,8 +5,8 @@ import (
 	"crypto/ecdsa"
 	"crypto/rand"
 
-	"github.com/golang/protobuf/proto"
 	kmspb "google.golang.org/genproto/googleapis/cloud/kms/v1"
+	"google.golang.org/protobuf/proto"
 )
 
 type MockKeyManagementServer struct {
