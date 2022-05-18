@@ -23,18 +23,18 @@ import (
 	"testing"
 	"time"
 
+	kms "cloud.google.com/go/kms/apiv1"
 	"github.com/abcxyz/jvs/pkg/config"
 	"github.com/abcxyz/jvs/pkg/testutil"
+	"google.golang.org/grpc"
+	"google.golang.org/protobuf/types/known/fieldmaskpb"
 	"google.golang.org/protobuf/types/known/timestamppb"
 
-	kms "cloud.google.com/go/kms/apiv1"
 	"github.com/golang/protobuf/proto"
 	"github.com/google/go-cmp/cmp"
 	"google.golang.org/api/option"
 	kmspb "google.golang.org/genproto/googleapis/cloud/kms/v1"
-	"google.golang.org/grpc"
 	"google.golang.org/protobuf/testing/protocmp"
-	"google.golang.org/protobuf/types/known/fieldmaskpb"
 )
 
 var clientOpt option.ClientOption
@@ -116,7 +116,7 @@ func TestDetermineActions(t *testing.T) {
 	}
 
 	handler := &RotationHandler{
-		KmsClient: nil,
+		KMSClient: nil,
 		CryptoConfig: &config.CryptoConfig{
 			KeyTTL:         keyTTL,
 			GracePeriod:    gracePeriod,
@@ -128,63 +128,91 @@ func TestDetermineActions(t *testing.T) {
 	oldEnabledKey := &kmspb.CryptoKeyVersion{
 		CreateTime: &timestamppb.Timestamp{Seconds: 50 * 60 * 60 * 24}, // 50 days old
 		State:      kmspb.CryptoKeyVersion_ENABLED,
+		Name:       "oldEnabledKey",
+	}
+	oldEnabledKey2 := &kmspb.CryptoKeyVersion{
+		CreateTime: &timestamppb.Timestamp{Seconds: 49 * 60 * 60 * 24}, // 51 days old
+		State:      kmspb.CryptoKeyVersion_ENABLED,
+		Name:       "oldEnabledKey2",
 	}
 	newEnabledKey := &kmspb.CryptoKeyVersion{
 		CreateTime: &timestamppb.Timestamp{Seconds: 99 * 60 * 60 * 24}, // 2 days old
 		State:      kmspb.CryptoKeyVersion_ENABLED,
+		Name:       "newEnabledKey",
 	}
 	newDisabledKey := &kmspb.CryptoKeyVersion{
 		CreateTime: &timestamppb.Timestamp{Seconds: 90 * 60 * 60 * 24}, // 10 days old
 		State:      kmspb.CryptoKeyVersion_DISABLED,
+		Name:       "newDisabledKey",
 	}
 	oldDisabledKey := &kmspb.CryptoKeyVersion{
 		CreateTime: &timestamppb.Timestamp{Seconds: 1 * 60 * 60 * 24}, // 99 days old
 		State:      kmspb.CryptoKeyVersion_DISABLED,
+		Name:       "oldDisabledKey",
 	}
 	oldDestroyedKey := &kmspb.CryptoKeyVersion{
 		CreateTime: &timestamppb.Timestamp{Seconds: 1 * 60 * 60 * 24}, // 99 days old
 		State:      kmspb.CryptoKeyVersion_DESTROYED,
-	}
-	pendingGenerationKey := &kmspb.CryptoKeyVersion{
-		CreateTime: &timestamppb.Timestamp{Seconds: 99 * 60 * 60 * 24}, // 1 days old,
-		State:      kmspb.CryptoKeyVersion_PENDING_GENERATION,
+		Name:       "oldDestroyedKey",
 	}
 
 	tests := []struct {
 		name        string
 		versions    []*kmspb.CryptoKeyVersion
-		wantActions map[*kmspb.CryptoKeyVersion]Action
+		primary     string
+		wantActions []*actionTuple
 		wantErr     string
 	}{
+		{
+			name:     "no_key",
+			versions: []*kmspb.CryptoKeyVersion{},
+			wantActions: []*actionTuple{
+				{ActionCreateNewAndPromote, nil},
+			},
+		},
 		{
 			name: "single_key_old",
 			versions: []*kmspb.CryptoKeyVersion{
 				oldEnabledKey,
 			},
-			wantActions: map[*kmspb.CryptoKeyVersion]Action{
-				oldEnabledKey: ActionCreate,
+			primary: oldEnabledKey.Name,
+			wantActions: []*actionTuple{
+				{ActionCreateNew, nil},
 			},
 		},
 		{
-			name: "two_enabled_keys",
+			name: "two_enabled_keys_old",
 			versions: []*kmspb.CryptoKeyVersion{
 				oldEnabledKey,
 				newEnabledKey,
 			},
-			wantActions: map[*kmspb.CryptoKeyVersion]Action{
-				oldEnabledKey: ActionDisable,
-				newEnabledKey: ActionNone,
+			primary: newEnabledKey.Name,
+			wantActions: []*actionTuple{
+				&actionTuple{ActionDisable, oldEnabledKey},
 			},
 		},
 		{
-			name: "old_key_and_pending",
+			name: "two_enabled_keys_new",
 			versions: []*kmspb.CryptoKeyVersion{
 				oldEnabledKey,
-				pendingGenerationKey,
+				newEnabledKey,
 			},
-			wantActions: map[*kmspb.CryptoKeyVersion]Action{
-				oldEnabledKey:        ActionNone,
-				pendingGenerationKey: ActionNone,
+			primary: oldEnabledKey.Name,
+			wantActions: []*actionTuple{
+				&actionTuple{ActionPromote, newEnabledKey},
+			},
+		},
+		{
+			name: "three_enabled_keys",
+			versions: []*kmspb.CryptoKeyVersion{
+				oldEnabledKey,
+				newEnabledKey,
+				oldEnabledKey2,
+			},
+			primary: oldEnabledKey.Name,
+			wantActions: []*actionTuple{
+				&actionTuple{ActionDisable, oldEnabledKey2},
+				&actionTuple{ActionPromote, newEnabledKey},
 			},
 		},
 		{
@@ -196,12 +224,10 @@ func TestDetermineActions(t *testing.T) {
 				newDisabledKey,
 				oldDestroyedKey,
 			},
-			wantActions: map[*kmspb.CryptoKeyVersion]Action{
-				oldEnabledKey:   ActionDisable,
-				newEnabledKey:   ActionNone,
-				oldDisabledKey:  ActionDestroy,
-				newDisabledKey:  ActionNone,
-				oldDestroyedKey: ActionNone,
+			primary: newEnabledKey.Name,
+			wantActions: []*actionTuple{
+				&actionTuple{ActionDisable, oldEnabledKey},
+				&actionTuple{ActionDestroy, oldDisabledKey},
 			},
 		},
 	}
@@ -209,7 +235,7 @@ func TestDetermineActions(t *testing.T) {
 		tc := tc
 		t.Run(tc.name, func(t *testing.T) {
 			t.Parallel()
-			output, err := handler.determineActions(ctx, tc.versions)
+			output, err := handler.determineActions(ctx, tc.versions, tc.primary)
 
 			if diff := cmp.Diff(tc.wantActions, output, protocmp.Transform()); diff != "" {
 				t.Errorf("Got diff (-want, +got): %v", diff)
@@ -258,32 +284,38 @@ func TestPerformActions(t *testing.T) {
 	}
 
 	handler := &RotationHandler{
-		KmsClient:    c,
+		KMSClient:    c,
 		CryptoConfig: &config.CryptoConfig{},
 	}
 
 	parent := fmt.Sprintf("projects/%s/locations/%s/keyRings/%s/cryptoKeys/%s", "[PROJECT]", "[LOCATION]", "[KEY_RING]", "[CRYPTO_KEY]")
-	versionName := fmt.Sprintf("%s/cryptoKeyVersions/%s", parent, "[VERSION]")
+	versionSuffix := "[VERSION]"
+	versionName := fmt.Sprintf("%s/cryptoKeyVersions/%s", parent, versionSuffix)
 
 	tests := []struct {
 		name             string
-		actions          map[*kmspb.CryptoKeyVersion]Action
+		actions          []*actionTuple
+		priorPrimary     string
 		expectedRequests []proto.Message
+		expectedPrimary  string
 		wantErr          string
 		serverErr        error
 	}{
 		{
 			name: "disable",
-			actions: map[*kmspb.CryptoKeyVersion]Action{
-				{
-					State: kmspb.CryptoKeyVersion_ENABLED,
-				}: ActionDisable,
+			actions: []*actionTuple{
+				&actionTuple{ActionDisable,
+					&kmspb.CryptoKeyVersion{
+						State: kmspb.CryptoKeyVersion_ENABLED,
+						Name:  versionName,
+					}},
 			},
 			wantErr: "",
 			expectedRequests: []proto.Message{
 				&kmspb.UpdateCryptoKeyVersionRequest{
 					CryptoKeyVersion: &kmspb.CryptoKeyVersion{
 						State: kmspb.CryptoKeyVersion_DISABLED,
+						Name:  versionName,
 					},
 					UpdateMask: &fieldmaskpb.FieldMask{
 						Paths: []string{"state"},
@@ -293,11 +325,12 @@ func TestPerformActions(t *testing.T) {
 		},
 		{
 			name: "create",
-			actions: map[*kmspb.CryptoKeyVersion]Action{
-				{
-					Name:  versionName,
-					State: kmspb.CryptoKeyVersion_ENABLED,
-				}: ActionCreate,
+			actions: []*actionTuple{
+				&actionTuple{ActionCreateNewAndPromote,
+					&kmspb.CryptoKeyVersion{
+						State: kmspb.CryptoKeyVersion_ENABLED,
+						Name:  versionName,
+					}},
 			},
 			wantErr: "",
 			expectedRequests: []proto.Message{
@@ -305,15 +338,29 @@ func TestPerformActions(t *testing.T) {
 					Parent:           parent,
 					CryptoKeyVersion: &kmspb.CryptoKeyVersion{},
 				},
+				&kmspb.GetCryptoKeyRequest{
+					Name: parent,
+				},
+				&kmspb.UpdateCryptoKeyRequest{
+					CryptoKey: &kmspb.CryptoKey{
+						Labels: map[string]string{"primary": "ver_" + versionSuffix + "-new"},
+						Name:   parent,
+					},
+					UpdateMask: &fieldmaskpb.FieldMask{
+						Paths: []string{"labels"},
+					},
+				},
 			},
+			expectedPrimary: "ver_" + versionSuffix + "-new",
 		},
 		{
 			name: "destroy",
-			actions: map[*kmspb.CryptoKeyVersion]Action{
-				{
-					Name:  versionName,
-					State: kmspb.CryptoKeyVersion_DISABLED,
-				}: ActionDestroy,
+			actions: []*actionTuple{
+				&actionTuple{ActionDestroy,
+					&kmspb.CryptoKeyVersion{
+						State: kmspb.CryptoKeyVersion_DISABLED,
+						Name:  versionName,
+					}},
 			},
 			wantErr: "",
 			expectedRequests: []proto.Message{
@@ -324,45 +371,35 @@ func TestPerformActions(t *testing.T) {
 		},
 		{
 			name: "multi_action",
-			actions: map[*kmspb.CryptoKeyVersion]Action{
-				{
-					State: kmspb.CryptoKeyVersion_ENABLED,
-				}: ActionDisable,
-				{
-					Name:  versionName,
-					State: kmspb.CryptoKeyVersion_ENABLED,
-				}: ActionCreate,
-				{
-					Name:  versionName,
-					State: kmspb.CryptoKeyVersion_DISABLED,
-				}: ActionDestroy,
-			},
-			wantErr: "",
-			expectedRequests: []proto.Message{
-				&kmspb.UpdateCryptoKeyVersionRequest{
-					CryptoKeyVersion: &kmspb.CryptoKeyVersion{
+			actions: []*actionTuple{
+				&actionTuple{ActionCreateNew, nil},
+				&actionTuple{ActionDestroy,
+					&kmspb.CryptoKeyVersion{
+						Name:  versionName + "2",
 						State: kmspb.CryptoKeyVersion_DISABLED,
-					},
-					UpdateMask: &fieldmaskpb.FieldMask{
-						Paths: []string{"state"},
-					},
-				},
+					}},
+			},
+			priorPrimary:    "ver_" + versionSuffix,
+			expectedPrimary: "ver_" + versionSuffix,
+			wantErr:         "",
+			expectedRequests: []proto.Message{
 				&kmspb.CreateCryptoKeyVersionRequest{
 					Parent:           parent,
 					CryptoKeyVersion: &kmspb.CryptoKeyVersion{},
 				},
 				&kmspb.DestroyCryptoKeyVersionRequest{
-					Name: versionName,
+					Name: versionName + "2",
 				},
 			},
 		},
 		{
 			name: "test_err",
-			actions: map[*kmspb.CryptoKeyVersion]Action{
-				{
-					Name:  versionName,
-					State: kmspb.CryptoKeyVersion_DISABLED,
-				}: ActionDestroy,
+			actions: []*actionTuple{
+				&actionTuple{ActionDestroy,
+					&kmspb.CryptoKeyVersion{
+						Name:  versionName,
+						State: kmspb.CryptoKeyVersion_DISABLED,
+					}},
 			},
 			serverErr: fmt.Errorf("test error while disabling"),
 			wantErr:   "1 error occurred:\n\t* key destroy failed: rpc error: code = Unknown desc = test error while disabling\n\n",
@@ -379,19 +416,35 @@ func TestPerformActions(t *testing.T) {
 		t.Run(tc.name, func(t *testing.T) {
 			mockKeyManagement.Reqs = nil
 			mockKeyManagement.Err = tc.serverErr
+			mockKeyManagement.KeyName = parent
+			mockKeyManagement.VersionName = versionName
 
-			mockKeyManagement.Resps = append(mockKeyManagement.Resps[:0], &kmspb.CryptoKeyVersion{})
+			mockKeyManagement.Resps = append(mockKeyManagement.Resps[:0], &kmspb.CryptoKeyVersion{Name: versionName + "-new"})
 
-			gotErr := handler.performActions(ctx, tc.actions)
+			mockKeyManagement.Labels = make(map[string]string)
+			mockKeyManagement.Labels["primary"] = tc.priorPrimary
+
+			gotErr := handler.performActions(ctx, parent, tc.actions)
 
 			if err != nil {
 				t.Fatal(err)
 			}
 
 			if want, got := tc.expectedRequests, mockKeyManagement.Reqs; !slicesEq(want, got) {
-				t.Errorf("wrong request %q, want %q", got, want)
+				for _, msg := range got {
+					t.Errorf("gotty: %s", msg)
+				}
+				for _, msg := range want {
+					t.Errorf("wanty: %s", msg)
+				}
+				t.Errorf("wrong requests %v, want %v", got, want)
 			}
 			testutil.ErrCmp(t, tc.wantErr, gotErr)
+
+			if diff := cmp.Diff(tc.expectedPrimary, mockKeyManagement.Labels["primary"]); diff != "" {
+				t.Errorf("Got diff (-want, +got): %v", diff)
+			}
+
 		})
 	}
 }
