@@ -14,19 +14,19 @@ import (
 	kms "cloud.google.com/go/kms/apiv1"
 	"github.com/abcxyz/jvs/pkg/cache"
 	"github.com/abcxyz/jvs/pkg/config"
-	"github.com/abcxyz/jvs/pkg/zlogger"
-	"go.uber.org/zap"
 	"google.golang.org/api/iterator"
 	kmspb "google.golang.org/genproto/googleapis/cloud/kms/v1"
 )
 
 // KeyServer provides all valid and active public keys in a JWKS format.
 type KeyServer struct {
-	KmsClient    *kms.KeyManagementClient
+	KMSClient    *kms.KeyManagementClient
 	CryptoConfig *config.CryptoConfig
 	Cache        *cache.Cache[string]
 }
 
+// ECDSAKey is the public key information for a Elliptic Curve Digital Signature Algorithm Key. used to serialize the public key
+// into JWK format. https://datatracker.ietf.org/doc/html/rfc7517#section-4
 type ECDSAKey struct {
 	Curve string `json:"crv"`
 	Id    string `json:"kid"`
@@ -39,37 +39,35 @@ const cacheKey = "jwks"
 
 // ServeHTTP returns the public keys in JWK format
 func (k *KeyServer) ServeHTTP(w http.ResponseWriter, r *http.Request) {
-	logger := zlogger.FromContext(r.Context())
-	val, found := k.Cache.Lookup(cacheKey)
-	if found {
-		fmt.Fprintf(w, val)
-		return
+	val, err := k.Cache.WriteThruLookup(cacheKey, func() (string, error) {
+		return k.generateJWKString(r.Context())
+	})
+	if err != nil {
+		http.Error(w, "error generating jwk string", http.StatusInternalServerError)
 	}
+	fmt.Fprintf(w, val)
+}
 
+func (k *KeyServer) generateJWKString(ctx context.Context) (string, error) {
 	jwks := make([]*ECDSAKey, 0)
 	for _, key := range k.CryptoConfig.KeyNames {
-		list, err := k.JWKList(r.Context(), key)
+		list, err := k.jwkList(ctx, key)
 		if err != nil {
-			logger.Error("ran into error while determining public keys", zap.Error(err))
-			http.Error(w, "error determining public keys", http.StatusInternalServerError)
-			return
+			return "", fmt.Errorf("ran into error while determining public keys %w", err)
 		}
 		jwks = append(jwks, list...)
 	}
-	json, err := FormatJWKString(jwks)
+	json, err := formatJWKString(jwks)
 	if err != nil {
-		logger.Error("ran into error while formatting public keys", zap.Error(err))
-		http.Error(w, "error formatting public keys", http.StatusInternalServerError)
-		return
+		return "", fmt.Errorf("ran into error while formatting public keys, %w", err)
 	}
-	k.Cache.Set(cacheKey, json)
-	fmt.Fprintf(w, json)
+	return json, nil
 }
 
-// JWKList creates a list of public keys in JWK format.
+// jwkList creates a list of public keys in JWK format.
 // https://datatracker.ietf.org/doc/html/rfc7517#section-4
-func (k *KeyServer) JWKList(ctx context.Context, keyName string) ([]*ECDSAKey, error) {
-	it := k.KmsClient.ListCryptoKeyVersions(ctx, &kmspb.ListCryptoKeyVersionsRequest{
+func (k *KeyServer) jwkList(ctx context.Context, keyName string) ([]*ECDSAKey, error) {
+	it := k.KMSClient.ListCryptoKeyVersions(ctx, &kmspb.ListCryptoKeyVersionsRequest{
 		Parent: keyName,
 		Filter: "state=ENABLED",
 	})
@@ -83,7 +81,7 @@ func (k *KeyServer) JWKList(ctx context.Context, keyName string) ([]*ECDSAKey, e
 		if err != nil {
 			return nil, fmt.Errorf("err while reading crypto key version list: %w", err)
 		}
-		key, err := k.KmsClient.GetPublicKey(ctx, &kmspb.GetPublicKeyRequest{Name: ver.Name})
+		key, err := k.KMSClient.GetPublicKey(ctx, &kmspb.GetPublicKeyRequest{Name: ver.Name})
 		if err != nil {
 			return nil, fmt.Errorf("err while getting public key from kms: %w", err)
 		}
@@ -124,9 +122,9 @@ func (k *KeyServer) JWKList(ctx context.Context, keyName string) ([]*ECDSAKey, e
 	return jwkList, nil
 }
 
-// FormatJWKString creates a JWK Set converted to string.
+// formatJWKString creates a JWK Set converted to string.
 // https://datatracker.ietf.org/doc/html/rfc7517#section-5
-func FormatJWKString(wks []*ECDSAKey) (string, error) {
+func formatJWKString(wks []*ECDSAKey) (string, error) {
 	jwkMap := make(map[string][]*ECDSAKey)
 	jwkMap["keys"] = wks
 

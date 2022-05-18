@@ -30,6 +30,7 @@ import (
 	"github.com/abcxyz/jvs/pkg/config"
 	"github.com/abcxyz/jvs/pkg/jvscrypto"
 	"github.com/abcxyz/jvs/pkg/zlogger"
+	"go.uber.org/zap"
 )
 
 func main() {
@@ -50,6 +51,7 @@ func main() {
 //   - using a cancellable context
 //   - listening to incoming requests in a goroutine
 func realMain(ctx context.Context) error {
+	logger := zlogger.FromContext(ctx)
 	kmsClient, err := kms.NewKeyManagementClient(ctx)
 	if err != nil {
 		return fmt.Errorf("failed to setup kms client: %v", err)
@@ -61,13 +63,10 @@ func realMain(ctx context.Context) error {
 		return fmt.Errorf("failed to load config: %v", err)
 	}
 
-	cache, err := cache.New[string](5 * time.Minute)
-	if err != nil {
-		return fmt.Errorf("failed to create cache: %v", err)
-	}
+	cache := cache.New[string](5 * time.Minute)
 
 	ks := &jvscrypto.KeyServer{
-		KmsClient:    kmsClient,
+		KMSClient:    kmsClient,
 		CryptoConfig: config,
 		Cache:        cache,
 	}
@@ -79,10 +78,10 @@ func realMain(ctx context.Context) error {
 	port := os.Getenv("PORT")
 	if port == "" {
 		port = "8080"
-		log.Printf("defaulting to port %s", port)
 	}
 
 	// Create the server and listen in a goroutine.
+	logger.Debug("starting server on port", zap.String("port", port))
 	server := &http.Server{
 		Addr:    ":" + port,
 		Handler: mux,

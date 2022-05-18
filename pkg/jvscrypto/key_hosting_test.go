@@ -71,13 +71,13 @@ func TestJWKSetFormattedString(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	cache, err := cache.New[string](5 * time.Minute)
+	cache := cache.New[string](5 * time.Minute)
 	if err != nil {
 		t.Fatal(err)
 	}
 
 	ks := &KeyServer{
-		KmsClient:    kms,
+		KMSClient:    kms,
 		CryptoConfig: &config.CryptoConfig{},
 		Cache:        cache,
 	}
@@ -126,8 +126,8 @@ func TestJWKSetFormattedString(t *testing.T) {
 			mockKMSServer.Labels["primary"] = tc.primary
 			mockKMSServer.NumVersions = tc.numKeys
 
-			keys, err := ks.JWKList(ctx, key)
-			got, err := FormatJWKString(keys)
+			keys, err := ks.jwkList(ctx, key)
+			got, err := formatJWKString(keys)
 			testutil.ErrCmp(t, tc.wantErr, err)
 
 			if err != nil {

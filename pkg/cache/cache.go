@@ -49,15 +49,15 @@ func (c *item[T]) expired() bool {
 }
 
 // New creates a new in memory cache.
-func New[T any](expireAfter time.Duration) (*Cache[T], error) {
+func New[T any](expireAfter time.Duration) *Cache[T] {
 	if expireAfter < 0 {
-		return nil, ErrInvalidDuration
+		panic(ErrInvalidDuration)
 	}
 
 	return &Cache[T]{
 		data:        make(map[string]item[T], initialSize),
 		expireAfter: expireAfter,
-	}, nil
+	}
 }
 
 // Removes an item by name and expiry time when the purge was scheduled.
