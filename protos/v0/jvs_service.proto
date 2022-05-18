@@ -18,7 +18,7 @@ package jvs;
 
 import "protos/v0/jvs_request.proto";
 
-option go_package = "github.com/abcxyz/jvs/apis/v0";
+option go_package = "github.com/abcxyz/jvs/service/apis/v0";
 
 // JVSService processes CreateJustificationRequests and provides signed tokens.
 service JVSService {

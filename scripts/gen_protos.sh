@@ -14,7 +14,7 @@
 # limitations under the License.
 
 protoc -I. \
-  --go_out=. --go-grpc_out=. \
-  --go_opt=module=github.com/abcxyz/jvs \
-  --go-grpc_opt=module=github.com/abcxyz/jvs \
+  --go_out=. --go-grpc_out=./service \
+  --go_opt=module=github.com/abcxyz/jvs/service \
+  --go-grpc_opt=module=github.com/abcxyz/jvs/service \
   protos/v0/jvs_request.proto protos/v0/jvs_service.proto

@@ -23,8 +23,8 @@ import (
 	"testing"
 	"time"
 
-	"github.com/abcxyz/jvs/pkg/config"
-	"github.com/abcxyz/jvs/pkg/testutil"
+	"github.com/abcxyz/jvs/service/pkg/config"
+	"github.com/abcxyz/jvs/service/pkg/testutil"
 	"google.golang.org/protobuf/types/known/timestamppb"
 
 	kms "cloud.google.com/go/kms/apiv1"

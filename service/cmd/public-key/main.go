@@ -26,10 +26,10 @@ import (
 	"time"
 
 	kms "cloud.google.com/go/kms/apiv1"
-	"github.com/abcxyz/jvs/pkg/cache"
-	"github.com/abcxyz/jvs/pkg/config"
-	"github.com/abcxyz/jvs/pkg/jvscrypto"
-	"github.com/abcxyz/jvs/pkg/zlogger"
+	"github.com/abcxyz/jvs/service/pkg/cache"
+	"github.com/abcxyz/jvs/service/pkg/config"
+	"github.com/abcxyz/jvs/service/pkg/jvscrypto"
+	"github.com/abcxyz/jvs/service/pkg/zlogger"
 	"go.uber.org/zap"
 )
 

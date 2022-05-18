@@ -11,7 +11,7 @@ import (
 	"testing"
 
 	kms "cloud.google.com/go/kms/apiv1"
-	"github.com/abcxyz/jvs/pkg/testutil"
+	"github.com/abcxyz/jvs/service/pkg/testutil"
 	"github.com/golang-jwt/jwt"
 	"github.com/golang/protobuf/proto"
 	"github.com/google/uuid"

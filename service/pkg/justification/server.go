@@ -17,7 +17,7 @@ package justification
 import (
 	"context"
 
-	jvspb "github.com/abcxyz/jvs/apis/v0"
+	jvspb "github.com/abcxyz/jvs/service/apis/v0"
 )
 
 // JVSAgent is the implementation of the justification verification server.

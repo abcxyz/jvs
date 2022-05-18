@@ -20,7 +20,7 @@ import (
 	"testing"
 	"time"
 
-	"github.com/abcxyz/jvs/pkg/testutil"
+	"github.com/abcxyz/jvs/service/pkg/testutil"
 	"github.com/google/go-cmp/cmp"
 	"github.com/sethvargo/go-envconfig"
 )

@@ -12,8 +12,8 @@ import (
 	"sort"
 
 	kms "cloud.google.com/go/kms/apiv1"
-	"github.com/abcxyz/jvs/pkg/cache"
-	"github.com/abcxyz/jvs/pkg/config"
+	"github.com/abcxyz/jvs/service/pkg/cache"
+	"github.com/abcxyz/jvs/service/pkg/config"
 	"google.golang.org/api/iterator"
 	kmspb "google.golang.org/genproto/googleapis/cloud/kms/v1"
 )

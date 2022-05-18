@@ -20,8 +20,8 @@ import (
 	"strings"
 	"time"
 
-	"github.com/abcxyz/jvs/pkg/config"
-	"github.com/abcxyz/jvs/pkg/zlogger"
+	"github.com/abcxyz/jvs/service/pkg/config"
+	"github.com/abcxyz/jvs/service/pkg/zlogger"
 	"go.uber.org/zap"
 
 	kms "cloud.google.com/go/kms/apiv1"

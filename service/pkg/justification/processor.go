@@ -20,9 +20,9 @@ import (
 	"fmt"
 	"time"
 
-	jvspb "github.com/abcxyz/jvs/apis/v0"
-	"github.com/abcxyz/jvs/pkg/jvscrypto"
-	"github.com/abcxyz/jvs/pkg/zlogger"
+	jvspb "github.com/abcxyz/jvs/service/apis/v0"
+	"github.com/abcxyz/jvs/service/pkg/jvscrypto"
+	"github.com/abcxyz/jvs/service/pkg/zlogger"
 	"github.com/golang-jwt/jwt"
 	"github.com/google/uuid"
 	"github.com/hashicorp/go-multierror"

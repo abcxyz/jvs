@@ -1,4 +1,4 @@
-module github.com/abcxyz/jvs
+module github.com/abcxyz/jvs/service
 
 go 1.18
 

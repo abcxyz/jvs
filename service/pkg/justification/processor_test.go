@@ -12,9 +12,9 @@ import (
 	"time"
 
 	kms "cloud.google.com/go/kms/apiv1"
-	jvspb "github.com/abcxyz/jvs/apis/v0"
-	"github.com/abcxyz/jvs/pkg/jvscrypto"
-	"github.com/abcxyz/jvs/pkg/testutil"
+	jvspb "github.com/abcxyz/jvs/service/apis/v0"
+	"github.com/abcxyz/jvs/service/pkg/jvscrypto"
+	"github.com/abcxyz/jvs/service/pkg/testutil"
 	"github.com/golang-jwt/jwt"
 	"github.com/golang/protobuf/proto"
 	"github.com/sethvargo/go-gcpkms/pkg/gcpkms"
@@ -71,7 +71,7 @@ func TestCreateToken(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	signer, err := gcpkms.NewSigner(ctx, c, testutil.TestKeyName)
+	signer, err := gcpkms.NewSigner(ctx, c, "keyName")
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -136,7 +136,7 @@ func TestCreateToken(t *testing.T) {
 			if gotErr != nil {
 				return
 			}
-			if err := jvscrypto.VerifyJWTString(ctx, c, testutil.TestKeyName, response); err != nil {
+			if err := jvscrypto.VerifyJWTString(ctx, c, "keyName", response); err != nil {
 				t.Errorf("Unable to verify signed jwt. %v", err)
 			}
 
