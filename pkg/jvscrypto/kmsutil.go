@@ -142,8 +142,8 @@ func SignToken(token *jwt.Token, signer crypto.Signer) (string, error) {
 	return strings.Join([]string{signingString, jwt.EncodeSegment(sig)}, "."), nil
 }
 
-// GetPrimary gets the key version name marked as primary in the key labels
-func GetPrimary(ctx context.Context, kms *kms.KeyManagementClient, key string) (string, error) {
+// getPrimary gets the key version name marked as primary in the key labels
+func getPrimary(ctx context.Context, kms *kms.KeyManagementClient, key string) (string, error) {
 	response, err := kms.GetCryptoKey(ctx, &kmspb.GetCryptoKeyRequest{Name: key})
 	if err != nil {
 		return "", fmt.Errorf("issue while getting key from KMS: %w", err)
@@ -156,8 +156,8 @@ func GetPrimary(ctx context.Context, kms *kms.KeyManagementClient, key string) (
 	return "", nil
 }
 
-// SetPrimary sets the key version name as primary in the key labels
-func SetPrimary(ctx context.Context, kms *kms.KeyManagementClient, key string, versionName string) error {
+// setPrimary sets the key version name as primary in the key labels
+func setPrimary(ctx context.Context, kms *kms.KeyManagementClient, key string, versionName string) error {
 	response, err := kms.GetCryptoKey(ctx, &kmspb.GetCryptoKeyRequest{Name: key})
 	if err != nil {
 		return fmt.Errorf("issue while getting key from KMS: %w", err)
