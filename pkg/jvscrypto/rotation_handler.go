@@ -188,7 +188,7 @@ func (h *RotationHandler) actionsForOlderVersions(ctx context.Context, vers []*k
 	for _, ver := range vers {
 		switch ver.State {
 		case kmspb.CryptoKeyVersion_ENABLED:
-			if h.disableAge(ctx, ver) {
+			if h.shouldDisable(ctx, ver) {
 				actions = append(actions, &actionTuple{ActionDisable, ver})
 			}
 		case kmspb.CryptoKeyVersion_DISABLED:
@@ -214,7 +214,7 @@ func (h *RotationHandler) shouldDestroy(ctx context.Context, ver *kmspb.CryptoKe
 	return shouldDestroy
 }
 
-func (h *RotationHandler) disableAge(ctx context.Context, ver *kmspb.CryptoKeyVersion) bool {
+func (h *RotationHandler) shouldDisable(ctx context.Context, ver *kmspb.CryptoKeyVersion) bool {
 	logger := zlogger.FromContext(ctx)
 	cutoff := h.CurrentTime.Add(-h.CryptoConfig.KeyTTL)
 	shouldDisable := ver.CreateTime.AsTime().Before(cutoff)
