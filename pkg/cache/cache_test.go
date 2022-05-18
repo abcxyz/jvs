@@ -1,5 +1,3 @@
-// Taken fromhttps://github.com/google/exposure-notifications-server/blob/main/pkg/cache/cache_test.go
-
 // Copyright 2022 Google LLC
 // Copyright 2020 the Exposure Notifications Server authors
 //
@@ -14,6 +12,8 @@
 // WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 // See the License for the specific language governing permissions and
 // limitations under the License.
+
+// Taken from https://github.com/google/exposure-notifications-server/blob/main/pkg/cache/cache_test.go
 
 package cache
 

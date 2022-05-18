@@ -1,5 +1,3 @@
-// Taken from https://github.com/google/exposure-notifications-server/blob/main/pkg/cache/cache.go
-
 // Copyright 2022 Google LLC
 // Copyright 2020 the Exposure Notifications Server authors
 //
@@ -20,6 +18,9 @@
 // Although exported, this package is non intended for general consumption.
 // It is a shared dependency between multiple exposure notifications projects.
 // We cannot guarantee that there won't be breaking changes in the future.
+
+// Taken from https://github.com/google/exposure-notifications-server/blob/main/pkg/cache/cache.go
+
 package cache
 
 import (
