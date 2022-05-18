@@ -4,7 +4,7 @@ name: 'CI - Default Tests'
 on:
   push:
     branches:
-    - main
+    - 'main'
     paths:
     - '**/'
     - '!pkg/**'
