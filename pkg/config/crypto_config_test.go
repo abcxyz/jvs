@@ -43,12 +43,14 @@ version: 1
 key_ttl: 720h # 30 days
 grace_period: 2h
 disabled_period: 720h # 30 days
+propagation_delay: 1h
 `,
 			wantConfig: &CryptoConfig{
-				Version:        1,
-				KeyTTL:         720 * time.Hour, // 30 days
-				GracePeriod:    2 * time.Hour,   // 2 hours
-				DisabledPeriod: 720 * time.Hour, // 30 days
+				Version:          1,
+				KeyTTL:           720 * time.Hour, // 30 days
+				GracePeriod:      2 * time.Hour,   // 2 hours
+				DisabledPeriod:   720 * time.Hour, // 30 days
+				PropagationDelay: time.Hour,       // 1 hour
 			},
 		},
 		{
@@ -58,12 +60,14 @@ key_ttl: 720h # 30 days
 propagation_time: 30m
 grace_period: 2h
 disabled_period: 720h # 30 days
+propagation_delay: 1h
 `,
 			wantConfig: &CryptoConfig{
-				Version:        1,
-				KeyTTL:         720 * time.Hour, // 30 days
-				GracePeriod:    2 * time.Hour,   // 2 hours
-				DisabledPeriod: 720 * time.Hour, // 30 days
+				Version:          1,
+				KeyTTL:           720 * time.Hour, // 30 days
+				GracePeriod:      2 * time.Hour,   // 2 hours
+				DisabledPeriod:   720 * time.Hour, // 30 days
+				PropagationDelay: time.Hour,       // 1 hour
 			},
 		},
 		{
@@ -73,9 +77,22 @@ version: 255
 key_ttl: 720h # 30 days
 grace_period: 2h
 disabled_period: 720h # 30 days
+propagation_delay: 1h
 `,
 			wantConfig: nil,
 			wantErr:    "failed validating config: 1 error occurred:\n\t* unexpected Version 255 want 1\n\n",
+		},
+		{
+			name: "test_invalid_propagation_delay",
+			cfg: `
+version: 1
+key_ttl: 720h # 30 days
+grace_period: 2h
+disabled_period: 720h # 30 days
+propagation_delay: 3h
+`,
+			wantConfig: nil,
+			wantErr:    "failed validating config: 1 error occurred:\n\t* propagation delay is invalid: 3h0m0s\n\n",
 		},
 		{
 			name: "test_empty_ttl",
@@ -83,6 +100,7 @@ disabled_period: 720h # 30 days
 version: 1
 grace_period: 2h
 disabled_period: 720h # 30 days
+propagation_delay: 1h
 `,
 			wantConfig: nil,
 			wantErr:    "failed validating config: 1 error occurred:\n\t* key ttl is invalid: 0s\n\n",
@@ -91,7 +109,7 @@ disabled_period: 720h # 30 days
 			name:       "test_empty",
 			cfg:        "",
 			wantConfig: nil,
-			wantErr:    "failed validating config: 3 errors occurred:\n\t* key ttl is invalid: 0s\n\t* grace period is invalid: 0s\n\t* disabled period is invalid: 0s\n\n",
+			wantErr:    "failed validating config: 4 errors occurred:\n\t* key ttl is invalid: 0s\n\t* grace period is invalid: 0s\n\t* disabled period is invalid: 0s\n\t* propagation delay is invalid: 0s\n\n",
 		},
 		{
 			name: "test_negative",
@@ -100,9 +118,10 @@ version: 1
 key_ttl: -720h
 grace_period: -2h
 disabled_period: -720h
+propagation_delay: -1h
 `,
 			wantConfig: nil,
-			wantErr:    "failed validating config: 3 errors occurred:\n\t* key ttl is invalid: -720h0m0s\n\t* grace period is invalid: -2h0m0s\n\t* disabled period is invalid: -720h0m0s\n\n",
+			wantErr:    "failed validating config: 4 errors occurred:\n\t* key ttl is invalid: -720h0m0s\n\t* grace period is invalid: -2h0m0s\n\t* disabled period is invalid: -720h0m0s\n\t* propagation delay is invalid: -1h0m0s\n\n",
 		},
 		{
 			name: "all_values_specified_env_override",
@@ -111,31 +130,35 @@ version: 1
 key_ttl: 720h # 30 days
 grace_period: 2h
 disabled_period: 720h # 30 days
+propagation_delay: 1h
 `,
 			envs: map[string]string{
 				"JVS_KEY_TTL":      "1080h", // 45 days
 				"JVS_GRACE_PERIOD": "4h",
 			},
 			wantConfig: &CryptoConfig{
-				Version:        1,
-				KeyTTL:         1080 * time.Hour, // 45 days
-				GracePeriod:    4 * time.Hour,    // 4 hours
-				DisabledPeriod: 720 * time.Hour,  // 30 days
+				Version:          1,
+				KeyTTL:           1080 * time.Hour, // 45 days
+				GracePeriod:      4 * time.Hour,    // 4 hours
+				DisabledPeriod:   720 * time.Hour,  // 30 days
+				PropagationDelay: time.Hour,        // 1 hour
 			},
 		},
 		{
 			name: "non_default_values_specified_in_envs",
 			cfg:  ``,
 			envs: map[string]string{
-				"JVS_KEY_TTL":         "1080h", // 45 days
-				"JVS_GRACE_PERIOD":    "4h",
-				"JVS_DISABLED_PERIOD": "1080h", // 45 days
+				"JVS_KEY_TTL":           "1080h", // 45 days
+				"JVS_GRACE_PERIOD":      "4h",
+				"JVS_DISABLED_PERIOD":   "1080h", // 45 days
+				"JVS_PROPAGATION_DELAY": "1h",
 			},
 			wantConfig: &CryptoConfig{
-				Version:        1,
-				KeyTTL:         1080 * time.Hour, // 45 days
-				GracePeriod:    4 * time.Hour,    // 4 hours
-				DisabledPeriod: 1080 * time.Hour, // 45 days
+				Version:          1,
+				KeyTTL:           1080 * time.Hour, // 45 days
+				GracePeriod:      4 * time.Hour,    // 4 hours
+				DisabledPeriod:   1080 * time.Hour, // 45 days
+				PropagationDelay: time.Hour,        // 1 hour
 			},
 		},
 	}
