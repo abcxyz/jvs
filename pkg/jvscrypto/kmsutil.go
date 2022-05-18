@@ -26,7 +26,6 @@ const (
 
 // GetLatestKeyVersion looks up the newest enabled key version. If there is no enabled version, this returns nil.
 func GetLatestKeyVersion(ctx context.Context, kms *kms.KeyManagementClient, keyName string) (*kmspb.CryptoKeyVersion, error) {
-
 	it := kms.ListCryptoKeyVersions(ctx, &kmspb.ListCryptoKeyVersionsRequest{
 		Parent: keyName,
 		Filter: "state=ENABLED",
@@ -142,7 +141,7 @@ func SignToken(token *jwt.Token, signer crypto.Signer) (string, error) {
 	return strings.Join([]string{signingString, jwt.EncodeSegment(sig)}, "."), nil
 }
 
-// getPrimary gets the key version name marked as primary in the key labels
+// getPrimary gets the key version name marked as primary in the key labels.
 func getPrimary(ctx context.Context, kms *kms.KeyManagementClient, key string) (string, error) {
 	response, err := kms.GetCryptoKey(ctx, &kmspb.GetCryptoKeyRequest{Name: key})
 	if err != nil {
@@ -156,7 +155,7 @@ func getPrimary(ctx context.Context, kms *kms.KeyManagementClient, key string) (
 	return "", nil
 }
 
-// setPrimary sets the key version name as primary in the key labels
+// setPrimary sets the key version name as primary in the key labels.
 func setPrimary(ctx context.Context, kms *kms.KeyManagementClient, key string, versionName string) error {
 	response, err := kms.GetCryptoKey(ctx, &kmspb.GetCryptoKeyRequest{Name: key})
 	if err != nil {
@@ -188,7 +187,7 @@ func setPrimary(ctx context.Context, kms *kms.KeyManagementClient, key string, v
 }
 
 // This returns the key version name with "ver_" prefixed. This is because labels must start with a lowercase letter, and can't go over 64 chars.
-// Example:  projects/*/locations/location1/keyRings/keyring1/cryptoKeys/key1/cryptoKeyVersions/1 -> ver_1
+// Example:  projects/*/locations/location1/keyRings/keyring1/cryptoKeys/key1/cryptoKeyVersions/1 -> ver_1 .
 func getLabelValue(versionName string) (string, error) {
 	split := strings.Split(versionName, "/")
 	if len(split) != 10 {
