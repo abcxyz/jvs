@@ -44,6 +44,7 @@ func (k *KeyServer) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	})
 	if err != nil {
 		http.Error(w, "error generating jwk string", http.StatusInternalServerError)
+		return
 	}
 	fmt.Fprintf(w, val)
 }
