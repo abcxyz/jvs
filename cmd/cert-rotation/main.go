@@ -86,15 +86,15 @@ func realMain(ctx context.Context) error {
 	if err != nil {
 		return fmt.Errorf("failed to setup kms client: %v", err)
 	}
+	defer kmsClient.Close()
 
 	config, err := config.LoadCryptoConfig(ctx, []byte{})
 	if err != nil {
 		return fmt.Errorf("failed to load config: %v", err)
 	}
 
-	defer kmsClient.Close()
 	handler := &jvscrypto.RotationHandler{
-		KmsClient:    kmsClient,
+		KMSClient:    kmsClient,
 		CryptoConfig: config,
 		CurrentTime:  time.Now(),
 	}
