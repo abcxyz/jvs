@@ -16,6 +16,7 @@ package jvscrypto
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"strings"
 	"time"
@@ -53,12 +54,11 @@ func (h *RotationHandler) RotateKey(ctx context.Context, key string) error {
 	vers := make([]*kmspb.CryptoKeyVersion, 0)
 	for {
 		ver, err := it.Next()
-		if err == iterator.Done {
+		if errors.Is(err, iterator.Done) {
 			break
 		}
 		if err != nil {
 			return fmt.Errorf("err while reading crypto key version list: %w", err)
-
 		}
 		vers = append(vers, ver)
 	}
@@ -93,7 +93,7 @@ func (h *RotationHandler) determineActions(ctx context.Context, vers []*kmspb.Cr
 	var newestTime time.Time
 
 	// Is there a key version currently in the process of being created.
-	var newBeingGenerated = false
+	newBeingGenerated := false
 
 	for _, ver := range vers {
 		logger.Debugf("checking version", zap.Any("version", ver))
@@ -149,6 +149,7 @@ func (h *RotationHandler) actionsForOtherVersions(ctx context.Context, vers []*k
 	actions := make(map[*kmspb.CryptoKeyVersion]Action)
 
 	for _, ver := range vers {
+		//nolint:exhaustive // TODO: handle import cases. https://github.com/abcxyz/jvs/issues/5
 		switch ver.State {
 		case kmspb.CryptoKeyVersion_ENABLED:
 			disableBeforeDate := h.CurrentTime.Add(-h.CryptoConfig.KeyTTL)
@@ -169,7 +170,6 @@ func (h *RotationHandler) actionsForOtherVersions(ctx context.Context, vers []*k
 				actions[ver] = ActionNone
 			}
 		default:
-			// TODO: handle import cases. https://github.com/abcxyz/jvs/issues/5
 			logger.Info("no action needed for key version in current state.", zap.Any("version", ver), zap.Any("state", ver.State))
 			actions[ver] = ActionNone
 		}
@@ -255,7 +255,7 @@ func (h *RotationHandler) performCreate(ctx context.Context, ver *kmspb.CryptoKe
 // GetKeyNameFromVersion converts a key version name to a key name.
 // Example:
 // `projects/*/locations/*/keyRings/*/cryptoKeys/*/cryptoKeyVersions/*`
-// -> `projects/*/locations/*/keyRings/*/cryptoKeys/*`
+// -> `projects/*/locations/*/keyRings/*/cryptoKeys/*`.
 func getKeyNameFromVersion(keyVersionName string) (string, error) {
 	split := strings.Split(keyVersionName, "/")
 	if len(split) != 10 {

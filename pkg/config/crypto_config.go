@@ -51,7 +51,7 @@ type CryptoConfig struct {
 func (cfg *CryptoConfig) Validate() error {
 	cfg.SetDefault()
 
-	var err error
+	var err *multierror.Error
 	if cfg.Version != Version {
 		err = multierror.Append(err, fmt.Errorf("unexpected Version %d want %d", cfg.Version, Version))
 	}
@@ -68,7 +68,7 @@ func (cfg *CryptoConfig) Validate() error {
 		err = multierror.Append(err, fmt.Errorf("disabled period is invalid: %v", cfg.DisabledPeriod))
 	}
 
-	return err
+	return err.ErrorOrNil()
 }
 
 // SetDefault sets default for the config.
@@ -98,13 +98,13 @@ func LoadCryptoConfig(ctx context.Context, b []byte) (*CryptoConfig, error) {
 func loadCryptoConfigFromLookuper(ctx context.Context, b []byte, lookuper envconfig.Lookuper) (*CryptoConfig, error) {
 	cfg := &CryptoConfig{}
 	if err := yaml.Unmarshal(b, cfg); err != nil {
-		return nil, err
+		return nil, fmt.Errorf("failed to unmarshal yaml: %w", err)
 	}
 
 	// Process overrides from env vars.
 	l := envconfig.PrefixLookuper("JVS_", lookuper)
 	if err := envconfig.ProcessWith(ctx, cfg, l); err != nil {
-		return nil, err
+		return nil, fmt.Errorf("failed to process environment: %w", err)
 	}
 
 	if err := cfg.Validate(); err != nil {

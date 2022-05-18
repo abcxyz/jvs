@@ -38,13 +38,15 @@ import (
 	"google.golang.org/protobuf/types/known/fieldmaskpb"
 )
 
-var clientOpt option.ClientOption
-var mockKeyManagement = &testutil.MockKeyManagementServer{
-	UnimplementedKeyManagementServiceServer: kmspb.UnimplementedKeyManagementServiceServer{},
-	Reqs:                                    make([]proto.Message, 1),
-	Err:                                     nil,
-	Resps:                                   make([]proto.Message, 1),
-}
+var (
+	clientOpt         option.ClientOption
+	mockKeyManagement = &testutil.MockKeyManagementServer{
+		UnimplementedKeyManagementServiceServer: kmspb.UnimplementedKeyManagementServiceServer{},
+		Reqs:                                    make([]proto.Message, 1),
+		Err:                                     nil,
+		Resps:                                   make([]proto.Message, 1),
+	}
+)
 
 func TestGetKeyNameFromVersion(t *testing.T) {
 	t.Parallel()

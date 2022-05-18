@@ -45,7 +45,7 @@ func (s *server) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	// TODO: load keys from DB instead. https://github.com/abcxyz/jvs/issues/17
 	for _, key := range s.handler.CryptoConfig.KeyNames {
 		if err := s.handler.RotateKey(r.Context(), key); err != nil {
-			errs = multierror.Append(errs, fmt.Errorf("error while rotating key %s : %v\n", key, err))
+			errs = multierror.Append(errs, fmt.Errorf("error while rotating key %s: %w", key, err))
 			continue
 		}
 		logger.Info("successfully performed actions (if necessary) on key.", zap.String("key", key))
@@ -79,12 +79,12 @@ func realMain(ctx context.Context) error {
 	logger := zlogger.FromContext(ctx)
 	kmsClient, err := kms.NewKeyManagementClient(ctx)
 	if err != nil {
-		return fmt.Errorf("failed to setup kms client: %v", err)
+		return fmt.Errorf("failed to setup kms client: %w", err)
 	}
 
 	config, err := config.LoadCryptoConfig(ctx, []byte{})
 	if err != nil {
-		return fmt.Errorf("failed to load config: %v", err)
+		return fmt.Errorf("failed to load config: %w", err)
 	}
 
 	defer kmsClient.Close()

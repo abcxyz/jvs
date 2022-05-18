@@ -1,0 +1,24 @@
+name: 'ci'
+
+on:
+  push:
+    branches:
+      - 'main'
+  pull_request:
+    branches:
+      - 'main'
+
+concurrency:
+  group: '${{ github.workflow }}-${{ github.head_ref || github.ref }}'
+  cancel-in-progress: true
+
+jobs:
+  lint:
+    uses: 'abcxyz/pkg/.github/workflows/go-lint.yml@main'
+    with:
+      go_version: '1.18'
+
+  test:
+    uses: 'abcxyz/pkg/.github/workflows/go-test.yml@main'
+    with:
+      go_version: '1.18'

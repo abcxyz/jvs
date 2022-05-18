@@ -6,6 +6,7 @@ import (
 	"crypto/rand"
 	"crypto/sha256"
 	"encoding/asn1"
+	"errors"
 	"fmt"
 	"math/big"
 	"strings"
@@ -28,12 +29,11 @@ func GetLatestKeyVersion(ctx context.Context, kms *kms.KeyManagementClient, keyN
 	var newestTime time.Time
 	for {
 		ver, err := it.Next()
-		if err == iterator.Done {
+		if errors.Is(err, iterator.Done) {
 			break
 		}
 		if err != nil {
 			return nil, fmt.Errorf("err while reading crypto key version list: %w", err)
-
 		}
 		if newestEnabledVersion == nil || ver.CreateTime.AsTime().After(newestTime) {
 			newestEnabledVersion = ver

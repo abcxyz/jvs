@@ -4,6 +4,7 @@ import (
 	"context"
 	"crypto/ecdsa"
 	"crypto/rand"
+	"fmt"
 	"sync"
 
 	kmspb "google.golang.org/genproto/googleapis/cloud/kms/v1"
@@ -38,7 +39,7 @@ func (s *MockKeyManagementServer) CreateCryptoKeyVersion(ctx context.Context, re
 	if s.Err != nil {
 		return nil, s.Err
 	}
-	return s.Resps[0].(*kmspb.CryptoKeyVersion), nil
+	return firstAsCryptoKeyVersion(s.Resps[0])
 }
 
 func (s *MockKeyManagementServer) ListCryptoKeyVersions(ctx context.Context, req *kmspb.ListCryptoKeyVersionsRequest) (*kmspb.ListCryptoKeyVersionsResponse, error) {
@@ -100,7 +101,7 @@ func (s *MockKeyManagementServer) DestroyCryptoKeyVersion(ctx context.Context, r
 	if s.Err != nil {
 		return nil, s.Err
 	}
-	return s.Resps[0].(*kmspb.CryptoKeyVersion), nil
+	return firstAsCryptoKeyVersion(s.Resps[0])
 }
 
 func (s *MockKeyManagementServer) UpdateCryptoKeyVersion(ctx context.Context, req *kmspb.UpdateCryptoKeyVersionRequest) (*kmspb.CryptoKeyVersion, error) {
@@ -110,5 +111,13 @@ func (s *MockKeyManagementServer) UpdateCryptoKeyVersion(ctx context.Context, re
 	if s.Err != nil {
 		return nil, s.Err
 	}
-	return s.Resps[0].(*kmspb.CryptoKeyVersion), nil
+	return firstAsCryptoKeyVersion(s.Resps[0])
+}
+
+func firstAsCryptoKeyVersion(m proto.Message) (*kmspb.CryptoKeyVersion, error) {
+	ver, ok := m.(*kmspb.CryptoKeyVersion)
+	if !ok {
+		return nil, fmt.Errorf("response is not a *kmspb.CryptoKeyVersion (%T)", m)
+	}
+	return ver, nil
 }

@@ -30,7 +30,7 @@ func TestCreateToken(t *testing.T) {
 	ctx := context.Background()
 
 	var clientOpt option.ClientOption
-	var mockKeyManagement = &testutil.MockKeyManagementServer{
+	mockKeyManagement := &testutil.MockKeyManagementServer{
 		UnimplementedKeyManagementServiceServer: kmspb.UnimplementedKeyManagementServiceServer{},
 		Reqs:                                    make([]proto.Message, 1),
 		Err:                                     nil,
@@ -157,15 +157,17 @@ func TestCreateToken(t *testing.T) {
 	}
 }
 
-func validateClaims(t testing.TB, provided *jvspb.JVSClaims, expectedJustifications []*jvspb.Justification) {
+func validateClaims(tb testing.TB, provided *jvspb.JVSClaims, expectedJustifications []*jvspb.Justification) {
+	tb.Helper()
+
 	// test the standard claims filled by processor
 	if provided.StandardClaims.Issuer != jvsIssuer {
-		t.Errorf("audience value %s incorrect, expected %s", provided.StandardClaims.Issuer, jvsIssuer)
+		tb.Errorf("audience value %s incorrect, expected %s", provided.StandardClaims.Issuer, jvsIssuer)
 	}
 	// TODO: as we add more standard claims, add more validations.
 
 	if len(provided.Justifications) != len(expectedJustifications) {
-		t.Errorf("Number of justifications was incorrect.\n got: %v\n want: %v", provided.Justifications, expectedJustifications)
+		tb.Errorf("Number of justifications was incorrect.\n got: %v\n want: %v", provided.Justifications, expectedJustifications)
 	}
 
 	for _, j := range provided.Justifications {
@@ -178,7 +180,7 @@ func validateClaims(t testing.TB, provided *jvspb.JVSClaims, expectedJustificati
 			}
 		}
 		if !found {
-			t.Errorf("Justifications didn't match.\n got: %v\n want: %v", provided.Justifications, expectedJustifications)
+			tb.Errorf("Justifications didn't match.\n got: %v\n want: %v", provided.Justifications, expectedJustifications)
 			return
 		}
 	}

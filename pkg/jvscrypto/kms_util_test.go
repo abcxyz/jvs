@@ -27,7 +27,7 @@ func TestVerifyJWTString(t *testing.T) {
 	ctx := context.Background()
 
 	var clientOpt option.ClientOption
-	var mockKMS = &testutil.MockKeyManagementServer{
+	mockKMS := &testutil.MockKeyManagementServer{
 		UnimplementedKeyManagementServiceServer: kmspb.UnimplementedKeyManagementServiceServer{},
 		Reqs:                                    make([]proto.Message, 1),
 		Err:                                     nil,
