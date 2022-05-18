@@ -1,5 +1,6 @@
 // Taken from https://github.com/google/exposure-notifications-server/blob/main/pkg/cache/cache.go
 
+// Copyright 2022 Google LLC
 // Copyright 2020 the Exposure Notifications Server authors
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
