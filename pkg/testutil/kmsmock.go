@@ -4,6 +4,7 @@ import (
 	"context"
 	"crypto/ecdsa"
 	"crypto/rand"
+	"sync"
 
 	kmspb "google.golang.org/genproto/googleapis/cloud/kms/v1"
 	"google.golang.org/protobuf/proto"
@@ -15,7 +16,8 @@ type MockKeyManagementServer struct {
 	// in the future.
 	kmspb.UnimplementedKeyManagementServiceServer
 
-	Reqs []proto.Message
+	reqMu sync.Mutex
+	Reqs  []proto.Message
 
 	// If set, all calls return this error.
 	Err error
@@ -30,6 +32,8 @@ type MockKeyManagementServer struct {
 const TestKeyName = "projects/proj1/locations/loc1/keyRings/kr1/cryptoKeys/key1"
 
 func (s *MockKeyManagementServer) CreateCryptoKeyVersion(ctx context.Context, req *kmspb.CreateCryptoKeyVersionRequest) (*kmspb.CryptoKeyVersion, error) {
+	s.reqMu.Lock()
+	defer s.reqMu.Unlock()
 	s.Reqs = append(s.Reqs, req)
 	if s.Err != nil {
 		return nil, s.Err
@@ -38,6 +42,8 @@ func (s *MockKeyManagementServer) CreateCryptoKeyVersion(ctx context.Context, re
 }
 
 func (s *MockKeyManagementServer) ListCryptoKeyVersions(ctx context.Context, req *kmspb.ListCryptoKeyVersionsRequest) (*kmspb.ListCryptoKeyVersionsResponse, error) {
+	s.reqMu.Lock()
+	defer s.reqMu.Unlock()
 	s.Reqs = append(s.Reqs, req)
 	if s.Err != nil {
 		return nil, s.Err
@@ -53,6 +59,8 @@ func (s *MockKeyManagementServer) ListCryptoKeyVersions(ctx context.Context, req
 }
 
 func (s *MockKeyManagementServer) GetCryptoKey(ctx context.Context, req *kmspb.GetCryptoKeyRequest) (*kmspb.CryptoKey, error) {
+	s.reqMu.Lock()
+	defer s.reqMu.Unlock()
 	s.Reqs = append(s.Reqs, req)
 	if s.Err != nil {
 		return nil, s.Err
@@ -66,6 +74,9 @@ func (s *MockKeyManagementServer) GetCryptoKey(ctx context.Context, req *kmspb.G
 }
 
 func (s *MockKeyManagementServer) AsymmetricSign(ctx context.Context, req *kmspb.AsymmetricSignRequest) (*kmspb.AsymmetricSignResponse, error) {
+	s.reqMu.Lock()
+	defer s.reqMu.Unlock()
+	s.Reqs = append(s.Reqs, req)
 	sig, err := ecdsa.SignASN1(rand.Reader, s.PrivateKey, req.Digest.GetSha256())
 	if err != nil {
 		return nil, s.Err
@@ -83,6 +94,8 @@ func (s *MockKeyManagementServer) GetPublicKey(ctx context.Context, req *kmspb.G
 }
 
 func (s *MockKeyManagementServer) DestroyCryptoKeyVersion(ctx context.Context, req *kmspb.DestroyCryptoKeyVersionRequest) (*kmspb.CryptoKeyVersion, error) {
+	s.reqMu.Lock()
+	defer s.reqMu.Unlock()
 	s.Reqs = append(s.Reqs, req)
 	if s.Err != nil {
 		return nil, s.Err
@@ -91,6 +104,8 @@ func (s *MockKeyManagementServer) DestroyCryptoKeyVersion(ctx context.Context, r
 }
 
 func (s *MockKeyManagementServer) UpdateCryptoKeyVersion(ctx context.Context, req *kmspb.UpdateCryptoKeyVersionRequest) (*kmspb.CryptoKeyVersion, error) {
+	s.reqMu.Lock()
+	defer s.reqMu.Unlock()
 	s.Reqs = append(s.Reqs, req)
 	if s.Err != nil {
 		return nil, s.Err
