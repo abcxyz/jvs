@@ -35,9 +35,14 @@ type CryptoConfig struct {
 	// Version is the version of the config.
 	Version uint8 `yaml:"version,omitempty" env:"VERSION,overwrite"`
 
-	// Crypto variables
-	KeyTTL         time.Duration `yaml:"key_ttl,omitempty" env:"KEY_TTL,overwrite"`
-	GracePeriod    time.Duration `yaml:"grace_period,omitempty" env:"GRACE_PERIOD,overwrite"`
+	// -- Crypto variables --
+	// KeyTTL is the length of time that we expect a key to be valid for.
+	KeyTTL time.Duration `yaml:"key_ttl,omitempty" env:"KEY_TTL,overwrite"`
+	// GracePeriod is a length of time between when we rotate the key and when an old Key Version is no longer valid and available
+	GracePeriod time.Duration `yaml:"grace_period,omitempty" env:"GRACE_PERIOD,overwrite"`
+	// PropagationDelay is the time that it takes for a change in the key in KMS to be reflected in the clients.
+	PropagationDelay time.Duration `yaml:"propagation_delay,omitempty" env:"PROPAGATION_DELAY,overwrite"`
+	// DisabledPeriod is a time between when the key is disabled, and when we delete the key.
 	DisabledPeriod time.Duration `yaml:"disabled_period,omitempty" env:"DISABLED_PERIOD,overwrite"`
 
 	// TODO: This is intended to be temporary, and will eventually be retrieved from a persistent external datastore
@@ -66,6 +71,11 @@ func (cfg *CryptoConfig) Validate() error {
 
 	if cfg.DisabledPeriod <= 0 {
 		err = multierror.Append(err, fmt.Errorf("disabled period is invalid: %v", cfg.DisabledPeriod))
+	}
+
+	// Propagation delay must be lower than grace period.
+	if cfg.PropagationDelay <= 0 || cfg.PropagationDelay > cfg.GracePeriod {
+		err = multierror.Append(err, fmt.Errorf("propagation delay is invalid: %v", cfg.PropagationDelay))
 	}
 
 	return err.ErrorOrNil()

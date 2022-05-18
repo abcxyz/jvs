@@ -75,7 +75,8 @@ func TestVerifyJWTString(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	signer, err := gcpkms.NewSigner(ctx, kms, testutil.TestKeyName)
+	parent := "test-key"
+	signer, err := gcpkms.NewSigner(ctx, kms, parent)
 	if err != nil {
 		t.Fatal(err)
 	}

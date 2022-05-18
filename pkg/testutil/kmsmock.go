@@ -26,11 +26,13 @@ type MockKeyManagementServer struct {
 	// responses to return if err == nil
 	Resps []proto.Message
 
-	PrivateKey *ecdsa.PrivateKey
-	PublicKey  string
-}
+	Labels map[string]string
 
-const TestKeyName = "projects/proj1/locations/loc1/keyRings/kr1/cryptoKeys/key1"
+	PrivateKey  *ecdsa.PrivateKey
+	PublicKey   string
+	KeyName     string
+	VersionName string
+}
 
 func (s *MockKeyManagementServer) CreateCryptoKeyVersion(ctx context.Context, req *kmspb.CreateCryptoKeyVersionRequest) (*kmspb.CryptoKeyVersion, error) {
 	s.reqMu.Lock()
@@ -52,7 +54,7 @@ func (s *MockKeyManagementServer) ListCryptoKeyVersions(ctx context.Context, req
 	return &kmspb.ListCryptoKeyVersionsResponse{
 		CryptoKeyVersions: []*kmspb.CryptoKeyVersion{
 			{
-				Name:  TestKeyName,
+				Name:  s.VersionName,
 				State: kmspb.CryptoKeyVersion_ENABLED,
 			},
 		},
@@ -67,10 +69,8 @@ func (s *MockKeyManagementServer) GetCryptoKey(ctx context.Context, req *kmspb.G
 		return nil, s.Err
 	}
 	return &kmspb.CryptoKey{
-		Primary: &kmspb.CryptoKeyVersion{
-			Name:  TestKeyName,
-			State: kmspb.CryptoKeyVersion_ENABLED,
-		},
+		Name:   s.KeyName,
+		Labels: s.Labels,
 	}, nil
 }
 
@@ -120,4 +120,11 @@ func firstAsCryptoKeyVersion(m proto.Message) (*kmspb.CryptoKeyVersion, error) {
 		return nil, fmt.Errorf("response is not a *kmspb.CryptoKeyVersion (%T)", m)
 	}
 	return ver, nil
+}
+
+func (s *MockKeyManagementServer) UpdateCryptoKey(ctx context.Context, req *kmspb.UpdateCryptoKeyRequest) (*kmspb.CryptoKey, error) {
+	s.Reqs = append(s.Reqs, req)
+	s.Labels = req.CryptoKey.Labels
+
+	return &kmspb.CryptoKey{}, nil
 }
