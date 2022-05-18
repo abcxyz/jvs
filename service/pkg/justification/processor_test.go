@@ -34,6 +34,7 @@ func TestCreateToken(t *testing.T) {
 		Reqs:                                    make([]proto.Message, 1),
 		Err:                                     nil,
 		Resps:                                   make([]proto.Message, 1),
+		NumVersions:                             1,
 	}
 
 	privateKey, err := ecdsa.GenerateKey(elliptic.P256(), rand.Reader)
