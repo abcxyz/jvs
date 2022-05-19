@@ -36,11 +36,6 @@ type server struct {
 	handler *jvscrypto.RotationHandler
 }
 
-// HTTPMessage is the request format we will send from cloud scheduler.
-type HTTPMessage struct {
-	// TODO: We should support manual actions through call arguments, such as a rotation before the TTL. https://github.com/abcxyz/jvs/issues/9
-}
-
 // ServeHTTP rotates a single key's versions.
 func (s *server) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	logger := zlogger.FromContext(r.Context())
@@ -50,7 +45,7 @@ func (s *server) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	// TODO: load keys from DB instead. https://github.com/abcxyz/jvs/issues/17
 	for _, key := range s.handler.CryptoConfig.KeyNames {
 		if err := s.handler.RotateKey(r.Context(), key); err != nil {
-			errs = multierror.Append(errs, fmt.Errorf("error while rotating key %s : %v\n", key, err))
+			errs = multierror.Append(errs, fmt.Errorf("error while rotating key %s: %w", key, err))
 			continue
 		}
 		logger.Info("successfully performed actions (if necessary) on key.", zap.String("key", key))
@@ -84,13 +79,13 @@ func realMain(ctx context.Context) error {
 	logger := zlogger.FromContext(ctx)
 	kmsClient, err := kms.NewKeyManagementClient(ctx)
 	if err != nil {
-		return fmt.Errorf("failed to setup kms client: %v", err)
+		return fmt.Errorf("failed to setup kms client: %w", err)
 	}
 	defer kmsClient.Close()
 
 	config, err := config.LoadCryptoConfig(ctx, []byte{})
 	if err != nil {
-		return fmt.Errorf("failed to load config: %v", err)
+		return fmt.Errorf("failed to load config: %w", err)
 	}
 
 	handler := &jvscrypto.RotationHandler{
