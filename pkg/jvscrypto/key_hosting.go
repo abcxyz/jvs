@@ -109,6 +109,9 @@ func (k *KeyServer) jwkList(ctx context.Context, keyName string) ([]*ECDSAKey, e
 		if !ok {
 			return nil, fmt.Errorf("unknown key format, expected ecdsa, got %T", pub)
 		}
+		if len(ecdsaKey.X.Bits()) == 0 || len(ecdsaKey.Y.Bits()) == 0 {
+			return nil, fmt.Errorf("unable to determine X and/or Y for ECDSA key")
+		}
 		ek := &ECDSAKey{
 			Curve: "P-256",
 			ID:    id,
