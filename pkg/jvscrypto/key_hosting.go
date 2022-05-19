@@ -7,6 +7,7 @@ import (
 	"encoding/base64"
 	"encoding/json"
 	"encoding/pem"
+	"errors"
 	"fmt"
 	"net/http"
 	"sort"
@@ -26,10 +27,10 @@ type KeyServer struct {
 }
 
 // ECDSAKey is the public key information for a Elliptic Curve Digital Signature Algorithm Key. used to serialize the public key
-// into JWK format. https://datatracker.ietf.org/doc/html/rfc7517#section-4
+// into JWK format. https://datatracker.ietf.org/doc/html/rfc7517#section-4 .
 type ECDSAKey struct {
 	Curve string `json:"crv"`
-	Id    string `json:"kid"`
+	ID    string `json:"kid"`
 	Type  string `json:"kty"`
 	X     string `json:"x"`
 	Y     string `json:"y"`
@@ -37,7 +38,7 @@ type ECDSAKey struct {
 
 const cacheKey = "jwks"
 
-// ServeHTTP returns the public keys in JWK format
+// ServeHTTP returns the public keys in JWK format.
 func (k *KeyServer) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	val, err := k.Cache.WriteThruLookup(cacheKey, func() (string, error) {
 		return k.generateJWKString(r.Context())
@@ -46,7 +47,7 @@ func (k *KeyServer) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 		http.Error(w, "error generating jwk string", http.StatusInternalServerError)
 		return
 	}
-	fmt.Fprintf(w, val)
+	fmt.Fprint(w, val)
 }
 
 func (k *KeyServer) generateJWKString(ctx context.Context) (string, error) {
@@ -66,7 +67,7 @@ func (k *KeyServer) generateJWKString(ctx context.Context) (string, error) {
 }
 
 // jwkList creates a list of public keys in JWK format.
-// https://datatracker.ietf.org/doc/html/rfc7517#section-4
+// https://datatracker.ietf.org/doc/html/rfc7517#section-4 .
 func (k *KeyServer) jwkList(ctx context.Context, keyName string) ([]*ECDSAKey, error) {
 	it := k.KMSClient.ListCryptoKeyVersions(ctx, &kmspb.ListCryptoKeyVersionsRequest{
 		Parent: keyName,
@@ -76,7 +77,7 @@ func (k *KeyServer) jwkList(ctx context.Context, keyName string) ([]*ECDSAKey, e
 	jwkList := make([]*ECDSAKey, 0)
 	for {
 		ver, err := it.Next()
-		if err == iterator.Done {
+		if errors.Is(err, iterator.Done) {
 			break
 		}
 		if err != nil {
@@ -105,12 +106,11 @@ func (k *KeyServer) jwkList(ctx context.Context, keyName string) ([]*ECDSAKey, e
 
 		ecdsaKey, ok := pub.(*ecdsa.PublicKey)
 		if !ok {
-			return nil, fmt.Errorf("Unknown key format")
-
+			return nil, fmt.Errorf("unknown key format")
 		}
 		ek := &ECDSAKey{
 			Curve: "P-256",
-			Id:    id,
+			ID:    id,
 			Type:  "EC",
 			X:     base64.RawURLEncoding.EncodeToString(ecdsaKey.X.Bytes()),
 			Y:     base64.RawURLEncoding.EncodeToString(ecdsaKey.Y.Bytes()),
@@ -118,13 +118,13 @@ func (k *KeyServer) jwkList(ctx context.Context, keyName string) ([]*ECDSAKey, e
 		jwkList = append(jwkList, ek)
 	}
 	sort.Slice(jwkList, func(i, j int) bool {
-		return (*jwkList[i]).Id < (*jwkList[j]).Id
+		return (*jwkList[i]).ID < (*jwkList[j]).ID
 	})
 	return jwkList, nil
 }
 
 // formatJWKString creates a JWK Set converted to string.
-// https://datatracker.ietf.org/doc/html/rfc7517#section-5
+// https://datatracker.ietf.org/doc/html/rfc7517#section-5 .
 func formatJWKString(wks []*ECDSAKey) (string, error) {
 	jwkMap := make(map[string][]*ECDSAKey)
 	jwkMap["keys"] = wks

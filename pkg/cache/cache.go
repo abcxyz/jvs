@@ -13,14 +13,13 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
+// Taken from https://github.com/google/exposure-notifications-server/blob/main/pkg/cache/cache.go
+
 // Package cache implements an inmemory cache for any object.
 //
 // Although exported, this package is non intended for general consumption.
 // It is a shared dependency between multiple exposure notifications projects.
 // We cannot guarantee that there won't be breaking changes in the future.
-
-// Taken from https://github.com/google/exposure-notifications-server/blob/main/pkg/cache/cache.go
-
 package cache
 
 import (

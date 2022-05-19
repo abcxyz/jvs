@@ -21,6 +21,7 @@ import (
 	"google.golang.org/api/option"
 	kmspb "google.golang.org/genproto/googleapis/cloud/kms/v1"
 	"google.golang.org/grpc"
+	"google.golang.org/grpc/credentials/insecure"
 	"google.golang.org/protobuf/proto"
 )
 
@@ -29,7 +30,7 @@ func TestJWKSetFormattedString(t *testing.T) {
 	ctx := context.Background()
 
 	var clientOpt option.ClientOption
-	var mockKMSServer = &testutil.MockKeyManagementServer{
+	mockKMSServer := &testutil.MockKeyManagementServer{
 		UnimplementedKeyManagementServiceServer: kmspb.UnimplementedKeyManagementServiceServer{},
 		Reqs:                                    make([]proto.Message, 1),
 		Err:                                     nil,
@@ -55,9 +56,14 @@ func TestJWKSetFormattedString(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	go serv.Serve(lis)
+	// not checked, but makes linter happy
+	errs := make(chan error, 1)
+	go func() {
+		errs <- serv.Serve(lis)
+		close(errs)
+	}()
 
-	conn, err := grpc.Dial(lis.Addr().String(), grpc.WithInsecure())
+	conn, err := grpc.Dial(lis.Addr().String(), grpc.WithTransportCredentials(insecure.NewCredentials()))
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -127,6 +133,9 @@ func TestJWKSetFormattedString(t *testing.T) {
 			mockKMSServer.NumVersions = tc.numKeys
 
 			keys, err := ks.jwkList(ctx, key)
+			if err != nil {
+				t.Error(err)
+			}
 			got, err := formatJWKString(keys)
 			testutil.ErrCmp(t, tc.wantErr, err)
 
@@ -138,5 +147,4 @@ func TestJWKSetFormattedString(t *testing.T) {
 			}
 		})
 	}
-
 }

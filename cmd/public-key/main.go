@@ -49,18 +49,18 @@ func main() {
 // realMain creates an HTTP server for use with hosting public certs.
 // This server supports graceful stopping and cancellation by:
 //   - using a cancellable context
-//   - listening to incoming requests in a goroutine
+//   - listening to incoming requests in a goroutine.
 func realMain(ctx context.Context) error {
 	logger := zlogger.FromContext(ctx)
 	kmsClient, err := kms.NewKeyManagementClient(ctx)
 	if err != nil {
-		return fmt.Errorf("failed to setup kms client: %v", err)
+		return fmt.Errorf("failed to setup kms client: %w", err)
 	}
 	defer kmsClient.Close()
 
 	config, err := config.LoadCryptoConfig(ctx, []byte{})
 	if err != nil {
-		return fmt.Errorf("failed to load config: %v", err)
+		return fmt.Errorf("failed to load config: %w", err)
 	}
 
 	cache := cache.New[string](5 * time.Minute)
