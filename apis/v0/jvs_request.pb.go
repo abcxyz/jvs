@@ -185,12 +185,15 @@ func file_protos_v0_jvs_request_proto_rawDescGZIP() []byte {
 	return file_protos_v0_jvs_request_proto_rawDescData
 }
 
-var file_protos_v0_jvs_request_proto_msgTypes = make([]protoimpl.MessageInfo, 2)
-var file_protos_v0_jvs_request_proto_goTypes = []interface{}{
-	(*CreateJustificationRequest)(nil), // 0: jvs.CreateJustificationRequest
-	(*Justification)(nil),              // 1: jvs.Justification
-	(*durationpb.Duration)(nil),        // 2: google.protobuf.Duration
-}
+var (
+	file_protos_v0_jvs_request_proto_msgTypes = make([]protoimpl.MessageInfo, 2)
+	file_protos_v0_jvs_request_proto_goTypes  = []interface{}{
+		(*CreateJustificationRequest)(nil), // 0: jvs.CreateJustificationRequest
+		(*Justification)(nil),              // 1: jvs.Justification
+		(*durationpb.Duration)(nil),        // 2: google.protobuf.Duration
+	}
+)
+
 var file_protos_v0_jvs_request_proto_depIdxs = []int32{
 	1, // 0: jvs.CreateJustificationRequest.justifications:type_name -> jvs.Justification
 	2, // 1: jvs.CreateJustificationRequest.ttl:type_name -> google.protobuf.Duration

@@ -16,11 +16,12 @@ import (
 	"github.com/abcxyz/jvs/pkg/jvscrypto"
 	"github.com/abcxyz/jvs/pkg/testutil"
 	"github.com/golang-jwt/jwt"
-	"github.com/golang/protobuf/proto"
 	"github.com/sethvargo/go-gcpkms/pkg/gcpkms"
 	"google.golang.org/api/option"
 	kmspb "google.golang.org/genproto/googleapis/cloud/kms/v1"
 	"google.golang.org/grpc"
+	"google.golang.org/grpc/credentials/insecure"
+	"google.golang.org/protobuf/proto"
 	"google.golang.org/protobuf/types/known/durationpb"
 )
 
@@ -29,7 +30,7 @@ func TestCreateToken(t *testing.T) {
 	ctx := context.Background()
 
 	var clientOpt option.ClientOption
-	var mockKeyManagement = &testutil.MockKeyManagementServer{
+	mockKeyManagement := &testutil.MockKeyManagementServer{
 		UnimplementedKeyManagementServiceServer: kmspb.UnimplementedKeyManagementServiceServer{},
 		Reqs:                                    make([]proto.Message, 1),
 		Err:                                     nil,
@@ -55,9 +56,14 @@ func TestCreateToken(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	go serv.Serve(lis)
+	// not checked, but makes linter happy
+	errs := make(chan error, 1)
+	go func() {
+		errs <- serv.Serve(lis)
+		close(errs)
+	}()
 
-	conn, err := grpc.Dial(lis.Addr().String(), grpc.WithInsecure())
+	conn, err := grpc.Dial(lis.Addr().String(), grpc.WithTransportCredentials(insecure.NewCredentials()))
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -151,15 +157,17 @@ func TestCreateToken(t *testing.T) {
 	}
 }
 
-func validateClaims(t testing.TB, provided *jvspb.JVSClaims, expectedJustifications []*jvspb.Justification) {
+func validateClaims(tb testing.TB, provided *jvspb.JVSClaims, expectedJustifications []*jvspb.Justification) {
+	tb.Helper()
+
 	// test the standard claims filled by processor
 	if provided.StandardClaims.Issuer != jvsIssuer {
-		t.Errorf("audience value %s incorrect, expected %s", provided.StandardClaims.Issuer, jvsIssuer)
+		tb.Errorf("audience value %s incorrect, expected %s", provided.StandardClaims.Issuer, jvsIssuer)
 	}
 	// TODO: as we add more standard claims, add more validations.
 
 	if len(provided.Justifications) != len(expectedJustifications) {
-		t.Errorf("Number of justifications was incorrect.\n got: %v\n want: %v", provided.Justifications, expectedJustifications)
+		tb.Errorf("Number of justifications was incorrect.\n got: %v\n want: %v", provided.Justifications, expectedJustifications)
 	}
 
 	for _, j := range provided.Justifications {
@@ -172,7 +180,7 @@ func validateClaims(t testing.TB, provided *jvspb.JVSClaims, expectedJustificati
 			}
 		}
 		if !found {
-			t.Errorf("Justifications didn't match.\n got: %v\n want: %v", provided.Justifications, expectedJustifications)
+			tb.Errorf("Justifications didn't match.\n got: %v\n want: %v", provided.Justifications, expectedJustifications)
 			return
 		}
 	}

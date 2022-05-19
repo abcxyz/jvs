@@ -48,8 +48,7 @@ type JVSServiceServer interface {
 }
 
 // UnimplementedJVSServiceServer must be embedded to have forward compatible implementations.
-type UnimplementedJVSServiceServer struct {
-}
+type UnimplementedJVSServiceServer struct{}
 
 func (UnimplementedJVSServiceServer) CreateJustification(context.Context, *CreateJustificationRequest) (*CreateJustificationResponse, error) {
 	return nil, status.Errorf(codes.Unimplemented, "method CreateJustification not implemented")

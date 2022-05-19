@@ -25,8 +25,7 @@ import (
 func TestNewFromEnv(t *testing.T) {
 	t.Parallel()
 
-	logger := NewFromEnv("")
-	if logger == nil {
+	if logger := NewFromEnv(""); logger == nil {
 		t.Fatal("expected logger to never be nil")
 	}
 }
@@ -65,4 +64,5 @@ func TestContext(t *testing.T) {
 	if logger1 != logger2 {
 		t.Errorf("expected %#v to be %#v", logger1, logger2)
 	}
+	_ = logger2
 }
