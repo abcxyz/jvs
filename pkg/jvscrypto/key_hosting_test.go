@@ -102,7 +102,7 @@ func TestJWKSetFormattedString(t *testing.T) {
 			name:    "happy-path",
 			primary: "ver_" + versionSuffix,
 			numKeys: 1,
-			wantOutput: fmt.Sprintf("{\"keys\":[{\"crv\":\"P-256\",\"kid\":\"ver_[VERSION]-0\",\"kty\":\"EC\",\"x\":\"%s\",\"y\":\"%s\"}]}",
+			wantOutput: fmt.Sprintf(`{"keys":[{"crv":"P-256","kid":"ver_[VERSION]-0","kty":"EC","x":"%s","y":"%s"}]}`,
 				base64.RawURLEncoding.EncodeToString(privateKey.PublicKey.X.Bytes()),
 				base64.RawURLEncoding.EncodeToString(privateKey.PublicKey.Y.Bytes())),
 		},
@@ -119,7 +119,7 @@ func TestJWKSetFormattedString(t *testing.T) {
 		{
 			name:       "no-primary",
 			numKeys:    0,
-			wantOutput: "{\"keys\":[]}",
+			wantOutput: `{"keys":[]}`,
 		},
 	}
 
