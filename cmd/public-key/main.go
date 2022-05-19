@@ -62,7 +62,7 @@ func realMain(ctx context.Context) error {
 		return fmt.Errorf("failed to load config: %w", err)
 	}
 
-	cache := cache.New[string](5 * time.Minute)
+	cache := cache.New[string](config.CacheTimeout)
 
 	ks := &jvscrypto.KeyServer{
 		KMSClient:       kmsClient,
