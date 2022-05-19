@@ -49,9 +49,9 @@ func (c *item[T]) expired() bool {
 	return c.expiresAt < time.Now().UnixNano()
 }
 
-// New creates a new in memory cache.
+// New creates a new in memory cache. Panics if expireAfter is 0 or negative.
 func New[T any](expireAfter time.Duration) *Cache[T] {
-	if expireAfter < 0 {
+	if expireAfter <= 0 {
 		panic(ErrInvalidDuration)
 	}
 

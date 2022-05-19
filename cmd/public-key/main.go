@@ -20,7 +20,6 @@ import (
 	"fmt"
 	"log"
 	"net/http"
-	"os"
 	"os/signal"
 	"syscall"
 	"time"
@@ -58,7 +57,7 @@ func realMain(ctx context.Context) error {
 	}
 	defer kmsClient.Close()
 
-	config, err := config.LoadCryptoConfig(ctx, []byte{})
+	config, err := config.LoadPublicKeyConfig(ctx, []byte{})
 	if err != nil {
 		return fmt.Errorf("failed to load config: %w", err)
 	}
@@ -66,24 +65,18 @@ func realMain(ctx context.Context) error {
 	cache := cache.New[string](5 * time.Minute)
 
 	ks := &jvscrypto.KeyServer{
-		KMSClient:    kmsClient,
-		CryptoConfig: config,
-		Cache:        cache,
+		KMSClient:       kmsClient,
+		PublicKeyConfig: config,
+		Cache:           cache,
 	}
 
 	mux := http.NewServeMux()
 	mux.Handle("/.well-known/jwks", ks)
 
-	// Determine port for HTTP service.
-	port := os.Getenv("PORT")
-	if port == "" {
-		port = "8080"
-	}
-
 	// Create the server and listen in a goroutine.
-	logger.Debug("starting server on port", zap.String("port", port))
+	logger.Debug("starting server on port", zap.String("port", config.Port))
 	server := &http.Server{
-		Addr:    ":" + port,
+		Addr:    ":" + config.Port,
 		Handler: mux,
 	}
 	serverErrCh := make(chan error, 1)

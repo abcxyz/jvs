@@ -21,9 +21,9 @@ import (
 
 // KeyServer provides all valid and active public keys in a JWKS format.
 type KeyServer struct {
-	KMSClient    *kms.KeyManagementClient
-	CryptoConfig *config.CryptoConfig
-	Cache        *cache.Cache[string]
+	KMSClient       *kms.KeyManagementClient
+	PublicKeyConfig *config.PublicKeyConfig
+	Cache           *cache.Cache[string]
 }
 
 // ECDSAKey is the public key information for a Elliptic Curve Digital Signature Algorithm Key. used to serialize the public key
@@ -52,16 +52,16 @@ func (k *KeyServer) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 
 func (k *KeyServer) generateJWKString(ctx context.Context) (string, error) {
 	jwks := make([]*ECDSAKey, 0)
-	for _, key := range k.CryptoConfig.KeyNames {
+	for _, key := range k.PublicKeyConfig.KeyNames {
 		list, err := k.jwkList(ctx, key)
 		if err != nil {
-			return "", fmt.Errorf("ran into error while determining public keys %w", err)
+			return "", fmt.Errorf("err while determining public keys %w", err)
 		}
 		jwks = append(jwks, list...)
 	}
 	json, err := formatJWKString(jwks)
 	if err != nil {
-		return "", fmt.Errorf("ran into error while formatting public keys, %w", err)
+		return "", fmt.Errorf("err while formatting public keys, %w", err)
 	}
 	return json, nil
 }
@@ -76,6 +76,7 @@ func (k *KeyServer) jwkList(ctx context.Context, keyName string) ([]*ECDSAKey, e
 
 	jwkList := make([]*ECDSAKey, 0)
 	for {
+		// Could parallelize this. #34
 		ver, err := it.Next()
 		if errors.Is(err, iterator.Done) {
 			break
@@ -106,7 +107,7 @@ func (k *KeyServer) jwkList(ctx context.Context, keyName string) ([]*ECDSAKey, e
 
 		ecdsaKey, ok := pub.(*ecdsa.PublicKey)
 		if !ok {
-			return nil, fmt.Errorf("unknown key format")
+			return nil, fmt.Errorf("unknown key format, expected ecdsa, got %T", pub)
 		}
 		ek := &ECDSAKey{
 			Curve: "P-256",

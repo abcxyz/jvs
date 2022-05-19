@@ -83,12 +83,12 @@ func TestJWKSetFormattedString(t *testing.T) {
 	}
 
 	ks := &KeyServer{
-		KMSClient:    kms,
-		CryptoConfig: &config.CryptoConfig{},
-		Cache:        cache,
+		KMSClient:       kms,
+		PublicKeyConfig: &config.PublicKeyConfig{},
+		Cache:           cache,
 	}
 
-	key := fmt.Sprintf("projects/%s/locations/%s/keyRings/%s/cryptoKeys/%s", "[PROJECT]", "[LOCATION]", "[KEY_RING]", "[CRYPTO_KEY]")
+	key := "projects/[PROJECT]/locations/[LOCATION]/keyRings/[KEY_RING]/cryptoKeys/[CRYPTO_KEY]"
 	versionSuffix := "[VERSION]"
 
 	tests := []struct {
