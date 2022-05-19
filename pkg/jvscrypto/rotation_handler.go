@@ -16,6 +16,7 @@ package jvscrypto
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"strings"
 	"time"
@@ -54,12 +55,11 @@ func (h *RotationHandler) RotateKey(ctx context.Context, key string) error {
 	vers := make([]*kmspb.CryptoKeyVersion, 0)
 	for {
 		ver, err := it.Next()
-		if err == iterator.Done {
+		if errors.Is(err, iterator.Done) {
 			break
 		}
 		if err != nil {
 			return fmt.Errorf("err while reading crypto key version list: %w", err)
-
 		}
 		vers = append(vers, ver)
 	}
@@ -186,6 +186,7 @@ func (h *RotationHandler) actionsForOlderVersions(ctx context.Context, vers []*k
 	actions := make([]*actionTuple, 0)
 
 	for _, ver := range vers {
+		//nolint:exhaustive // TODO: handle import cases. https://github.com/abcxyz/jvs/issues/5
 		switch ver.State {
 		case kmspb.CryptoKeyVersion_ENABLED:
 			if h.shouldDisable(ctx, ver) {
@@ -345,7 +346,7 @@ func (h *RotationHandler) performCreateNew(ctx context.Context, keyName string) 
 // GetKeyNameFromVersion converts a key version name to a key name.
 // Example:
 // `projects/*/locations/*/keyRings/*/cryptoKeys/*/cryptoKeyVersions/*`
-// -> `projects/*/locations/*/keyRings/*/cryptoKeys/*`
+// -> `projects/*/locations/*/keyRings/*/cryptoKeys/*`.
 func getKeyNameFromVersion(keyVersionName string) (string, error) {
 	split := strings.Split(keyVersionName, "/")
 	if len(split) != 10 {

@@ -31,7 +31,8 @@ import (
 	"google.golang.org/grpc/status"
 )
 
-// Processor performs the necessary loggeric to validate a justification, then mints a token.
+// Processor performs the necessary loggeric to validate a justification, then
+// mints a token.
 type Processor struct {
 	jvspb.UnimplementedJVSServiceServer
 	Signer crypto.Signer
@@ -39,8 +40,8 @@ type Processor struct {
 
 const jvsIssuer = "abcxyz-justification-verification-service"
 
-// CreateToken implements the create token API which creates and signs a JWT token if the provided justifications
-// are valid.
+// CreateToken implements the create token API which creates and signs a JWT
+// token if the provided justifications are valid.
 func (p *Processor) CreateToken(ctx context.Context, request *jvspb.CreateJustificationRequest) (string, error) {
 	logger := zlogger.FromContext(ctx)
 	if err := p.runValidations(request); err != nil {
@@ -68,13 +69,10 @@ func (p *Processor) runValidations(request *jvspb.CreateJustificationRequest) er
 	}
 
 	var err *multierror.Error
-	verifications := make([]string, 0)
 	for _, j := range request.Justifications {
 		switch j.Category {
 		case "explanation":
-			if j.Value != "" {
-				verifications = append(verifications, j.Category)
-			} else {
+			if j.Value == "" {
 				err = multierror.Append(err, fmt.Errorf("no value specified for 'explanation' category"))
 			}
 		default:
@@ -84,7 +82,7 @@ func (p *Processor) runValidations(request *jvspb.CreateJustificationRequest) er
 	return err.ErrorOrNil()
 }
 
-// create a key with the correct claims and sign it using KMS key
+// createToken creates a key with the correct claims and sign it using KMS key.
 func (p *Processor) createToken(ctx context.Context, request *jvspb.CreateJustificationRequest) *jwt.Token {
 	now := time.Now().UTC()
 	claims := &jvspb.JVSClaims{

@@ -84,7 +84,7 @@ func realMain(ctx context.Context) error {
 
 	lis, err := net.Listen("tcp", ":"+cfg.Port)
 	if err != nil {
-		return fmt.Errorf("failed to listen on port %d: %w", cfg.Port, err)
+		return fmt.Errorf("failed to listen on port %s: %w", cfg.Port, err)
 	}
 
 	// TODO: Do we need a gRPC health check server?
