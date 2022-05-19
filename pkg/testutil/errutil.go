@@ -22,17 +22,18 @@ import (
 )
 
 // ErrCmp compares an expected error string with a received error for use in testing.
-func ErrCmp(t testing.TB, wantErr string, gotErr error) {
-	t.Helper()
+func ErrCmp(tb testing.TB, wantErr string, gotErr error) {
+	tb.Helper()
+
 	if wantErr != "" {
 		if gotErr != nil {
 			if !strings.Contains(gotErr.Error(), wantErr) {
-				t.Errorf("Process got unexpected error: %v, wanted: ", gotErr, wantErr)
+				tb.Errorf("Process got unexpected error: %v, wanted: %v", gotErr, wantErr)
 			}
 		} else {
-			t.Errorf("Expected error, but received nil")
+			tb.Errorf("Expected error, but received nil")
 		}
 	} else if gotErr != nil {
-		t.Errorf("Expected no error, but received \"%v\"", gotErr)
+		tb.Errorf("Expected no error, but received \"%v\"", gotErr)
 	}
 }

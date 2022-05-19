@@ -117,11 +117,14 @@ func file_protos_v0_jvs_service_proto_rawDescGZIP() []byte {
 	return file_protos_v0_jvs_service_proto_rawDescData
 }
 
-var file_protos_v0_jvs_service_proto_msgTypes = make([]protoimpl.MessageInfo, 1)
-var file_protos_v0_jvs_service_proto_goTypes = []interface{}{
-	(*CreateJustificationResponse)(nil), // 0: jvs.CreateJustificationResponse
-	(*CreateJustificationRequest)(nil),  // 1: jvs.CreateJustificationRequest
-}
+var (
+	file_protos_v0_jvs_service_proto_msgTypes = make([]protoimpl.MessageInfo, 1)
+	file_protos_v0_jvs_service_proto_goTypes  = []interface{}{
+		(*CreateJustificationResponse)(nil), // 0: jvs.CreateJustificationResponse
+		(*CreateJustificationRequest)(nil),  // 1: jvs.CreateJustificationRequest
+	}
+)
+
 var file_protos_v0_jvs_service_proto_depIdxs = []int32{
 	1, // 0: jvs.JVSService.CreateJustification:input_type -> jvs.CreateJustificationRequest
 	0, // 1: jvs.JVSService.CreateJustification:output_type -> jvs.CreateJustificationResponse
