@@ -1,3 +1,17 @@
+// Copyright 2022 Google LLC
+//
+// Licensed under the Apache License, Version 2.0 (the "License");
+// you may not use this file except in compliance with the License.
+// You may obtain a copy of the License at
+//
+//      http://www.apache.org/licenses/LICENSE-2.0
+//
+// Unless required by applicable law or agreed to in writing, software
+// distributed under the License is distributed on an "AS IS" BASIS,
+// WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+// See the License for the specific language governing permissions and
+// limitations under the License.
+
 package jvscrypto
 
 import (
@@ -102,7 +116,8 @@ func TestJWKSetFormattedString(t *testing.T) {
 			name:    "happy-path",
 			primary: "ver_" + versionSuffix,
 			numKeys: 1,
-			wantOutput: fmt.Sprintf(`{"keys":[{"crv":"P-256","kid":"ver_[VERSION]-0","kty":"EC","x":"%s","y":"%s"}]}`,
+			wantOutput: fmt.Sprintf(`{"keys":[{"crv":"P-256","kid":"%s","kty":"EC","x":"%s","y":"%s"}]}`,
+				KeyID(key+"/cryptoKeyVersions/[VERSION]-0"),
 				base64.RawURLEncoding.EncodeToString(privateKey.PublicKey.X.Bytes()),
 				base64.RawURLEncoding.EncodeToString(privateKey.PublicKey.Y.Bytes())),
 		},
@@ -110,9 +125,11 @@ func TestJWKSetFormattedString(t *testing.T) {
 			name:    "multi-key",
 			primary: "ver_" + versionSuffix,
 			numKeys: 2,
-			wantOutput: fmt.Sprintf(`{"keys":[{"crv":"P-256","kid":"ver_[VERSION]-0","kty":"EC","x":"%s","y":"%s"},{"crv":"P-256","kid":"ver_[VERSION]-1","kty":"EC","x":"%s","y":"%s"}]}`,
+			wantOutput: fmt.Sprintf(`{"keys":[{"crv":"P-256","kid":"%s","kty":"EC","x":"%s","y":"%s"},{"crv":"P-256","kid":"%s","kty":"EC","x":"%s","y":"%s"}]}`,
+				KeyID(key+"/cryptoKeyVersions/[VERSION]-0"),
 				base64.RawURLEncoding.EncodeToString(privateKey.PublicKey.X.Bytes()),
 				base64.RawURLEncoding.EncodeToString(privateKey.PublicKey.Y.Bytes()),
+				KeyID(key+"/cryptoKeyVersions/[VERSION]-1"),
 				base64.RawURLEncoding.EncodeToString(privateKey.PublicKey.X.Bytes()),
 				base64.RawURLEncoding.EncodeToString(privateKey.PublicKey.Y.Bytes())),
 		},

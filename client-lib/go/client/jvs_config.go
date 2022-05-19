@@ -12,19 +12,21 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-package pkg
+package client
 
 import (
 	"context"
 	"fmt"
+	"time"
 
 	"github.com/hashicorp/go-multierror"
 	"github.com/sethvargo/go-envconfig"
+	"gopkg.in/yaml.v2"
 )
 
 const (
 	// Version default for config.
-	CurrentVersion = 1
+	Version = 1
 )
 
 // JVSConfig is the full jvs config.
@@ -33,24 +35,26 @@ type JVSConfig struct {
 	Version uint8 `yaml:"version,omitempty" env:"VERSION,overwrite"`
 
 	// Service configuration.
-	JVSEndpoint string `yaml:"jvs_endpoint,omitempty" env:"JVS_ENDPOINT,overwrite"`
+	JVSEndpoint string `yaml:"endpoint,omitempty" env:"ENDPOINT,overwrite"`
+
+	CacheTimeout time.Duration `yaml:"cache_timeout" env:"CACHE_TIMEOUT,overwrite"`
 }
 
 // Validate checks if the config is valid.
 func (cfg *JVSConfig) Validate() error {
 	cfg.SetDefault()
 	var err *multierror.Error
-	if cfg.Version != CurrentVersion {
-		err = multierror.Append(err, fmt.Errorf("unexpected Version %d want %d", cfg.Version, CurrentVersion))
+	if cfg.Version != Version {
+		err = multierror.Append(err, fmt.Errorf("unexpected Version %d want %d", cfg.Version, Version))
+	}
+	if cfg.JVSEndpoint == "" {
+		err = multierror.Append(err, fmt.Errorf("endpoint must be set"))
 	}
 	return err.ErrorOrNil()
 }
 
 // SetDefault sets default for the config.
 func (cfg *JVSConfig) SetDefault() {
-	if cfg.Port == "" {
-		cfg.Port = "8080"
-	}
 	if cfg.Version == 0 {
 		cfg.Version = Version
 	}
@@ -76,6 +80,11 @@ func loadJVSConfigFromLookuper(ctx context.Context, b []byte, lookuper envconfig
 
 	if err := cfg.Validate(); err != nil {
 		return nil, fmt.Errorf("failed validating config: %w", err)
+	}
+
+	if cfg.CacheTimeout == 0 {
+		// env config lib doesn't gracefully handle env overrides with defaults, have to set manually.
+		cfg.CacheTimeout = 5 * time.Minute
 	}
 
 	return cfg, nil

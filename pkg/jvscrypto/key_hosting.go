@@ -1,3 +1,17 @@
+// Copyright 2022 Google LLC
+//
+// Licensed under the Apache License, Version 2.0 (the "License");
+// you may not use this file except in compliance with the License.
+// You may obtain a copy of the License at
+//
+//      http://www.apache.org/licenses/LICENSE-2.0
+//
+// Unless required by applicable law or agreed to in writing, software
+// distributed under the License is distributed on an "AS IS" BASIS,
+// WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+// See the License for the specific language governing permissions and
+// limitations under the License.
+
 package jvscrypto
 
 import (
@@ -24,6 +38,12 @@ type KeyServer struct {
 	KMSClient       *kms.KeyManagementClient
 	PublicKeyConfig *config.PublicKeyConfig
 	Cache           *cache.Cache[string]
+}
+
+// JWKS represents a JWK Set, used to convert to json representation.
+// https://datatracker.ietf.org/doc/html/rfc7517#section-5 .
+type JWKS struct {
+	Keys []*ECDSAKey `json:"keys"`
 }
 
 // ECDSAKey is the public key information for a Elliptic Curve Digital Signature Algorithm Key. used to serialize the public key
@@ -99,12 +119,7 @@ func (k *KeyServer) jwkList(ctx context.Context, keyName string) ([]*ECDSAKey, e
 			return nil, fmt.Errorf("failed to parse public key")
 		}
 
-		// TODO: We should set something else for Key ID. #27
-		id, err := getLabelValue(ver.Name)
-		if err != nil {
-			return nil, fmt.Errorf("err while determining key id: %w", err)
-		}
-
+		id := KeyID(ver.Name)
 		ecdsaKey, ok := pub.(*ecdsa.PublicKey)
 		if !ok {
 			return nil, fmt.Errorf("unknown key format, expected ecdsa, got %T", pub)
@@ -130,10 +145,8 @@ func (k *KeyServer) jwkList(ctx context.Context, keyName string) ([]*ECDSAKey, e
 // formatJWKString creates a JWK Set converted to string.
 // https://datatracker.ietf.org/doc/html/rfc7517#section-5 .
 func formatJWKString(wks []*ECDSAKey) (string, error) {
-	jwkMap := make(map[string][]*ECDSAKey)
-	jwkMap["keys"] = wks
-
-	json, err := json.Marshal(jwkMap)
+	jwks := &JWKS{Keys: wks}
+	json, err := json.Marshal(jwks)
 	if err != nil {
 		return "", fmt.Errorf("err while converting jwk to json: %w", err)
 	}

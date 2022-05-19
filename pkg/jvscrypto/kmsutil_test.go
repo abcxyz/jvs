@@ -1,3 +1,17 @@
+// Copyright 2022 Google LLC
+//
+// Licensed under the Apache License, Version 2.0 (the "License");
+// you may not use this file except in compliance with the License.
+// You may obtain a copy of the License at
+//
+//      http://www.apache.org/licenses/LICENSE-2.0
+//
+// Unless required by applicable law or agreed to in writing, software
+// distributed under the License is distributed on an "AS IS" BASIS,
+// WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+// See the License for the specific language governing permissions and
+// limitations under the License.
+
 package jvscrypto
 
 import (
@@ -13,6 +27,7 @@ import (
 	kms "cloud.google.com/go/kms/apiv1"
 	"github.com/abcxyz/jvs/pkg/testutil"
 	"github.com/golang-jwt/jwt"
+	"github.com/google/go-cmp/cmp"
 	"github.com/google/uuid"
 	"github.com/sethvargo/go-gcpkms/pkg/gcpkms"
 	"google.golang.org/api/option"
@@ -133,5 +148,13 @@ func TestVerifyJWTString(t *testing.T) {
 			err := VerifyJWTString(ctx, kms, "projects/*/locations/location1/keyRings/keyring1/cryptoKeys/key1", tc.jwt)
 			testutil.ErrCmp(t, tc.wantErr, err)
 		})
+	}
+}
+
+func TestKeyID(t *testing.T) {
+	expected := "4129550765"
+	got := KeyID("projects/*/locations/location1/keyRings/keyring1/cryptoKeys/key1/cryptoKeyVersions/1")
+	if diff := cmp.Diff(expected, got); diff != "" {
+		t.Errorf("Got diff (-want, +got): %v", diff)
 	}
 }
