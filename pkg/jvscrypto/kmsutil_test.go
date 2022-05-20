@@ -45,6 +45,7 @@ func TestVerifyJWTString(t *testing.T) {
 	}
 	pemEncodedPub := pem.EncodeToMemory(&pem.Block{Type: "PUBLIC KEY", Bytes: x509EncodedPub})
 	mockKMS.PublicKey = string(pemEncodedPub)
+	mockKMS.NumVersions = 1
 
 	serv := grpc.NewServer()
 	kmspb.RegisterKeyManagementServiceServer(serv, mockKMS)
