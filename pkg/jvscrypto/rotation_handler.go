@@ -23,11 +23,11 @@ import (
 
 	"github.com/abcxyz/jvs/pkg/config"
 	"github.com/abcxyz/jvs/pkg/zlogger"
-	"github.com/hashicorp/go-multierror"
 	"go.uber.org/zap"
 	"google.golang.org/protobuf/types/known/fieldmaskpb"
 
 	kms "cloud.google.com/go/kms/apiv1"
+	"github.com/hashicorp/go-multierror"
 	"google.golang.org/api/iterator"
 	kmspb "google.golang.org/genproto/googleapis/cloud/kms/v1"
 )
@@ -283,6 +283,7 @@ func (h *RotationHandler) performActions(ctx context.Context, keyName string, ac
 		case ActionDisable:
 			if err := h.performDisable(ctx, action.Version); err != nil {
 				result = multierror.Append(result, err)
+				continue
 			}
 		case ActionDestroy:
 			if err := h.performDestroy(ctx, action.Version); err != nil {
