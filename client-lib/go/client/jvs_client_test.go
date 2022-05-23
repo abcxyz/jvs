@@ -41,8 +41,15 @@ func TestValidateJWT(t *testing.T) {
 		t.Fatal(err)
 	}
 
+	// create another key, to show the correct key is retrieved from cache and used for validation.
+	privateKey2, err := ecdsa.GenerateKey(elliptic.P256(), rand.Reader)
+	if err != nil {
+		t.Fatal(err)
+	}
+
 	key := "projects/[PROJECT]/locations/[LOCATION]/keyRings/[KEY_RING]/cryptoKeys/[CRYPTO_KEY]"
 	keyID := jvscrypto.KeyID(key + "/cryptoKeyVersions/[VERSION]-0")
+	keyID2 := jvscrypto.KeyID(key + "/cryptoKeyVersions/[VERSION]-1")
 
 	ecdsaKey := &jvscrypto.ECDSAKey{
 		Curve: "P-256",
@@ -52,9 +59,18 @@ func TestValidateJWT(t *testing.T) {
 		Y:     base64.RawURLEncoding.EncodeToString(privateKey.PublicKey.Y.Bytes()),
 	}
 
+	ecdsaKey2 := &jvscrypto.ECDSAKey{
+		Curve: "P-256",
+		ID:    keyID2,
+		Type:  "EC",
+		X:     base64.RawURLEncoding.EncodeToString(privateKey2.PublicKey.X.Bytes()),
+		Y:     base64.RawURLEncoding.EncodeToString(privateKey2.PublicKey.Y.Bytes()),
+	}
+
 	jwks := &jvscrypto.JWKS{
 		Keys: []*jvscrypto.ECDSAKey{
 			ecdsaKey,
+			ecdsaKey2,
 		},
 	}
 
@@ -100,6 +116,25 @@ func TestValidateJWT(t *testing.T) {
 		t.Fatal("Couldn't sign token.")
 	}
 
+	claims2 := &jvspb.JVSClaims{
+		StandardClaims: &jwt.StandardClaims{
+			Audience:  "test_aud",
+			ExpiresAt: 100,
+			Id:        uuid.New().String(),
+			IssuedAt:  10,
+			Issuer:    "test_iss",
+			NotBefore: 10,
+			Subject:   "test_sub",
+		},
+		KeyID: keyID2,
+	}
+	token2 := jwt.NewWithClaims(jwt.SigningMethodES256, claims2)
+
+	validJWT2, err := jvscrypto.SignToken(token2, privateKey2)
+	if err != nil {
+		t.Fatal("Couldn't sign token.")
+	}
+
 	unsignedJWT, err := token.SigningString()
 	if err != nil {
 		t.Fatal("Couldn't get signing string.")
@@ -115,6 +150,9 @@ func TestValidateJWT(t *testing.T) {
 		{
 			name: "happy-path",
 			jwt:  validJWT,
+		}, {
+			name: "other-key",
+			jwt:  validJWT2,
 		}, {
 			name:    "unsigned",
 			jwt:     unsignedJWT,

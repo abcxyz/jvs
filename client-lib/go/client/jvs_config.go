@@ -26,15 +26,16 @@ import (
 
 const (
 	// Version default for config.
-	Version = 1
+	Version             = 1
+	CacheTimeoutDefault = 5 * time.Minute
 )
 
-// JVSConfig is the full jvs config.
+// JVSConfig is the jvs client configuration.
 type JVSConfig struct {
 	// Version is the version of the config.
 	Version uint8 `yaml:"version,omitempty" env:"VERSION,overwrite"`
 
-	// Service configuration.
+	// JVS Endpoint. Expected to be fully qualified, including port. ex. http://127.0.0.1:8080
 	JVSEndpoint string `yaml:"endpoint,omitempty" env:"ENDPOINT,overwrite"`
 
 	CacheTimeout time.Duration `yaml:"cache_timeout" env:"CACHE_TIMEOUT,overwrite"`
@@ -53,10 +54,14 @@ func (cfg *JVSConfig) Validate() error {
 	return err.ErrorOrNil()
 }
 
-// SetDefault sets default for the config.
+// SetDefault sets defaults for the config.
 func (cfg *JVSConfig) SetDefault() {
 	if cfg.Version == 0 {
 		cfg.Version = Version
+	}
+	if cfg.CacheTimeout == 0 {
+		// env config lib doesn't gracefully handle env overrides with defaults, have to set manually.
+		cfg.CacheTimeout = CacheTimeoutDefault
 	}
 }
 
@@ -81,11 +86,5 @@ func loadJVSConfigFromLookuper(ctx context.Context, b []byte, lookuper envconfig
 	if err := cfg.Validate(); err != nil {
 		return nil, fmt.Errorf("failed validating config: %w", err)
 	}
-
-	if cfg.CacheTimeout == 0 {
-		// env config lib doesn't gracefully handle env overrides with defaults, have to set manually.
-		cfg.CacheTimeout = 5 * time.Minute
-	}
-
 	return cfg, nil
 }

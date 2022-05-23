@@ -36,4 +36,4 @@ require (
 	google.golang.org/protobuf v1.27.1 // indirect
 )
 
-replace github.com/abcxyz/jvs => /usr/local/google/home/rsrv/gopath/src/google-on-gcp/jvs
+replace github.com/abcxyz/jvs => ../../

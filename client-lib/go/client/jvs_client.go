@@ -85,12 +85,15 @@ func (j *JVSClient) getFromCache(key string) (*ecdsa.PublicKey, error) {
 	defer j.mu.Unlock()
 	val, ok := j.Cache.Lookup(key)
 	if !ok {
+		// cache miss, update cache
 		err := j.updateCache()
 		if err != nil {
 			return nil, fmt.Errorf("unable to update cache %w", err)
 		}
+		// now that cache has been updated, try again to find the relevant value
 		val, ok = j.Cache.Lookup(key)
 		if !ok {
+			// still not found, err
 			return nil, fmt.Errorf("unable to get public key for key id %s", key)
 		}
 	}
