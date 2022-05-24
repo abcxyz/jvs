@@ -27,7 +27,8 @@ import (
 
 const (
 	// Version default for config.
-	CurrentVersion = 1
+	CurrentVersion      = 1
+	CacheTimeoutDefault = 5 * time.Minute
 )
 
 // JustificationConfig is the full jvs config.
@@ -42,7 +43,7 @@ type JustificationConfig struct {
 	// https://pkg.go.dev/google.golang.org/genproto/googleapis/cloud/kms/v1#CryptoKey
 	KeyName string `yaml:"key,omitempty" env:"KEY,overwrite"`
 
-	// Cache Timeout
+	// CacheTimeout is the duration that keys stay in cache before being revoked.
 	CacheTimeout time.Duration `yaml:"cache_timeout" env:"CACHE_TIMEOUT,overwrite"`
 }
 
@@ -52,6 +53,9 @@ func (cfg *JustificationConfig) Validate() error {
 	var err *multierror.Error
 	if cfg.Version != CurrentVersion {
 		err = multierror.Append(err, fmt.Errorf("unexpected Version %d want %d", cfg.Version, CurrentVersion))
+	}
+	if cfg.CacheTimeout <= 0 {
+		err = multierror.Append(err, fmt.Errorf("cache timeout invalid: %d", cfg.CacheTimeout))
 	}
 	return err.ErrorOrNil()
 }
@@ -63,6 +67,10 @@ func (cfg *JustificationConfig) SetDefault() {
 	}
 	if cfg.Version == 0 {
 		cfg.Version = Version
+	}
+	if cfg.CacheTimeout == 0 {
+		// env config lib doesn't gracefully handle env overrides with defaults, have to set manually.
+		cfg.CacheTimeout = CacheTimeoutDefault
 	}
 }
 
