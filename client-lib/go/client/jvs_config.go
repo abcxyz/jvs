@@ -51,6 +51,9 @@ func (cfg *JVSConfig) Validate() error {
 	if cfg.JVSEndpoint == "" {
 		err = multierror.Append(err, fmt.Errorf("endpoint must be set"))
 	}
+	if cfg.CacheTimeout <= 0 {
+		err = multierror.Append(err, fmt.Errorf("cache timeout invalid: %d", cfg.CacheTimeout))
+	}
 	return err.ErrorOrNil()
 }
 

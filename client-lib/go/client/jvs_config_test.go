@@ -71,6 +71,16 @@ cache_timeout: 1m
 			wantErr:    "failed validating config: 1 error occurred:\n\t* unexpected Version 255 want 1\n\n",
 		},
 		{
+			name: "test_invalid_timeout",
+			cfg: `
+version: 1
+endpoint: example.com:8080
+cache_timeout: -1m
+`,
+			wantConfig: nil,
+			wantErr:    "failed validating config: 1 error occurred:\n\t* cache timeout invalid: -60000000000\n\n",
+		},
+		{
 			name: "all_values_specified_env_override",
 			cfg: `
 version: 1

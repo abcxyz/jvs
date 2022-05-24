@@ -45,6 +45,10 @@ func NewJVSClient(ctx context.Context, config *JVSConfig) (*JVSClient, error) {
 
 	cached := jwk.NewCachedSet(c, config.JVSEndpoint)
 
+	if err := config.Validate(); err != nil {
+		return nil, fmt.Errorf("failed to validate configuration: %w", err)
+	}
+
 	return &JVSClient{
 		config: config,
 		keys:   cached,
