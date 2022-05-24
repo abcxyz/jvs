@@ -27,7 +27,6 @@ import (
 	kms "cloud.google.com/go/kms/apiv1"
 	"github.com/abcxyz/jvs/pkg/testutil"
 	"github.com/golang-jwt/jwt"
-	"github.com/google/go-cmp/cmp"
 	"github.com/google/uuid"
 	"github.com/sethvargo/go-gcpkms/pkg/gcpkms"
 	"google.golang.org/api/option"
@@ -148,13 +147,5 @@ func TestVerifyJWTString(t *testing.T) {
 			err := VerifyJWTString(ctx, kms, "projects/*/locations/location1/keyRings/keyring1/cryptoKeys/key1", tc.jwt)
 			testutil.ErrCmp(t, tc.wantErr, err)
 		})
-	}
-}
-
-func TestKeyID(t *testing.T) {
-	expected := "4129550765"
-	got := KeyID("projects/*/locations/location1/keyRings/keyring1/cryptoKeys/key1/cryptoKeyVersions/1")
-	if diff := cmp.Diff(expected, got); diff != "" {
-		t.Errorf("Got diff (-want, +got): %v", diff)
 	}
 }

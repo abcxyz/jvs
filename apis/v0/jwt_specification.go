@@ -21,6 +21,6 @@ import (
 // JVSClaims are the claims that will be held within a JWT minted by the JVS server.
 type JVSClaims struct {
 	*jwt.StandardClaims
-	Justifications []*Justification `json:"just,omitempty"`
+	Justifications []*Justification `json:"justs,omitempty"`
 	KeyID          string           `json:"kid,omitempty"`
 }

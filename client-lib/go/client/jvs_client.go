@@ -12,133 +12,51 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-// Package client provides a client library for getting JWK keys from JVS and then
+// Package client provides a client library for JVS
 package client
 
 import (
-	"crypto/ecdsa"
-	"crypto/elliptic"
-	"encoding/base64"
-	"encoding/json"
+	"context"
 	"fmt"
-	"math/big"
-	"net/http"
-	"strings"
 	"sync"
 
-	"github.com/abcxyz/jvs/pkg/cache"
-	"github.com/abcxyz/jvs/pkg/jvscrypto"
-	"github.com/golang-jwt/jwt"
+	"github.com/lestrrat-go/jwx/v2/jwk"
+	"github.com/lestrrat-go/jwx/v2/jws"
+	"github.com/lestrrat-go/jwx/v2/jwt"
 )
 
+// JVSClient allows for getting JWK keys from the JVS and validating JWTs with those keys
 type JVSClient struct {
-	Config *JVSConfig
-	Cache  *cache.Cache[*ecdsa.PublicKey]
+	config *JVSConfig
+	keys   jwk.Set
 	mu     sync.RWMutex
 }
 
 // NewJVSClient returns a JVSClient with the cache initialized
-func NewJVSClient(config *JVSConfig) *JVSClient {
-	return &JVSClient{
-		Config: config,
-		Cache:  cache.New[*ecdsa.PublicKey](config.CacheTimeout),
+func NewJVSClient(ctx context.Context, config *JVSConfig) (*JVSClient, error) {
+	c := jwk.NewCache(ctx)
+	c.Register(config.JVSEndpoint, jwk.WithMinRefreshInterval(config.CacheTimeout))
+
+	// check that cache is correctly set up and certs are available
+	_, err := c.Refresh(ctx, config.JVSEndpoint)
+	if err != nil {
+		return nil, fmt.Errorf("failed to retrieve JVS public keys: %w", err)
 	}
+
+	cached := jwk.NewCachedSet(c, config.JVSEndpoint)
+
+	return &JVSClient{
+		config: config,
+		keys:   cached,
+	}, nil
 }
 
 // ValidateJWT takes a jwt string, converts it to a JWT, and validates the signature.
-func (j *JVSClient) ValidateJWT(jwtStr string) (*jwt.Token, error) {
-	parts := strings.Split(jwtStr, ".")
-	if len(parts) != 3 {
-		return nil, fmt.Errorf("invalid jwt string %s", jwtStr)
-	}
-
-	// We first have to deserialize the token without any validation in order to get the key id.
-	token, _ := jwt.Parse(jwtStr, nil) // parse without validation
-	claims, ok := token.Claims.(jwt.MapClaims)
-	if !ok {
-		return nil, fmt.Errorf("unrecognized claims format %v", claims)
-	}
-	keyID, ok := claims["kid"].(string)
-	if !ok {
-		return nil, fmt.Errorf("unrecognized key id format. %s", keyID)
-	}
-
-	// Now that we have the keyID used to sign the token, get the key.
-	pubKey, err := j.getFromCache(keyID)
+func (j *JVSClient) ValidateJWT(ctx context.Context, jwtStr string) (*jwt.Token, error) {
+	verifiedToken, err := jwt.Parse([]byte(jwtStr), jwt.WithKeySet(j.keys, jws.WithInferAlgorithmFromKey(true)))
 	if err != nil {
-		return nil, err
+		return nil, fmt.Errorf("failed to verify jwt %s: %w", jwtStr, err)
 	}
 
-	// verify the jwt using the key
-	if err := jwt.SigningMethodES256.Verify(strings.Join(parts[0:2], "."), parts[2], pubKey); err != nil {
-		return nil, fmt.Errorf("unable to verify signed jwt string. %w", err)
-	}
-	return token, nil
-}
-
-// getFromCache attemps to get a key from the cache. On a failure, the cache is updated.
-// This is surrounded by a lock in order to ensure that only 1 update/get operation occurs at a time.
-// This works around a limitation in the cache implementation that doesn't allow for direct setting of keys
-// when using write-through, and on a cache miss we want to update all keys.
-func (j *JVSClient) getFromCache(key string) (*ecdsa.PublicKey, error) {
-	j.mu.Lock()
-	defer j.mu.Unlock()
-	val, ok := j.Cache.Lookup(key)
-	if !ok {
-		// cache miss, update cache
-		err := j.updateCache()
-		if err != nil {
-			return nil, fmt.Errorf("unable to update cache %w", err)
-		}
-		// now that cache has been updated, try again to find the relevant value
-		val, ok = j.Cache.Lookup(key)
-		if !ok {
-			// still not found, err
-			return nil, fmt.Errorf("unable to get public key for key id %s", key)
-		}
-	}
-	return val, nil
-}
-
-// refresh our list of JWKs from the jvs endpoint
-func (j *JVSClient) updateCache() error {
-	resp, err := http.Get(j.Config.JVSEndpoint + "/.well-known/jwks")
-	if err != nil {
-		return fmt.Errorf("err while calling JVS public key endpoint %w", err)
-	}
-	var jwks jvscrypto.JWKS
-	if err := json.NewDecoder(resp.Body).Decode(&jwks); err != nil {
-		return fmt.Errorf("err while decoding JVS response %w", err)
-	}
-
-	for _, token := range jwks.Keys {
-		x, err := decode(token.X)
-		if err != nil {
-			return err
-		}
-		y, err := decode(token.Y)
-		if err != nil {
-			return err
-		}
-		key := &ecdsa.PublicKey{
-			Curve: elliptic.P256(), // assumption, should use the one from the json
-			X:     x,
-			Y:     y,
-		}
-		if err := j.Cache.Set(token.ID, key); err != nil {
-			return err
-		}
-	}
-
-	return nil
-}
-
-func decode(val string) (*big.Int, error) {
-	bytes, err := base64.RawURLEncoding.DecodeString(val)
-	i := new(big.Int)
-	if err != nil {
-		return i, fmt.Errorf("err while decoding token %w", err)
-	}
-	i.SetBytes(bytes)
-	return i, nil
+	return &verifiedToken, nil
 }

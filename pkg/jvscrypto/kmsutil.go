@@ -22,7 +22,6 @@ import (
 	"encoding/asn1"
 	"errors"
 	"fmt"
-	"hash/fnv"
 	"math/big"
 	"strings"
 	"time"
@@ -210,13 +209,4 @@ func getLabelValue(versionName string) (string, error) {
 	}
 	versionValue := valuePrefix + split[len(split)-1]
 	return versionValue, nil
-}
-
-// KeyID hashes the versionName in order to get a key id. Version name is intended to be fully qualified.
-// Example:  projects/*/locations/location1/keyRings/keyring1/cryptoKeys/key1/cryptoKeyVersions/1 -> 4129550765
-// TODO: handle hash collisions #35 .
-func KeyID(versionName string) string {
-	h := fnv.New32a()
-	h.Write([]byte(versionName))
-	return fmt.Sprint(h.Sum32())
 }

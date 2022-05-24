@@ -119,7 +119,6 @@ func (k *KeyServer) jwkList(ctx context.Context, keyName string) ([]*ECDSAKey, e
 			return nil, fmt.Errorf("failed to parse public key")
 		}
 
-		id := KeyID(ver.Name)
 		ecdsaKey, ok := pub.(*ecdsa.PublicKey)
 		if !ok {
 			return nil, fmt.Errorf("unknown key format, expected ecdsa, got %T", pub)
@@ -129,7 +128,7 @@ func (k *KeyServer) jwkList(ctx context.Context, keyName string) ([]*ECDSAKey, e
 		}
 		ek := &ECDSAKey{
 			Curve: "P-256",
-			ID:    id,
+			ID:    ver.Name,
 			Type:  "EC",
 			X:     base64.RawURLEncoding.EncodeToString(ecdsaKey.X.Bytes()),
 			Y:     base64.RawURLEncoding.EncodeToString(ecdsaKey.Y.Bytes()),

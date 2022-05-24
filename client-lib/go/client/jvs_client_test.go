@@ -15,26 +15,30 @@
 package client
 
 import (
+	"context"
 	"crypto/ecdsa"
 	"crypto/elliptic"
 	"crypto/rand"
-	"encoding/base64"
 	"encoding/json"
 	"fmt"
 	"net/http"
 	"net/http/httptest"
+	"strings"
 	"testing"
 	"time"
 
-	jvspb "github.com/abcxyz/jvs/apis/v0"
-	"github.com/abcxyz/jvs/pkg/jvscrypto"
+	v0 "github.com/abcxyz/jvs/apis/v0"
 	"github.com/abcxyz/jvs/pkg/testutil"
-	"github.com/golang-jwt/jwt"
-	"github.com/google/uuid"
+	"github.com/google/go-cmp/cmp"
+	"github.com/lestrrat-go/jwx/v2/jwa"
+	"github.com/lestrrat-go/jwx/v2/jwk"
+	"github.com/lestrrat-go/jwx/v2/jws"
+	"github.com/lestrrat-go/jwx/v2/jwt"
 )
 
 func TestValidateJWT(t *testing.T) {
 	t.Parallel()
+	ctx := context.Background()
 
 	privateKey, err := ecdsa.GenerateKey(elliptic.P256(), rand.Reader)
 	if err != nil {
@@ -48,41 +52,27 @@ func TestValidateJWT(t *testing.T) {
 	}
 
 	key := "projects/[PROJECT]/locations/[LOCATION]/keyRings/[KEY_RING]/cryptoKeys/[CRYPTO_KEY]"
-	keyID := jvscrypto.KeyID(key + "/cryptoKeyVersions/[VERSION]-0")
-	keyID2 := jvscrypto.KeyID(key + "/cryptoKeyVersions/[VERSION]-1")
+	keyID := key + "/cryptoKeyVersions/[VERSION]-0"
+	keyID2 := key + "/cryptoKeyVersions/[VERSION]-1"
 
-	ecdsaKey := &jvscrypto.ECDSAKey{
-		Curve: "P-256",
-		ID:    keyID,
-		Type:  "EC",
-		X:     base64.RawURLEncoding.EncodeToString(privateKey.PublicKey.X.Bytes()),
-		Y:     base64.RawURLEncoding.EncodeToString(privateKey.PublicKey.Y.Bytes()),
-	}
+	ecdsaKey, err := jwk.FromRaw(privateKey.PublicKey)
+	ecdsaKey.Set(jwk.KeyIDKey, keyID)
+	ecdsaKey2, err := jwk.FromRaw(privateKey2.PublicKey)
+	ecdsaKey2.Set(jwk.KeyIDKey, keyID2)
+	jwks := make(map[string][]jwk.Key)
+	jwks["keys"] = []jwk.Key{ecdsaKey, ecdsaKey2}
 
-	ecdsaKey2 := &jvscrypto.ECDSAKey{
-		Curve: "P-256",
-		ID:    keyID2,
-		Type:  "EC",
-		X:     base64.RawURLEncoding.EncodeToString(privateKey2.PublicKey.X.Bytes()),
-		Y:     base64.RawURLEncoding.EncodeToString(privateKey2.PublicKey.Y.Bytes()),
-	}
-
-	jwks := &jvscrypto.JWKS{
-		Keys: []*jvscrypto.ECDSAKey{
-			ecdsaKey,
-			ecdsaKey2,
-		},
-	}
-
-	json, err := json.Marshal(jwks)
+	j, err := json.MarshalIndent(jwks, "", " ")
 	if err != nil {
 		t.Fatal("couldn't create jwks json")
 	}
 
+	fmt.Printf("json: \n%s\n", j)
+	path := "/.well-known/jwks"
 	mux := http.NewServeMux()
-	mux.HandleFunc("/.well-known/jwks", func(w http.ResponseWriter, r *http.Request) {
+	mux.HandleFunc(path, func(w http.ResponseWriter, r *http.Request) {
 		w.WriteHeader(http.StatusOK)
-		fmt.Fprintf(w, string(json))
+		fmt.Fprintf(w, string(j))
 	})
 
 	svr := httptest.NewServer(mux)
@@ -91,84 +81,127 @@ func TestValidateJWT(t *testing.T) {
 		svr.Close()
 	})
 
-	client := NewJVSClient(&JVSConfig{
+	client, err := NewJVSClient(ctx, &JVSConfig{
 		Version:      1,
-		JVSEndpoint:  svr.URL,
-		CacheTimeout: 1 * time.Minute,
+		JVSEndpoint:  svr.URL + path,
+		CacheTimeout: 5 * time.Minute,
 	})
-
-	claims := &jvspb.JVSClaims{
-		StandardClaims: &jwt.StandardClaims{
-			Audience:  "test_aud",
-			ExpiresAt: 100,
-			Id:        uuid.New().String(),
-			IssuedAt:  10,
-			Issuer:    "test_iss",
-			NotBefore: 10,
-			Subject:   "test_sub",
-		},
-		KeyID: keyID,
-	}
-	token := jwt.NewWithClaims(jwt.SigningMethodES256, claims)
-
-	validJWT, err := jvscrypto.SignToken(token, privateKey)
 	if err != nil {
-		t.Fatal("Couldn't sign token.")
+		t.Fatal(fmt.Errorf("failed to create JVS client: %w", err))
 	}
 
-	claims2 := &jvspb.JVSClaims{
-		StandardClaims: &jwt.StandardClaims{
-			Audience:  "test_aud",
-			ExpiresAt: 100,
-			Id:        uuid.New().String(),
-			IssuedAt:  10,
-			Issuer:    "test_iss",
-			NotBefore: 10,
-			Subject:   "test_sub",
-		},
-		KeyID: keyID2,
-	}
-	token2 := jwt.NewWithClaims(jwt.SigningMethodES256, claims2)
-
-	validJWT2, err := jvscrypto.SignToken(token2, privateKey2)
+	tok, err := jwt.NewBuilder().
+		Audience([]string{"test_aud"}).
+		Expiration(time.Now().Add(5 * time.Minute)).
+		JwtID("test_id").
+		IssuedAt(time.Now()).
+		Issuer(`test_iss`).
+		NotBefore(time.Now()).
+		Subject("test_sub").
+		Build()
 	if err != nil {
-		t.Fatal("Couldn't sign token.")
+		t.Fatalf("failed to build token: %s\n", err)
 	}
+	tok.Set("justs", []*v0.Justification{
+		{
+			Category: "explanation",
+			Value:    "this is a test explanation",
+		},
+	})
+	hdrs := jws.NewHeaders()
+	hdrs.Set(jws.KeyIDKey, keyID)
 
-	unsignedJWT, err := token.SigningString()
+	valid, err := jwt.Sign(tok, jwt.WithKey(jwa.ES256, privateKey, jws.WithProtectedHeaders(hdrs)))
+	if err != nil {
+		t.Fatalf("failed to sign token: %s\n", err)
+	}
+	validJWT := string(valid)
+
+	// Create and sign a token with 2nd key
+	tok2, err := jwt.NewBuilder().
+		Audience([]string{"test_aud"}).
+		Expiration(time.Now().Add(5 * time.Minute)).
+		JwtID("test_id_2").
+		IssuedAt(time.Now()).
+		Issuer(`test_iss`).
+		NotBefore(time.Now()).
+		Subject("test_sub").
+		Build()
+	if err != nil {
+		t.Fatalf("failed to build token: %s\n", err)
+	}
+	tok2.Set("justs", []*v0.Justification{
+		{
+			Category: "explanation",
+			Value:    "this is a test explanation",
+		},
+	})
+	hdrs2 := jws.NewHeaders()
+	hdrs2.Set(jws.KeyIDKey, keyID2)
+
+	valid2, err := jwt.Sign(tok2, jwt.WithKey(jwa.ES256, privateKey2, jws.WithProtectedHeaders(hdrs2)))
+	if err != nil {
+		fmt.Printf("failed to sign token: %s\n", err)
+		return
+	}
+	validJWT2 := string(valid2)
+
+	unsig, err := jwt.NewSerializer().Serialize(tok)
 	if err != nil {
 		t.Fatal("Couldn't get signing string.")
 	}
+	unsignedJWT := string(unsig)
 
-	invalidSignatureJWT := unsignedJWT + ".SflKxwRJSMeKKF2QT4fwpMeJf36POk6yJV_adQssw5c" // signature from a different JWT
+	split := strings.Split(validJWT2, ".")
+	sig := split[len(split)-1]
+
+	invalidSignatureJWT := unsignedJWT + sig // signature from a different JWT
 
 	tests := []struct {
-		name    string
-		jwt     string
-		wantErr string
+		name      string
+		jwt       string
+		wantErr   string
+		wantToken jwt.Token
 	}{
 		{
-			name: "happy-path",
-			jwt:  validJWT,
+			name:      "happy-path",
+			jwt:       validJWT,
+			wantToken: tok,
 		}, {
-			name: "other-key",
-			jwt:  validJWT2,
+			name:      "other-key",
+			jwt:       validJWT2,
+			wantToken: tok2,
 		}, {
 			name:    "unsigned",
 			jwt:     unsignedJWT,
-			wantErr: "invalid jwt string",
+			wantErr: "required field \"signatures\" not present",
 		}, {
 			name:    "invalid",
 			jwt:     invalidSignatureJWT,
-			wantErr: "unable to verify signed jwt string",
+			wantErr: "failed to verify jwt",
 		},
 	}
 	for _, tc := range tests {
 		tc := tc
 		t.Run(tc.name, func(t *testing.T) {
 			t.Parallel()
-			_, err := client.ValidateJWT(tc.jwt)
+			res, err := client.ValidateJWT(ctx, tc.jwt)
 			testutil.ErrCmp(t, tc.wantErr, err)
+			if err != nil {
+				return
+			}
+			got, err := json.MarshalIndent(res, "", " ")
+			if err != nil {
+				t.Error(fmt.Errorf("couldn't marshall returned token %w", err))
+			}
+			want, err := json.MarshalIndent(tc.wantToken, "", " ")
+			if err != nil {
+				t.Error(fmt.Errorf("couldn't marshall expected token %w", err))
+			}
+			if diff := cmp.Diff(want, got); diff != "" {
+				t.Errorf("Got diff (-want, +got): %v", diff)
+			}
+
 		})
 	}
 }
