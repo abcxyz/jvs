@@ -18,6 +18,7 @@ package config
 import (
 	"context"
 	"fmt"
+	"time"
 
 	"github.com/hashicorp/go-multierror"
 	"github.com/sethvargo/go-envconfig"
@@ -40,6 +41,9 @@ type JustificationConfig struct {
 	// KeyName format: `projects/*/locations/*/keyRings/*/cryptoKeys/*`
 	// https://pkg.go.dev/google.golang.org/genproto/googleapis/cloud/kms/v1#CryptoKey
 	KeyName string `yaml:"key,omitempty" env:"KEY,overwrite"`
+
+	// Cache Timeout
+	CacheTimeout time.Duration `yaml:"cache_timeout" env:"CACHE_TIMEOUT,overwrite"`
 }
 
 // Validate checks if the config is valid.
