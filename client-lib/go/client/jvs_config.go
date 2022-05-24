@@ -38,6 +38,7 @@ type JVSConfig struct {
 	// JVS Endpoint. Expected to be fully qualified, including port. ex. http://127.0.0.1:8080
 	JVSEndpoint string `yaml:"endpoint,omitempty" env:"ENDPOINT,overwrite"`
 
+	// CacheTimeout is the duration that keys stay in cache before being revoked.
 	CacheTimeout time.Duration `yaml:"cache_timeout" env:"CACHE_TIMEOUT,overwrite"`
 }
 
