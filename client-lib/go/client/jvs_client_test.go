@@ -201,7 +201,6 @@ func TestValidateJWT(t *testing.T) {
 			if diff := cmp.Diff(want, got); diff != "" {
 				t.Errorf("Got diff (-want, +got): %v", diff)
 			}
-
 		})
 	}
 }
