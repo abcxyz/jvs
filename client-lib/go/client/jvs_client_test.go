@@ -67,7 +67,6 @@ func TestValidateJWT(t *testing.T) {
 		t.Fatal("couldn't create jwks json")
 	}
 
-	fmt.Printf("json: \n%s\n", j)
 	path := "/.well-known/jwks"
 	mux := http.NewServeMux()
 	mux.HandleFunc(path, func(w http.ResponseWriter, r *http.Request) {
@@ -141,8 +140,7 @@ func TestValidateJWT(t *testing.T) {
 
 	valid2, err := jwt.Sign(tok2, jwt.WithKey(jwa.ES256, privateKey2, jws.WithProtectedHeaders(hdrs2)))
 	if err != nil {
-		fmt.Printf("failed to sign token: %s\n", err)
-		return
+		t.Fatal(fmt.Errorf("failed to sign token: %w", err))
 	}
 	validJWT2 := string(valid2)
 
