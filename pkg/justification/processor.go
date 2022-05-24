@@ -49,7 +49,7 @@ type signerWithId struct {
 	id     string
 }
 
-func newProcessor(kms *kms.KeyManagementClient, config *config.JustificationConfig) *Processor {
+func NewProcessor(kms *kms.KeyManagementClient, config *config.JustificationConfig) *Processor {
 	cache := cache.New[*signerWithId](config.CacheTimeout)
 	return &Processor{
 		kms:    kms,

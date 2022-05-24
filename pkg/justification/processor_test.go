@@ -97,7 +97,7 @@ func TestCreateToken(t *testing.T) {
 	version := key + "[VERSION]"
 	mockKeyManagement.VersionName = version
 
-	processor := newProcessor(c, &config.JustificationConfig{
+	processor := NewProcessor(c, &config.JustificationConfig{
 		Version:      1,
 		KeyName:      key,
 		CacheTimeout: 5 * time.Minute,
