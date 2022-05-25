@@ -86,7 +86,7 @@ func TestValidateJWT(t *testing.T) {
 		CacheTimeout: 5 * time.Minute,
 	})
 	if err != nil {
-		t.Fatal(fmt.Errorf("failed to create JVS client: %w", err))
+		t.Fatalf("failed to create JVS client: %v", err)
 	}
 
 	tok, err := jwt.NewBuilder().
