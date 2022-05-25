@@ -98,9 +98,10 @@ func TestCreateToken(t *testing.T) {
 	mockKeyManagement.VersionName = version
 
 	processor := NewProcessor(c, &config.JustificationConfig{
-		Version:      1,
-		KeyName:      key,
-		CacheTimeout: 5 * time.Minute,
+		Version:            1,
+		KeyName:            key,
+		SignerCacheTimeout: 5 * time.Minute,
+		Issuer:             config.IssuerDefault,
 	})
 	hour, err := time.ParseDuration("3600s")
 	if err != nil {
@@ -185,8 +186,8 @@ func validateClaims(tb testing.TB, provided *jvspb.JVSClaims, expectedJustificat
 	tb.Helper()
 
 	// test the standard claims filled by processor
-	if provided.StandardClaims.Issuer != jvsIssuer {
-		tb.Errorf("audience value %s incorrect, expected %s", provided.StandardClaims.Issuer, jvsIssuer)
+	if provided.StandardClaims.Issuer != config.IssuerDefault {
+		tb.Errorf("audience value %s incorrect, expected %s", provided.StandardClaims.Issuer, config.IssuerDefault)
 	}
 	// TODO: as we add more standard claims, add more validations.
 

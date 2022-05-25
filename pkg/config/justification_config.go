@@ -27,8 +27,9 @@ import (
 
 const (
 	// Version default for config.
-	CurrentVersion      = 1
-	CacheTimeoutDefault = 5 * time.Minute
+	CurrentVersion            = 1
+	SignerCacheTimeoutDefault = 5 * time.Minute
+	IssuerDefault             = "abcxyz-jvs"
 )
 
 // JustificationConfig is the full jvs config.
@@ -43,8 +44,11 @@ type JustificationConfig struct {
 	// https://pkg.go.dev/google.golang.org/genproto/googleapis/cloud/kms/v1#CryptoKey
 	KeyName string `yaml:"key,omitempty" env:"KEY,overwrite"`
 
-	// CacheTimeout is the duration that keys stay in cache before being revoked.
-	CacheTimeout time.Duration `yaml:"cache_timeout" env:"CACHE_TIMEOUT,overwrite"`
+	// SignerCacheTimeout is the duration that keys stay in cache before being revoked.
+	SignerCacheTimeout time.Duration `yaml:"signer_cache_timeout" env:"SIGNER_CACHE_TIMEOUT,overwrite"`
+
+	// Issuer will be used to set the issuer field when signing JWTs
+	Issuer string `yaml:"issuer" env:"ISSUER,overwrite"`
 }
 
 // Validate checks if the config is valid.
@@ -54,8 +58,8 @@ func (cfg *JustificationConfig) Validate() error {
 	if cfg.Version != CurrentVersion {
 		err = multierror.Append(err, fmt.Errorf("unexpected Version %d want %d", cfg.Version, CurrentVersion))
 	}
-	if cfg.CacheTimeout <= 0 {
-		err = multierror.Append(err, fmt.Errorf("cache timeout invalid: %d", cfg.CacheTimeout))
+	if cfg.SignerCacheTimeout <= 0 {
+		err = multierror.Append(err, fmt.Errorf("cache timeout invalid: %d", cfg.SignerCacheTimeout))
 	}
 	return err.ErrorOrNil()
 }
@@ -68,9 +72,12 @@ func (cfg *JustificationConfig) SetDefault() {
 	if cfg.Version == 0 {
 		cfg.Version = Version
 	}
-	if cfg.CacheTimeout == 0 {
+	if cfg.SignerCacheTimeout == 0 {
 		// env config lib doesn't gracefully handle env overrides with defaults, have to set manually.
-		cfg.CacheTimeout = CacheTimeoutDefault
+		cfg.SignerCacheTimeout = SignerCacheTimeoutDefault
+	}
+	if cfg.Issuer == "" {
+		cfg.Issuer = IssuerDefault
 	}
 }
 

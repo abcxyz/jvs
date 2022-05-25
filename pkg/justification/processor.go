@@ -49,8 +49,9 @@ type signerWithId struct {
 	id     string
 }
 
+// NewProcessor creates a processor with the signer cache initialized
 func NewProcessor(kms *kms.KeyManagementClient, config *config.JustificationConfig) *Processor {
-	cache := cache.New[*signerWithId](config.CacheTimeout)
+	cache := cache.New[*signerWithId](config.SignerCacheTimeout)
 	return &Processor{
 		kms:    kms,
 		config: config,
@@ -59,8 +60,7 @@ func NewProcessor(kms *kms.KeyManagementClient, config *config.JustificationConf
 }
 
 const (
-	jvsIssuer = "abcxyz-justification-verification-service"
-	cacheKey  = "signer"
+	cacheKey = "signer"
 )
 
 // CreateToken implements the create token API which creates and signs a JWT
@@ -139,7 +139,7 @@ func (p *Processor) createToken(ctx context.Context, request *jvspb.CreateJustif
 			ExpiresAt: now.Add(request.Ttl.AsDuration()).Unix(),
 			Id:        uuid.New().String(),
 			IssuedAt:  now.Unix(),
-			Issuer:    jvsIssuer,
+			Issuer:    p.config.Issuer,
 			NotBefore: now.Unix(),
 			Subject:   "TODO #22",
 		},

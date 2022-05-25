@@ -41,21 +41,24 @@ func TestLoadJustificationConfig(t *testing.T) {
 			cfg: `
 port: 123
 version: 1
-cache_timeout: 1m
+signer_cache_timeout: 1m
+issuer: jvs
 `,
 			wantConfig: &JustificationConfig{
-				Port:         "123",
-				Version:      1,
-				CacheTimeout: 1 * time.Minute,
+				Port:               "123",
+				Version:            1,
+				SignerCacheTimeout: 1 * time.Minute,
+				Issuer:             "jvs",
 			},
 		},
 		{
 			name: "test_default",
 			cfg:  ``,
 			wantConfig: &JustificationConfig{
-				Port:         "8080",
-				Version:      1,
-				CacheTimeout: 5 * time.Minute,
+				Port:               "8080",
+				Version:            1,
+				SignerCacheTimeout: 5 * time.Minute,
+				Issuer:             "abcxyz-jvs",
 			},
 		},
 		{
@@ -67,9 +70,9 @@ version: 255
 			wantErr:    "failed validating config: 1 error occurred:\n\t* unexpected Version 255 want 1\n\n",
 		},
 		{
-			name: "test_invalid_cache_timeout",
+			name: "test_invalid_signer_cache_timeout",
 			cfg: `
-cache_timeout: -1m
+signer_cache_timeout: -1m
 `,
 			wantConfig: nil,
 			wantErr:    "failed validating config: 1 error occurred:\n\t* cache timeout invalid: -60000000000\n\n",
@@ -79,17 +82,20 @@ cache_timeout: -1m
 			cfg: `
 version: 1
 port: 8080
-cache_timeout: 1m
+signer_cache_timeout: 1m
+issuer: jvs
 `,
 			envs: map[string]string{
-				"JVS_VERSION":       "1",
-				"JVS_PORT":          "tcp",
-				"JVS_CACHE_TIMEOUT": "2m",
+				"JVS_VERSION":              "1",
+				"JVS_PORT":                 "tcp",
+				"JVS_SIGNER_CACHE_TIMEOUT": "2m",
+				"JVS_ISSUER":               "other",
 			},
 			wantConfig: &JustificationConfig{
-				Version:      1,
-				Port:         "tcp",
-				CacheTimeout: 2 * time.Minute,
+				Version:            1,
+				Port:               "tcp",
+				SignerCacheTimeout: 2 * time.Minute,
+				Issuer:             "other",
 			},
 		},
 	}
