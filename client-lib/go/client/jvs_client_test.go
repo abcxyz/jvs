@@ -194,7 +194,7 @@ func TestValidateJWT(t *testing.T) {
 			}
 			want, err := json.MarshalIndent(tc.wantToken, "", " ")
 			if err != nil {
-				t.Error(fmt.Errorf("couldn't marshall expected token %w", err))
+				t.Errorf("couldn't marshal expected token %v", err)
 			}
 			if diff := cmp.Diff(want, got); diff != "" {
 				t.Errorf("Token diff (-want, +got): %v", diff)
