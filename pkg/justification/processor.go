@@ -16,7 +16,6 @@ package justification
 
 import (
 	"context"
-	"crypto"
 	"fmt"
 	"time"
 
@@ -45,7 +44,7 @@ type Processor struct {
 }
 
 type signerWithId struct {
-	signer crypto.Signer
+	signer *gcpkms.Signer
 	id     string
 }
 
@@ -80,8 +79,9 @@ func (p *Processor) CreateToken(ctx context.Context, request *jvspb.CreateJustif
 		logger.Error("Couldn't update keys from kms", zap.Error(err))
 		return "", status.Error(codes.Internal, "couldn't update keys")
 	}
-	token.Header["kid"] = signer.id // set key id
-	signedToken, err := jvscrypto.SignToken(token, signer.signer)
+	token.Header["kid"] = signer.id       // set key id
+	sig := signer.signer.WithContext(ctx) // add ctx to kms signer
+	signedToken, err := jvscrypto.SignToken(token, sig)
 	if err != nil {
 		logger.Error("Ran into error while signing", zap.Error(err))
 		return "", status.Error(codes.Internal, "ran into error while minting token")
