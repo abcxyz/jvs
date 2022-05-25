@@ -99,11 +99,10 @@ func (p *Processor) getLatestSigner(ctx context.Context) (*signerWithId, error) 
 	if err != nil {
 		return nil, fmt.Errorf("failed to create signer, %w", err)
 	}
-	signer := &signerWithId{
+	return &signerWithId{
 		Signer: sig,
 		id:     ver.Name,
-	}
-	return signer, nil
+	}, nil
 }
 
 // TODO: Each category should have its own validator struct, with a shared interface.
