@@ -29,7 +29,7 @@ const (
 	// Version default for config.
 	CurrentVersion            = 1
 	SignerCacheTimeoutDefault = 5 * time.Minute
-	IssuerDefault             = "abcxyz-jvs"
+	IssuerDefault             = "jvs.abcxyz.dev"
 )
 
 // JustificationConfig is the full jvs config.
