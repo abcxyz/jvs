@@ -127,7 +127,7 @@ func TestValidateJWT(t *testing.T) {
 		Subject("test_sub").
 		Build()
 	if err != nil {
-		t.Fatalf("failed to build token: %s\n", err)
+		t.Fatalf("failed to build token: %v", err)
 	}
 	tok2.Set("justs", []*v0.Justification{
 		{
