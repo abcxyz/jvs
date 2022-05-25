@@ -112,7 +112,7 @@ func TestValidateJWT(t *testing.T) {
 
 	valid, err := jwt.Sign(tok, jwt.WithKey(jwa.ES256, privateKey, jws.WithProtectedHeaders(hdrs)))
 	if err != nil {
-		t.Fatalf("failed to sign token: %s\n", err)
+		t.Fatalf("failed to sign token: %v", err)
 	}
 	validJWT := string(valid)
 
