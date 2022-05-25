@@ -44,8 +44,8 @@ type Processor struct {
 }
 
 type signerWithId struct {
-	signer *gcpkms.Signer
-	id     string
+	*gcpkms.Signer
+	id string
 }
 
 // NewProcessor creates a processor with the signer cache initialized
@@ -79,8 +79,8 @@ func (p *Processor) CreateToken(ctx context.Context, request *jvspb.CreateJustif
 		logger.Error("Couldn't update keys from kms", zap.Error(err))
 		return "", status.Error(codes.Internal, "couldn't update keys")
 	}
-	token.Header["kid"] = signer.id       // set key id
-	sig := signer.signer.WithContext(ctx) // add ctx to kms signer
+	token.Header["kid"] = signer.id // set key id
+	sig := signer.WithContext(ctx)  // add ctx to kms signer
 	signedToken, err := jvscrypto.SignToken(token, sig)
 	if err != nil {
 		logger.Error("Ran into error while signing", zap.Error(err))
@@ -100,7 +100,7 @@ func (p *Processor) getLatestSigner(ctx context.Context) (*signerWithId, error) 
 		return nil, fmt.Errorf("failed to create signer, %w", err)
 	}
 	signer := &signerWithId{
-		signer: sig,
+		Signer: sig,
 		id:     ver.Name,
 	}
 	return signer, nil
