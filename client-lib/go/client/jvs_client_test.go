@@ -190,7 +190,7 @@ func TestValidateJWT(t *testing.T) {
 			}
 			got, err := json.MarshalIndent(res, "", " ")
 			if err != nil {
-				t.Error(fmt.Errorf("couldn't marshall returned token %w", err))
+				t.Errorf("couldn't marshal returned token %v", err)
 			}
 			want, err := json.MarshalIndent(tc.wantToken, "", " ")
 			if err != nil {
