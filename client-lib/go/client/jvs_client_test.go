@@ -197,7 +197,7 @@ func TestValidateJWT(t *testing.T) {
 				t.Error(fmt.Errorf("couldn't marshall expected token %w", err))
 			}
 			if diff := cmp.Diff(want, got); diff != "" {
-				t.Errorf("Got diff (-want, +got): %v", diff)
+				t.Errorf("Token diff (-want, +got): %v", diff)
 			}
 		})
 	}
