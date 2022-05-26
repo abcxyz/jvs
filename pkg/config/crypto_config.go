@@ -40,7 +40,7 @@ type CryptoConfig struct {
 	KeyTTL time.Duration `yaml:"key_ttl,omitempty" env:"KEY_TTL,overwrite"`
 	// GracePeriod is a length of time between when we rotate the key and when an old Key Version is no longer valid and available
 	GracePeriod time.Duration `yaml:"grace_period,omitempty" env:"GRACE_PERIOD,overwrite"`
-	// PropagationDelay is the time that it takes for a change in the key in KMS to be reflected in the clients.
+	// PropagationDelay is the time that it takes for a change in the key in KMS to be reflected in the client.
 	PropagationDelay time.Duration `yaml:"propagation_delay,omitempty" env:"PROPAGATION_DELAY,overwrite"`
 	// DisabledPeriod is a time between when the key is disabled, and when we delete the key.
 	DisabledPeriod time.Duration `yaml:"disabled_period,omitempty" env:"DISABLED_PERIOD,overwrite"`
