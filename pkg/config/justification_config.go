@@ -18,6 +18,7 @@ package config
 import (
 	"context"
 	"fmt"
+	"time"
 
 	"github.com/hashicorp/go-multierror"
 	"github.com/sethvargo/go-envconfig"
@@ -26,7 +27,9 @@ import (
 
 const (
 	// Version default for config.
-	CurrentVersion = 1
+	CurrentVersion            = 1
+	SignerCacheTimeoutDefault = 5 * time.Minute
+	IssuerDefault             = "jvs.abcxyz.dev"
 )
 
 // JustificationConfig is the full jvs config.
@@ -40,6 +43,12 @@ type JustificationConfig struct {
 	// KeyName format: `projects/*/locations/*/keyRings/*/cryptoKeys/*`
 	// https://pkg.go.dev/google.golang.org/genproto/googleapis/cloud/kms/v1#CryptoKey
 	KeyName string `yaml:"key,omitempty" env:"KEY,overwrite"`
+
+	// SignerCacheTimeout is the duration that keys stay in cache before being revoked.
+	SignerCacheTimeout time.Duration `yaml:"signer_cache_timeout" env:"SIGNER_CACHE_TIMEOUT,overwrite"`
+
+	// Issuer will be used to set the issuer field when signing JWTs
+	Issuer string `yaml:"issuer" env:"ISSUER,overwrite"`
 }
 
 // Validate checks if the config is valid.
@@ -48,6 +57,9 @@ func (cfg *JustificationConfig) Validate() error {
 	var err *multierror.Error
 	if cfg.Version != CurrentVersion {
 		err = multierror.Append(err, fmt.Errorf("unexpected Version %d want %d", cfg.Version, CurrentVersion))
+	}
+	if cfg.SignerCacheTimeout <= 0 {
+		err = multierror.Append(err, fmt.Errorf("cache timeout invalid: %d", cfg.SignerCacheTimeout))
 	}
 	return err.ErrorOrNil()
 }
@@ -59,6 +71,13 @@ func (cfg *JustificationConfig) SetDefault() {
 	}
 	if cfg.Version == 0 {
 		cfg.Version = Version
+	}
+	if cfg.SignerCacheTimeout == 0 {
+		// env config lib doesn't gracefully handle env overrides with defaults, have to set manually.
+		cfg.SignerCacheTimeout = SignerCacheTimeoutDefault
+	}
+	if cfg.Issuer == "" {
+		cfg.Issuer = IssuerDefault
 	}
 }
 

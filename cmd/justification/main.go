@@ -25,9 +25,7 @@ import (
 	jvspb "github.com/abcxyz/jvs/apis/v0"
 	"github.com/abcxyz/jvs/pkg/config"
 	"github.com/abcxyz/jvs/pkg/justification"
-	"github.com/abcxyz/jvs/pkg/jvscrypto"
 	"github.com/abcxyz/jvs/pkg/zlogger"
-	"github.com/sethvargo/go-gcpkms/pkg/gcpkms"
 	"go.opentelemetry.io/contrib/instrumentation/google.golang.org/grpc/otelgrpc"
 	"go.uber.org/zap"
 	"golang.org/x/sync/errgroup"
@@ -65,19 +63,7 @@ func realMain(ctx context.Context) error {
 		return fmt.Errorf("failed to setup kms client: %w", err)
 	}
 
-	// TODO: We should have a way of asynchronously updating.
-	ver, err := jvscrypto.GetLatestKeyVersion(ctx, kmsClient, cfg.KeyName)
-	if err != nil {
-		logger.Fatal("failed to get key version", zap.Error(err))
-	}
-	signer, err := gcpkms.NewSigner(ctx, kmsClient, ver.Name)
-	if err != nil {
-		logger.Fatalf("failed to create signer", zap.Error(err))
-	}
-
-	p := &justification.Processor{
-		Signer: signer,
-	}
+	p := justification.NewProcessor(kmsClient, cfg)
 	jvsAgent := justification.NewJVSAgent(p)
 	jvspb.RegisterJVSServiceServer(s, jvsAgent)
 	reflection.Register(s)
