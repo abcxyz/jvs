@@ -38,8 +38,7 @@ func NewJVSClient(ctx context.Context, config *JVSConfig) (*JVSClient, error) {
 	c.Register(config.JVSEndpoint, jwk.WithMinRefreshInterval(config.CacheTimeout))
 
 	// check that cache is correctly set up and certs are available
-	_, err := c.Refresh(ctx, config.JVSEndpoint)
-	if err != nil {
+	if _, err := c.Refresh(ctx, config.JVSEndpoint); err != nil {
 		return nil, fmt.Errorf("failed to retrieve JVS public keys: %w", err)
 	}
 

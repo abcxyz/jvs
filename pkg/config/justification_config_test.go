@@ -58,7 +58,7 @@ issuer: jvs
 				Port:               "8080",
 				Version:            1,
 				SignerCacheTimeout: 5 * time.Minute,
-				Issuer:             "abcxyz-jvs",
+				Issuer:             "jvs.abcxyz.dev",
 			},
 		},
 		{

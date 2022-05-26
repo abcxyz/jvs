@@ -86,63 +86,14 @@ func TestValidateJWT(t *testing.T) {
 		CacheTimeout: 5 * time.Minute,
 	})
 	if err != nil {
-		t.Fatal(fmt.Errorf("failed to create JVS client: %w", err))
+		t.Fatalf("failed to create JVS client: %v", err)
 	}
 
-	tok, err := jwt.NewBuilder().
-		Audience([]string{"test_aud"}).
-		Expiration(time.Now().Add(5 * time.Minute)).
-		JwtID("test_id").
-		IssuedAt(time.Now()).
-		Issuer(`test_iss`).
-		NotBefore(time.Now()).
-		Subject("test_sub").
-		Build()
-	if err != nil {
-		t.Fatalf("failed to build token: %s\n", err)
-	}
-	tok.Set("justs", []*v0.Justification{
-		{
-			Category: "explanation",
-			Value:    "this is a test explanation",
-		},
-	})
-	hdrs := jws.NewHeaders()
-	hdrs.Set(jws.KeyIDKey, keyID)
+	tok := createToken(t, "test_id")
+	validJWT := signToken(t, tok, privateKey, keyID)
 
-	valid, err := jwt.Sign(tok, jwt.WithKey(jwa.ES256, privateKey, jws.WithProtectedHeaders(hdrs)))
-	if err != nil {
-		t.Fatalf("failed to sign token: %s\n", err)
-	}
-	validJWT := string(valid)
-
-	// Create and sign a token with 2nd key
-	tok2, err := jwt.NewBuilder().
-		Audience([]string{"test_aud"}).
-		Expiration(time.Now().Add(5 * time.Minute)).
-		JwtID("test_id_2").
-		IssuedAt(time.Now()).
-		Issuer(`test_iss`).
-		NotBefore(time.Now()).
-		Subject("test_sub").
-		Build()
-	if err != nil {
-		t.Fatalf("failed to build token: %s\n", err)
-	}
-	tok2.Set("justs", []*v0.Justification{
-		{
-			Category: "explanation",
-			Value:    "this is a test explanation",
-		},
-	})
-	hdrs2 := jws.NewHeaders()
-	hdrs2.Set(jws.KeyIDKey, keyID2)
-
-	valid2, err := jwt.Sign(tok2, jwt.WithKey(jwa.ES256, privateKey2, jws.WithProtectedHeaders(hdrs2)))
-	if err != nil {
-		t.Fatal(fmt.Errorf("failed to sign token: %w", err))
-	}
-	validJWT2 := string(valid2)
+	tok2 := createToken(t, "test_id_2")
+	validJWT2 := signToken(t, tok2, privateKey2, keyID2)
 
 	unsig, err := jwt.NewSerializer().Serialize(tok)
 	if err != nil {
@@ -190,15 +141,51 @@ func TestValidateJWT(t *testing.T) {
 			}
 			got, err := json.MarshalIndent(res, "", " ")
 			if err != nil {
-				t.Error(fmt.Errorf("couldn't marshall returned token %w", err))
+				t.Errorf("couldn't marshal returned token %v", err)
 			}
 			want, err := json.MarshalIndent(tc.wantToken, "", " ")
 			if err != nil {
-				t.Error(fmt.Errorf("couldn't marshall expected token %w", err))
+				t.Errorf("couldn't marshal expected token %v", err)
 			}
 			if diff := cmp.Diff(want, got); diff != "" {
-				t.Errorf("Got diff (-want, +got): %v", diff)
+				t.Errorf("Token diff (-want, +got): %v", diff)
 			}
 		})
 	}
+}
+
+func createToken(tb testing.TB, id string) jwt.Token {
+	tb.Helper()
+
+	tok, err := jwt.NewBuilder().
+		Audience([]string{"test_aud"}).
+		Expiration(time.Now().Add(5 * time.Minute)).
+		JwtID(id).
+		IssuedAt(time.Now()).
+		Issuer(`test_iss`).
+		NotBefore(time.Now()).
+		Subject("test_sub").
+		Build()
+	if err != nil {
+		tb.Fatalf("failed to build token: %s\n", err)
+	}
+	tok.Set("justs", []*v0.Justification{
+		{
+			Category: "explanation",
+			Value:    "this is a test explanation",
+		},
+	})
+	return tok
+}
+
+func signToken(tb testing.TB, tok jwt.Token, privateKey *ecdsa.PrivateKey, keyID string) string {
+	tb.Helper()
+	hdrs := jws.NewHeaders()
+	hdrs.Set(jws.KeyIDKey, keyID)
+
+	valid, err := jwt.Sign(tok, jwt.WithKey(jwa.ES256, privateKey, jws.WithProtectedHeaders(hdrs)))
+	if err != nil {
+		tb.Fatalf("failed to sign token: %s\n", err)
+	}
+	return string(valid)
 }
