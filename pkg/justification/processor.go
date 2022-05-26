@@ -16,16 +16,19 @@ package justification
 
 import (
 	"context"
-	"crypto"
 	"fmt"
 	"time"
 
+	kms "cloud.google.com/go/kms/apiv1"
 	jvspb "github.com/abcxyz/jvs/apis/v0"
+	"github.com/abcxyz/jvs/pkg/cache"
+	"github.com/abcxyz/jvs/pkg/config"
 	"github.com/abcxyz/jvs/pkg/jvscrypto"
 	"github.com/abcxyz/jvs/pkg/zlogger"
 	"github.com/golang-jwt/jwt"
 	"github.com/google/uuid"
 	"github.com/hashicorp/go-multierror"
+	"github.com/sethvargo/go-gcpkms/pkg/gcpkms"
 	"go.uber.org/zap"
 	"google.golang.org/grpc/codes"
 	"google.golang.org/grpc/status"
@@ -35,10 +38,29 @@ import (
 // mints a token.
 type Processor struct {
 	jvspb.UnimplementedJVSServiceServer
-	Signer crypto.Signer
+	kms    *kms.KeyManagementClient
+	config *config.JustificationConfig
+	cache  *cache.Cache[*signerWithID]
 }
 
-const jvsIssuer = "abcxyz-justification-verification-service"
+type signerWithID struct {
+	*gcpkms.Signer
+	id string
+}
+
+// NewProcessor creates a processor with the signer cache initialized.
+func NewProcessor(kms *kms.KeyManagementClient, config *config.JustificationConfig) *Processor {
+	cache := cache.New[*signerWithID](config.SignerCacheTimeout)
+	return &Processor{
+		kms:    kms,
+		config: config,
+		cache:  cache,
+	}
+}
+
+const (
+	cacheKey = "signer"
+)
 
 // CreateToken implements the create token API which creates and signs a JWT
 // token if the provided justifications are valid.
@@ -49,13 +71,38 @@ func (p *Processor) CreateToken(ctx context.Context, request *jvspb.CreateJustif
 		return "", status.Error(codes.InvalidArgument, "couldn't validate request")
 	}
 	token := p.createToken(ctx, request)
-	signedToken, err := jvscrypto.SignToken(token, p.Signer)
+
+	signer, err := p.cache.WriteThruLookup(cacheKey, func() (*signerWithID, error) {
+		return p.getLatestSigner(ctx)
+	})
+	if err != nil {
+		logger.Error("Couldn't update keys from kms", zap.Error(err))
+		return "", status.Error(codes.Internal, "couldn't update keys")
+	}
+	token.Header["kid"] = signer.id // set key id
+	sig := signer.WithContext(ctx)  // add ctx to kms signer
+	signedToken, err := jvscrypto.SignToken(token, sig)
 	if err != nil {
 		logger.Error("Ran into error while signing", zap.Error(err))
 		return "", status.Error(codes.Internal, "ran into error while minting token")
 	}
 
 	return signedToken, nil
+}
+
+func (p *Processor) getLatestSigner(ctx context.Context) (*signerWithID, error) {
+	ver, err := jvscrypto.GetLatestKeyVersion(ctx, p.kms, p.config.KeyName)
+	if err != nil {
+		return nil, fmt.Errorf("failed to get key version, %w", err)
+	}
+	sig, err := gcpkms.NewSigner(ctx, p.kms, ver.Name)
+	if err != nil {
+		return nil, fmt.Errorf("failed to create signer, %w", err)
+	}
+	return &signerWithID{
+		Signer: sig,
+		id:     ver.Name,
+	}, nil
 }
 
 // TODO: Each category should have its own validator struct, with a shared interface.
@@ -91,7 +138,7 @@ func (p *Processor) createToken(ctx context.Context, request *jvspb.CreateJustif
 			ExpiresAt: now.Add(request.Ttl.AsDuration()).Unix(),
 			Id:        uuid.New().String(),
 			IssuedAt:  now.Unix(),
-			Issuer:    jvsIssuer,
+			Issuer:    p.config.Issuer,
 			NotBefore: now.Unix(),
 			Subject:   "TODO #22",
 		},

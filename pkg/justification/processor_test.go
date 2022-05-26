@@ -27,10 +27,11 @@ import (
 
 	kms "cloud.google.com/go/kms/apiv1"
 	jvspb "github.com/abcxyz/jvs/apis/v0"
+	"github.com/abcxyz/jvs/pkg/config"
 	"github.com/abcxyz/jvs/pkg/jvscrypto"
 	"github.com/abcxyz/jvs/pkg/testutil"
 	"github.com/golang-jwt/jwt"
-	"github.com/sethvargo/go-gcpkms/pkg/gcpkms"
+	"github.com/google/go-cmp/cmp"
 	"google.golang.org/api/option"
 	kmspb "google.golang.org/genproto/googleapis/cloud/kms/v1"
 	"google.golang.org/grpc"
@@ -92,13 +93,16 @@ func TestCreateToken(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	signer, err := gcpkms.NewSigner(ctx, c, "keyName")
-	if err != nil {
-		t.Fatal(err)
-	}
-	processor := &Processor{
-		Signer: signer,
-	}
+	key := "projects/[PROJECT]/locations/[LOCATION]/keyRings/[KEY_RING]/cryptoKeys/[CRYPTO_KEY]"
+	version := key + "[VERSION]"
+	mockKeyManagement.VersionName = version
+
+	processor := NewProcessor(c, &config.JustificationConfig{
+		Version:            1,
+		KeyName:            key,
+		SignerCacheTimeout: 5 * time.Minute,
+		Issuer:             config.IssuerDefault,
+	})
 	hour, err := time.ParseDuration("3600s")
 	if err != nil {
 		t.Fatal(err)
@@ -162,12 +166,18 @@ func TestCreateToken(t *testing.T) {
 			}
 
 			claims := &jvspb.JVSClaims{}
-			if _, err := jwt.ParseWithClaims(response, claims, func(token *jwt.Token) (interface{}, error) {
+			token, err := jwt.ParseWithClaims(response, claims, func(token *jwt.Token) (interface{}, error) {
 				return privateKey.Public(), nil
-			}); err != nil {
+			})
+			if err != nil {
 				t.Errorf("Unable to parse created jwt string. %v", err)
 			}
 			validateClaims(t, claims, tc.request.Justifications)
+			got := token.Header["kid"]
+			want := version + "-0"
+			if diff := cmp.Diff(want, got); diff != "" {
+				t.Errorf("Got diff (-want, +got): %v", diff)
+			}
 		})
 	}
 }
@@ -176,8 +186,8 @@ func validateClaims(tb testing.TB, provided *jvspb.JVSClaims, expectedJustificat
 	tb.Helper()
 
 	// test the standard claims filled by processor
-	if provided.StandardClaims.Issuer != jvsIssuer {
-		tb.Errorf("audience value %s incorrect, expected %s", provided.StandardClaims.Issuer, jvsIssuer)
+	if provided.StandardClaims.Issuer != config.IssuerDefault {
+		tb.Errorf("audience value %s incorrect, expected %s", provided.StandardClaims.Issuer, config.IssuerDefault)
 	}
 	// TODO: as we add more standard claims, add more validations.
 
