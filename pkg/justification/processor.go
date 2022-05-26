@@ -97,5 +97,6 @@ func (p *Processor) createToken(ctx context.Context, request *jvspb.CreateJustif
 		},
 		Justifications: request.Justifications,
 	}
+
 	return jwt.NewWithClaims(jwt.SigningMethodES256, claims)
 }
