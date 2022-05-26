@@ -40,17 +40,17 @@ type Processor struct {
 	jvspb.UnimplementedJVSServiceServer
 	kms    *kms.KeyManagementClient
 	config *config.JustificationConfig
-	cache  *cache.Cache[*signerWithId]
+	cache  *cache.Cache[*signerWithID]
 }
 
-type signerWithId struct {
+type signerWithID struct {
 	*gcpkms.Signer
 	id string
 }
 
-// NewProcessor creates a processor with the signer cache initialized
+// NewProcessor creates a processor with the signer cache initialized.
 func NewProcessor(kms *kms.KeyManagementClient, config *config.JustificationConfig) *Processor {
-	cache := cache.New[*signerWithId](config.SignerCacheTimeout)
+	cache := cache.New[*signerWithID](config.SignerCacheTimeout)
 	return &Processor{
 		kms:    kms,
 		config: config,
@@ -72,7 +72,7 @@ func (p *Processor) CreateToken(ctx context.Context, request *jvspb.CreateJustif
 	}
 	token := p.createToken(ctx, request)
 
-	signer, err := p.cache.WriteThruLookup(cacheKey, func() (*signerWithId, error) {
+	signer, err := p.cache.WriteThruLookup(cacheKey, func() (*signerWithID, error) {
 		return p.getLatestSigner(ctx)
 	})
 	if err != nil {
@@ -90,7 +90,7 @@ func (p *Processor) CreateToken(ctx context.Context, request *jvspb.CreateJustif
 	return signedToken, nil
 }
 
-func (p *Processor) getLatestSigner(ctx context.Context) (*signerWithId, error) {
+func (p *Processor) getLatestSigner(ctx context.Context) (*signerWithID, error) {
 	ver, err := jvscrypto.GetLatestKeyVersion(ctx, p.kms, p.config.KeyName)
 	if err != nil {
 		return nil, fmt.Errorf("failed to get key version, %w", err)
@@ -99,7 +99,7 @@ func (p *Processor) getLatestSigner(ctx context.Context) (*signerWithId, error) 
 	if err != nil {
 		return nil, fmt.Errorf("failed to create signer, %w", err)
 	}
-	return &signerWithId{
+	return &signerWithID{
 		Signer: sig,
 		id:     ver.Name,
 	}, nil
