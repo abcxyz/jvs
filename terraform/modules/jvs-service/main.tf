@@ -106,8 +106,8 @@ resource "null_resource" "build" {
     environment = {
       PROJECT_ID = google_project.jvs_project.project_id
       TAG        = local.tag
-      REPO       = "${var.artifact_registry_location}-docker.pkg.dev/${google_project.jvs_project.project_id}/images/lumberjack"
-      APP_NAME   = "go-jvs-service"
+      REPO       = "${var.artifact_registry_location}-docker.pkg.dev/${google_project.jvs_project.project_id}/images/jvs"
+      APP_NAME   = "jvs-service"
     }
 
     command = "${path.module}/../../../scripts/build.sh justification"
@@ -158,7 +158,7 @@ resource "google_cloud_run_service" "server" {
       service_account_name = google_service_account.server[0].email
 
       containers {
-        image = "${var.artifact_registry_location}-docker.pkg.dev/${google_project.jvs_project.project_id}/images/lumberjack/go-jvs-service:${local.tag}"
+        image = "${var.artifact_registry_location}-docker.pkg.dev/${google_project.jvs_project.project_id}/images/jvs/jvs-service:${local.tag}"
 
         resources {
           limits = {

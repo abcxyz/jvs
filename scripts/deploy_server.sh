@@ -13,12 +13,9 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-
 ROOT="$(cd "$(dirname "$0")/.." &>/dev/null; pwd -P)"
 
-
 SERVICE_NAME=jvs-${RANDOM}
-GO_BUILD_COMMAND=${ROOT}/pkg/scripts/build.sh
 
 #The billing account 'Gong Test'.
 BILLING_ACCOUNT="016242-61A3FB-F92462"
