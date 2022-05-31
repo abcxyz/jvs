@@ -39,19 +39,15 @@ variable "artifact_registry_location" {
 
 variable "folder_parent" {
   type        = string
-  default = "folders/937913421888"
   description = "The parent to hold the environment. E.g. organizations/102291006291 or folders/300968597098"
 }
 
 variable "top_folder_id" {
   type        = string
-  default = "jvs-dev-envs"
   description = "The top folder name to hold all the e2e resources."
 }
 
 variable "billing_account" {
   type        = string
-  // The billing account 'Gong Test'.
-  default = "016242-61A3FB-F92462"
   description = "The billing account to be linked to projects."
 }

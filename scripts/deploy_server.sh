@@ -20,13 +20,22 @@ ROOT="$(cd "$(dirname "$0")/.." &>/dev/null; pwd -P)"
 SERVICE_NAME=jvs-${RANDOM}
 GO_BUILD_COMMAND=${ROOT}/pkg/scripts/build.sh
 
+#The billing account 'Gong Test'.
+BILLING_ACCOUNT="016242-61A3FB-F92462"
 GCLOUD_ACCOUNT=$(gcloud config get-value account)
 ID_TOKEN=$(gcloud auth print-identity-token)
+
+TOP_FOLDER_ID="jvs-dev-envs"
+FOLDER_PARENT="folders/937913421888"
 
 JVS_DIR=${ROOT}/terraform/modules/jvs-service
 JVS_PROJECT_ID=jvs-service
 
-terraform -chdir=${JVS_DIR} init
-terraform -chdir=${JVS_DIR} apply -auto-approve \
+cd $JVS_DIR
+terraform init
+terraform apply -auto-approve \
   -var="project_id=${JVS_PROJECT_ID}" \
-  -var="service_name=${SERVICE_NAME}"
+  -var="service_name=${SERVICE_NAME}" \
+  -var="billing_account=${BILLING_ACCOUNT}" \
+  -var="top_folder_id=${TOP_FOLDER_ID}" \
+  -var="folder_parent=${FOLDER_PARENT}"

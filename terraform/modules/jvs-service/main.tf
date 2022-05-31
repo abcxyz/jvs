@@ -20,7 +20,7 @@ locals {
 
 resource "google_folder" "top_folder" {
   display_name = var.top_folder_id
-  parent = var.folder_parent
+  parent       = var.folder_parent
 }
 
 resource "google_project" "jvs_project" {
@@ -64,7 +64,7 @@ resource "google_project_service" "server_project_services" {
 }
 
 resource "google_kms_key_ring" "keyring" {
-  project = google_project.jvs_project.project_id
+  project  = google_project.jvs_project.project_id
   name     = "jvs-keyring"
   location = "global"
 }
@@ -125,22 +125,28 @@ resource "google_project_service" "resourcemanager" {
 }
 
 resource "google_service_account" "server" {
-  count        =  1
+  count        = 1
   project      = google_project.jvs_project.project_id
   account_id   = "${var.service_name}-sa"
   display_name = "JWT Service Account"
 }
 
-resource "google_project_iam_member" "server_roles" {
-  for_each =  toset([
-    "roles/cloudkms.viewer",
-    "roles/cloudkms.cryptoOperator"
-  ])
-
-  project = google_project.jvs_project.project_id
-  role    = each.key
-  member  = "serviceAccount:${google_service_account.server[0].email}"
+resource "google_kms_crypto_key_iam_binding" "view_role" {
+  crypto_key_id = google_kms_crypto_key.asymmetric-sign-key.id
+  role = "roles/cloudkms.viewer"
+  members = [
+    "serviceAccount:${google_service_account.server[0].email}"
+  ]
 }
+
+resource "google_kms_crypto_key_iam_binding" "operator_role" {
+  crypto_key_id = google_kms_crypto_key.asymmetric-sign-key.id
+  role = "roles/cloudkms.cryptoOperator"
+  members = [
+    "serviceAccount:${google_service_account.server[0].email}"
+  ]
+}
+
 
 resource "google_cloud_run_service" "server" {
   name     = var.service_name
@@ -161,7 +167,7 @@ resource "google_cloud_run_service" "server" {
           }
         }
         env {
-          name = "JVS_KEY"
+          name  = "JVS_KEY"
           value = google_kms_crypto_key.asymmetric-sign-key.id
         }
       }
