@@ -127,7 +127,7 @@ resource "google_project_service" "resourcemanager" {
 resource "google_service_account" "server" {
   count        = 1
   project      = google_project.jvs_project.project_id
-  account_id   = "${var.service_name}-sa"
+  account_id   = "jvs-service-sa"
   display_name = "JWT Service Account"
 }
 
