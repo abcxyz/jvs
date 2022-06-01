@@ -125,8 +125,9 @@ func TestDetermineActions(t *testing.T) {
 			GracePeriod:    gracePeriod,
 			DisabledPeriod: disablePeriod,
 		},
-		CurrentTime: time.Unix(100*60*60*24, 0), // 100 days after start
 	}
+
+	curTime := time.Unix(100*60*60*24, 0) // 100 days after start
 
 	oldEnabledKey := &kmspb.CryptoKeyVersion{
 		CreateTime: &timestamppb.Timestamp{Seconds: 50 * 60 * 60 * 24}, // 50 days old
@@ -238,7 +239,7 @@ func TestDetermineActions(t *testing.T) {
 		tc := tc
 		t.Run(tc.name, func(t *testing.T) {
 			t.Parallel()
-			output, err := handler.determineActions(ctx, tc.versions, tc.primary)
+			output, err := handler.determineActions(ctx, tc.versions, tc.primary, curTime)
 
 			if diff := cmp.Diff(tc.wantActions, output, protocmp.Transform()); diff != "" {
 				t.Errorf("Got diff (-want, +got): %v", diff)

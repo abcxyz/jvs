@@ -91,7 +91,6 @@ func realMain(ctx context.Context) error {
 	handler := &jvscrypto.RotationHandler{
 		KMSClient:    kmsClient,
 		CryptoConfig: config,
-		CurrentTime:  time.Now(),
 	}
 
 	mux := http.NewServeMux()
