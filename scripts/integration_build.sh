@@ -15,17 +15,15 @@
 
 ROOT="$(cd "$(dirname "$0")/.." &>/dev/null; pwd -P)"
 
-SERVICE_NAME=jvs-${RANDOM}
-
 #The billing account 'Gong Test'.
 BILLING_ACCOUNT="016242-61A3FB-F92462"
-GCLOUD_ACCOUNT=$(gcloud config get-value account)
-ID_TOKEN=$(gcloud auth print-identity-token)
 
-TOP_FOLDER_ID="jvs-dev-envs"
+SERVICE_NAME=jvs-${RANDOM}
+
+TOP_FOLDER_ID="jvs-envs"
 FOLDER_PARENT="folders/937913421888"
 
-JVS_DIR=${ROOT}/terraform/modules/jvs-service
+JVS_DIR=${ROOT}/terraform/modules/ci-run
 JVS_PROJECT_ID=jvs-service
 
 cd $JVS_DIR

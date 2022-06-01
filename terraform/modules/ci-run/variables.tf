@@ -27,7 +27,7 @@ variable "project_id" {
 
 variable "service_name" {
   type        = string
-  description = "The name for the justification verification server service."
+  description = "The name for the justification verification service."
 }
 
 variable "artifact_registry_location" {
@@ -36,7 +36,17 @@ variable "artifact_registry_location" {
   description = "The artifact registry location."
 }
 
-variable "key_id" {
+variable "folder_parent" {
   type        = string
-  description = "kms key id for use with signing"
+  description = "The parent to hold the environment. E.g. organizations/102291006291 or folders/300968597098"
+}
+
+variable "top_folder_id" {
+  type        = string
+  description = "The top folder name to hold all the e2e resources."
+}
+
+variable "billing_account" {
+  type        = string
+  description = "The billing account to be linked to projects."
 }
