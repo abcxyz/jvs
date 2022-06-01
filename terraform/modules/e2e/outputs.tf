@@ -18,10 +18,6 @@ output "project_id" {
   value = google_project.jvs_project.project_id
 }
 
-output "service_name" {
-  value = var.service_name
-}
-
 output "key_id" {
   value = google_kms_crypto_key.asymmetric-sign-key.id
 }

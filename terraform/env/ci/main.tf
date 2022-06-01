@@ -17,10 +17,9 @@
 
 // intended to be run once to set up the ci environment.
 
-module "ci-run" {
-  source                     = "../../modules/e2e"
-  project_id                 = "jvs-service-ci"
-  service_name               = "jvs"
+module "e2e" {
+  source     = "../../modules/e2e"
+  project_id = "jvs-service-ci"
   // The billing account 'Gong Test'.
   billing_account = "016242-61A3FB-F92462"
 }

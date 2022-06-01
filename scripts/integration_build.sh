@@ -18,7 +18,7 @@ ROOT="$(cd "$(dirname "$0")/.." &>/dev/null; pwd -P)"
 JVS_SERVICE_ACCOUNT="jvs-service-sa@jvs-service-ci.iam.gserviceaccount.com"
 KEY_ID="projects/jvs-service-ci/locations/global/keyRings/jvs-keyring/cryptoKeys/jvs-key"
 PROJECT_ID="jvs-service-ci"
-SERVICE_NAME="jvs"
+SERVICE_NAME="jvs-${RANDOM}"
 
 JVS_DIR=${ROOT}/terraform/modules/ci-run
 

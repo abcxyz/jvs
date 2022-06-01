@@ -42,6 +42,6 @@ variable "key_id" {
 }
 
 variable "jvs_service_acc" {
-  type = string
+  type        = string
   description = "The service account email address to be used by the JVS"
 }

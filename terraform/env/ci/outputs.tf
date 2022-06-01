@@ -15,17 +15,13 @@
  */
 
 output "project_id" {
-  value = module.ci-run.project_id
-}
-
-output "service_name" {
-  value = module.ci-run.service_name
+  value = module.e2e.project_id
 }
 
 output "key_id" {
-  value = module.ci-run.key_id
+  value = module.e2e.key_id
 }
 
 output "jvs_service_account" {
-  value = module.ci-run.jvs_service_account
+  value = module.e2e.jvs_service_account
 }

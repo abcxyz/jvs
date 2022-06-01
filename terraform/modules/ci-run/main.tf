@@ -17,9 +17,9 @@
 // intended to be run on each ci run. uses an environment set up by env/ci
 
 module "jvs-service" {
-  source                     = "../jvs-service"
-  project_id                 = var.project_id
-  service_name               = var.service_name
-  key_id                     = var.key_id
-  jvs_service_acc            = var.jvs_service_account
+  source          = "../jvs-service"
+  project_id      = var.project_id
+  service_name    = var.service_name
+  key_id          = var.key_id
+  jvs_service_acc = var.jvs_service_account
 }

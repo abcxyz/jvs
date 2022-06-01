@@ -25,11 +25,11 @@ variable "service_name" {
 }
 
 variable "key_id" {
-  type = string
+  type        = string
   description = "The id of the key to be used by the JVS"
 }
 
 variable "jvs_service_account" {
-  type = string
+  type        = string
   description = "The service account email for the JVS to use"
 }

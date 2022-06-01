@@ -19,14 +19,9 @@ variable "project_id" {
   description = "The GCP project to host the justification verification service."
 }
 
-variable "service_name" {
-  type        = string
-  description = "The name for the justification verification service."
-}
-
 variable "key_location" {
-  type = string
-  default = "global"
+  type        = string
+  default     = "global"
   description = "The location where kms key will be created."
 }
 
