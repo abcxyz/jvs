@@ -53,10 +53,6 @@ resource "google_kms_crypto_key" "asymmetric-sign-key" {
   version_template {
     algorithm = "EC_SIGN_P256_SHA256"
   }
-
-  lifecycle {
-    prevent_destroy = true
-  }
 }
 
 resource "google_artifact_registry_repository" "image_registry" {
