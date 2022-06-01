@@ -14,12 +14,18 @@
  * limitations under the License.
  */
 
-// intended to be run on each ci run. uses an environment set up by env/ci
+output "project_id" {
+  value = google_project.jvs_project.project_id
+}
 
-module "jvs-service" {
-  source                     = "../jvs-service"
-  project_id                 = var.project_id
-  service_name               = var.service_name
-  key_id                     = var.key_id
-  jvs_service_acc            = var.jvs_service_account
+output "service_name" {
+  value = var.service_name
+}
+
+output "key_id" {
+  value = google_kms_crypto_key.asymmetric-sign-key.id
+}
+
+output "jvs_service_account" {
+  value = google_service_account.server-acc.email
 }

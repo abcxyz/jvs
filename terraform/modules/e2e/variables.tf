@@ -14,12 +14,23 @@
  * limitations under the License.
  */
 
-// intended to be run on each ci run. uses an environment set up by env/ci
+variable "project_id" {
+  type        = string
+  description = "The GCP project to host the justification verification service."
+}
 
-module "jvs-service" {
-  source                     = "../jvs-service"
-  project_id                 = var.project_id
-  service_name               = var.service_name
-  key_id                     = var.key_id
-  jvs_service_acc            = var.jvs_service_account
+variable "service_name" {
+  type        = string
+  description = "The name for the justification verification service."
+}
+
+variable "key_location" {
+  type = string
+  default = "global"
+  description = "The location where kms key will be created."
+}
+
+variable "billing_account" {
+  type        = string
+  description = "The billing account to be linked to projects."
 }

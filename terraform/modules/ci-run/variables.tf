@@ -14,12 +14,6 @@
  * limitations under the License.
  */
 
-variable "region" {
-  type        = string
-  default     = "us-central1"
-  description = "The default region for resources in the project; individual resources could have more specific variables defined to specify their region/location"
-}
-
 variable "project_id" {
   type        = string
   description = "The GCP project to host the justification verification service."
@@ -30,29 +24,12 @@ variable "service_name" {
   description = "The name for the justification verification service."
 }
 
-variable "artifact_registry_location" {
-  type        = string
-  default     = "us"
-  description = "The artifact registry location."
-}
-
-variable "folder_parent" {
-  type        = string
-  description = "The parent to hold the environment. E.g. organizations/102291006291 or folders/300968597098"
-}
-
-variable "top_folder_id" {
-  type        = string
-  description = "The top folder name to hold all the e2e resources."
-}
-
-variable "billing_account" {
-  type        = string
-  description = "The billing account to be linked to projects."
-}
-
-variable "key_location" {
+variable "key_id" {
   type = string
-  default = "global"
-  description = "The location where kms key will be created."
+  description = "The id of the key to be used by the JVS"
+}
+
+variable "jvs_service_account" {
+  type = string
+  description = "The service account email for the JVS to use"
 }

@@ -15,22 +15,17 @@
 
 ROOT="$(cd "$(dirname "$0")/.." &>/dev/null; pwd -P)"
 
-#The billing account 'Gong Test'.
-BILLING_ACCOUNT="016242-61A3FB-F92462"
-
-SERVICE_NAME=jvs-${RANDOM}
-
-TOP_FOLDER_ID="jvs-envs"
-FOLDER_PARENT="folders/937913421888"
+JVS_SERVICE_ACCOUNT="jvs-service-sa@jvs-service-ci.iam.gserviceaccount.com"
+KEY_ID="projects/jvs-service-ci/locations/global/keyRings/jvs-keyring/cryptoKeys/jvs-key"
+PROJECT_ID="jvs-service-ci"
+SERVICE_NAME="jvs"
 
 JVS_DIR=${ROOT}/terraform/modules/ci-run
-JVS_PROJECT_ID=jvs-service
 
 cd $JVS_DIR
 terraform init
 terraform apply -auto-approve \
-  -var="project_id=${JVS_PROJECT_ID}" \
+  -var="project_id=${PROJECT_ID}" \
   -var="service_name=${SERVICE_NAME}" \
-  -var="billing_account=${BILLING_ACCOUNT}" \
-  -var="top_folder_id=${TOP_FOLDER_ID}" \
-  -var="folder_parent=${FOLDER_PARENT}"
+  -var="jvs_service_account=${JVS_SERVICE_ACCOUNT}" \
+  -var="key_id=${KEY_ID}"

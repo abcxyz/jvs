@@ -14,12 +14,13 @@
  * limitations under the License.
  */
 
-// intended to be run on each ci run. uses an environment set up by env/ci
 
-module "jvs-service" {
-  source                     = "../jvs-service"
-  project_id                 = var.project_id
-  service_name               = var.service_name
-  key_id                     = var.key_id
-  jvs_service_acc            = var.jvs_service_account
+// intended to be run once to set up the ci environment.
+
+module "ci-run" {
+  source                     = "../../modules/e2e"
+  project_id                 = "jvs-service-ci"
+  service_name               = "jvs"
+  // The billing account 'Gong Test'.
+  billing_account = "016242-61A3FB-F92462"
 }

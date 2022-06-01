@@ -18,6 +18,16 @@ locals {
   tag = uuid()
 }
 
+resource "google_artifact_registry_repository" "image_registry" {
+  provider = google-beta
+
+  location      = var.artifact_registry_location
+  project       = var.project_id
+  repository_id = "images"
+  description   = "Container Registry for the images."
+  format        = "DOCKER"
+}
+
 resource "null_resource" "build" {
   triggers = {
     "tag" = local.tag
@@ -35,33 +45,6 @@ resource "null_resource" "build" {
   }
 }
 
-resource "google_project_service" "resourcemanager" {
-  project            = var.project_id
-  service            = "cloudresourcemanager.googleapis.com"
-  disable_on_destroy = false
-}
-
-resource "google_service_account" "server-acc" {
-  project      = var.project_id
-  account_id   = "jvs-service-sa"
-  display_name = "JWT Service Account"
-}
-
-resource "google_project_iam_member" "server_roles" {
-  for_each = toset([
-    "roles/cloudkms.viewer",
-    "roles/cloudkms.cryptoOperator"
-  ])
-
-  project = var.project_id
-  role    = each.key
-  condition {
-    title      = "Only on relevant key"
-    expression = "resource.name.startsWith(\"${var.key_id}\")"
-  }
-  member = "serviceAccount:${google_service_account.server-acc.email}"
-}
-
 resource "google_cloud_run_service" "server" {
   name     = var.service_name
   location = var.region
@@ -69,7 +52,7 @@ resource "google_cloud_run_service" "server" {
 
   template {
     spec {
-      service_account_name = google_service_account.server-acc.email
+      service_account_name = var.jvs_service_acc
 
       containers {
         image = "${var.artifact_registry_location}-docker.pkg.dev/${var.project_id}/images/jvs/jvs-service:${local.tag}"

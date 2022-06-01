@@ -14,12 +14,18 @@
  * limitations under the License.
  */
 
-// intended to be run on each ci run. uses an environment set up by env/ci
+output "project_id" {
+  value = module.ci-run.project_id
+}
 
-module "jvs-service" {
-  source                     = "../jvs-service"
-  project_id                 = var.project_id
-  service_name               = var.service_name
-  key_id                     = var.key_id
-  jvs_service_acc            = var.jvs_service_account
+output "service_name" {
+  value = module.ci-run.service_name
+}
+
+output "key_id" {
+  value = module.ci-run.key_id
+}
+
+output "jvs_service_account" {
+  value = module.ci-run.jvs_service_account
 }
