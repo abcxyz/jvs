@@ -15,9 +15,9 @@
 
 ROOT="$(cd "$(dirname "$0")/.." &>/dev/null; pwd -P)"
 
-JVS_SERVICE_ACCOUNT="jvs-service-sa@jvs-service-ci.iam.gserviceaccount.com"
-KEY_ID="projects/jvs-service-ci/locations/global/keyRings/jvs-keyring/cryptoKeys/jvs-key"
-PROJECT_ID="jvs-service-ci"
+JVS_SERVICE_ACCOUNT="jvs-service-sa@jvs-ci.iam.gserviceaccount.com"
+KEY_RING="projects/jvs-ci/locations/global/keyRings/jvs-keyring"
+PROJECT_ID="jvs-ci"
 SERVICE_NAME="jvs-${RANDOM}"
 
 JVS_DIR=${ROOT}/terraform/modules/ci-run
@@ -28,4 +28,4 @@ terraform apply -auto-approve \
   -var="project_id=${PROJECT_ID}" \
   -var="service_name=${SERVICE_NAME}" \
   -var="jvs_service_account=${JVS_SERVICE_ACCOUNT}" \
-  -var="key_id=${KEY_ID}"
+  -var="key_ring=${KEY_RING}"

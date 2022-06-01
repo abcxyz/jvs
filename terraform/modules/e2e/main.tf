@@ -41,33 +41,9 @@ resource "google_kms_key_ring" "keyring" {
   location = var.key_location
 }
 
-resource "google_kms_crypto_key" "asymmetric-sign-key" {
-  name     = "jvs-key"
-  key_ring = google_kms_key_ring.keyring.id
-  purpose  = "ASYMMETRIC_SIGN"
-
-  version_template {
-    algorithm = "EC_SIGN_P256_SHA256"
-  }
-}
-
 resource "google_service_account" "server-acc" {
   project      = var.project_id
   account_id   = "jvs-service-sa"
   display_name = "JWT Service Account"
 }
 
-resource "google_project_iam_member" "server_acc_roles" {
-  for_each = toset([
-    "roles/cloudkms.viewer",
-    "roles/cloudkms.cryptoOperator"
-  ])
-
-  project = var.project_id
-  role    = each.key
-  condition {
-    title      = "Only on relevant key"
-    expression = "resource.name.startsWith(\"${google_kms_crypto_key.asymmetric-sign-key.id}\")"
-  }
-  member = "serviceAccount:${google_service_account.server-acc.email}"
-}

@@ -19,7 +19,7 @@
 
 module "e2e" {
   source     = "../../modules/e2e"
-  project_id = "jvs-service-ci"
+  project_id = "jvs-ci"
   // The billing account 'Gong Test'.
   billing_account = "016242-61A3FB-F92462"
 }

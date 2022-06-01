@@ -24,9 +24,9 @@ variable "service_name" {
   description = "The name for the justification verification service."
 }
 
-variable "key_id" {
+variable "key_ring" {
   type        = string
-  description = "The id of the key to be used by the JVS"
+  description = "The id of the keyring to be used by the JVS"
 }
 
 variable "jvs_service_account" {

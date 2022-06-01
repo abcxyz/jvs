@@ -18,8 +18,8 @@ output "project_id" {
   value = google_project.jvs_project.project_id
 }
 
-output "key_id" {
-  value = google_kms_crypto_key.asymmetric-sign-key.id
+output "key_ring" {
+  value = google_kms_key_ring.keyring.id
 }
 
 output "jvs_service_account" {
