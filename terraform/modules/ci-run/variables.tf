@@ -50,3 +50,9 @@ variable "billing_account" {
   type        = string
   description = "The billing account to be linked to projects."
 }
+
+variable "key_location" {
+  type = string
+  default = "global"
+  description = "The location where kms key will be created."
+}

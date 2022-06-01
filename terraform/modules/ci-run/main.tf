@@ -26,24 +26,6 @@ resource "google_project" "jvs_project" {
   billing_account = var.billing_account
 }
 
-resource "google_project_service" "app_project_serviceusage" {
-  count              = 1
-  project            = google_project.jvs_project.project_id
-  service            = "serviceusage.googleapis.com"
-  disable_on_destroy = false
-}
-
-resource "google_project_service" "app_project_resourcemanager" {
-  count              = 1
-  project            = google_project.jvs_project.project_id
-  service            = "cloudresourcemanager.googleapis.com"
-  disable_on_destroy = false
-
-  depends_on = [
-    google_project_service.app_project_serviceusage,
-  ]
-}
-
 resource "google_project_service" "server_project_services" {
   project = google_project.jvs_project.project_id
   for_each = toset([
@@ -51,19 +33,16 @@ resource "google_project_service" "server_project_services" {
     "artifactregistry.googleapis.com",
     "cloudkms.googleapis.com",
     "run.googleapis.com",
+    "cloudresourcemanager.googleapis.com",
   ])
   service            = each.value
   disable_on_destroy = false
-
-  depends_on = [
-    google_project_service.app_project_resourcemanager,
-  ]
 }
 
 resource "google_kms_key_ring" "keyring" {
   project  = google_project.jvs_project.project_id
   name     = "jvs-keyring"
-  location = "global"
+  location = var.key_location
 }
 
 resource "google_kms_crypto_key" "asymmetric-sign-key" {
@@ -94,12 +73,6 @@ resource "google_artifact_registry_repository" "image_registry" {
   ]
 }
 
-resource "google_project_service" "resourcemanager" {
-  project            = google_project.jvs_project.project_id
-  service            = "cloudresourcemanager.googleapis.com"
-  disable_on_destroy = false
-}
-
 module "jvs-service" {
   source                     = "../jvs-service"
   project_id                 = var.project_id
@@ -110,7 +83,5 @@ module "jvs-service" {
   depends_on = [
     google_project_service.server_project_services["run.googleapis.com"],
     google_project_service.server_project_services,
-    google_kms_crypto_key.asymmetric-sign-key,
-    google_artifact_registry_repository.image_registry
   ]
 }
