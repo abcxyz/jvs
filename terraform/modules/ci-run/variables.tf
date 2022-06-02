@@ -19,17 +19,41 @@ variable "project_id" {
   description = "The GCP project to host the justification verification service."
 }
 
-variable "service_name" {
-  type        = string
-  description = "The name for the justification verification service."
-}
-
 variable "key_ring" {
   type        = string
   description = "The id of the keyring to be used by the JVS"
 }
 
+variable "key_ttl" {
+  type        = string
+  default     = "10m"
+  description = "the length of time that we expect a key to be valid for"
+}
+
+variable "key_grace_period" {
+  type        = string
+  default     = "5m"
+  description = "length of time between when we rotate the key and when an old Key Version is no longer valid and available"
+}
+
+variable "key_disabled_period" {
+  type        = string
+  default     = "5m"
+  description = "length of time between when the key is disabled and when we delete the key"
+}
+
+variable "key_propagation_delay" {
+  type        = string
+  default     = "2m"
+  description = "length of time that it takes for a change in the key in KMS to be reflected in the client"
+}
+
 variable "jvs_service_account" {
   type        = string
   description = "The service account email for the JVS to use"
+}
+
+variable "rotator_service_account" {
+  type        = string
+  description = "The service account email for the cert rotator to use"
 }
