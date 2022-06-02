@@ -46,7 +46,7 @@ type item[T any] struct {
 }
 
 func (c *item[T]) expired() bool {
-	return c.expiresAt < time.Now().UnixNano()
+	return c.expiresAt < time.Now().UTC().UnixNano()
 }
 
 // New creates a new in memory cache. Panics if expireAfter is 0 or negative.
@@ -122,7 +122,7 @@ func (c *Cache[T]) WriteThruLookup(name string, primaryLookup Func[T]) (T, error
 	// save the newData in the cache. newData may be nil, if that's what the WriteThruFunction provided.
 	c.data[name] = item[T]{
 		object:    newData,
-		expiresAt: time.Now().Add(c.expireAfter).UnixNano(),
+		expiresAt: time.Now().UTC().Add(c.expireAfter).UnixNano(),
 	}
 	return newData, nil
 }
@@ -147,7 +147,7 @@ func (c *Cache[T]) Set(name string, object T) error {
 
 	c.data[name] = item[T]{
 		object:    object,
-		expiresAt: time.Now().Add(c.expireAfter).UnixNano(),
+		expiresAt: time.Now().UTC().Add(c.expireAfter).UnixNano(),
 	}
 
 	return nil

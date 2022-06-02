@@ -43,7 +43,7 @@ type RotationHandler struct {
 // key is the full resource name: `projects/*/locations/*/keyRings/*/cryptoKeys/*`
 // https://pkg.go.dev/google.golang.org/genproto/googleapis/cloud/kms/v1#CryptoKey
 func (h *RotationHandler) RotateKey(ctx context.Context, key string) error {
-	curTime := time.Now()
+	curTime := time.Now().UTC()
 	// Create the request to list Keys.
 	listKeysReq := &kmspb.ListCryptoKeyVersionsRequest{
 		Parent: key,
