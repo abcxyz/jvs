@@ -26,19 +26,15 @@ resource "google_kms_crypto_key" "asymmetric-sign-key" {
   }
 }
 
-resource "google_project_iam_member" "server_acc_roles" {
+resource "google_kms_crypto_key_iam_member" "server_acc_roles" {
   for_each = toset([
     "roles/cloudkms.viewer",
     "roles/cloudkms.cryptoOperator"
   ])
 
-  project = var.project_id
-  role    = each.key
-  condition {
-    title      = "Only on relevant key"
-    expression = "resource.name.startsWith(\"${google_kms_crypto_key.asymmetric-sign-key.id}\")"
-  }
-  member = "serviceAccount:${var.jvs_service_account}"
+  crypto_key_id = google_kms_crypto_key.asymmetric-sign-key.id
+  role          = each.key
+  member        = "serviceAccount:${var.jvs_service_account}"
 }
 
 module "jvs-service" {
@@ -47,5 +43,5 @@ module "jvs-service" {
   service_name    = var.service_name
   key_id          = google_kms_crypto_key.asymmetric-sign-key.id
   jvs_service_acc = var.jvs_service_account
-  depends_on = [google_project_iam_member.server_acc_roles]
+  depends_on      = [google_kms_crypto_key_iam_member.server_acc_roles]
 }
