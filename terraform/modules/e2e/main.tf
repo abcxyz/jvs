@@ -25,12 +25,12 @@ resource "google_project" "jvs_project" {
 resource "google_project_service" "server_project_services" {
   project = google_project.jvs_project.project_id
   for_each = toset([
-    "serviceusage.googleapis.com",
     "artifactregistry.googleapis.com",
     "cloudkms.googleapis.com",
-    "run.googleapis.com",
     "cloudresourcemanager.googleapis.com",
     "cloudscheduler.googleapis.com",
+    "run.googleapis.com",
+    "serviceusage.googleapis.com",
   ])
   service            = each.value
   disable_on_destroy = false
@@ -63,3 +63,4 @@ resource "google_artifact_registry_repository" "image_registry" {
   description   = "Container Registry for the images."
   format        = "DOCKER"
 }
+
