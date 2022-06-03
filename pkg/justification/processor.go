@@ -21,9 +21,9 @@ import (
 
 	kms "cloud.google.com/go/kms/apiv1"
 	jvspb "github.com/abcxyz/jvs/apis/v0"
-	"github.com/abcxyz/jvs/pkg/cache"
 	"github.com/abcxyz/jvs/pkg/config"
 	"github.com/abcxyz/jvs/pkg/jvscrypto"
+	"github.com/abcxyz/pkg/cache"
 	"github.com/abcxyz/pkg/logging"
 	"github.com/golang-jwt/jwt"
 	"github.com/google/uuid"
