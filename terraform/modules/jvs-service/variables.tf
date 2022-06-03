@@ -36,7 +36,7 @@ variable "key_id" {
   description = "kms key id for use with signing"
 }
 
-variable "service_acc" {
+variable "service_account" {
   type        = string
   description = "The service account email address to be used by the JVS"
 }

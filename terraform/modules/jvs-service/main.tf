@@ -38,7 +38,7 @@ resource "google_cloud_run_service" "server" {
 
   template {
     spec {
-      service_account_name = var.service_acc
+      service_account_name = var.service_account
 
       containers {
         image = "${var.artifact_registry_location}-docker.pkg.dev/${var.project_id}/docker-images/jvs/jvs-service:${var.tag}"

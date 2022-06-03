@@ -60,19 +60,19 @@ resource "google_project_iam_member" "rotator_acc_roles" {
 }
 
 module "jvs-service" {
-  source      = "../jvs-service"
-  project_id  = var.project_id
-  key_id      = google_kms_crypto_key.asymmetric-sign-key.id
-  service_acc = var.jvs_service_account
-  tag         = local.tag
-  depends_on  = [google_project_iam_member.server_acc_roles]
+  source          = "../jvs-service"
+  project_id      = var.project_id
+  key_id          = google_kms_crypto_key.asymmetric-sign-key.id
+  service_account = var.jvs_service_account
+  tag             = local.tag
+  depends_on      = [google_project_iam_member.server_acc_roles]
 }
 
 module "cert-rotator" {
   source                = "../cert-rotator"
   project_id            = var.project_id
   key_id                = google_kms_crypto_key.asymmetric-sign-key.id
-  service_acc           = var.rotator_service_account
+  service_account       = var.rotator_service_account
   tag                   = local.tag
   key_disabled_period   = var.key_disabled_period
   key_grace_period      = var.key_grace_period

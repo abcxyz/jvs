@@ -56,7 +56,7 @@ variable "key_propagation_delay" {
   description = "length of time that it takes for a change in the key in KMS to be reflected in the client"
 }
 
-variable "service_acc" {
+variable "service_account" {
   type        = string
   description = "The service account email address to be used by the cert rotator"
 }
@@ -64,4 +64,10 @@ variable "service_acc" {
 variable "tag" {
   type        = string
   description = "Tag that is intended to be unique across ci runs"
+}
+
+variable "cadence" {
+  type        = string
+  default     = "5"
+  description = "Cadence to run the certificate rotator on, expressed in minutes."
 }

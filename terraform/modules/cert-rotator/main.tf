@@ -38,7 +38,7 @@ resource "google_cloud_run_service" "cert-rotator" {
 
   template {
     spec {
-      service_account_name = var.service_acc
+      service_account_name = var.service_account
 
       containers {
         image = "${var.artifact_registry_location}-docker.pkg.dev/${var.project_id}/docker-images/jvs/rotator-service:${var.tag}"
@@ -103,7 +103,7 @@ resource "google_cloud_scheduler_job" "job" {
   project     = var.project_id
   region      = var.region
   description = "Regularly executes the certificate rotator"
-  schedule    = "*/5 * * * *"
+  schedule    = "*/${var.cadence} * * * *"
 
   http_target {
     http_method = "POST"
