@@ -22,7 +22,7 @@ import (
 	"time"
 
 	"github.com/abcxyz/jvs/pkg/config"
-	"github.com/abcxyz/jvs/pkg/zlogger"
+	"github.com/abcxyz/pkg/logging"
 	"go.uber.org/zap"
 	"google.golang.org/protobuf/types/known/fieldmaskpb"
 
@@ -96,7 +96,7 @@ type actionTuple struct {
 }
 
 func (h *RotationHandler) determineActions(ctx context.Context, vers []*kmspb.CryptoKeyVersion, primaryName string) ([]*actionTuple, error) {
-	logger := zlogger.FromContext(ctx)
+	logger := logging.FromContext(ctx)
 	var primary *kmspb.CryptoKeyVersion
 	var olderVers []*kmspb.CryptoKeyVersion
 	var newerVers []*kmspb.CryptoKeyVersion
@@ -141,7 +141,7 @@ func createdBefore(ver1 *kmspb.CryptoKeyVersion, ver2 *kmspb.CryptoKeyVersion) b
 
 // Determine actions for non-primary enabled versions.
 func (h *RotationHandler) actionsForNewVersions(ctx context.Context, vers []*kmspb.CryptoKeyVersion, primary *kmspb.CryptoKeyVersion) []*actionTuple {
-	logger := zlogger.FromContext(ctx)
+	logger := logging.FromContext(ctx)
 	actions := make([]*actionTuple, 0)
 	newest := newestEnabledVer(vers)
 
@@ -182,7 +182,7 @@ func newestEnabledVer(vers []*kmspb.CryptoKeyVersion) *kmspb.CryptoKeyVersion {
 
 // Determine actions for disabled versions.
 func (h *RotationHandler) actionsForOlderVersions(ctx context.Context, vers []*kmspb.CryptoKeyVersion) []*actionTuple {
-	logger := zlogger.FromContext(ctx)
+	logger := logging.FromContext(ctx)
 	actions := make([]*actionTuple, 0)
 
 	for _, ver := range vers {
@@ -204,7 +204,7 @@ func (h *RotationHandler) actionsForOlderVersions(ctx context.Context, vers []*k
 }
 
 func (h *RotationHandler) shouldDestroy(ctx context.Context, ver *kmspb.CryptoKeyVersion) bool {
-	logger := zlogger.FromContext(ctx)
+	logger := logging.FromContext(ctx)
 	cutoff := h.CurrentTime.Add(-h.CryptoConfig.DestroyAge())
 	shouldDestroy := ver.CreateTime.AsTime().Before(cutoff)
 	if shouldDestroy {
@@ -216,7 +216,7 @@ func (h *RotationHandler) shouldDestroy(ctx context.Context, ver *kmspb.CryptoKe
 }
 
 func (h *RotationHandler) shouldDisable(ctx context.Context, ver *kmspb.CryptoKeyVersion) bool {
-	logger := zlogger.FromContext(ctx)
+	logger := logging.FromContext(ctx)
 	cutoff := h.CurrentTime.Add(-h.CryptoConfig.KeyTTL)
 	shouldDisable := ver.CreateTime.AsTime().Before(cutoff)
 	if shouldDisable {
@@ -228,7 +228,7 @@ func (h *RotationHandler) shouldDisable(ctx context.Context, ver *kmspb.CryptoKe
 }
 
 func (h *RotationHandler) shouldRotate(ctx context.Context, ver *kmspb.CryptoKeyVersion) bool {
-	logger := zlogger.FromContext(ctx)
+	logger := logging.FromContext(ctx)
 	cutoff := h.CurrentTime.Add(-h.CryptoConfig.RotationAge())
 	shouldRotate := ver.CreateTime.AsTime().Before(cutoff)
 	if shouldRotate {
@@ -240,7 +240,7 @@ func (h *RotationHandler) shouldRotate(ctx context.Context, ver *kmspb.CryptoKey
 }
 
 func (h *RotationHandler) shouldPromote(ctx context.Context, ver *kmspb.CryptoKeyVersion) bool {
-	logger := zlogger.FromContext(ctx)
+	logger := logging.FromContext(ctx)
 	if ver == nil {
 		return false
 	}
@@ -258,7 +258,7 @@ func (h *RotationHandler) shouldPromote(ctx context.Context, ver *kmspb.CryptoKe
 // for example, if we are demoting a key, we also need to ensure we've marked another as primary, and may end up
 // in an odd state if one action occurs and the other does not.
 func (h *RotationHandler) performActions(ctx context.Context, keyName string, actions []*actionTuple) error {
-	logger := zlogger.FromContext(ctx)
+	logger := logging.FromContext(ctx)
 	var result error
 	for _, action := range actions {
 		switch action.Action {
@@ -295,7 +295,7 @@ func (h *RotationHandler) performActions(ctx context.Context, keyName string, ac
 }
 
 func (h *RotationHandler) performDisable(ctx context.Context, ver *kmspb.CryptoKeyVersion) error {
-	logger := zlogger.FromContext(ctx)
+	logger := logging.FromContext(ctx)
 
 	// Make a copy to modify
 	newVerState := ver
@@ -318,7 +318,7 @@ func (h *RotationHandler) performDisable(ctx context.Context, ver *kmspb.CryptoK
 }
 
 func (h *RotationHandler) performDestroy(ctx context.Context, ver *kmspb.CryptoKeyVersion) error {
-	logger := zlogger.FromContext(ctx)
+	logger := logging.FromContext(ctx)
 	logger.Info("destroying key version", zap.String("versionName", ver.Name))
 	destroyReq := &kmspb.DestroyCryptoKeyVersionRequest{
 		Name: ver.Name,
@@ -330,7 +330,7 @@ func (h *RotationHandler) performDestroy(ctx context.Context, ver *kmspb.CryptoK
 }
 
 func (h *RotationHandler) performCreateNew(ctx context.Context, keyName string) (*kmspb.CryptoKeyVersion, error) {
-	logger := zlogger.FromContext(ctx)
+	logger := logging.FromContext(ctx)
 	logger.Info("creating new key version.")
 
 	createReq := &kmspb.CreateCryptoKeyVersionRequest{
