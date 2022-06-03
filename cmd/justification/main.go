@@ -25,7 +25,7 @@ import (
 	jvspb "github.com/abcxyz/jvs/apis/v0"
 	"github.com/abcxyz/jvs/pkg/config"
 	"github.com/abcxyz/jvs/pkg/justification"
-	"github.com/abcxyz/jvs/pkg/zlogger"
+	"github.com/abcxyz/pkg/logging"
 	"go.opentelemetry.io/contrib/instrumentation/google.golang.org/grpc/otelgrpc"
 	"go.uber.org/zap"
 	"golang.org/x/sync/errgroup"
@@ -37,8 +37,8 @@ func main() {
 	ctx, done := signal.NotifyContext(context.Background(), syscall.SIGINT, syscall.SIGTERM)
 	defer done()
 
-	logger := zlogger.NewFromEnv("")
-	ctx = zlogger.WithLogger(ctx, logger)
+	logger := logging.NewFromEnv("")
+	ctx = logging.WithLogger(ctx, logger)
 
 	if err := realMain(ctx); err != nil {
 		done()
@@ -48,7 +48,7 @@ func main() {
 }
 
 func realMain(ctx context.Context) error {
-	logger := zlogger.FromContext(ctx)
+	logger := logging.FromContext(ctx)
 	s := grpc.NewServer(grpc.ChainUnaryInterceptor(
 		otelgrpc.UnaryServerInterceptor(),
 	))
