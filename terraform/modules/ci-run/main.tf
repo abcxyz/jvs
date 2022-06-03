@@ -36,10 +36,19 @@ resource "google_kms_crypto_key_iam_member" "server_acc_roles" {
     "roles/cloudkms.cryptoOperator"
   ])
 
-
   crypto_key_id = google_kms_crypto_key.asymmetric-sign-key.id
   role          = each.key
   member        = "serviceAccount:${var.jvs_service_account}"
+}
+
+resource "google_kms_crypto_key_iam_member" "rotator_acc_roles" {
+  for_each = toset([
+    "roles/cloudkms.admin",
+  ])
+
+  crypto_key_id = google_kms_crypto_key.asymmetric-sign-key.id
+  role          = each.key
+  member        = "serviceAccount:${var.rotator_service_account}"
 }
 
 module "jvs-service" {
@@ -48,7 +57,7 @@ module "jvs-service" {
   key_id          = google_kms_crypto_key.asymmetric-sign-key.id
   service_account = var.jvs_service_account
   tag             = local.tag
-  depends_on      = [google_project_iam_member.server_acc_roles]
+  depends_on      = [google_kms_crypto_key_iam_member.server_acc_roles]
 }
 
 module "cert-rotator" {
@@ -61,5 +70,5 @@ module "cert-rotator" {
   key_grace_period      = var.key_grace_period
   key_propagation_delay = var.key_propagation_delay
   key_ttl               = var.key_ttl
-  depends_on            = [google_project_iam_member.rotator_acc_roles]
+  depends_on            = [google_kms_crypto_key_iam_member.rotator_acc_roles]
 }

@@ -98,8 +98,12 @@ resource "google_cloud_run_service" "cert-rotator" {
   }
 }
 
+data "google_compute_default_service_account" "default" {
+  project     = var.project_id
+}
+
 resource "google_cloud_scheduler_job" "job" {
-  name        = "cert-rotation-job"
+  name        = "cert-rotation-job-${var.tag}"
   project     = var.project_id
   region      = var.region
   description = "Regularly executes the certificate rotator"
@@ -108,5 +112,9 @@ resource "google_cloud_scheduler_job" "job" {
   http_target {
     http_method = "POST"
     uri         = google_cloud_run_service.cert-rotator.status.0.url
+
+    oidc_token {
+      service_account_email = data.google_compute_default_service_account.default.email
+    }
   }
 }
