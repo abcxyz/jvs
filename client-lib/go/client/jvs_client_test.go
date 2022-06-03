@@ -159,11 +159,11 @@ func createToken(tb testing.TB, id string) jwt.Token {
 
 	tok, err := jwt.NewBuilder().
 		Audience([]string{"test_aud"}).
-		Expiration(time.Now().Add(5 * time.Minute)).
+		Expiration(time.Now().UTC().Add(5 * time.Minute)).
 		JwtID(id).
-		IssuedAt(time.Now()).
+		IssuedAt(time.Now().UTC()).
 		Issuer(`test_iss`).
-		NotBefore(time.Now()).
+		NotBefore(time.Now().UTC()).
 		Subject("test_sub").
 		Build()
 	if err != nil {
