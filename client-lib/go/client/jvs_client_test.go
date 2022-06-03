@@ -56,9 +56,19 @@ func TestValidateJWT(t *testing.T) {
 	keyID2 := key + "/cryptoKeyVersions/[VERSION]-1"
 
 	ecdsaKey, err := jwk.FromRaw(privateKey.PublicKey)
-	ecdsaKey.Set(jwk.KeyIDKey, keyID)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if err := ecdsaKey.Set(jwk.KeyIDKey, keyID); err != nil {
+		t.Fatal(err)
+	}
 	ecdsaKey2, err := jwk.FromRaw(privateKey2.PublicKey)
-	ecdsaKey2.Set(jwk.KeyIDKey, keyID2)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if err := ecdsaKey2.Set(jwk.KeyIDKey, keyID2); err != nil {
+		t.Fatal(err)
+	}
 	jwks := make(map[string][]jwk.Key)
 	jwks["keys"] = []jwk.Key{ecdsaKey, ecdsaKey2}
 
@@ -71,7 +81,7 @@ func TestValidateJWT(t *testing.T) {
 	mux := http.NewServeMux()
 	mux.HandleFunc(path, func(w http.ResponseWriter, r *http.Request) {
 		w.WriteHeader(http.StatusOK)
-		fmt.Fprintf(w, string(j))
+		fmt.Fprintf(w, "%s", j)
 	})
 
 	svr := httptest.NewServer(mux)
@@ -169,19 +179,24 @@ func createToken(tb testing.TB, id string) jwt.Token {
 	if err != nil {
 		tb.Fatalf("failed to build token: %s\n", err)
 	}
-	tok.Set("justs", []*v0.Justification{
+	if err := tok.Set("justs", []*v0.Justification{
 		{
 			Category: "explanation",
 			Value:    "this is a test explanation",
 		},
-	})
+	}); err != nil {
+		tb.Fatal(err)
+	}
 	return tok
 }
 
 func signToken(tb testing.TB, tok jwt.Token, privateKey *ecdsa.PrivateKey, keyID string) string {
 	tb.Helper()
+
 	hdrs := jws.NewHeaders()
-	hdrs.Set(jws.KeyIDKey, keyID)
+	if err := hdrs.Set(jws.KeyIDKey, keyID); err != nil {
+		tb.Fatal(err)
+	}
 
 	valid, err := jwt.Sign(tok, jwt.WithKey(jwa.ES256, privateKey, jws.WithProtectedHeaders(hdrs)))
 	if err != nil {
