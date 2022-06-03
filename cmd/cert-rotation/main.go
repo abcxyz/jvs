@@ -27,7 +27,7 @@ import (
 	kms "cloud.google.com/go/kms/apiv1"
 	"github.com/abcxyz/jvs/pkg/config"
 	"github.com/abcxyz/jvs/pkg/jvscrypto"
-	"github.com/abcxyz/jvs/pkg/zlogger"
+	"github.com/abcxyz/pkg/logging"
 	"github.com/hashicorp/go-multierror"
 	"go.uber.org/zap"
 )
@@ -38,7 +38,7 @@ type server struct {
 
 // ServeHTTP rotates a single key's versions.
 func (s *server) ServeHTTP(w http.ResponseWriter, r *http.Request) {
-	logger := zlogger.FromContext(r.Context())
+	logger := logging.FromContext(r.Context())
 	logger.Info("received request", zap.Any("url", r.URL))
 
 	var errs error
@@ -62,8 +62,8 @@ func main() {
 	ctx, done := signal.NotifyContext(context.Background(), syscall.SIGINT, syscall.SIGTERM)
 	defer done()
 
-	logger := zlogger.NewFromEnv("")
-	ctx = zlogger.WithLogger(ctx, logger)
+	logger := logging.NewFromEnv("")
+	ctx = logging.WithLogger(ctx, logger)
 
 	if err := realMain(ctx); err != nil {
 		done()
@@ -76,7 +76,7 @@ func main() {
 //   - using a cancellable context
 //   - listening to incoming requests in a goroutine
 func realMain(ctx context.Context) error {
-	logger := zlogger.FromContext(ctx)
+	logger := logging.FromContext(ctx)
 	kmsClient, err := kms.NewKeyManagementClient(ctx)
 	if err != nil {
 		return fmt.Errorf("failed to setup kms client: %w", err)
