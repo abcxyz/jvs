@@ -21,10 +21,10 @@ import (
 
 	kms "cloud.google.com/go/kms/apiv1"
 	jvspb "github.com/abcxyz/jvs/apis/v0"
-	"github.com/abcxyz/jvs/pkg/cache"
 	"github.com/abcxyz/jvs/pkg/config"
 	"github.com/abcxyz/jvs/pkg/jvscrypto"
-	"github.com/abcxyz/jvs/pkg/zlogger"
+	"github.com/abcxyz/pkg/cache"
+	"github.com/abcxyz/pkg/logging"
 	"github.com/golang-jwt/jwt"
 	"github.com/google/uuid"
 	"github.com/hashicorp/go-multierror"
@@ -65,7 +65,7 @@ const (
 // CreateToken implements the create token API which creates and signs a JWT
 // token if the provided justifications are valid.
 func (p *Processor) CreateToken(ctx context.Context, request *jvspb.CreateJustificationRequest) (string, error) {
-	logger := zlogger.FromContext(ctx)
+	logger := logging.FromContext(ctx)
 	if err := p.runValidations(request); err != nil {
 		logger.Error("Couldn't validate request", zap.Error(err))
 		return "", status.Error(codes.InvalidArgument, "couldn't validate request")
