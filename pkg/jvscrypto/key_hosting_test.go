@@ -28,9 +28,9 @@ import (
 	"time"
 
 	kms "cloud.google.com/go/kms/apiv1"
-	"github.com/abcxyz/jvs/pkg/cache"
 	"github.com/abcxyz/jvs/pkg/config"
 	"github.com/abcxyz/jvs/pkg/testutil"
+	"github.com/abcxyz/pkg/cache"
 	"github.com/google/go-cmp/cmp"
 	"google.golang.org/api/option"
 	kmspb "google.golang.org/genproto/googleapis/cloud/kms/v1"
