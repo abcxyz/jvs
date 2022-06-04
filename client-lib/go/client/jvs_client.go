@@ -18,24 +18,25 @@ package client
 import (
 	"context"
 	"fmt"
-	"sync"
 
 	"github.com/lestrrat-go/jwx/v2/jwk"
 	"github.com/lestrrat-go/jwx/v2/jws"
 	"github.com/lestrrat-go/jwx/v2/jwt"
 )
 
-// JVSClient allows for getting JWK keys from the JVS and validating JWTs with those keys
+// JVSClient allows for getting JWK keys from the JVS and validating JWTs with
+// those keys.
 type JVSClient struct {
 	config *JVSConfig
 	keys   jwk.Set
-	mu     sync.RWMutex
 }
 
-// NewJVSClient returns a JVSClient with the cache initialized
+// NewJVSClient returns a JVSClient with the cache initialized.
 func NewJVSClient(ctx context.Context, config *JVSConfig) (*JVSClient, error) {
 	c := jwk.NewCache(ctx)
-	c.Register(config.JVSEndpoint, jwk.WithMinRefreshInterval(config.CacheTimeout))
+	if err := c.Register(config.JVSEndpoint, jwk.WithMinRefreshInterval(config.CacheTimeout)); err != nil {
+		return nil, fmt.Errorf("failed to register: %w", err)
+	}
 
 	// check that cache is correctly set up and certs are available
 	if _, err := c.Refresh(ctx, config.JVSEndpoint); err != nil {
