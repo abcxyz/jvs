@@ -99,7 +99,7 @@ resource "google_cloud_run_service" "cert-rotator" {
 }
 
 data "google_compute_default_service_account" "default" {
-  project     = var.project_id
+  project = var.project_id
 }
 
 resource "google_cloud_scheduler_job" "job" {
