@@ -25,3 +25,7 @@ output "key_ring" {
 output "jvs_service_account" {
   value = module.e2e.jvs_service_account
 }
+
+output "rotator_service_account" {
+  value = module.e2e.rotator_service_account
+}

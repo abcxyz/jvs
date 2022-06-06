@@ -25,11 +25,6 @@ variable "project_id" {
   description = "The GCP project to host the justification verification service."
 }
 
-variable "service_name" {
-  type        = string
-  description = "The name for the justification verification server service."
-}
-
 variable "artifact_registry_location" {
   type        = string
   default     = "us"
@@ -41,7 +36,12 @@ variable "key_id" {
   description = "kms key id for use with signing"
 }
 
-variable "jvs_service_acc" {
+variable "service_account" {
   type        = string
   description = "The service account email address to be used by the JVS"
+}
+
+variable "tag" {
+  type        = string
+  description = "Tag that is intended to be unique across ci runs"
 }
