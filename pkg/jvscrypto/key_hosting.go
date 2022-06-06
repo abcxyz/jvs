@@ -25,6 +25,7 @@ import (
 	"fmt"
 	"net/http"
 	"sort"
+	"strings"
 
 	kms "cloud.google.com/go/kms/apiv1"
 	"github.com/abcxyz/jvs/pkg/config"
@@ -72,13 +73,30 @@ func (k *KeyServer) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 
 func (k *KeyServer) generateJWKString(ctx context.Context) (string, error) {
 	jwks := make([]*ECDSAKey, 0)
-	for _, key := range k.PublicKeyConfig.KeyRings {
-		list, err := k.jwkList(ctx, key)
-		if err != nil {
-			return "", fmt.Errorf("err while determining public keys %w", err)
+	for _, keyRing := range k.PublicKeyConfig.KeyRings {
+		i := k.KMSClient.ListCryptoKeys(ctx, &kmspb.ListCryptoKeysRequest{
+			Parent: keyRing,
+		})
+		for {
+			key, err := i.Next()
+			if errors.Is(err, iterator.Done) {
+				break
+			}
+			if err != nil {
+				return "", fmt.Errorf("err while reading crypto key version list: %w", err)
+			}
+
+			// When tag is blank, grab all keys. if tag is not blank, ensure key contains the tag.
+			if k.PublicKeyConfig.Tag == "" || strings.Contains(key.Name, k.PublicKeyConfig.Tag) {
+				list, err := k.jwkList(ctx, key.Name)
+				if err != nil {
+					return "", fmt.Errorf("err while determining public keys %w", err)
+				}
+				jwks = append(jwks, list...)
+			}
 		}
-		jwks = append(jwks, list...)
 	}
+
 	json, err := formatJWKString(jwks)
 	if err != nil {
 		return "", fmt.Errorf("err while formatting public keys, %w", err)

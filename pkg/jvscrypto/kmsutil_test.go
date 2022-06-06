@@ -41,11 +41,13 @@ func TestVerifyJWTString(t *testing.T) {
 	ctx := context.Background()
 
 	var clientOpt option.ClientOption
+	keyName := "keyName"
 	mockKMS := &testutil.MockKeyManagementServer{
 		UnimplementedKeyManagementServiceServer: kmspb.UnimplementedKeyManagementServiceServer{},
 		Reqs:                                    make([]proto.Message, 1),
 		Err:                                     nil,
 		Resps:                                   make([]proto.Message, 1),
+		KeyName:                                 keyName,
 	}
 
 	privateKey, err := ecdsa.GenerateKey(elliptic.P256(), rand.Reader)
@@ -122,11 +124,13 @@ func TestVerifyJWTString(t *testing.T) {
 	tests := []struct {
 		name    string
 		jwt     string
+		tag     string
 		wantErr string
 	}{
 		{
 			name: "happy_path",
 			jwt:  validJWT,
+			tag:  keyName,
 		},
 		{
 			name:    "unsigned",
@@ -138,13 +142,19 @@ func TestVerifyJWTString(t *testing.T) {
 			jwt:     invalidSignatureJWT,
 			wantErr: "unable to verify signed jwt string. crypto/ecdsa: verification error",
 		},
+		{
+			name:    "tag_doesnt_match",
+			jwt:     validJWT,
+			tag:     "abcxyz",
+			wantErr: "unable to find a key in the key ring",
+		},
 	}
 
 	for _, tc := range tests {
 		tc := tc
 		t.Run(tc.name, func(t *testing.T) {
 			t.Parallel()
-			err := VerifyJWTString(ctx, kms, "projects/*/locations/location1/keyRings/keyring1", "", tc.jwt)
+			err := VerifyJWTString(ctx, kms, "projects/*/locations/location1/keyRings/keyring1", tc.tag, tc.jwt)
 			testutil.ErrCmp(t, tc.wantErr, err)
 		})
 	}
