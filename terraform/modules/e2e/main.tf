@@ -28,6 +28,8 @@ resource "google_project_service" "server_project_services" {
     "artifactregistry.googleapis.com",
     "cloudkms.googleapis.com",
     "cloudresourcemanager.googleapis.com",
+    "cloudscheduler.googleapis.com",
+    "compute.googleapis.com",
     "run.googleapis.com",
     "serviceusage.googleapis.com",
   ])
@@ -44,6 +46,22 @@ resource "google_kms_key_ring" "keyring" {
 resource "google_service_account" "server-acc" {
   project      = var.project_id
   account_id   = "jvs-service-sa"
-  display_name = "JWT Service Account"
+  display_name = "JVS Service Account"
+}
+
+resource "google_service_account" "rotator-acc" {
+  project      = var.project_id
+  account_id   = "rotator-sa"
+  display_name = "Rotator Service Account"
+}
+
+resource "google_artifact_registry_repository" "image_registry" {
+  provider = google-beta
+
+  location      = var.artifact_registry_location
+  project       = var.project_id
+  repository_id = "docker-images"
+  description   = "Container Registry for the images."
+  format        = "DOCKER"
 }
 

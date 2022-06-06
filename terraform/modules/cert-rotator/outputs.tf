@@ -14,24 +14,6 @@
  * limitations under the License.
  */
 
-variable "project_id" {
-  type        = string
-  description = "The GCP project to host the justification verification service."
-}
-
-variable "key_location" {
-  type        = string
-  default     = "global"
-  description = "The location where kms key will be created."
-}
-
-variable "billing_account" {
-  type        = string
-  description = "The billing account to be linked to projects."
-}
-
-variable "artifact_registry_location" {
-  type        = string
-  default     = "us"
-  description = "The artifact registry location."
+output "jvs_server_url" {
+  value = google_cloud_run_service.cert-rotator.status.0.url
 }
