@@ -32,6 +32,9 @@ type PublicKeyConfig struct {
 	KeyRings     []string      `yaml:"key_rings,omitempty" env:"KEY_RINGS,overwrite"`
 	CacheTimeout time.Duration `yaml:"cache_timeout" env:"CACHE_TIMEOUT"`
 	Port         string        `env:"PORT,default=8080"`
+
+	// Used in integration tests to create a uniquely tagged stack.
+	Tag string `yaml:"tag,omitempty" env:"TAG,overwrite"`
 }
 
 // LoadConfig calls the necessary methods to load in config using the OsLookuper which finds env variables specified on the host.

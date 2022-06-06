@@ -42,7 +42,6 @@ func (s *server) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	logger.Info("received request", zap.Any("url", r.URL))
 
 	var errs error
-	// TODO: load keys from DB instead. https://github.com/abcxyz/jvs/issues/17
 	for _, key := range s.handler.CryptoConfig.KeyRings {
 		if err := s.handler.RotateKey(r.Context(), key); err != nil {
 			errs = multierror.Append(errs, fmt.Errorf("error while rotating key ring %s: %w", key, err))

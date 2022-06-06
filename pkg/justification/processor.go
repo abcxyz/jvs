@@ -91,7 +91,7 @@ func (p *Processor) CreateToken(ctx context.Context, request *jvspb.CreateJustif
 }
 
 func (p *Processor) getLatestSigner(ctx context.Context) (*signerWithID, error) {
-	ver, err := jvscrypto.GetLatestKeyVersion(ctx, p.kms, p.config.KeyRing)
+	ver, err := jvscrypto.GetLatestKeyVersion(ctx, p.kms, p.config.KeyRing, p.config.Tag)
 	if err != nil {
 		return nil, fmt.Errorf("failed to get key version, %w", err)
 	}

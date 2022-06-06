@@ -48,6 +48,9 @@ type CryptoConfig struct {
 	// KeyRing format: `projects/*/locations/*/keyRings/*`
 	// https://pkg.go.dev/google.golang.org/genproto/googleapis/cloud/kms/v1#CryptoKey
 	KeyRings []string `yaml:"key_rings,omitempty" env:"KEY_RINGS,overwrite"`
+
+	// Used in integration tests to create a uniquely tagged stack.
+	Tag string `yaml:"tag,omitempty" env:"TAG,overwrite"`
 }
 
 // Validate checks if the config is valid.

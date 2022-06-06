@@ -49,6 +49,9 @@ type JustificationConfig struct {
 
 	// Issuer will be used to set the issuer field when signing JWTs
 	Issuer string `yaml:"issuer" env:"ISSUER,overwrite"`
+
+	// Used in integration tests to create a uniquely tagged stack.
+	Tag string `yaml:"tag,omitempty" env:"TAG,overwrite"`
 }
 
 // Validate checks if the config is valid.
