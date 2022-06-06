@@ -28,7 +28,7 @@ type PublicKeyConfig struct {
 	// TODO: This is intended to be temporary, and will eventually be retrieved from a persistent external datastore
 	// https://github.com/abcxyz/jvs/issues/17
 	// KeyRing format: `projects/*/locations/*/keyRings/*/cryptoKeys/*`
-	// https://pkg.go.dev/google.golang.org/genproto/googleapis/cloud/kms/v1#PublicKeyKey
+	// https://pkg.go.dev/google.golang.org/genproto/googleapis/cloud/kms/v1#KeyRing
 	KeyRings     []string      `yaml:"key_rings,omitempty" env:"KEY_RINGS,overwrite"`
 	CacheTimeout time.Duration `yaml:"cache_timeout" env:"CACHE_TIMEOUT"`
 	Port         string        `env:"PORT,default=8080"`

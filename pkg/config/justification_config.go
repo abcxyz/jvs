@@ -41,7 +41,7 @@ type JustificationConfig struct {
 	Port string `yaml:"port,omitempty" env:"PORT,overwrite"`
 
 	// KeyRing format: `projects/*/locations/*/keyRings/*`
-	// https://pkg.go.dev/google.golang.org/genproto/googleapis/cloud/kms/v1#CryptoKey
+	// https://pkg.go.dev/google.golang.org/genproto/googleapis/cloud/kms/v1#KeyRing
 	KeyRing string `yaml:"key_ring,omitempty" env:"KEY_RING,overwrite"`
 
 	// SignerCacheTimeout is the duration that keys stay in cache before being revoked.

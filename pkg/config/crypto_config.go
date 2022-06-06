@@ -46,7 +46,7 @@ type CryptoConfig struct {
 	DisabledPeriod time.Duration `yaml:"disabled_period,omitempty" env:"DISABLED_PERIOD,overwrite"`
 
 	// KeyRing format: `projects/*/locations/*/keyRings/*`
-	// https://pkg.go.dev/google.golang.org/genproto/googleapis/cloud/kms/v1#CryptoKey
+	// https://pkg.go.dev/google.golang.org/genproto/googleapis/cloud/kms/v1#KeyRing
 	KeyRings []string `yaml:"key_rings,omitempty" env:"KEY_RINGS,overwrite"`
 
 	// Used in integration tests to create a uniquely tagged stack.
