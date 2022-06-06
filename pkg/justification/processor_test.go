@@ -99,7 +99,7 @@ func TestCreateToken(t *testing.T) {
 
 	processor := NewProcessor(c, &config.JustificationConfig{
 		Version:            1,
-		KeyName:            key,
+		KeyRing:            key,
 		SignerCacheTimeout: 5 * time.Minute,
 		Issuer:             config.IssuerDefault,
 	})

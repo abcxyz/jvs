@@ -39,9 +39,22 @@ const (
 )
 
 // GetLatestKeyVersion looks up the newest enabled key version. If there is no enabled version, this returns nil.
-func GetLatestKeyVersion(ctx context.Context, kms *kms.KeyManagementClient, keyName string) (*kmspb.CryptoKeyVersion, error) {
+func GetLatestKeyVersion(ctx context.Context, kms *kms.KeyManagementClient, keyRing string) (*kmspb.CryptoKeyVersion, error) {
+	// Grab the first key in the Ring.
+	i := kms.ListCryptoKeys(ctx, &kmspb.ListCryptoKeysRequest{
+		Parent: keyRing,
+	})
+	key, err := i.Next()
+	if errors.Is(err, iterator.Done) {
+		return nil, fmt.Errorf("unable to find a key in the key ring %s", keyRing)
+	}
+	if err != nil {
+		return nil, fmt.Errorf("err while reading crypto key version list: %w", err)
+	}
+
+	// Get the newest enabled version from that key
 	it := kms.ListCryptoKeyVersions(ctx, &kmspb.ListCryptoKeyVersionsRequest{
-		Parent: keyName,
+		Parent: key.Name,
 		Filter: "state=ENABLED",
 	})
 

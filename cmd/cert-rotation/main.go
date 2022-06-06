@@ -43,9 +43,9 @@ func (s *server) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 
 	var errs error
 	// TODO: load keys from DB instead. https://github.com/abcxyz/jvs/issues/17
-	for _, key := range s.handler.CryptoConfig.KeyNames {
+	for _, key := range s.handler.CryptoConfig.KeyRings {
 		if err := s.handler.RotateKey(r.Context(), key); err != nil {
-			errs = multierror.Append(errs, fmt.Errorf("error while rotating key %s: %w", key, err))
+			errs = multierror.Append(errs, fmt.Errorf("error while rotating key ring %s: %w", key, err))
 			continue
 		}
 		logger.Info("successfully performed actions (if necessary) on key.", zap.String("key", key))

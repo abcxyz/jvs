@@ -72,7 +72,7 @@ func (k *KeyServer) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 
 func (k *KeyServer) generateJWKString(ctx context.Context) (string, error) {
 	jwks := make([]*ECDSAKey, 0)
-	for _, key := range k.PublicKeyConfig.KeyNames {
+	for _, key := range k.PublicKeyConfig.KeyRings {
 		list, err := k.jwkList(ctx, key)
 		if err != nil {
 			return "", fmt.Errorf("err while determining public keys %w", err)

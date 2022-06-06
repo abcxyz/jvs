@@ -31,7 +31,7 @@ func TestLoadPublicKeyConfig(t *testing.T) {
 	envs := make(map[string]string)
 	envs["PORT"] = "123"
 	envs["CACHE_TIMEOUT"] = "5m"
-	envs["KEY_NAMES"] = "key1,key2"
+	envs["KEY_RINGS"] = "key1,key2"
 
 	lookuper := envconfig.MapLookuper(envs)
 	content := bytes.NewBufferString("").Bytes()
@@ -41,7 +41,7 @@ func TestLoadPublicKeyConfig(t *testing.T) {
 	}
 
 	wantConfig := &PublicKeyConfig{
-		KeyNames:     []string{"key1", "key2"},
+		KeyRings:     []string{"key1", "key2"},
 		CacheTimeout: 5 * time.Minute,
 		Port:         "123",
 	}
@@ -55,7 +55,7 @@ func TestLoadPublicKeyConfig_Default(t *testing.T) {
 	ctx := context.Background()
 
 	envs := make(map[string]string)
-	envs["KEY_NAMES"] = "key1,key2"
+	envs["KEY_RINGS"] = "key1,key2"
 	envs["CACHE_TIMEOUT"] = "5m"
 
 	lookuper := envconfig.MapLookuper(envs)
@@ -66,7 +66,7 @@ func TestLoadPublicKeyConfig_Default(t *testing.T) {
 	}
 
 	wantConfig := &PublicKeyConfig{
-		KeyNames:     []string{"key1", "key2"},
+		KeyRings:     []string{"key1", "key2"},
 		CacheTimeout: 5 * time.Minute,
 		Port:         "8080",
 	}

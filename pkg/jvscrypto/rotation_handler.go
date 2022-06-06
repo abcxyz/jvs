@@ -39,6 +39,31 @@ type RotationHandler struct {
 	CryptoConfig *config.CryptoConfig
 }
 
+// RotateKeyRing is called to determine and perform rotation actions on all keys within a key ring.
+// key ring is the full resource name: `projects/*/locations/*/keyRings/*
+func (h *RotationHandler) RotateKeyRing(ctx context.Context, keyRing string) error {
+	it := h.KMSClient.ListCryptoKeys(ctx, &kmspb.ListCryptoKeysRequest{Parent: keyRing})
+
+	var errs error
+	for {
+		ver, err := it.Next()
+		if errors.Is(err, iterator.Done) {
+			break
+		}
+		if err != nil {
+			return fmt.Errorf("err while reading crypto key version list: %w", err)
+		}
+		err = h.RotateKey(ctx, ver.Name)
+		if err != nil {
+			errs = multierror.Append(errs, fmt.Errorf("couldn't rotate key %s: %w", ver.Name, err))
+		}
+	}
+	if errs != nil {
+		return errs
+	}
+	return nil
+}
+
 // RotateKey is called to determine and perform rotation actions on versions for a key.
 // key is the full resource name: `projects/*/locations/*/keyRings/*/cryptoKeys/*`
 // https://pkg.go.dev/google.golang.org/genproto/googleapis/cloud/kms/v1#CryptoKey

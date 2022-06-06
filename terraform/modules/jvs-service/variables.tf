@@ -31,9 +31,9 @@ variable "artifact_registry_location" {
   description = "The artifact registry location."
 }
 
-variable "key_id" {
+variable "key_ring" {
   type        = string
-  description = "kms key id for use with signing"
+  description = "kms key ring for use with signing"
 }
 
 variable "service_account" {
