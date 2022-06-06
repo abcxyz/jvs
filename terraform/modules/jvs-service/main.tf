@@ -53,6 +53,10 @@ resource "google_cloud_run_service" "server" {
           name  = "JVS_KEY_RING"
           value = var.key_ring
         }
+        env {
+          name  = "JVS_TAG"
+          value = var.tag
+        }
       }
     }
 

@@ -69,6 +69,10 @@ resource "google_cloud_run_service" "cert-rotator" {
           name  = "JVS_PROPAGATION_DELAY"
           value = var.key_propagation_delay
         }
+        env {
+          name  = "JVS_TAG"
+          value = var.tag
+        }
       }
     }
 
@@ -99,7 +103,7 @@ resource "google_cloud_run_service" "cert-rotator" {
 }
 
 data "google_compute_default_service_account" "default" {
-  project     = var.project_id
+  project = var.project_id
 }
 
 resource "google_cloud_scheduler_job" "job" {

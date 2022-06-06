@@ -39,17 +39,31 @@ const (
 )
 
 // GetLatestKeyVersion looks up the newest enabled key version. If there is no enabled version, this returns nil.
-func GetLatestKeyVersion(ctx context.Context, kms *kms.KeyManagementClient, keyRing string) (*kmspb.CryptoKeyVersion, error) {
+func GetLatestKeyVersion(ctx context.Context, kms *kms.KeyManagementClient, keyRing string, tag string) (*kmspb.CryptoKeyVersion, error) {
 	// Grab the first key in the Ring.
 	i := kms.ListCryptoKeys(ctx, &kmspb.ListCryptoKeysRequest{
 		Parent: keyRing,
 	})
-	key, err := i.Next()
-	if errors.Is(err, iterator.Done) {
-		return nil, fmt.Errorf("unable to find a key in the key ring %s", keyRing)
+
+	var key *kmspb.CryptoKey
+	for {
+		k, err := i.Next()
+		if errors.Is(err, iterator.Done) {
+			break
+		}
+		if err != nil {
+			return nil, fmt.Errorf("err while reading crypto key version list: %w", err)
+		}
+
+		// When tag is blank, we grab the first key. if tag is not blank, ensure key contains the tag.
+		if tag == "" || strings.Contains(k.Name, tag) {
+			key = k
+			break
+		}
 	}
-	if err != nil {
-		return nil, fmt.Errorf("err while reading crypto key version list: %w", err)
+
+	if key == nil {
+		return nil, fmt.Errorf("unable to find a key in the key ring %s", keyRing)
 	}
 
 	// Get the newest enabled version from that key
@@ -73,12 +87,15 @@ func GetLatestKeyVersion(ctx context.Context, kms *kms.KeyManagementClient, keyR
 			newestTime = ver.CreateTime.AsTime()
 		}
 	}
+	if newestEnabledVersion == nil {
+		return nil, fmt.Errorf("unable to find valid key version for key %s", key.Name)
+	}
 	return newestEnabledVersion, nil
 }
 
 // PublicKey returns the public key for the newest enabled key version.
-func PublicKey(ctx context.Context, kms *kms.KeyManagementClient, keyName string) ([]byte, error) {
-	ver, err := GetLatestKeyVersion(ctx, kms, keyName)
+func PublicKey(ctx context.Context, kms *kms.KeyManagementClient, keyRing string, tag string) ([]byte, error) {
+	ver, err := GetLatestKeyVersion(ctx, kms, keyRing, tag)
 	if err != nil {
 		return nil, fmt.Errorf("failed to get public key: %w", err)
 	}
@@ -91,8 +108,8 @@ func PublicKey(ctx context.Context, kms *kms.KeyManagementClient, keyName string
 }
 
 // VerifyJWTString verifies that a JWT string is signed correctly and is valid.
-func VerifyJWTString(ctx context.Context, kms *kms.KeyManagementClient, keyName string, jwtStr string) error {
-	key, err := PublicKey(ctx, kms, keyName)
+func VerifyJWTString(ctx context.Context, kms *kms.KeyManagementClient, keyRing string, tag string, jwtStr string) error {
+	key, err := PublicKey(ctx, kms, keyRing, tag)
 	if err != nil {
 		return err
 	}

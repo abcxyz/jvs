@@ -78,6 +78,24 @@ func (s *MockKeyManagementServer) ListCryptoKeyVersions(ctx context.Context, req
 	}, nil
 }
 
+func (s *MockKeyManagementServer) ListCryptoKeys(ctx context.Context, req *kmspb.ListCryptoKeysRequest) (*kmspb.ListCryptoKeysResponse, error) {
+	s.reqMu.Lock()
+	defer s.reqMu.Unlock()
+	s.Reqs = append(s.Reqs, req)
+	if s.Err != nil {
+		return nil, s.Err
+	}
+	list := make([]*kmspb.CryptoKey, 0)
+	for i := 0; i < s.NumVersions; i++ {
+		list = append(list, &kmspb.CryptoKey{
+			Name: fmt.Sprintf("%s-%d", s.KeyName, i),
+		})
+	}
+	return &kmspb.ListCryptoKeysResponse{
+		CryptoKeys: list,
+	}, nil
+}
+
 func (s *MockKeyManagementServer) GetCryptoKey(ctx context.Context, req *kmspb.GetCryptoKeyRequest) (*kmspb.CryptoKey, error) {
 	s.reqMu.Lock()
 	defer s.reqMu.Unlock()

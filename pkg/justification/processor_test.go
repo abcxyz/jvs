@@ -161,7 +161,7 @@ func TestCreateToken(t *testing.T) {
 			if gotErr != nil {
 				return
 			}
-			if err := jvscrypto.VerifyJWTString(ctx, c, "keyName", response); err != nil {
+			if err := jvscrypto.VerifyJWTString(ctx, c, "keyRing", "", response); err != nil {
 				t.Errorf("Unable to verify signed jwt. %v", err)
 			}
 

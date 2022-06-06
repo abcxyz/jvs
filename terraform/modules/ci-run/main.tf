@@ -51,16 +51,6 @@ resource "google_kms_key_ring_iam_member" "rotator_acc_roles" {
   member      = "serviceAccount:${var.rotator_service_account}"
 }
 
-resource "google_kms_crypto_key_iam_member" "rotator_acc_roles" {
-  for_each = toset([
-    "roles/cloudkms.admin",
-  ])
-
-  crypto_key_id = google_kms_crypto_key.asymmetric-sign-key.id
-  role          = each.key
-  member        = "serviceAccount:${var.rotator_service_account}"
-}
-
 module "jvs-service" {
   source          = "../jvs-service"
   project_id      = var.project_id
@@ -81,17 +71,4 @@ module "cert-rotator" {
   key_propagation_delay = var.key_propagation_delay
   key_ttl               = var.key_ttl
   depends_on            = [google_kms_key_ring_iam_member.rotator_acc_roles]
-}
-
-module "cert-rotator" {
-  source                = "../cert-rotator"
-  project_id            = var.project_id
-  key_id                = google_kms_crypto_key.asymmetric-sign-key.id
-  service_account       = var.rotator_service_account
-  tag                   = local.tag
-  key_disabled_period   = var.key_disabled_period
-  key_grace_period      = var.key_grace_period
-  key_propagation_delay = var.key_propagation_delay
-  key_ttl               = var.key_ttl
-  depends_on            = [google_kms_crypto_key_iam_member.rotator_acc_roles]
 }

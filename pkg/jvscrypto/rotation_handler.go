@@ -40,7 +40,7 @@ type RotationHandler struct {
 }
 
 // RotateKeyRing is called to determine and perform rotation actions on all keys within a key ring.
-// key ring is the full resource name: `projects/*/locations/*/keyRings/*
+// key ring is the full resource name: `projects/*/locations/*/keyRings/* .
 func (h *RotationHandler) RotateKeyRing(ctx context.Context, keyRing string) error {
 	it := h.KMSClient.ListCryptoKeys(ctx, &kmspb.ListCryptoKeysRequest{Parent: keyRing})
 
