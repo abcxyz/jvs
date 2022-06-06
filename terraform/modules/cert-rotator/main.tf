@@ -24,15 +24,15 @@ resource "null_resource" "build" {
       PROJECT_ID = var.project_id
       TAG        = var.tag
       REPO       = "${var.artifact_registry_location}-docker.pkg.dev/${var.project_id}/docker-images/jvs"
-      APP_NAME   = "jvs-service"
+      APP_NAME   = "rotator-service"
     }
 
-    command = "${path.module}/../../../scripts/build.sh justification"
+    command = "${path.module}/../../../scripts/build.sh cert-rotation"
   }
 }
 
-resource "google_cloud_run_service" "server" {
-  name     = "jvs-${var.tag}"
+resource "google_cloud_run_service" "cert-rotator" {
+  name     = "cert-rotator-${var.tag}"
   location = var.region
   project  = var.project_id
 
@@ -41,7 +41,7 @@ resource "google_cloud_run_service" "server" {
       service_account_name = var.service_account
 
       containers {
-        image = "${var.artifact_registry_location}-docker.pkg.dev/${var.project_id}/docker-images/jvs/jvs-service:${var.tag}"
+        image = "${var.artifact_registry_location}-docker.pkg.dev/${var.project_id}/docker-images/jvs/rotator-service:${var.tag}"
 
         resources {
           limits = {
@@ -50,8 +50,24 @@ resource "google_cloud_run_service" "server" {
           }
         }
         env {
-          name  = "JVS_KEY"
+          name  = "JVS_KEY_NAMES"
           value = var.key_id
+        }
+        env {
+          name  = "JVS_KEY_TTL"
+          value = var.key_ttl
+        }
+        env {
+          name  = "JVS_GRACE_PERIOD"
+          value = var.key_grace_period
+        }
+        env {
+          name  = "JVS_DISABLED_PERIOD"
+          value = var.key_disabled_period
+        }
+        env {
+          name  = "JVS_PROPAGATION_DELAY"
+          value = var.key_propagation_delay
         }
       }
     }
@@ -79,5 +95,26 @@ resource "google_cloud_run_service" "server" {
       template[0].metadata[0].annotations["serving.knative.dev/creator"],
       template[0].metadata[0].annotations["serving.knative.dev/lastModifier"],
     ]
+  }
+}
+
+data "google_compute_default_service_account" "default" {
+  project     = var.project_id
+}
+
+resource "google_cloud_scheduler_job" "job" {
+  name        = "cert-rotation-job-${var.tag}"
+  project     = var.project_id
+  region      = var.region
+  description = "Regularly executes the certificate rotator"
+  schedule    = "*/${var.cadence} * * * *"
+
+  http_target {
+    http_method = "POST"
+    uri         = google_cloud_run_service.cert-rotator.status.0.url
+
+    oidc_token {
+      service_account_email = data.google_compute_default_service_account.default.email
+    }
   }
 }

@@ -25,3 +25,7 @@ output "key_ring" {
 output "jvs_service_account" {
   value = google_service_account.server-acc.email
 }
+
+output "rotator_service_account" {
+  value = google_service_account.rotator-acc.email
+}
