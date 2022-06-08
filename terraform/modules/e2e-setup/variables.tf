@@ -19,23 +19,43 @@ variable "project_id" {
   description = "The GCP project to host the justification verification service."
 }
 
+variable "billing_account" {
+  type        = string
+  description = "The billing account to be linked to projects."
+}
+
+variable "artifact_registry_location" {
+  type        = string
+  default     = "us"
+  description = "The artifact registry location."
+}
+
 variable "key_location" {
   type        = string
   default     = "global"
   description = "The location where kms key will be created."
 }
 
-variable "jvs_service_account" {
+variable "key_ttl" {
   type        = string
-  description = "The service account email for the JVS to use"
+  default     = "10m"
+  description = "the length of time that we expect a key to be valid for"
 }
 
-variable "rotator_service_account" {
+variable "key_grace_period" {
   type        = string
-  description = "The service account email for the cert rotator to use"
+  default     = "5m"
+  description = "length of time between when we rotate the key and when an old Key Version is no longer valid and available"
 }
 
-variable "public_key_service_account" {
+variable "key_disabled_period" {
   type        = string
-  description = "The service account email for the public key provider to use"
+  default     = "5m"
+  description = "length of time between when the key is disabled and when we delete the key"
+}
+
+variable "key_propagation_delay" {
+  type        = string
+  default     = "2m"
+  description = "length of time that it takes for a change in the key in KMS to be reflected in the client"
 }

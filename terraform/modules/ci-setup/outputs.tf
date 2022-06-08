@@ -14,12 +14,18 @@
  * limitations under the License.
  */
 
+output "project_id" {
+  value = google_project.jvs_project.project_id
+}
 
-// intended to be run once to set up the ci environment.
+output "jvs_service_account" {
+  value = google_service_account.server-acc.email
+}
 
-module "e2e" {
-  source     = "../../modules/ci-setup"
-  project_id = "jvs-ci"
-  // The billing account 'Gong Test'.
-  billing_account = "016242-61A3FB-F92462"
+output "rotator_service_account" {
+  value = google_service_account.rotator-acc.email
+}
+
+output "public_key_service_account" {
+  value = google_service_account.public-key-acc.email
 }
