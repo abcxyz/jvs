@@ -14,6 +14,6 @@
  * limitations under the License.
  */
 
-output "jvs_server_url" {
-  value = module.jvs-service.jvs_server_url
+output "key_ring" {
+  value = google_kms_key_ring.keyring.id
 }

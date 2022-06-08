@@ -17,7 +17,6 @@ ROOT="$(cd "$(dirname "$0")/.." &>/dev/null; pwd -P)"
 
 JVS_SERVICE_ACCOUNT="jvs-service-sa@jvs-ci.iam.gserviceaccount.com"
 ROTATOR_SERVICE_ACCOUNT="rotator-sa@jvs-ci.iam.gserviceaccount.com"
-KEY_RING="projects/jvs-ci/locations/global/keyRings/jvs-keyring"
 PROJECT_ID="jvs-ci"
 
 JVS_DIR=${ROOT}/terraform/modules/ci-run
@@ -27,5 +26,11 @@ terraform init
 terraform apply -auto-approve \
   -var="project_id=${PROJECT_ID}" \
   -var="jvs_service_account=${JVS_SERVICE_ACCOUNT}" \
-  -var="rotator_service_account=${ROTATOR_SERVICE_ACCOUNT}" \
-  -var="key_ring=${KEY_RING}"
+  -var="rotator_service_account=${ROTATOR_SERVICE_ACCOUNT}"
+
+export KEY_RING=$(terraform output key_ring)
+
+PKG_DIR=${ROOT}/pkg
+cd ${PKG_DIR}
+go test github.com/abcxyz/jvs/pkg/ \
+  -key-ring=${KEY_RING}
