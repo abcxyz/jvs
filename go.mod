@@ -9,6 +9,7 @@ require (
 	github.com/google/go-cmp v0.5.8
 	github.com/google/uuid v1.3.0
 	github.com/hashicorp/go-multierror v1.1.1
+	github.com/jeffchao/backoff v0.0.0-20140404060208-9d7fd7aa17f2
 	github.com/sethvargo/go-envconfig v0.6.2
 	github.com/sethvargo/go-gcpkms v0.1.0
 	go.opentelemetry.io/contrib/instrumentation/google.golang.org/grpc/otelgrpc v0.32.0

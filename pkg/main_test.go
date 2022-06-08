@@ -19,20 +19,17 @@ import (
 	"context"
 	"errors"
 	"flag"
-	"log"
 	"os"
+	"strconv"
 	"strings"
 	"testing"
+	"time"
 
 	kms "cloud.google.com/go/kms/apiv1"
 	"github.com/google/uuid"
+	"github.com/jeffchao/backoff"
 	"google.golang.org/api/iterator"
 	kmspb "google.golang.org/genproto/googleapis/cloud/kms/v1"
-)
-
-var (
-	keyRingPtr = flag.String("key-ring", "", `The key ring which the created key will live in.`)
-	isInteg    = flag.Bool("integ", false, "set this flag if integ tests are expected to be run")
 )
 
 func TestMain(m *testing.M) {
@@ -42,13 +39,14 @@ func TestMain(m *testing.M) {
 
 func TestJVS(t *testing.T) {
 	ctx := context.Background()
-	if !*isInteg {
+	if !isInteg(t) {
 		// Not an integ test, don't run anything.
 		t.Skip("Not an integration test, skipping...")
 		return
 	}
-	if *keyRingPtr == "" {
-		log.Fatal("Key ring must be provided using -key-ring flag.")
+	keyRing := os.Getenv("TEST_JVS_KMS_KEY_RING")
+	if keyRing == "" {
+		t.Fatal("Key ring must be provided using TEST_JVS_KMS_KEY_RING env variable.")
 	}
 
 	kmsClient, err := kms.NewKeyManagementClient(ctx)
@@ -56,7 +54,7 @@ func TestJVS(t *testing.T) {
 		t.Fatalf("failed to setup kms client: %s", err)
 	}
 
-	keyRing := strings.Trim(*keyRingPtr, "\"")
+	keyRing = strings.Trim(keyRing, "\"")
 	keyName := createKey(ctx, t, kmsClient, keyRing)
 	t.Cleanup(func() {
 		cleanUpKey(ctx, t, kmsClient, keyName)
@@ -64,6 +62,19 @@ func TestJVS(t *testing.T) {
 	})
 
 	// TODO: Actual tests and stuff
+}
+
+func isInteg(tb testing.TB) bool {
+	tb.Helper()
+	integVal := os.Getenv("TEST_JVS_INTEGRATION")
+	if integVal == "" {
+		return false
+	}
+	isInteg, err := strconv.ParseBool(integVal)
+	if err != nil {
+		tb.Fatalf("Unable to parse TEST_JVS_INTEGRATION flag %s: %s", integVal, err)
+	}
+	return isInteg
 }
 
 // Create an asymmetric signing key for use with integration tests.
@@ -85,6 +96,25 @@ func createKey(ctx context.Context, tb testing.TB, kmsClient *kms.KeyManagementC
 	})
 	if err != nil {
 		tb.Fatalf("failed to create crypto key: %s", err)
+	}
+
+	f := backoff.Exponential()
+	f.Interval = 100 * time.Millisecond
+	f.MaxRetries = 10
+	// Wait for a key version to be created and enabled.
+	if err := f.Retry(func() error {
+		ckv, err := kmsClient.GetCryptoKeyVersion(ctx, &kmspb.GetCryptoKeyVersionRequest{
+			Name: ck.Name + "/cryptoKeyVersions/1",
+		})
+		if err != nil {
+			return err
+		}
+		if ckv.State == kmspb.CryptoKeyVersion_ENABLED {
+			return nil
+		}
+		return errors.New("key is not in ready state")
+	}); err != nil {
+		tb.Fatal("key did not enter ready state")
 	}
 	return ck.Name
 }

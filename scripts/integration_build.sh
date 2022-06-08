@@ -28,9 +28,9 @@ terraform apply -auto-approve \
   -var="jvs_service_account=${JVS_SERVICE_ACCOUNT}" \
   -var="rotator_service_account=${ROTATOR_SERVICE_ACCOUNT}"
 
-export KEY_RING=$(terraform output key_ring)
+export TEST_JVS_KMS_KEY_RING=$(terraform output key_ring)
+export TEST_JVS_INTEGRATION=true
 
 PKG_DIR=${ROOT}/pkg
 cd ${PKG_DIR}
-go test github.com/abcxyz/jvs/pkg/ \
-  -key-ring=${KEY_RING}
+go test github.com/abcxyz/jvs/pkg/
