@@ -18,7 +18,6 @@ package test
 import (
 	"context"
 	"errors"
-	"flag"
 	"os"
 	"strconv"
 	"strings"
@@ -27,19 +26,14 @@ import (
 
 	kms "cloud.google.com/go/kms/apiv1"
 	"github.com/google/uuid"
-	"github.com/jeffchao/backoff"
+	"github.com/sethvargo/go-retry"
 	"google.golang.org/api/iterator"
 	kmspb "google.golang.org/genproto/googleapis/cloud/kms/v1"
 )
 
-func TestMain(m *testing.M) {
-	flag.Parse()
-	os.Exit(m.Run())
-}
-
 func TestJVS(t *testing.T) {
 	ctx := context.Background()
-	if !isInteg(t) {
+	if !testIsIntegration(t) {
 		// Not an integ test, don't run anything.
 		t.Skip("Not an integration test, skipping...")
 		return
@@ -55,16 +49,19 @@ func TestJVS(t *testing.T) {
 	}
 
 	keyRing = strings.Trim(keyRing, "\"")
-	keyName := createKey(ctx, t, kmsClient, keyRing)
+	keyName := testCreateKey(ctx, t, kmsClient, keyRing)
 	t.Cleanup(func() {
-		cleanUpKey(ctx, t, kmsClient, keyName)
-		kmsClient.Close()
+		testCleanUpKey(ctx, t, kmsClient, keyName)
+		err := kmsClient.Close()
+		if err != nil {
+			t.Errorf("Clean up of key %s failed: %s", keyName, err)
+		}
 	})
 
 	// TODO: Actual tests and stuff
 }
 
-func isInteg(tb testing.TB) bool {
+func testIsIntegration(tb testing.TB) bool {
 	tb.Helper()
 	integVal := os.Getenv("TEST_JVS_INTEGRATION")
 	if integVal == "" {
@@ -78,7 +75,7 @@ func isInteg(tb testing.TB) bool {
 }
 
 // Create an asymmetric signing key for use with integration tests.
-func createKey(ctx context.Context, tb testing.TB, kmsClient *kms.KeyManagementClient, keyRing string) string {
+func testCreateKey(ctx context.Context, tb testing.TB, kmsClient *kms.KeyManagementClient, keyRing string) string {
 	tb.Helper()
 	u, err := uuid.NewUUID()
 	if err != nil {
@@ -98,11 +95,9 @@ func createKey(ctx context.Context, tb testing.TB, kmsClient *kms.KeyManagementC
 		tb.Fatalf("failed to create crypto key: %s", err)
 	}
 
-	f := backoff.Exponential()
-	f.Interval = 100 * time.Millisecond
-	f.MaxRetries = 10
 	// Wait for a key version to be created and enabled.
-	if err := f.Retry(func() error {
+	r := retry.NewExponential(100 * time.Millisecond)
+	if err := retry.Do(ctx, retry.WithMaxRetries(10, r), func(ctx context.Context) error {
 		ckv, err := kmsClient.GetCryptoKeyVersion(ctx, &kmspb.GetCryptoKeyVersionRequest{
 			Name: ck.Name + "/cryptoKeyVersions/1",
 		})
@@ -120,7 +115,7 @@ func createKey(ctx context.Context, tb testing.TB, kmsClient *kms.KeyManagementC
 }
 
 // Destroy all versions within a key in order to clean up tests.
-func cleanUpKey(ctx context.Context, tb testing.TB, kmsClient *kms.KeyManagementClient, keyName string) {
+func testCleanUpKey(ctx context.Context, tb testing.TB, kmsClient *kms.KeyManagementClient, keyName string) {
 	tb.Helper()
 	it := kmsClient.ListCryptoKeyVersions(ctx, &kmspb.ListCryptoKeyVersionsRequest{
 		Parent: keyName,

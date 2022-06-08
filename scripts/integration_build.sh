@@ -19,9 +19,9 @@ JVS_SERVICE_ACCOUNT="jvs-service-sa@jvs-ci.iam.gserviceaccount.com"
 ROTATOR_SERVICE_ACCOUNT="rotator-sa@jvs-ci.iam.gserviceaccount.com"
 PROJECT_ID="jvs-ci"
 
-JVS_DIR=${ROOT}/terraform/modules/ci-run
+CI_DIR=${ROOT}/terraform/modules/ci-run
 
-cd $JVS_DIR
+cd $CI_DIR
 terraform init
 terraform apply -auto-approve \
   -var="project_id=${PROJECT_ID}" \
@@ -31,6 +31,5 @@ terraform apply -auto-approve \
 export TEST_JVS_KMS_KEY_RING=$(terraform output key_ring)
 export TEST_JVS_INTEGRATION=true
 
-PKG_DIR=${ROOT}/pkg
-cd ${PKG_DIR}
-go test github.com/abcxyz/jvs/pkg/
+cd ${ROOT}
+go test ./...
