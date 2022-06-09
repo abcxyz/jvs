@@ -13,7 +13,7 @@
 // limitations under the License.
 
 // Main entry point for integration tests.
-package test
+package integ
 
 import (
 	"context"
