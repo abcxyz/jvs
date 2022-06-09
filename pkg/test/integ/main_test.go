@@ -13,7 +13,7 @@
 // limitations under the License.
 
 // Main entry point for integration tests.
-package test
+package integ
 
 import (
 	"context"
@@ -25,10 +25,14 @@ import (
 	"time"
 
 	kms "cloud.google.com/go/kms/apiv1"
+	jvspb "github.com/abcxyz/jvs/apis/v0"
+	"github.com/abcxyz/jvs/pkg/config"
+	"github.com/abcxyz/jvs/pkg/justification"
 	"github.com/google/uuid"
 	"github.com/sethvargo/go-retry"
 	"google.golang.org/api/iterator"
 	kmspb "google.golang.org/genproto/googleapis/cloud/kms/v1"
+	"google.golang.org/protobuf/types/known/durationpb"
 )
 
 func TestJVS(t *testing.T) {
@@ -58,7 +62,31 @@ func TestJVS(t *testing.T) {
 		}
 	})
 
-	// TODO: Actual tests and stuff
+	cfg := &config.JustificationConfig{
+		Version: 1,
+		KeyName: keyName,
+		Issuer:  "ci-test",
+	}
+	if err := cfg.Validate(); err != nil {
+		t.Fatal(err)
+	}
+
+	p := justification.NewProcessor(kmsClient, cfg)
+	resp, err := p.CreateJustification(ctx, &jvspb.CreateJustificationRequest{
+		Justifications: []*jvspb.Justification{
+			{
+				Category: "explanation",
+				Value:    "This is a test.",
+			},
+		},
+		Ttl: &durationpb.Duration{
+			Seconds: 3600,
+		},
+	})
+	if err != nil {
+		t.Errorf("Failed to create token through create justification API: %s", err)
+	}
+
 }
 
 func testIsIntegration(tb testing.TB) bool {
