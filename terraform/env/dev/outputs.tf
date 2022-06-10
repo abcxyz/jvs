@@ -14,12 +14,10 @@
  * limitations under the License.
  */
 
+output "jvs_server_url" {
+  value = module.e2e.jvs_server_url
+}
 
-// intended to be run once to set up the ci environment.
-
-module "e2e" {
-  source     = "../../modules/ci-setup"
-  project_id = "jvs-ci"
-  // The billing account 'Gong Test'.
-  billing_account = "016242-61A3FB-F92462"
+output "public_key_server_url" {
+  value = module.e2e.public_key_server_url
 }

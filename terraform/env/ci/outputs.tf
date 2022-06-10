@@ -25,3 +25,7 @@ output "jvs_service_account" {
 output "rotator_service_account" {
   value = module.e2e.rotator_service_account
 }
+
+output "public_key_service_account" {
+  value = module.e2e.public_key_service_account
+}

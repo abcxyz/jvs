@@ -26,7 +26,6 @@ resource "google_kms_key_ring" "keyring" {
   location = var.key_location
 }
 
-
 resource "google_kms_key_ring_iam_member" "server_acc_roles" {
   for_each = toset([
     "roles/cloudkms.viewer",
@@ -46,4 +45,14 @@ resource "google_kms_key_ring_iam_member" "rotator_acc_roles" {
   key_ring_id = google_kms_key_ring.keyring.id
   role        = each.key
   member      = "serviceAccount:${var.rotator_service_account}"
+}
+
+resource "google_kms_key_ring_iam_member" "public_key_acc_roles" {
+  for_each = toset([
+    "roles/cloudkms.publicKeyViewer",
+  ])
+
+  key_ring_id = google_kms_key_ring.keyring.id
+  role        = each.key
+  member      = "serviceAccount:${var.public_key_service_account}"
 }
