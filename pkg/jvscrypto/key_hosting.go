@@ -29,6 +29,7 @@ import (
 	kms "cloud.google.com/go/kms/apiv1"
 	"github.com/abcxyz/jvs/pkg/config"
 	"github.com/abcxyz/pkg/cache"
+	"github.com/abcxyz/pkg/logging"
 	"google.golang.org/api/iterator"
 	kmspb "google.golang.org/genproto/googleapis/cloud/kms/v1"
 )
@@ -60,10 +61,12 @@ const cacheKey = "jwks"
 
 // ServeHTTP returns the public keys in JWK format.
 func (k *KeyServer) ServeHTTP(w http.ResponseWriter, r *http.Request) {
+	logger := logging.FromContext(r.Context())
 	val, err := k.Cache.WriteThruLookup(cacheKey, func() (string, error) {
 		return k.generateJWKString(r.Context())
 	})
 	if err != nil {
+		logger.Error("error generating jwk string", err)
 		http.Error(w, "error generating jwk string", http.StatusInternalServerError)
 		return
 	}

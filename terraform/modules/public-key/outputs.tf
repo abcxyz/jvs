@@ -14,12 +14,6 @@
  * limitations under the License.
  */
 
-
-// intended to be run once to set up the ci environment.
-
-module "e2e" {
-  source     = "../../modules/ci-setup"
-  project_id = "jvs-ci"
-  // The billing account 'Gong Test'.
-  billing_account = "016242-61A3FB-F92462"
+output "public_key_server_url" {
+  value = google_cloud_run_service.server.status.0.url
 }
