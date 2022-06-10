@@ -37,11 +37,6 @@ resource "google_project_service" "server_project_services" {
   disable_on_destroy = false
 }
 
-resource "google_kms_key_ring" "keyring" {
-  project  = var.project_id
-  name     = "jvs-keyring"
-  location = var.key_location
-}
 
 resource "google_service_account" "server-acc" {
   project      = var.project_id
