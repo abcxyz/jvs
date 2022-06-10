@@ -231,7 +231,9 @@ func testKeySetFromKMS(ctx context.Context, tb testing.TB, kmsClient *kms.KeyMan
 	if err != nil {
 		tb.Fatalf("Couldn't convert key to jwk: %s", err)
 	}
-	jwkKey.Set("kid", versionName)
+	if err := jwkKey.Set("kid", versionName); err != nil {
+		tb.Fatalf("Couldn't set key id: %s", err)
+	}
 	if err := keySet.AddKey(jwkKey); err != nil {
 		tb.Fatalf("Couldn't add jwk to set: %s", err)
 	}
