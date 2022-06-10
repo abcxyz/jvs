@@ -18,10 +18,6 @@ output "project_id" {
   value = google_project.jvs_project.project_id
 }
 
-output "key_ring" {
-  value = google_kms_key_ring.keyring.id
-}
-
 output "jvs_service_account" {
   value = google_service_account.server-acc.email
 }

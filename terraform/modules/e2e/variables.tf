@@ -19,12 +19,6 @@ variable "project_id" {
   description = "The GCP project to host the justification verification service."
 }
 
-variable "key_location" {
-  type        = string
-  default     = "global"
-  description = "The location where kms key will be created."
-}
-
 variable "billing_account" {
   type        = string
   description = "The billing account to be linked to projects."

@@ -20,55 +20,30 @@ locals {
   tag = uuid()
 }
 
-resource "google_kms_crypto_key" "asymmetric-sign-key" {
-  name     = local.tag
-  key_ring = var.key_ring
-  purpose  = "ASYMMETRIC_SIGN"
-
-  version_template {
-    algorithm = "EC_SIGN_P256_SHA256"
-  }
+resource "google_kms_key_ring" "keyring" {
+  project  = var.project_id
+  name     = "ci-keyring"
+  location = var.key_location
 }
 
-resource "google_kms_crypto_key_iam_member" "server_acc_roles" {
+
+resource "google_kms_key_ring_iam_member" "server_acc_roles" {
   for_each = toset([
     "roles/cloudkms.viewer",
     "roles/cloudkms.cryptoOperator"
   ])
 
-  crypto_key_id = google_kms_crypto_key.asymmetric-sign-key.id
-  role          = each.key
-  member        = "serviceAccount:${var.jvs_service_account}"
+  key_ring_id = google_kms_key_ring.keyring.id
+  role        = each.key
+  member      = "serviceAccount:${var.jvs_service_account}"
 }
 
-resource "google_kms_crypto_key_iam_member" "rotator_acc_roles" {
+resource "google_kms_key_ring_iam_member" "rotator_acc_roles" {
   for_each = toset([
     "roles/cloudkms.admin",
   ])
 
-  crypto_key_id = google_kms_crypto_key.asymmetric-sign-key.id
-  role          = each.key
-  member        = "serviceAccount:${var.rotator_service_account}"
-}
-
-module "jvs-service" {
-  source          = "../jvs-service"
-  project_id      = var.project_id
-  key_id          = google_kms_crypto_key.asymmetric-sign-key.id
-  service_account = var.jvs_service_account
-  tag             = local.tag
-  depends_on      = [google_kms_crypto_key_iam_member.server_acc_roles]
-}
-
-module "cert-rotator" {
-  source                = "../cert-rotator"
-  project_id            = var.project_id
-  key_id                = google_kms_crypto_key.asymmetric-sign-key.id
-  service_account       = var.rotator_service_account
-  tag                   = local.tag
-  key_disabled_period   = var.key_disabled_period
-  key_grace_period      = var.key_grace_period
-  key_propagation_delay = var.key_propagation_delay
-  key_ttl               = var.key_ttl
-  depends_on            = [google_kms_crypto_key_iam_member.rotator_acc_roles]
+  key_ring_id = google_kms_key_ring.keyring.id
+  role        = each.key
+  member      = "serviceAccount:${var.rotator_service_account}"
 }
