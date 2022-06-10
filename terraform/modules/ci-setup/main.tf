@@ -37,7 +37,6 @@ resource "google_project_service" "server_project_services" {
   disable_on_destroy = false
 }
 
-
 resource "google_service_account" "server-acc" {
   project      = var.project_id
   account_id   = "jvs-service-sa"
@@ -50,6 +49,12 @@ resource "google_service_account" "rotator-acc" {
   display_name = "Rotator Service Account"
 }
 
+resource "google_service_account" "public-key-acc" {
+  project      = var.project_id
+  account_id   = "pubkey-sa"
+  display_name = "Public Key Hosting Service Account"
+}
+
 resource "google_artifact_registry_repository" "image_registry" {
   provider = google-beta
 
@@ -59,4 +64,3 @@ resource "google_artifact_registry_repository" "image_registry" {
   description   = "Container Registry for the images."
   format        = "DOCKER"
 }
-

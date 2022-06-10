@@ -14,14 +14,9 @@
  * limitations under the License.
  */
 
-output "project_id" {
-  value = google_project.jvs_project.project_id
-}
-
-output "jvs_service_account" {
-  value = google_service_account.server-acc.email
-}
-
-output "rotator_service_account" {
-  value = google_service_account.rotator-acc.email
+terraform {
+  backend "gcs" {
+    bucket = "jvs-dev-terraform"
+    prefix = "dev"
+  }
 }

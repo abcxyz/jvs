@@ -14,28 +14,40 @@
  * limitations under the License.
  */
 
+variable "region" {
+  type        = string
+  default     = "us-central1"
+  description = "The default region for resources in the project; individual resources could have more specific variables defined to specify their region/location"
+}
+
 variable "project_id" {
   type        = string
   description = "The GCP project to host the justification verification service."
 }
 
-variable "key_location" {
+variable "artifact_registry_location" {
   type        = string
-  default     = "global"
-  description = "The location where kms key will be created."
+  default     = "us"
+  description = "The artifact registry location."
 }
 
-variable "jvs_service_account" {
+variable "key_id" {
   type        = string
-  description = "The service account email for the JVS to use"
+  description = "kms key id for use with signing"
 }
 
-variable "rotator_service_account" {
+variable "service_account" {
   type        = string
-  description = "The service account email for the cert rotator to use"
+  description = "The service account email address to be used by the JVS"
 }
 
-variable "public_key_service_account" {
+variable "tag" {
   type        = string
-  description = "The service account email for the public key provider to use"
+  description = "Tag that is intended to be unique across ci runs"
+}
+
+variable "cache-timeout" {
+  type        = string
+  default     = "10m"
+  description = "Duration before cache entries are invalided"
 }
