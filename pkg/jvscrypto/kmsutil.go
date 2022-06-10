@@ -214,20 +214,6 @@ func getLabelValue(versionName string) (string, error) {
 	return versionValue, nil
 }
 
-func CachedPublicKeySet(ctx context.Context, jvsEndpoint string, cacheTimeout time.Duration) (jwk.Set, error) {
-	c := jwk.NewCache(ctx)
-	if err := c.Register(jvsEndpoint, jwk.WithMinRefreshInterval(cacheTimeout)); err != nil {
-		return nil, fmt.Errorf("failed to register: %w", err)
-	}
-
-	// check that cache is correctly set up and certs are available
-	if _, err := c.Refresh(ctx, jvsEndpoint); err != nil {
-		return nil, fmt.Errorf("failed to retrieve JVS public keys: %w", err)
-	}
-
-	return jwk.NewCachedSet(c, jvsEndpoint), nil
-}
-
 // ValidateJWT takes a jwt string, converts it to a JWT, and validates the signature.
 func ValidateJWT(keySet jwk.Set, jwtStr string) (*jwt2.Token, error) {
 	verifiedToken, err := jwt2.Parse([]byte(jwtStr), jwt2.WithKeySet(keySet, jws.WithInferAlgorithmFromKey(true)))

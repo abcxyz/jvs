@@ -33,9 +33,20 @@ type JVSClient struct {
 
 // NewJVSClient returns a JVSClient with the cache initialized.
 func NewJVSClient(ctx context.Context, config *JVSConfig) (*JVSClient, error) {
-	cached, err := jvscrypto.CachedPublicKeySet(ctx, config.JVSEndpoint, config.CacheTimeout)
-	if err != nil {
-		return nil, fmt.Errorf("failed to create public key set: %w", err)
+	c := jwk.NewCache(ctx)
+	if err := c.Register(config.JVSEndpoint, jwk.WithMinRefreshInterval(config.CacheTimeout)); err != nil {
+		return nil, fmt.Errorf("failed to register: %w", err)
+	}
+
+	// check that cache is correctly set up and certs are available
+	if _, err := c.Refresh(ctx, config.JVSEndpoint); err != nil {
+		return nil, fmt.Errorf("failed to retrieve JVS public keys: %w", err)
+	}
+
+	cached := jwk.NewCachedSet(c, config.JVSEndpoint)
+
+	if err := config.Validate(); err != nil {
+		return nil, fmt.Errorf("failed to validate configuration: %w", err)
 	}
 
 	return &JVSClient{

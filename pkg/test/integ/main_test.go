@@ -17,6 +17,8 @@ package integ
 
 import (
 	"context"
+	"crypto/x509"
+	"encoding/pem"
 	"errors"
 	"os"
 	"strconv"
@@ -28,7 +30,11 @@ import (
 	jvspb "github.com/abcxyz/jvs/apis/v0"
 	"github.com/abcxyz/jvs/pkg/config"
 	"github.com/abcxyz/jvs/pkg/justification"
+	"github.com/abcxyz/jvs/pkg/jvscrypto"
+	"github.com/google/go-cmp/cmp"
+	"github.com/google/go-cmp/cmp/cmpopts"
 	"github.com/google/uuid"
+	"github.com/lestrrat-go/jwx/v2/jwk"
 	"github.com/sethvargo/go-retry"
 	"google.golang.org/api/iterator"
 	kmspb "google.golang.org/genproto/googleapis/cloud/kms/v1"
@@ -72,7 +78,8 @@ func TestJVS(t *testing.T) {
 	}
 
 	p := justification.NewProcessor(kmsClient, cfg)
-	resp, err := p.CreateJustification(ctx, &jvspb.CreateJustificationRequest{
+	jvsAgent := justification.NewJVSAgent(p)
+	resp, err := jvsAgent.CreateJustification(ctx, &jvspb.CreateJustificationRequest{
 		Justifications: []*jvspb.Justification{
 			{
 				Category: "explanation",
@@ -87,6 +94,37 @@ func TestJVS(t *testing.T) {
 		t.Errorf("Failed to create token through create justification API: %s", err)
 	}
 
+	keySet := testKeySetFromKMS(ctx, t, kmsClient, keyName)
+	token, err := jvscrypto.ValidateJWT(keySet, resp.Token)
+	if err != nil {
+		t.Errorf("Couldn't validate signed token: %s", err)
+	}
+
+	tokenMap, err := (*token).AsMap(ctx)
+	if err != nil {
+		t.Errorf("Couldn't convert token to map: %s", err)
+	}
+
+	expectedMap := map[string]interface{}{
+		"aud": []string{"TODO #22"},
+		"iss": "ci-test",
+		"justs": []any{
+			map[string]any{"category": "explanation", "value": "This is a test."},
+		},
+		"sub": "TODO #22",
+	}
+
+	// These fields are set based on time, and we cannot know what they will be set to.
+	ignoreFields := map[string]interface{}{
+		"exp": nil,
+		"iat": nil,
+		"jti": nil,
+		"nbf": nil,
+	}
+
+	if diff := cmp.Diff(expectedMap, tokenMap, cmpopts.IgnoreMapEntries(func(k string, v interface{}) bool { _, ok := ignoreFields[k]; return ok })); diff != "" {
+		t.Errorf("Got diff (-want, +got): %v", diff)
+	}
 }
 
 func testIsIntegration(tb testing.TB) bool {
@@ -168,4 +206,34 @@ func testCleanUpKey(ctx context.Context, tb testing.TB, kmsClient *kms.KeyManage
 			tb.Errorf("cleanup: failed to destroy crypto key version %q: %s", ver.Name, err)
 		}
 	}
+}
+
+// Build a key set containing the public key for the first key version from the specified key. Static, does not update automatically.
+func testKeySetFromKMS(ctx context.Context, tb testing.TB, kmsClient *kms.KeyManagementClient, keyName string) jwk.Set {
+	tb.Helper()
+	keySet := jwk.NewSet()
+	versionName := keyName + "/cryptoKeyVersions/1"
+	pubKeyResp, err := kmsClient.GetPublicKey(ctx, &kmspb.GetPublicKeyRequest{Name: versionName})
+	if err != nil {
+		tb.Fatalf("Couldn't retrieve public key %s", err)
+	}
+	block, _ := pem.Decode([]byte(pubKeyResp.Pem))
+	if block == nil || block.Type != "PUBLIC KEY" {
+		tb.Fatal("failed to decode PEM block containing public key")
+	}
+
+	pub, err := x509.ParsePKIXPublicKey(block.Bytes)
+	if err != nil {
+		tb.Fatalf("Couldn't parse public key: %s", err)
+	}
+
+	jwkKey, err := jwk.FromRaw(pub)
+	if err != nil {
+		tb.Fatalf("Couldn't convert key to jwk: %s", err)
+	}
+	jwkKey.Set("kid", versionName)
+	if err := keySet.AddKey(jwkKey); err != nil {
+		tb.Fatalf("Couldn't add jwk to set: %s", err)
+	}
+	return keySet
 }
