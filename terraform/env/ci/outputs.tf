@@ -18,10 +18,6 @@ output "project_id" {
   value = module.e2e.project_id
 }
 
-output "key_ring" {
-  value = module.e2e.key_ring
-}
-
 output "jvs_service_account" {
   value = module.e2e.jvs_service_account
 }
