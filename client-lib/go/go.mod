@@ -1,4 +1,4 @@
-module google-on-gcp/jvs/client-lib/go
+module github.com/abcxyz/jvs/client-lib/go
 
 go 1.18
 
