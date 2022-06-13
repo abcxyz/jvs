@@ -31,6 +31,7 @@ import (
 	"github.com/abcxyz/jvs/pkg/config"
 	"github.com/abcxyz/jvs/pkg/justification"
 	"github.com/abcxyz/jvs/pkg/jvscrypto"
+	"github.com/abcxyz/jvs/pkg/testutil"
 	"github.com/google/go-cmp/cmp"
 	"github.com/google/go-cmp/cmp/cmpopts"
 	"github.com/google/uuid"
@@ -79,51 +80,127 @@ func TestJVS(t *testing.T) {
 
 	p := justification.NewProcessor(kmsClient, cfg)
 	jvsAgent := justification.NewJVSAgent(p)
-	resp, err := jvsAgent.CreateJustification(ctx, &jvspb.CreateJustificationRequest{
-		Justifications: []*jvspb.Justification{
-			{
-				Category: "explanation",
-				Value:    "This is a test.",
+
+	tests := []struct {
+		name     string
+		request  *jvspb.CreateJustificationRequest
+		wantErr  string
+		wantResp map[string]interface{}
+	}{
+		{
+			name: "happy-path",
+			request: &jvspb.CreateJustificationRequest{
+				Justifications: []*jvspb.Justification{
+					{
+						Category: "explanation",
+						Value:    "This is a test.",
+					},
+				},
+				Ttl: &durationpb.Duration{
+					Seconds: 3600,
+				},
+			},
+			wantResp: map[string]interface{}{
+				"aud": []string{"TODO #22"},
+				"iss": "ci-test",
+				"justs": []any{
+					map[string]any{"category": "explanation", "value": "This is a test."},
+				},
+				"sub": "TODO #22",
 			},
 		},
-		Ttl: &durationpb.Duration{
-			Seconds: 3600,
+		{
+			name: "unknown-justification",
+			request: &jvspb.CreateJustificationRequest{
+				Justifications: []*jvspb.Justification{
+					{
+						Category: "who-knows",
+						Value:    "This is a test.",
+					},
+				},
+				Ttl: &durationpb.Duration{
+					Seconds: 3600,
+				},
+			},
+			wantErr: "couldn't validate request",
 		},
-	})
-	if err != nil {
-		t.Errorf("Failed to create token through create justification API: %s", err)
-	}
-
-	keySet := testKeySetFromKMS(ctx, t, kmsClient, keyName)
-	token, err := jvscrypto.ValidateJWT(keySet, resp.Token)
-	if err != nil {
-		t.Errorf("Couldn't validate signed token: %s", err)
-	}
-
-	tokenMap, err := (*token).AsMap(ctx)
-	if err != nil {
-		t.Errorf("Couldn't convert token to map: %s", err)
-	}
-
-	expectedMap := map[string]interface{}{
-		"aud": []string{"TODO #22"},
-		"iss": "ci-test",
-		"justs": []any{
-			map[string]any{"category": "explanation", "value": "This is a test."},
+		{
+			name: "blank-justification",
+			request: &jvspb.CreateJustificationRequest{
+				Justifications: []*jvspb.Justification{
+					{
+						Category: "explanation",
+						Value:    "",
+					},
+				},
+				Ttl: &durationpb.Duration{
+					Seconds: 3600,
+				},
+			},
+			wantErr: "couldn't validate request",
 		},
-		"sub": "TODO #22",
+		{
+			name: "no-ttl",
+			request: &jvspb.CreateJustificationRequest{
+				Justifications: []*jvspb.Justification{
+					{
+						Category: "explanation",
+						Value:    "This is a test.",
+					},
+				},
+			},
+			wantErr: "couldn't validate request",
+		},
+		{
+			name: "no-justification",
+			request: &jvspb.CreateJustificationRequest{
+				Justifications: []*jvspb.Justification{},
+				Ttl: &durationpb.Duration{
+					Seconds: 3600,
+				},
+			},
+			wantErr: "couldn't validate request",
+		},
+		{
+			name:    "nothing",
+			request: &jvspb.CreateJustificationRequest{},
+			wantErr: "couldn't validate request",
+		},
 	}
 
-	// These fields are set based on time, and we cannot know what they will be set to.
-	ignoreFields := map[string]interface{}{
-		"exp": nil,
-		"iat": nil,
-		"jti": nil,
-		"nbf": nil,
-	}
-	ignoreOpt := cmpopts.IgnoreMapEntries(func(k string, v interface{}) bool { _, ok := ignoreFields[k]; return ok })
-	if diff := cmp.Diff(expectedMap, tokenMap, ignoreOpt); diff != "" {
-		t.Errorf("Got diff (-want, +got): %v", diff)
+	for _, tc := range tests {
+		tc := tc
+		t.Run(tc.name, func(t *testing.T) {
+			t.Parallel()
+
+			resp, gotErr := jvsAgent.CreateJustification(ctx, tc.request)
+			if ok := testutil.ErrCmp(t, tc.wantErr, gotErr); !ok {
+				return
+			}
+
+			keySet := testKeySetFromKMS(ctx, t, kmsClient, keyName)
+			token, err := jvscrypto.ValidateJWT(keySet, resp.Token)
+			if err != nil {
+				t.Errorf("Couldn't validate signed token: %s", err)
+			}
+
+			tokenMap, err := (*token).AsMap(ctx)
+			if err != nil {
+				t.Errorf("Couldn't convert token to map: %s", err)
+			}
+
+			// These fields are set based on time, and we cannot know what they will be set to.
+			ignoreFields := map[string]interface{}{
+				"exp": nil,
+				"iat": nil,
+				"jti": nil,
+				"nbf": nil,
+			}
+			ignoreOpt := cmpopts.IgnoreMapEntries(func(k string, v interface{}) bool { _, ok := ignoreFields[k]; return ok })
+			if diff := cmp.Diff(tc.wantResp, tokenMap, ignoreOpt); diff != "" {
+				t.Errorf("Got diff (-want, +got): %v", diff)
+			}
+		})
 	}
 }
 

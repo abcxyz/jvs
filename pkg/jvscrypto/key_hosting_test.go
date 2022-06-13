@@ -154,11 +154,10 @@ func TestJWKSetFormattedString(t *testing.T) {
 				t.Error(err)
 			}
 			got, err := formatJWKString(keys)
-			testutil.ErrCmp(t, tc.wantErr, err)
-
-			if err != nil {
+			if ok := testutil.ErrCmp(t, tc.wantErr, err); !ok {
 				return
 			}
+
 			if diff := cmp.Diff(tc.wantOutput, got); diff != "" {
 				t.Errorf("Got diff (-want, +got): %v", diff)
 			}

@@ -145,8 +145,7 @@ func TestValidateJWT(t *testing.T) {
 		t.Run(tc.name, func(t *testing.T) {
 			t.Parallel()
 			res, err := client.ValidateJWT(tc.jwt)
-			testutil.ErrCmp(t, tc.wantErr, err)
-			if err != nil {
+			if ok := testutil.ErrCmp(t, tc.wantErr, err); !ok {
 				return
 			}
 			got, err := json.MarshalIndent(res, "", " ")

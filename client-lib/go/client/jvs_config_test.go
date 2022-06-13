@@ -107,7 +107,9 @@ cache_timeout: 1m
 			lookuper := envconfig.MapLookuper(tc.envs)
 			content := bytes.NewBufferString(tc.cfg).Bytes()
 			gotConfig, err := loadJVSConfigFromLookuper(ctx, content, lookuper)
-			testutil.ErrCmp(t, tc.wantErr, err)
+			if ok := testutil.ErrCmp(t, tc.wantErr, err); !ok {
+				return
+			}
 			if diff := cmp.Diff(tc.wantConfig, gotConfig); diff != "" {
 				t.Errorf("Config unexpected diff (-want,+got):\n%s", diff)
 			}
