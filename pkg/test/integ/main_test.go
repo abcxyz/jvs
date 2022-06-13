@@ -88,7 +88,7 @@ func TestJVS(t *testing.T) {
 		wantResp map[string]interface{}
 	}{
 		{
-			name: "happy-path",
+			name: "happy_path",
 			request: &jvspb.CreateJustificationRequest{
 				Justifications: []*jvspb.Justification{
 					{
@@ -110,7 +110,7 @@ func TestJVS(t *testing.T) {
 			},
 		},
 		{
-			name: "unknown-justification",
+			name: "unknown_justification",
 			request: &jvspb.CreateJustificationRequest{
 				Justifications: []*jvspb.Justification{
 					{
@@ -125,7 +125,7 @@ func TestJVS(t *testing.T) {
 			wantErr: "couldn't validate request",
 		},
 		{
-			name: "blank-justification",
+			name: "blank_justification",
 			request: &jvspb.CreateJustificationRequest{
 				Justifications: []*jvspb.Justification{
 					{
@@ -140,7 +140,7 @@ func TestJVS(t *testing.T) {
 			wantErr: "couldn't validate request",
 		},
 		{
-			name: "no-ttl",
+			name: "no-_tl",
 			request: &jvspb.CreateJustificationRequest{
 				Justifications: []*jvspb.Justification{
 					{
@@ -152,7 +152,7 @@ func TestJVS(t *testing.T) {
 			wantErr: "couldn't validate request",
 		},
 		{
-			name: "no-justification",
+			name: "no_justification",
 			request: &jvspb.CreateJustificationRequest{
 				Justifications: []*jvspb.Justification{},
 				Ttl: &durationpb.Duration{
@@ -162,7 +162,7 @@ func TestJVS(t *testing.T) {
 			wantErr: "couldn't validate request",
 		},
 		{
-			name:    "nothing",
+			name:    "empty_request",
 			request: &jvspb.CreateJustificationRequest{},
 			wantErr: "couldn't validate request",
 		},
@@ -183,11 +183,13 @@ func TestJVS(t *testing.T) {
 			token, err := jvscrypto.ValidateJWT(keySet, resp.Token)
 			if err != nil {
 				t.Errorf("Couldn't validate signed token: %s", err)
+				return
 			}
 
 			tokenMap, err := (*token).AsMap(ctx)
 			if err != nil {
 				t.Errorf("Couldn't convert token to map: %s", err)
+				return
 			}
 
 			// These fields are set based on time, and we cannot know what they will be set to.
