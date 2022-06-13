@@ -19,8 +19,8 @@ import (
 	"context"
 	"fmt"
 
+	"github.com/abcxyz/jvs/pkg/jvscrypto"
 	"github.com/lestrrat-go/jwx/v2/jwk"
-	"github.com/lestrrat-go/jwx/v2/jws"
 	"github.com/lestrrat-go/jwx/v2/jwt"
 )
 
@@ -56,11 +56,6 @@ func NewJVSClient(ctx context.Context, config *JVSConfig) (*JVSClient, error) {
 }
 
 // ValidateJWT takes a jwt string, converts it to a JWT, and validates the signature.
-func (j *JVSClient) ValidateJWT(ctx context.Context, jwtStr string) (*jwt.Token, error) {
-	verifiedToken, err := jwt.Parse([]byte(jwtStr), jwt.WithKeySet(j.keys, jws.WithInferAlgorithmFromKey(true)))
-	if err != nil {
-		return nil, fmt.Errorf("failed to verify jwt %s: %w", jwtStr, err)
-	}
-
-	return &verifiedToken, nil
+func (j *JVSClient) ValidateJWT(jwtStr string) (*jwt.Token, error) {
+	return jvscrypto.ValidateJWT(j.keys, jwtStr)
 }
