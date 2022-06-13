@@ -144,7 +144,7 @@ func TestValidateJWT(t *testing.T) {
 		tc := tc
 		t.Run(tc.name, func(t *testing.T) {
 			t.Parallel()
-			res, err := client.ValidateJWT(ctx, tc.jwt)
+			res, err := client.ValidateJWT(tc.jwt)
 			testutil.ErrCmp(t, tc.wantErr, err)
 			if err != nil {
 				return
