@@ -40,6 +40,7 @@ func runTokenCmd(cmd *cobra.Command, args []string) error {
 
 func init() {
 	tokenCmd.Flags().StringVarP(&tokenJustification, "justification", "j", "", "The justification")
+	tokenCmd.MarkFlagRequired("justification")
 	tokenCmd.Flags().BoolVar(&breakglass, "breakglass", false, "Whether it will be a breakglass action")
 	tokenCmd.Flags().DurationVar(&ttl, "ttl", time.Hour, "The token time-to-live duration")
 }
