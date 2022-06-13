@@ -22,15 +22,15 @@ import (
 )
 
 var (
-	tokenJustification string
-	breakglass         bool
-	ttl                time.Duration
+	tokenExplanation string
+	breakglass       bool
+	ttl              time.Duration
 )
 
 var tokenCmd = &cobra.Command{
 	Use:     "token",
 	Short:   "To generate a justification token",
-	Example: `token -j "issues/12345" -ttl 30m`,
+	Example: `token --explanation "issues/12345" -ttl 30m`,
 	RunE:    runTokenCmd,
 }
 
@@ -39,8 +39,8 @@ func runTokenCmd(cmd *cobra.Command, args []string) error {
 }
 
 func init() {
-	tokenCmd.Flags().StringVarP(&tokenJustification, "justification", "j", "", "The justification")
-	tokenCmd.MarkFlagRequired("justification") //nolint // not expect err
+	tokenCmd.Flags().StringVarP(&tokenExplanation, "explanation", "e", "", "The explanation for the action")
+	tokenCmd.MarkFlagRequired("explanation") //nolint // not expect err
 	tokenCmd.Flags().BoolVar(&breakglass, "breakglass", false, "Whether it will be a breakglass action")
 	tokenCmd.Flags().DurationVar(&ttl, "ttl", time.Hour, "The token time-to-live duration")
 }
