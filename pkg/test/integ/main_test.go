@@ -121,7 +121,7 @@ func TestJVS(t *testing.T) {
 		"jti": nil,
 		"nbf": nil,
 	}
-	ignoreOpt := cmpopts.IgnoreMapEntries(func(k string, v interface{}) bool { _, ok := ignoreFields[k]; return ok })
+	ignoreOpt := cmpopts.IgnoreMapEntries(func(k string, _ interface{}) ok bool { _, ok = ignoreFields[k] })
 	if diff := cmp.Diff(expectedMap, tokenMap, ignoreOpt); diff != "" {
 		t.Errorf("Got diff (-want, +got): %v", diff)
 	}
