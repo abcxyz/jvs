@@ -21,8 +21,8 @@ import (
 	"testing"
 )
 
-// ErrCmp compares an expected error string with a received error for use in testing. Returns an "ok" value (false if err occurred).
-func ErrCmp(tb testing.TB, wantErr string, gotErr error) bool {
+// ErrCmp compares an expected error string with a received error for use in testing.
+func ErrCmp(tb testing.TB, wantErr string, gotErr error) {
 	tb.Helper()
 
 	if wantErr != "" {
@@ -30,14 +30,10 @@ func ErrCmp(tb testing.TB, wantErr string, gotErr error) bool {
 			if !strings.Contains(gotErr.Error(), wantErr) {
 				tb.Errorf("Process got unexpected error: %v, wanted: %v", gotErr, wantErr)
 			}
-			return false
 		} else {
 			tb.Errorf("Expected error, but received nil")
-			return true
 		}
 	} else if gotErr != nil {
 		tb.Errorf("Expected no error, but received \"%v\"", gotErr)
-		return false
 	}
-	return true
 }

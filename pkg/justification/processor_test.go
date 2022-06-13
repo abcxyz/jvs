@@ -156,9 +156,7 @@ func TestCreateToken(t *testing.T) {
 			mockKeyManagement.Resps = append(mockKeyManagement.Resps[:0], &kmspb.CryptoKeyVersion{})
 
 			response, gotErr := processor.CreateToken(ctx, tc.request)
-			if ok := testutil.ErrCmp(t, tc.wantErr, gotErr); !ok {
-				return
-			}
+			testutil.ErrCmp(t, tc.wantErr, gotErr)
 
 			if gotErr != nil {
 				return

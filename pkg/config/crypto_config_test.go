@@ -170,9 +170,7 @@ propagation_delay: 1h
 			lookuper := envconfig.MapLookuper(tc.envs)
 			content := bytes.NewBufferString(tc.cfg).Bytes()
 			gotConfig, err := loadCryptoConfigFromLookuper(ctx, content, lookuper)
-			if ok := testutil.ErrCmp(t, tc.wantErr, err); !ok {
-				return
-			}
+			testutil.ErrCmp(t, tc.wantErr, err)
 			if diff := cmp.Diff(tc.wantConfig, gotConfig); diff != "" {
 				t.Errorf("Config unexpected diff (-want,+got):\n%s", diff)
 			}

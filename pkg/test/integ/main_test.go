@@ -174,7 +174,8 @@ func TestJVS(t *testing.T) {
 			t.Parallel()
 
 			resp, gotErr := jvsAgent.CreateJustification(ctx, tc.request)
-			if ok := testutil.ErrCmp(t, tc.wantErr, gotErr); !ok {
+			testutil.ErrCmp(t, tc.wantErr, gotErr)
+			if gotErr != nil {
 				return
 			}
 

@@ -458,9 +458,7 @@ func TestPerformActions(t *testing.T) {
 				}
 				t.Errorf("wrong requests %v, want %v", got, want)
 			}
-			if ok := testutil.ErrCmp(t, tc.wantErr, gotErr); !ok {
-				return
-			}
+			testutil.ErrCmp(t, tc.wantErr, gotErr)
 
 			if diff := cmp.Diff(tc.expectedPrimary, mockKeyManagement.Labels["primary"]); diff != "" {
 				t.Errorf("Got diff (-want, +got): %v", diff)

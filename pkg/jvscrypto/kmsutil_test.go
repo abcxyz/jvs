@@ -145,7 +145,7 @@ func TestVerifyJWTString(t *testing.T) {
 		t.Run(tc.name, func(t *testing.T) {
 			t.Parallel()
 			err := VerifyJWTString(ctx, kms, "projects/*/locations/location1/keyRings/keyring1/cryptoKeys/key1", tc.jwt)
-			_ = testutil.ErrCmp(t, tc.wantErr, err)
+			testutil.ErrCmp(t, tc.wantErr, err)
 		})
 	}
 }
