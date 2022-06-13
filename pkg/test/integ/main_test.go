@@ -295,7 +295,7 @@ func testKeySetFromKMS(ctx context.Context, tb testing.TB, kmsClient *kms.KeyMan
 	versionName := keyName + "/cryptoKeyVersions/1"
 	pubKeyResp, err := kmsClient.GetPublicKey(ctx, &kmspb.GetPublicKeyRequest{Name: versionName})
 	if err != nil {
-		tb.Fatalf("Couldn't retrieve public key %s", err)
+		tb.Fatalf("Couldn't retrieve public key: %s", err)
 	}
 	block, _ := pem.Decode([]byte(pubKeyResp.Pem))
 	if block == nil || block.Type != "PUBLIC KEY" {
