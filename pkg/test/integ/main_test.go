@@ -140,7 +140,7 @@ func TestJVS(t *testing.T) {
 			wantErr: "couldn't validate request",
 		},
 		{
-			name: "no-_tl",
+			name: "no_ttl",
 			request: &jvspb.CreateJustificationRequest{
 				Justifications: []*jvspb.Justification{
 					{
