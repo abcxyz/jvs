@@ -294,6 +294,18 @@ func TestRotator(t *testing.T) {
 			1: kmspb.CryptoKeyVersion_DISABLED,
 			2: kmspb.CryptoKeyVersion_ENABLED,
 		})
+
+	time.Sleep(2001 * time.Millisecond) // Wait past the disabled period and next rotation event.
+	if err := r.RotateKey(ctx, keyName); err != nil {
+		t.Fatalf("err when trying to rotate: %s", err)
+	}
+	// Validate that our old key has been scheduled for destruction, and cycle has started again.
+	testValidateKeyVersionState(ctx, t, kmsClient, keyName, 2,
+		map[int]kmspb.CryptoKeyVersion_CryptoKeyVersionState{
+			1: kmspb.CryptoKeyVersion_DESTROY_SCHEDULED,
+			2: kmspb.CryptoKeyVersion_ENABLED,
+			3: kmspb.CryptoKeyVersion_ENABLED,
+		})
 }
 
 func testValidateKeyVersionState(ctx context.Context, tb testing.TB, kmsClient *kms.KeyManagementClient, keyName string,
