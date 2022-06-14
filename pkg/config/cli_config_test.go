@@ -48,7 +48,7 @@ server: https://example.com
 		cfg: `version: 1
 `,
 		envs: map[string]string{
-			"JVSCLI_SERVER": "https://example.com",
+			"JVSCTL_SERVER": "https://example.com",
 		},
 		wantConfig: &CLIConfig{
 			Version: 1,

@@ -25,7 +25,7 @@ import (
 )
 
 func TestInitCfg(t *testing.T) {
-	cfgFile = filepath.Join(t.TempDir(), ".jvscli.yaml")
+	cfgFile = filepath.Join(t.TempDir(), ".jvsctl.yaml")
 
 	if err := os.WriteFile(cfgFile, []byte(`server: https://example.com
 `), fs.ModePerm); err != nil {

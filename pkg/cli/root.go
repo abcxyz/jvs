@@ -32,8 +32,8 @@ var (
 )
 
 var rootCmd = &cobra.Command{
-	Use:               "jvscli",
-	Short:             "jvscli facilitates the justification verification flow provided by abcxyz/jvs",
+	Use:               "jvsctl",
+	Short:             "jvsctl facilitates the justification verification flow provided by abcxyz/jvs",
 	PersistentPreRunE: ensureCfg,
 }
 
@@ -44,7 +44,7 @@ func Execute() error {
 
 func init() {
 	cobra.OnInitialize(initCfg)
-	rootCmd.PersistentFlags().StringVar(&cfgFile, "config", "", "config file (default is $HOME/.jvscli.yaml)")
+	rootCmd.PersistentFlags().StringVar(&cfgFile, "config", "", "config file (default is $HOME/.jvsctl/config.yaml)")
 
 	rootCmd.AddCommand(tokenCmd)
 }
@@ -57,7 +57,7 @@ func initCfg() {
 			cobra.CheckErr(err)
 			return
 		}
-		cfgFile = filepath.Join(home, ".jvscli.yaml")
+		cfgFile = filepath.Join(home, ".jvsctl", "config.yaml")
 	}
 
 	f, err := os.ReadFile(cfgFile)

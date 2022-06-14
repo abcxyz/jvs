@@ -68,7 +68,7 @@ func loadCLIConfigFromLookuper(ctx context.Context, b []byte, lookuper envconfig
 	}
 
 	// Process overrides from env vars.
-	l := envconfig.PrefixLookuper("JVSCLI_", lookuper)
+	l := envconfig.PrefixLookuper("JVSCTL_", lookuper)
 	if err := envconfig.ProcessWith(ctx, cfg, l); err != nil {
 		return nil, fmt.Errorf("failed to process environment: %w", err)
 	}
