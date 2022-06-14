@@ -469,13 +469,12 @@ func testValidateKeyVersionState(ctx context.Context, tb testing.TB, kmsClient *
 			tb.Fatalf("couldn't convert version %s to number: %s", ver.Name, err)
 		}
 		if ver.State != expectedStates[number] {
-			tb.Fatalf("expected version %s to be in state %s, but was in state %s", ver.Name, expectedStates[number], ver.State)
-			return
+			tb.Errorf("version %s was in state %s, but expected %s", ver.Name, ver.State, expectedStates[number])
 		}
 		count++
 	}
 	if count != len(expectedStates) {
-		tb.Fatalf("expected %d versions, instead there were %d", len(expectedStates), count)
+		tb.Errorf("got %d versions, expected %d", count, len(expectedStates))
 	}
 
 	// validate the primary is set correctly.
@@ -490,7 +489,7 @@ func testValidateKeyVersionState(ctx context.Context, tb testing.TB, kmsClient *
 		tb.Fatalf("couldn't convert version %s to number: %s", primaryName, err)
 	}
 	if primaryNumber != expectedPrimary {
-		tb.Errorf("expected that version %d would be primary, but instead it was %d", expectedPrimary, primaryNumber)
+		tb.Errorf("primary was set to version %d, but expected %d", primaryNumber, expectedPrimary)
 	}
 }
 
