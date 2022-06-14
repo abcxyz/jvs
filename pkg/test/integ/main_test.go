@@ -217,28 +217,8 @@ func TestRotator(t *testing.T) {
 		t.Skip("Not an integration test, skipping...")
 		return
 	}
-	keyRing := os.Getenv("TEST_JVS_KMS_KEY_RING")
-	if keyRing == "" {
-		t.Fatal("Key ring must be provided using TEST_JVS_KMS_KEY_RING env variable.")
-	}
 
-	kmsClient, err := kms.NewKeyManagementClient(ctx)
-	if err != nil {
-		t.Fatalf("failed to setup kms client: %s", err)
-	}
-
-	keyRing = strings.Trim(keyRing, "\"")
-	keyName := testCreateKey(ctx, t, kmsClient, keyRing)
-	t.Cleanup(func() {
-		testCleanUpKey(ctx, t, kmsClient, keyName)
-		err := kmsClient.Close()
-		if err != nil {
-			t.Errorf("Clean up of key %s failed: %s", keyName, err)
-		}
-	})
-	if err := jvscrypto.SetPrimary(ctx, kmsClient, keyName, keyName+"/cryptoKeyVersions/1"); err != nil {
-		t.Fatalf("unable to set primary: %s", err)
-	}
+	kmsClient, keyName := testSetupRotator(ctx, t)
 
 	cfg := &config.CryptoConfig{
 		Version:          1,
@@ -262,12 +242,16 @@ func TestRotator(t *testing.T) {
 			1: kmspb.CryptoKeyVersion_ENABLED,
 		})
 
+	// These tests must be run in sequence, and they have waits in between. Therefore, they cannot
+	// be parallelized, and aren't a good fit for table testing.
+
 	t.Run("new_key_creation", func(t *testing.T) {
 		time.Sleep(5001 * time.Millisecond) // Wait past the next rotation event
 		if err := r.RotateKey(ctx, keyName); err != nil {
 			t.Fatalf("err when trying to rotate: %s", err)
 			return
 		}
+		time.Sleep(50 * time.Millisecond) // Reduces chance key will be in "pending generation" state
 		// Validate we have created a new key, but haven't set it as primary yet.
 		testValidateKeyVersionState(ctx, t, kmsClient, keyName, 1,
 			map[int]kmspb.CryptoKeyVersion_CryptoKeyVersionState{
@@ -307,6 +291,7 @@ func TestRotator(t *testing.T) {
 		if err := r.RotateKey(ctx, keyName); err != nil {
 			t.Fatalf("err when trying to rotate: %s", err)
 		}
+		time.Sleep(50 * time.Millisecond) // Reduces chance key will be in "pending generation" state
 		// Validate that our old key has been scheduled for destruction, and cycle has started again.
 		testValidateKeyVersionState(ctx, t, kmsClient, keyName, 2,
 			map[int]kmspb.CryptoKeyVersion_CryptoKeyVersionState{
@@ -325,29 +310,8 @@ func TestRotator_EdgeCases(t *testing.T) {
 		t.Skip("Not an integration test, skipping...")
 		return
 	}
-	keyRing := os.Getenv("TEST_JVS_KMS_KEY_RING")
-	if keyRing == "" {
-		t.Fatal("Key ring must be provided using TEST_JVS_KMS_KEY_RING env variable.")
-	}
 
-	kmsClient, err := kms.NewKeyManagementClient(ctx)
-	if err != nil {
-		t.Fatalf("failed to setup kms client: %s", err)
-	}
-
-	keyRing = strings.Trim(keyRing, "\"")
-	keyName := testCreateKey(ctx, t, kmsClient, keyRing)
-	t.Cleanup(func() {
-		testCleanUpKey(ctx, t, kmsClient, keyName)
-		err := kmsClient.Close()
-		if err != nil {
-			t.Errorf("Clean up of key %s failed: %s", keyName, err)
-		}
-	})
-	firstVersionName := keyName + "/cryptoKeyVersions/1"
-	if err := jvscrypto.SetPrimary(ctx, kmsClient, keyName, firstVersionName); err != nil {
-		t.Fatalf("unable to set primary: %s", err)
-	}
+	kmsClient, keyName := testSetupRotator(ctx, t)
 
 	cfg := &config.CryptoConfig{
 		Version:          1,
@@ -365,11 +329,6 @@ func TestRotator_EdgeCases(t *testing.T) {
 		CryptoConfig: cfg,
 	}
 
-	// Validate we have a single enabled key that is primary.
-	testValidateKeyVersionState(ctx, t, kmsClient, keyName, 1,
-		map[int]kmspb.CryptoKeyVersion_CryptoKeyVersionState{
-			1: kmspb.CryptoKeyVersion_ENABLED,
-		})
 	time.Sleep(1001 * time.Millisecond) // Wait past the propagation delay.
 
 	t.Run("invalid_primary", func(t *testing.T) {
@@ -391,18 +350,54 @@ func TestRotator_EdgeCases(t *testing.T) {
 	// we could parallelize this, but we'd need separate keys from the above (more cruft)
 	t.Run("emergent_disable", func(t *testing.T) {
 		// Emergently disable our primary.
-		testEmergentDisable(ctx, t, kmsClient, keyName, firstVersionName)
+		testEmergentDisable(ctx, t, kmsClient, keyName, keyName+"/cryptoKeyVersions/1")
 
 		// Validate that the rotator will fix the situation by creating a new version and setting it to primary
 		if err := r.RotateKey(ctx, keyName); err != nil {
 			t.Fatalf("err when trying to rotate: %s", err)
 		}
+		time.Sleep(50 * time.Millisecond) // Reduces chance key will be in "pending generation" state
 		testValidateKeyVersionState(ctx, t, kmsClient, keyName, 2,
 			map[int]kmspb.CryptoKeyVersion_CryptoKeyVersionState{
 				1: kmspb.CryptoKeyVersion_DISABLED,
 				2: kmspb.CryptoKeyVersion_ENABLED,
 			})
 	})
+}
+
+// Set up KMS, create a key, and set the primary.
+func testSetupRotator(ctx context.Context, tb testing.TB) (*kms.KeyManagementClient, string) {
+	tb.Helper()
+	keyRing := os.Getenv("TEST_JVS_KMS_KEY_RING")
+	if keyRing == "" {
+		tb.Fatal("Key ring must be provided using TEST_JVS_KMS_KEY_RING env variable.")
+	}
+
+	kmsClient, err := kms.NewKeyManagementClient(ctx)
+	if err != nil {
+		tb.Fatalf("failed to setup kms client: %s", err)
+	}
+
+	keyRing = strings.Trim(keyRing, "\"")
+	keyName := testCreateKey(ctx, tb, kmsClient, keyRing)
+	tb.Cleanup(func() {
+		testCleanUpKey(ctx, tb, kmsClient, keyName)
+		err := kmsClient.Close()
+		if err != nil {
+			tb.Errorf("Clean up of key %s failed: %s", keyName, err)
+		}
+	})
+	if err := jvscrypto.SetPrimary(ctx, kmsClient, keyName, keyName+"/cryptoKeyVersions/1"); err != nil {
+		tb.Fatalf("unable to set primary: %s", err)
+	}
+
+	// Validate we have a single enabled key that is primary.
+	testValidateKeyVersionState(ctx, tb, kmsClient, keyName, 1,
+		map[int]kmspb.CryptoKeyVersion_CryptoKeyVersionState{
+			1: kmspb.CryptoKeyVersion_ENABLED,
+		})
+
+	return kmsClient, keyName
 }
 
 // This is intended to mock an event where we need to emergently rotate the key.
@@ -441,8 +436,7 @@ func testEmergentDisable(ctx context.Context, tb testing.TB, kmsClient *kms.KeyM
 	if err != nil {
 		tb.Fatalf("unable to create field mask: %s", err)
 	}
-	_, err = kmsClient.UpdateCryptoKey(ctx, &kmspb.UpdateCryptoKeyRequest{CryptoKey: key, UpdateMask: mask})
-	if err != nil {
+	if _, err = kmsClient.UpdateCryptoKey(ctx, &kmspb.UpdateCryptoKeyRequest{CryptoKey: key, UpdateMask: mask}); err != nil {
 		tb.Fatalf("unable to set labels: %s", err)
 	}
 }
