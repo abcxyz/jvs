@@ -179,7 +179,7 @@ func SetPrimary(ctx context.Context, kms *kms.KeyManagementClient, key string, v
 		return fmt.Errorf("issue while getting key from KMS: %w", err)
 	}
 
-	value, err := GetLabelValue(versionName)
+	value, err := getLabelValue(versionName)
 	if err != nil {
 		return err
 	}
@@ -205,7 +205,7 @@ func SetPrimary(ctx context.Context, kms *kms.KeyManagementClient, key string, v
 
 // This returns the key version name with "ver_" prefixed. This is because labels must start with a lowercase letter, and can't go over 64 chars.
 // Example:  projects/*/locations/location1/keyRings/keyring1/cryptoKeys/key1/cryptoKeyVersions/1 -> ver_1 .
-func GetLabelValue(versionName string) (string, error) {
+func getLabelValue(versionName string) (string, error) {
 	split := strings.Split(versionName, "/")
 	if len(split) != 10 {
 		return "", fmt.Errorf("input had unexpected format: \"%s\"", versionName)

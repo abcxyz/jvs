@@ -235,7 +235,9 @@ func TestRotator(t *testing.T) {
 			t.Errorf("Clean up of key %s failed: %s", keyName, err)
 		}
 	})
-	jvscrypto.SetPrimary(ctx, kmsClient, keyName, keyName+"/cryptoKeyVersions/1")
+	if err := jvscrypto.SetPrimary(ctx, kmsClient, keyName, keyName+"/cryptoKeyVersions/1"); err != nil {
+		t.Fatalf("unable to set primary: %s", err)
+	}
 
 	cfg := &config.CryptoConfig{
 		Version:          1,
@@ -253,6 +255,7 @@ func TestRotator(t *testing.T) {
 		CryptoConfig: cfg,
 	}
 
+	// Validate we have a single enabled key that is primary.
 	testValidateKeyVersionState(ctx, t, kmsClient, keyName, 1,
 		map[int]kmspb.CryptoKeyVersion_CryptoKeyVersionState{
 			1: kmspb.CryptoKeyVersion_ENABLED,
@@ -263,26 +266,29 @@ func TestRotator(t *testing.T) {
 		t.Fatalf("err when trying to rotate: %s", err)
 		return
 	}
+	// Validate we have created a new key, but haven't set it as primary yet.
 	testValidateKeyVersionState(ctx, t, kmsClient, keyName, 1,
 		map[int]kmspb.CryptoKeyVersion_CryptoKeyVersionState{
 			1: kmspb.CryptoKeyVersion_ENABLED,
 			2: kmspb.CryptoKeyVersion_ENABLED,
 		})
 
-	time.Sleep(2001 * time.Millisecond) // Wait past the grace period
+	time.Sleep(1001 * time.Millisecond) // Wait past the propagation delay.
 	if err := r.RotateKey(ctx, keyName); err != nil {
 		t.Fatalf("err when trying to rotate: %s", err)
 	}
+	// Validate our new key has been set to primary
 	testValidateKeyVersionState(ctx, t, kmsClient, keyName, 2,
 		map[int]kmspb.CryptoKeyVersion_CryptoKeyVersionState{
 			1: kmspb.CryptoKeyVersion_ENABLED,
 			2: kmspb.CryptoKeyVersion_ENABLED,
 		})
 
-	time.Sleep(1001 * time.Millisecond) // Wait past the propagation delay
+	time.Sleep(2001 * time.Millisecond) // Wait past the grace period.
 	if err := r.RotateKey(ctx, keyName); err != nil {
 		t.Fatalf("err when trying to rotate: %s", err)
 	}
+	// Validate that our old key has been disabled.
 	testValidateKeyVersionState(ctx, t, kmsClient, keyName, 2,
 		map[int]kmspb.CryptoKeyVersion_CryptoKeyVersionState{
 			1: kmspb.CryptoKeyVersion_DISABLED,
@@ -294,13 +300,12 @@ func testValidateKeyVersionState(ctx context.Context, tb testing.TB, kmsClient *
 	expectedPrimary int, expectedStates map[int]kmspb.CryptoKeyVersion_CryptoKeyVersionState,
 ) {
 	tb.Helper()
-	// validate there are now 2 versions.
+	// validate that each version is in the expected state.
 	it := kmsClient.ListCryptoKeyVersions(ctx, &kmspb.ListCryptoKeyVersionsRequest{
 		Parent: keyName,
 	})
 	count := 0
 	for {
-		// Could parallelize this. #34
 		ver, err := it.Next()
 		if errors.Is(err, iterator.Done) {
 			break
@@ -322,7 +327,7 @@ func testValidateKeyVersionState(ctx context.Context, tb testing.TB, kmsClient *
 		tb.Fatalf("expected %d versions, instead there were %d", len(expectedStates), count)
 	}
 
-	// validate the original is still primary
+	// validate the primary is set correctly.
 	resp, err := kmsClient.GetCryptoKey(ctx, &kmspb.GetCryptoKeyRequest{Name: keyName})
 	if err != nil {
 		tb.Fatalf("err while calling kms: %s", err)
