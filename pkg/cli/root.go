@@ -16,12 +16,12 @@
 package cli
 
 import (
-	"context"
 	"fmt"
 	"os"
 	"path/filepath"
 
 	"github.com/spf13/cobra"
+	"github.com/spf13/viper"
 
 	"github.com/abcxyz/jvs/pkg/config"
 )
@@ -45,39 +45,53 @@ func Execute() error {
 func init() {
 	cobra.OnInitialize(initCfg)
 	rootCmd.PersistentFlags().StringVar(&cfgFile, "config", "", "config file (default is $HOME/.jvsctl/config.yaml)")
+	rootCmd.PersistentFlags().String("server", "", "overwrite the JVS server address")
+	viper.BindPFlag("server", rootCmd.PersistentFlags().Lookup("server"))
 
 	rootCmd.AddCommand(tokenCmd)
 }
 
 func initCfg() {
-	if cfgFile == "" {
-		// Find home directory.
+	if cfgFile != "" {
+		// Use config file from the flag.
+		viper.SetConfigFile(cfgFile)
+	} else {
+		// Try use the default config file.
 		home, err := os.UserHomeDir()
-		if err != nil {
+		cobra.CheckErr(err)
+
+		viper.AddConfigPath(filepath.Join(home, ".jvsctl"))
+		viper.SetConfigType("yaml")
+		viper.SetConfigName("config")
+	}
+
+	// Also load from env vars.
+	viper.SetEnvPrefix("JVSCTL")
+	viper.AutomaticEnv()
+
+	if err := viper.ReadInConfig(); err != nil {
+		// It's ok if the config file is not found because
+		// the values could be filled by env vars or flags.
+		if _, ok := err.(viper.ConfigFileNotFoundError); !ok {
 			cobra.CheckErr(err)
 			return
 		}
-		cfgFile = filepath.Join(home, ".jvsctl", "config.yaml")
 	}
 
-	f, err := os.ReadFile(cfgFile)
-	if err != nil {
+	if err := viper.Unmarshal(&cfg); err != nil {
 		cobra.CheckErr(err)
 		return
 	}
 
-	c, err := config.LoadCLIConfig(context.Background(), f)
-	if err != nil {
+	if err := cfg.Validate(); err != nil {
 		cobra.CheckErr(err)
 		return
 	}
-
-	cfg = c
 }
 
 func ensureCfg(_ *cobra.Command, _ []string) error {
 	if cfg == nil {
-		return fmt.Errorf("CLI config missing")
+		return fmt.Errorf("CLI config missing or invalid")
 	}
 	return nil
 }

@@ -15,12 +15,9 @@
 package config
 
 import (
-	"context"
 	"fmt"
 
 	"github.com/hashicorp/go-multierror"
-	"github.com/sethvargo/go-envconfig"
-	"gopkg.in/yaml.v2"
 )
 
 const (
@@ -53,29 +50,4 @@ func (cfg *CLIConfig) SetDefault() {
 	if cfg.Version == 0 {
 		cfg.Version = DefaultCLIConfigVersion
 	}
-}
-
-// LoadConfig calls the necessary methods to load in config using the OsLookuper which finds env variables specified on the host.
-func LoadCLIConfig(ctx context.Context, b []byte) (*CLIConfig, error) {
-	return loadCLIConfigFromLookuper(ctx, b, envconfig.OsLookuper())
-}
-
-// loadConfigFromLooker reads in a yaml file, applies ENV config overrides from the lookuper, and finally validates the config.
-func loadCLIConfigFromLookuper(ctx context.Context, b []byte, lookuper envconfig.Lookuper) (*CLIConfig, error) {
-	cfg := &CLIConfig{}
-	if err := yaml.Unmarshal(b, cfg); err != nil {
-		return nil, fmt.Errorf("failed to unmarshal yaml: %w", err)
-	}
-
-	// Process overrides from env vars.
-	l := envconfig.PrefixLookuper("JVSCTL_", lookuper)
-	if err := envconfig.ProcessWith(ctx, cfg, l); err != nil {
-		return nil, fmt.Errorf("failed to process environment: %w", err)
-	}
-
-	if err := cfg.Validate(); err != nil {
-		return nil, fmt.Errorf("failed validating config: %w", err)
-	}
-
-	return cfg, nil
 }
