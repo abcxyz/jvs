@@ -16,6 +16,7 @@
 package cli
 
 import (
+	"errors"
 	"fmt"
 	"os"
 	"path/filepath"
@@ -46,7 +47,7 @@ func init() {
 	cobra.OnInitialize(initCfg)
 	rootCmd.PersistentFlags().StringVar(&cfgFile, "config", "", "config file (default is $HOME/.jvsctl/config.yaml)")
 	rootCmd.PersistentFlags().String("server", "", "overwrite the JVS server address")
-	viper.BindPFlag("server", rootCmd.PersistentFlags().Lookup("server"))
+	viper.BindPFlag("server", rootCmd.PersistentFlags().Lookup("server")) //nolint // not expect err
 
 	rootCmd.AddCommand(tokenCmd)
 }
@@ -72,7 +73,7 @@ func initCfg() {
 	if err := viper.ReadInConfig(); err != nil {
 		// It's ok if the config file is not found because
 		// the values could be filled by env vars or flags.
-		if _, ok := err.(viper.ConfigFileNotFoundError); !ok {
+		if !errors.As(err, &viper.ConfigFileNotFoundError{}) {
 			cobra.CheckErr(err)
 			return
 		}
@@ -84,7 +85,7 @@ func initCfg() {
 	}
 
 	if err := cfg.Validate(); err != nil {
-		cobra.CheckErr(err)
+		cobra.CheckErr(fmt.Errorf("invalid config: %w", err))
 		return
 	}
 }
