@@ -1,0 +1,10 @@
+bazel-*
+*~
+.idea/
+.vscode/
+.DS_Store
+*.swp
+.history
+tmp/
+~    
+
