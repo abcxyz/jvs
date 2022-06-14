@@ -40,6 +40,7 @@ import (
 	"google.golang.org/api/iterator"
 	kmspb "google.golang.org/genproto/googleapis/cloud/kms/v1"
 	"google.golang.org/protobuf/types/known/durationpb"
+	"google.golang.org/protobuf/types/known/fieldmaskpb"
 )
 
 func TestJVS(t *testing.T) {
@@ -261,76 +262,193 @@ func TestRotator(t *testing.T) {
 			1: kmspb.CryptoKeyVersion_ENABLED,
 		})
 
-	// -- test that keys are rotated correctly --
-	time.Sleep(5001 * time.Millisecond) // Wait past the next rotation event
-	if err := r.RotateKey(ctx, keyName); err != nil {
-		t.Fatalf("err when trying to rotate: %s", err)
+	t.Run("new_key_creation", func(t *testing.T) {
+		time.Sleep(5001 * time.Millisecond) // Wait past the next rotation event
+		if err := r.RotateKey(ctx, keyName); err != nil {
+			t.Fatalf("err when trying to rotate: %s", err)
+			return
+		}
+		// Validate we have created a new key, but haven't set it as primary yet.
+		testValidateKeyVersionState(ctx, t, kmsClient, keyName, 1,
+			map[int]kmspb.CryptoKeyVersion_CryptoKeyVersionState{
+				1: kmspb.CryptoKeyVersion_ENABLED,
+				2: kmspb.CryptoKeyVersion_ENABLED,
+			})
+	})
+
+	t.Run("new_key_promotion", func(t *testing.T) {
+		time.Sleep(1001 * time.Millisecond) // Wait past the propagation delay.
+		if err := r.RotateKey(ctx, keyName); err != nil {
+			t.Fatalf("err when trying to rotate: %s", err)
+		}
+		// Validate our new key has been set to primary
+		testValidateKeyVersionState(ctx, t, kmsClient, keyName, 2,
+			map[int]kmspb.CryptoKeyVersion_CryptoKeyVersionState{
+				1: kmspb.CryptoKeyVersion_ENABLED,
+				2: kmspb.CryptoKeyVersion_ENABLED,
+			})
+	})
+
+	t.Run("old_key_disable", func(t *testing.T) {
+		time.Sleep(2001 * time.Millisecond) // Wait past the grace period.
+		if err := r.RotateKey(ctx, keyName); err != nil {
+			t.Fatalf("err when trying to rotate: %s", err)
+		}
+		// Validate that our old key has been disabled.
+		testValidateKeyVersionState(ctx, t, kmsClient, keyName, 2,
+			map[int]kmspb.CryptoKeyVersion_CryptoKeyVersionState{
+				1: kmspb.CryptoKeyVersion_DISABLED,
+				2: kmspb.CryptoKeyVersion_ENABLED,
+			})
+	})
+
+	t.Run("old_key_destroy", func(t *testing.T) {
+		time.Sleep(2001 * time.Millisecond) // Wait past the disabled period and next rotation event.
+		if err := r.RotateKey(ctx, keyName); err != nil {
+			t.Fatalf("err when trying to rotate: %s", err)
+		}
+		// Validate that our old key has been scheduled for destruction, and cycle has started again.
+		testValidateKeyVersionState(ctx, t, kmsClient, keyName, 2,
+			map[int]kmspb.CryptoKeyVersion_CryptoKeyVersionState{
+				1: kmspb.CryptoKeyVersion_DESTROY_SCHEDULED,
+				2: kmspb.CryptoKeyVersion_ENABLED,
+				3: kmspb.CryptoKeyVersion_ENABLED,
+			})
+	})
+}
+
+func TestRotator_EdgeCases(t *testing.T) {
+	t.Parallel()
+	ctx := context.Background()
+	if !testIsIntegration(t) {
+		// Not an integ test, don't run anything.
+		t.Skip("Not an integration test, skipping...")
 		return
 	}
-	// Validate we have created a new key, but haven't set it as primary yet.
+	keyRing := os.Getenv("TEST_JVS_KMS_KEY_RING")
+	if keyRing == "" {
+		t.Fatal("Key ring must be provided using TEST_JVS_KMS_KEY_RING env variable.")
+	}
+
+	kmsClient, err := kms.NewKeyManagementClient(ctx)
+	if err != nil {
+		t.Fatalf("failed to setup kms client: %s", err)
+	}
+
+	keyRing = strings.Trim(keyRing, "\"")
+	keyName := testCreateKey(ctx, t, kmsClient, keyRing)
+	t.Cleanup(func() {
+		testCleanUpKey(ctx, t, kmsClient, keyName)
+		err := kmsClient.Close()
+		if err != nil {
+			t.Errorf("Clean up of key %s failed: %s", keyName, err)
+		}
+	})
+	firstVersionName := keyName + "/cryptoKeyVersions/1"
+	if err := jvscrypto.SetPrimary(ctx, kmsClient, keyName, firstVersionName); err != nil {
+		t.Fatalf("unable to set primary: %s", err)
+	}
+
+	cfg := &config.CryptoConfig{
+		Version:          1,
+		KeyTTL:           99 * time.Hour,
+		GracePeriod:      time.Second,
+		PropagationDelay: time.Second,
+		DisabledPeriod:   time.Second,
+		KeyNames:         []string{keyName},
+	}
+	if err := cfg.Validate(); err != nil {
+		t.Fatal(err)
+	}
+	r := &jvscrypto.RotationHandler{
+		KMSClient:    kmsClient,
+		CryptoConfig: cfg,
+	}
+
+	// Validate we have a single enabled key that is primary.
 	testValidateKeyVersionState(ctx, t, kmsClient, keyName, 1,
 		map[int]kmspb.CryptoKeyVersion_CryptoKeyVersionState{
 			1: kmspb.CryptoKeyVersion_ENABLED,
-			2: kmspb.CryptoKeyVersion_ENABLED,
 		})
-
 	time.Sleep(1001 * time.Millisecond) // Wait past the propagation delay.
-	if err := r.RotateKey(ctx, keyName); err != nil {
-		t.Fatalf("err when trying to rotate: %s", err)
-	}
-	// Validate our new key has been set to primary
-	testValidateKeyVersionState(ctx, t, kmsClient, keyName, 2,
-		map[int]kmspb.CryptoKeyVersion_CryptoKeyVersionState{
-			1: kmspb.CryptoKeyVersion_ENABLED,
-			2: kmspb.CryptoKeyVersion_ENABLED,
-		})
 
-	time.Sleep(2001 * time.Millisecond) // Wait past the grace period.
-	if err := r.RotateKey(ctx, keyName); err != nil {
-		t.Fatalf("err when trying to rotate: %s", err)
-	}
-	// Validate that our old key has been disabled.
-	testValidateKeyVersionState(ctx, t, kmsClient, keyName, 2,
-		map[int]kmspb.CryptoKeyVersion_CryptoKeyVersionState{
-			1: kmspb.CryptoKeyVersion_DISABLED,
-			2: kmspb.CryptoKeyVersion_ENABLED,
-		})
+	t.Run("invalid_primary", func(t *testing.T) {
+		// Set primary to a version that doesn't exist
+		if err := jvscrypto.SetPrimary(ctx, kmsClient, keyName, keyName+"/cryptoKeyVersions/99"); err != nil {
+			t.Fatalf("unable to set primary: %s", err)
+		}
+		if err := r.RotateKey(ctx, keyName); err != nil {
+			t.Fatalf("err when trying to rotate: %s", err)
+		}
 
-	// -- test that we gracefully handle if the primary is set incorrectly --
-	// Set primary to a version that doesn't exist
-	if err := jvscrypto.SetPrimary(ctx, kmsClient, keyName, keyName+"/cryptoKeyVersions/99"); err != nil {
-		t.Fatalf("unable to set primary: %s", err)
-	}
-	if err := r.RotateKey(ctx, keyName); err != nil {
-		t.Fatalf("err when trying to rotate: %s", err)
-	}
+		// Validate that we fixed the situation by setting our valid key to primary
+		testValidateKeyVersionState(ctx, t, kmsClient, keyName, 1,
+			map[int]kmspb.CryptoKeyVersion_CryptoKeyVersionState{
+				1: kmspb.CryptoKeyVersion_ENABLED,
+			})
+	})
 
-	// Validate that we fixed the situation by setting our valid key to primary
-	testValidateKeyVersionState(ctx, t, kmsClient, keyName, 2,
-		map[int]kmspb.CryptoKeyVersion_CryptoKeyVersionState{
-			1: kmspb.CryptoKeyVersion_DISABLED,
-			2: kmspb.CryptoKeyVersion_ENABLED,
-		})
+	// we could parallelize this, but we'd need separate keys from the above (more cruft)
+	t.Run("emergent_disable", func(t *testing.T) {
+		// Emergently disable our primary.
+		testEmergentDisable(ctx, t, kmsClient, keyName, firstVersionName)
 
-	// Set primary to a version that is disabled
-	if err := jvscrypto.SetPrimary(ctx, kmsClient, keyName, keyName+"/cryptoKeyVersions/1"); err != nil {
-		t.Fatalf("unable to set primary: %s", err)
-	}
-	if err := r.RotateKey(ctx, keyName); err != nil {
-		t.Fatalf("err when trying to rotate: %s", err)
+		// Validate that the rotator will fix the situation by creating a new version and setting it to primary
+		if err := r.RotateKey(ctx, keyName); err != nil {
+			t.Fatalf("err when trying to rotate: %s", err)
+		}
+		testValidateKeyVersionState(ctx, t, kmsClient, keyName, 2,
+			map[int]kmspb.CryptoKeyVersion_CryptoKeyVersionState{
+				1: kmspb.CryptoKeyVersion_DISABLED,
+				2: kmspb.CryptoKeyVersion_ENABLED,
+			})
+	})
+}
+
+// This is intended to mock an event where we need to emergently rotate the key.
+// We disable the key version and remove it as primary.
+func testEmergentDisable(ctx context.Context, tb testing.TB, kmsClient *kms.KeyManagementClient, keyName string, versionName string) {
+	tb.Helper()
+	ver, err := kmsClient.GetCryptoKeyVersion(ctx, &kmspb.GetCryptoKeyVersionRequest{Name: versionName})
+	if err != nil {
+		tb.Fatalf("unable to retreive version %s: %s", versionName, err)
 	}
 
-	// Validate that we fixed the situation by setting our valid key to primary
-	testValidateKeyVersionState(ctx, t, kmsClient, keyName, 2,
-		map[int]kmspb.CryptoKeyVersion_CryptoKeyVersionState{
-			1: kmspb.CryptoKeyVersion_DISABLED,
-			2: kmspb.CryptoKeyVersion_ENABLED,
-		})
+	ver.State = kmspb.CryptoKeyVersion_DISABLED
+	var messageType *kmspb.CryptoKeyVersion
+	mask, err := fieldmaskpb.New(messageType, "state")
+	if err != nil {
+		tb.Fatalf("unable to create field mask: %s", err)
+	}
+	updateReq := &kmspb.UpdateCryptoKeyVersionRequest{
+		CryptoKeyVersion: ver,
+		UpdateMask:       mask,
+	}
+	if _, err := kmsClient.UpdateCryptoKeyVersion(ctx, updateReq); err != nil {
+		tb.Fatalf("unable to disable version: %s", err)
+	}
 
+	key, err := kmsClient.GetCryptoKey(ctx, &kmspb.GetCryptoKeyRequest{Name: keyName})
+	if err != nil {
+		tb.Fatalf("unable to retreive key %s: %s", keyName, err)
+	}
+
+	labels := make(map[string]string, 0)
+	key.Labels = labels
+
+	var mT *kmspb.CryptoKey
+	mask, err = fieldmaskpb.New(mT, "labels")
+	if err != nil {
+		tb.Fatalf("unable to create field mask: %s", err)
+	}
+	_, err = kmsClient.UpdateCryptoKey(ctx, &kmspb.UpdateCryptoKeyRequest{CryptoKey: key, UpdateMask: mask})
+	if err != nil {
+		tb.Fatalf("unable to set labels: %s", err)
+	}
 }
 
 func testValidateKeyVersionState(ctx context.Context, tb testing.TB, kmsClient *kms.KeyManagementClient, keyName string,
-		expectedPrimary int, expectedStates map[int]kmspb.CryptoKeyVersion_CryptoKeyVersionState,
+	expectedPrimary int, expectedStates map[int]kmspb.CryptoKeyVersion_CryptoKeyVersionState,
 ) {
 	tb.Helper()
 	// validate that each version is in the expected state.
@@ -445,7 +563,7 @@ func testCleanUpKey(ctx context.Context, tb testing.TB, kmsClient *kms.KeyManage
 			tb.Fatalf("err while reading crypto key version list: %s", err)
 		}
 		if ver.State == kmspb.CryptoKeyVersion_DESTROYED ||
-				ver.State == kmspb.CryptoKeyVersion_DESTROY_SCHEDULED {
+			ver.State == kmspb.CryptoKeyVersion_DESTROY_SCHEDULED {
 			// no need to destroy again
 			continue
 		}
