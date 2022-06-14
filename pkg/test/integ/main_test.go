@@ -230,7 +230,7 @@ func TestPublicKeys(t *testing.T) {
 
 	config, err := config.LoadPublicKeyConfig(ctx, []byte{})
 	if err != nil {
-		t.Fatalf("failed to load public key config: %w", err)
+		t.Fatalf("failed to load public key config: %s", err)
 	}
 
 	cache := cache.New[string](config.CacheTimeout)
