@@ -17,6 +17,8 @@ package integ
 
 import (
 	"context"
+	"crypto/x509"
+	"encoding/pem"
 	"errors"
 	"os"
 	"strconv"
@@ -25,10 +27,19 @@ import (
 	"time"
 
 	kms "cloud.google.com/go/kms/apiv1"
+	jvspb "github.com/abcxyz/jvs/apis/v0"
+	"github.com/abcxyz/jvs/pkg/config"
+	"github.com/abcxyz/jvs/pkg/justification"
+	"github.com/abcxyz/jvs/pkg/jvscrypto"
+	"github.com/abcxyz/jvs/pkg/testutil"
+	"github.com/google/go-cmp/cmp"
+	"github.com/google/go-cmp/cmp/cmpopts"
 	"github.com/google/uuid"
+	"github.com/lestrrat-go/jwx/v2/jwk"
 	"github.com/sethvargo/go-retry"
 	"google.golang.org/api/iterator"
 	kmspb "google.golang.org/genproto/googleapis/cloud/kms/v1"
+	"google.golang.org/protobuf/types/known/durationpb"
 )
 
 func TestJVS(t *testing.T) {
@@ -58,7 +69,142 @@ func TestJVS(t *testing.T) {
 		}
 	})
 
-	// TODO: Actual tests and stuff
+	cfg := &config.JustificationConfig{
+		Version: 1,
+		KeyName: keyName,
+		Issuer:  "ci-test",
+	}
+	if err := cfg.Validate(); err != nil {
+		t.Fatal(err)
+	}
+
+	p := justification.NewProcessor(kmsClient, cfg)
+	jvsAgent := justification.NewJVSAgent(p)
+
+	tests := []struct {
+		name     string
+		request  *jvspb.CreateJustificationRequest
+		wantErr  string
+		wantResp map[string]interface{}
+	}{
+		{
+			name: "happy_path",
+			request: &jvspb.CreateJustificationRequest{
+				Justifications: []*jvspb.Justification{
+					{
+						Category: "explanation",
+						Value:    "This is a test.",
+					},
+				},
+				Ttl: &durationpb.Duration{
+					Seconds: 3600,
+				},
+			},
+			wantResp: map[string]interface{}{
+				"aud": []string{"TODO #22"},
+				"iss": "ci-test",
+				"justs": []any{
+					map[string]any{"category": "explanation", "value": "This is a test."},
+				},
+				"sub": "TODO #22",
+			},
+		},
+		{
+			name: "unknown_justification",
+			request: &jvspb.CreateJustificationRequest{
+				Justifications: []*jvspb.Justification{
+					{
+						Category: "who-knows",
+						Value:    "This is a test.",
+					},
+				},
+				Ttl: &durationpb.Duration{
+					Seconds: 3600,
+				},
+			},
+			wantErr: "couldn't validate request",
+		},
+		{
+			name: "blank_justification",
+			request: &jvspb.CreateJustificationRequest{
+				Justifications: []*jvspb.Justification{
+					{
+						Category: "explanation",
+						Value:    "",
+					},
+				},
+				Ttl: &durationpb.Duration{
+					Seconds: 3600,
+				},
+			},
+			wantErr: "couldn't validate request",
+		},
+		{
+			name: "no_ttl",
+			request: &jvspb.CreateJustificationRequest{
+				Justifications: []*jvspb.Justification{
+					{
+						Category: "explanation",
+						Value:    "This is a test.",
+					},
+				},
+			},
+			wantErr: "couldn't validate request",
+		},
+		{
+			name: "no_justification",
+			request: &jvspb.CreateJustificationRequest{
+				Justifications: []*jvspb.Justification{},
+				Ttl: &durationpb.Duration{
+					Seconds: 3600,
+				},
+			},
+			wantErr: "couldn't validate request",
+		},
+		{
+			name:    "empty_request",
+			request: &jvspb.CreateJustificationRequest{},
+			wantErr: "couldn't validate request",
+		},
+	}
+
+	for _, tc := range tests {
+		tc := tc
+		t.Run(tc.name, func(t *testing.T) {
+			t.Parallel()
+
+			resp, gotErr := jvsAgent.CreateJustification(ctx, tc.request)
+			testutil.ErrCmp(t, tc.wantErr, gotErr)
+			if gotErr != nil {
+				return
+			}
+
+			keySet := testKeySetFromKMS(ctx, t, kmsClient, keyName)
+			token, err := jvscrypto.ValidateJWT(keySet, resp.Token)
+			if err != nil {
+				t.Errorf("Couldn't validate signed token: %s", err)
+				return
+			}
+
+			tokenMap, err := (*token).AsMap(ctx)
+			if err != nil {
+				t.Errorf("Couldn't convert token to map: %s", err)
+				return
+			}
+
+			// These fields are set based on time, and we cannot know what they will be set to.
+			ignoreFields := map[string]interface{}{
+				"exp": nil,
+				"iat": nil,
+				"jti": nil,
+				"nbf": nil,
+			}
+			ignoreOpt := cmpopts.IgnoreMapEntries(func(k string, v interface{}) bool { _, ok := ignoreFields[k]; return ok })
+			if diff := cmp.Diff(tc.wantResp, tokenMap, ignoreOpt); diff != "" {
+				t.Errorf("Got diff (-want, +got): %v", diff)
+			}
+		})
+	}
 }
 
 func testIsIntegration(tb testing.TB) bool {
@@ -140,4 +286,36 @@ func testCleanUpKey(ctx context.Context, tb testing.TB, kmsClient *kms.KeyManage
 			tb.Errorf("cleanup: failed to destroy crypto key version %q: %s", ver.Name, err)
 		}
 	}
+}
+
+// Build a key set containing the public key for the first key version from the specified key. Static, does not update automatically.
+func testKeySetFromKMS(ctx context.Context, tb testing.TB, kmsClient *kms.KeyManagementClient, keyName string) jwk.Set {
+	tb.Helper()
+	keySet := jwk.NewSet()
+	versionName := keyName + "/cryptoKeyVersions/1"
+	pubKeyResp, err := kmsClient.GetPublicKey(ctx, &kmspb.GetPublicKeyRequest{Name: versionName})
+	if err != nil {
+		tb.Fatalf("Couldn't retrieve public key: %s", err)
+	}
+	block, _ := pem.Decode([]byte(pubKeyResp.Pem))
+	if block == nil || block.Type != "PUBLIC KEY" {
+		tb.Fatal("failed to decode PEM block containing public key")
+	}
+
+	pub, err := x509.ParsePKIXPublicKey(block.Bytes)
+	if err != nil {
+		tb.Fatalf("Couldn't parse public key: %s", err)
+	}
+
+	jwkKey, err := jwk.FromRaw(pub)
+	if err != nil {
+		tb.Fatalf("Couldn't convert key to jwk: %s", err)
+	}
+	if err := jwkKey.Set("kid", versionName); err != nil {
+		tb.Fatalf("Couldn't set key id: %s", err)
+	}
+	if err := keySet.AddKey(jwkKey); err != nil {
+		tb.Fatalf("Couldn't add jwk to set: %s", err)
+	}
+	return keySet
 }

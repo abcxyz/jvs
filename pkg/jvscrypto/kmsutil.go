@@ -28,6 +28,9 @@ import (
 
 	kms "cloud.google.com/go/kms/apiv1"
 	"github.com/golang-jwt/jwt"
+	"github.com/lestrrat-go/jwx/v2/jwk"
+	"github.com/lestrrat-go/jwx/v2/jws"
+	jwt2 "github.com/lestrrat-go/jwx/v2/jwt"
 	"google.golang.org/api/iterator"
 	kmspb "google.golang.org/genproto/googleapis/cloud/kms/v1"
 	"google.golang.org/protobuf/types/known/fieldmaskpb"
@@ -209,4 +212,14 @@ func getLabelValue(versionName string) (string, error) {
 	}
 	versionValue := valuePrefix + split[len(split)-1]
 	return versionValue, nil
+}
+
+// ValidateJWT takes a jwt string, converts it to a JWT, and validates the signature.
+func ValidateJWT(keySet jwk.Set, jwtStr string) (*jwt2.Token, error) {
+	verifiedToken, err := jwt2.Parse([]byte(jwtStr), jwt2.WithKeySet(keySet, jws.WithInferAlgorithmFromKey(true)))
+	if err != nil {
+		return nil, fmt.Errorf("failed to verify jwt %s: %w", jwtStr, err)
+	}
+
+	return &verifiedToken, nil
 }
