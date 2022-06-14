@@ -24,7 +24,6 @@ import (
 	"encoding/pem"
 	"errors"
 	"fmt"
-	"github.com/abcxyz/pkg/cache"
 	"net/http"
 	"net/http/httptest"
 	"os"
@@ -33,6 +32,8 @@ import (
 	"strings"
 	"testing"
 	"time"
+
+	"github.com/abcxyz/pkg/cache"
 
 	kms "cloud.google.com/go/kms/apiv1"
 	jvspb "github.com/abcxyz/jvs/apis/v0"
@@ -241,7 +242,7 @@ func TestPublicKeys(t *testing.T) {
 		Cache:           cache,
 	}
 
-	//test for no-primary
+	// test for no-primary
 	testValidatePublicKeys(ctx, t, kmsClient, ks, "")
 
 	keyRing := os.Getenv("TEST_JVS_KMS_KEY_RING")
@@ -255,11 +256,11 @@ func TestPublicKeys(t *testing.T) {
 	keyRing = strings.Trim(keyRing, "\"")
 	keyName := testCreateKey(ctx, t, kmsClient, keyRing)
 
-	//test for one key version
+	// test for one key version
 	testValidatePublicKeys(ctx, t, kmsClient, ks, keyName)
 
 	testCreateKeyVersion(ctx, t, kmsClient, keyName, "2")
-	//test for multiple key version
+	// test for multiple key version
 	testValidatePublicKeys(ctx, t, kmsClient, ks, keyName)
 	t.Cleanup(func() {
 		testCleanUpKey(ctx, t, kmsClient, keyName)
