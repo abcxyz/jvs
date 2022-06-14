@@ -261,6 +261,7 @@ func TestRotator(t *testing.T) {
 			1: kmspb.CryptoKeyVersion_ENABLED,
 		})
 
+	// -- test that keys are rotated correctly --
 	time.Sleep(5001 * time.Millisecond) // Wait past the next rotation event
 	if err := r.RotateKey(ctx, keyName); err != nil {
 		t.Fatalf("err when trying to rotate: %s", err)
@@ -294,10 +295,42 @@ func TestRotator(t *testing.T) {
 			1: kmspb.CryptoKeyVersion_DISABLED,
 			2: kmspb.CryptoKeyVersion_ENABLED,
 		})
+
+	// -- test that we gracefully handle if the primary is set incorrectly --
+	// Set primary to a version that doesn't exist
+	if err := jvscrypto.SetPrimary(ctx, kmsClient, keyName, keyName+"/cryptoKeyVersions/99"); err != nil {
+		t.Fatalf("unable to set primary: %s", err)
+	}
+	if err := r.RotateKey(ctx, keyName); err != nil {
+		t.Fatalf("err when trying to rotate: %s", err)
+	}
+
+	// Validate that we fixed the situation by setting our valid key to primary
+	testValidateKeyVersionState(ctx, t, kmsClient, keyName, 2,
+		map[int]kmspb.CryptoKeyVersion_CryptoKeyVersionState{
+			1: kmspb.CryptoKeyVersion_DISABLED,
+			2: kmspb.CryptoKeyVersion_ENABLED,
+		})
+
+	// Set primary to a version that is disabled
+	if err := jvscrypto.SetPrimary(ctx, kmsClient, keyName, keyName+"/cryptoKeyVersions/1"); err != nil {
+		t.Fatalf("unable to set primary: %s", err)
+	}
+	if err := r.RotateKey(ctx, keyName); err != nil {
+		t.Fatalf("err when trying to rotate: %s", err)
+	}
+
+	// Validate that we fixed the situation by setting our valid key to primary
+	testValidateKeyVersionState(ctx, t, kmsClient, keyName, 2,
+		map[int]kmspb.CryptoKeyVersion_CryptoKeyVersionState{
+			1: kmspb.CryptoKeyVersion_DISABLED,
+			2: kmspb.CryptoKeyVersion_ENABLED,
+		})
+
 }
 
 func testValidateKeyVersionState(ctx context.Context, tb testing.TB, kmsClient *kms.KeyManagementClient, keyName string,
-	expectedPrimary int, expectedStates map[int]kmspb.CryptoKeyVersion_CryptoKeyVersionState,
+		expectedPrimary int, expectedStates map[int]kmspb.CryptoKeyVersion_CryptoKeyVersionState,
 ) {
 	tb.Helper()
 	// validate that each version is in the expected state.
@@ -412,7 +445,7 @@ func testCleanUpKey(ctx context.Context, tb testing.TB, kmsClient *kms.KeyManage
 			tb.Fatalf("err while reading crypto key version list: %s", err)
 		}
 		if ver.State == kmspb.CryptoKeyVersion_DESTROYED ||
-			ver.State == kmspb.CryptoKeyVersion_DESTROY_SCHEDULED {
+				ver.State == kmspb.CryptoKeyVersion_DESTROY_SCHEDULED {
 			// no need to destroy again
 			continue
 		}
