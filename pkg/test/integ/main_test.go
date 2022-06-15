@@ -382,8 +382,7 @@ func testSetupRotator(ctx context.Context, tb testing.TB) (*kms.KeyManagementCli
 	keyName := testCreateKey(ctx, tb, kmsClient, keyRing)
 	tb.Cleanup(func() {
 		testCleanUpKey(ctx, tb, kmsClient, keyName)
-		err := kmsClient.Close()
-		if err != nil {
+		if err := kmsClient.Close(); err != nil {
 			tb.Errorf("Clean up of key %s failed: %s", keyName, err)
 		}
 	})
