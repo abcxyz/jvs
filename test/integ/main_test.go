@@ -699,7 +699,7 @@ func testCreateKeyVersion(ctx context.Context, tb testing.TB, kmsClient *kms.Key
 	return ck.Name
 }
 
-// Build a list of public keys and public keys converted to string(including public keys)
+// Build public keys list and public keys list converted to string(including public keys).
 func testPublicKeysFromKMS(ctx context.Context, tb testing.TB, kmsClient *kms.KeyManagementClient, keyName string) ([]*jvscrypto.ECDSAKey, string, error) {
 	tb.Helper()
 	jwks, err := jvscrypto.JWKList(ctx, kmsClient, keyName)
