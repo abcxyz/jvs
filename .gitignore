@@ -36,10 +36,9 @@ bazel-*
 .idea/
 .vscode/
 .DS_Store
-cover.out
-bin/
 *.swp
 .history
+tmp/
 
 ### Terraform related ###
 # Local .terraform directories
