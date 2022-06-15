@@ -20,7 +20,6 @@ import (
 	"crypto/x509"
 	"encoding/pem"
 	"errors"
-	"fmt"
 	"net/http"
 	"net/http/httptest"
 	"os"
@@ -403,10 +402,8 @@ func TestPublicKeys(t *testing.T) {
 		Cache:           cache,
 	}
 
-	publicKeys1, publicKeysStr1, err := testPublicKeysFromKMS(ctx, t, kmsClient, keyName)
-	if err != nil {
-		t.Fatalf("failed to get public keys from kms: %v", err)
-	}
+	publicKeys1, publicKeysStr1 := testPublicKeysFromKMS(ctx, t, kmsClient, keyName)
+
 	if len(publicKeys1) != 1 {
 		t.Fatalf("num of key versions in KMS does not match, want %d, got %d", 1, len(publicKeys1))
 	}
@@ -418,10 +415,8 @@ func TestPublicKeys(t *testing.T) {
 	testValidatePublicKeys(ctx, t, ks, publicKeysStr1)
 	// Wait for the cache timeout
 	time.Sleep(10 * time.Second)
-	publicKeys2, publicKeysStr2, err := testPublicKeysFromKMS(ctx, t, kmsClient, keyName)
-	if err != nil {
-		t.Fatalf("failed to get public keys from kms: %v", err)
-	}
+	publicKeys2, publicKeysStr2 := testPublicKeysFromKMS(ctx, t, kmsClient, keyName)
+
 	if len(publicKeys2) != 2 {
 		t.Fatalf("num of key versions in KMS does not match, want %d, got %d", 2, len(publicKeys2))
 	}
@@ -700,17 +695,17 @@ func testCreateKeyVersion(ctx context.Context, tb testing.TB, kmsClient *kms.Key
 }
 
 // Build public keys list and public keys list converted to string(including public keys).
-func testPublicKeysFromKMS(ctx context.Context, tb testing.TB, kmsClient *kms.KeyManagementClient, keyName string) ([]*jvscrypto.ECDSAKey, string, error) {
+func testPublicKeysFromKMS(ctx context.Context, tb testing.TB, kmsClient *kms.KeyManagementClient, keyName string) ([]*jvscrypto.ECDSAKey, string) {
 	tb.Helper()
 	jwks, err := jvscrypto.JWKList(ctx, kmsClient, keyName)
 	if err != nil {
-		return nil, "", fmt.Errorf("err while determining public keys %w", err)
+		tb.Fatalf("err while determining public keys %v", err)
 	}
 	json, err := jvscrypto.FormatJWKString(jwks)
 	if err != nil {
-		return jwks, "", fmt.Errorf("err while formatting public keys, %w", err)
+		tb.Fatalf("err while formatting public keys, %v", err)
 	}
-	return jwks, json, nil
+	return jwks, json
 }
 
 func testValidatePublicKeys(ctx context.Context, tb testing.TB, ks *jvscrypto.KeyServer, expectedPublicKeys string,
