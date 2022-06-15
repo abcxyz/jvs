@@ -436,7 +436,7 @@ func testEmergentDisable(ctx context.Context, tb testing.TB, kmsClient *kms.KeyM
 	if err != nil {
 		tb.Fatalf("unable to create field mask: %s", err)
 	}
-	if _, err = kmsClient.UpdateCryptoKey(ctx, &kmspb.UpdateCryptoKeyRequest{CryptoKey: key, UpdateMask: mask}); err != nil {
+	if _, err := kmsClient.UpdateCryptoKey(ctx, &kmspb.UpdateCryptoKeyRequest{CryptoKey: key, UpdateMask: mask}); err != nil {
 		tb.Fatalf("unable to set labels: %s", err)
 	}
 }
