@@ -410,7 +410,7 @@ func TestPublicKeys(t *testing.T) {
 	// test for one key version
 	testValidatePublicKeys(ctx, t, kmsClient, ks, keyName)
 
-	testCreateKeyVersion(ctx, t, kmsClient, keyName, "2")
+	testCreateKeyVersion(ctx, t, kmsClient, keyName)
 	// Wait for the cache timeout
 	time.Sleep(5 * time.Second)
 	// test for multiple key version
@@ -658,7 +658,7 @@ func testKeySetFromKMS(ctx context.Context, tb testing.TB, kmsClient *kms.KeyMan
 }
 
 // Create a new KeyVersion for use with integration tests.
-func testCreateKeyVersion(ctx context.Context, tb testing.TB, kmsClient *kms.KeyManagementClient, keyName, keyVersion string) string {
+func testCreateKeyVersion(ctx context.Context, tb testing.TB, kmsClient *kms.KeyManagementClient, keyName string) string {
 	tb.Helper()
 	ck, err := kmsClient.CreateCryptoKeyVersion(ctx, &kmspb.CreateCryptoKeyVersionRequest{
 		Parent:           keyName,
