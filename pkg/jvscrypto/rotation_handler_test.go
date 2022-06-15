@@ -26,6 +26,7 @@ import (
 	kms "cloud.google.com/go/kms/apiv1"
 	"github.com/abcxyz/jvs/pkg/config"
 	"github.com/abcxyz/jvs/pkg/testutil"
+	pkgtestutil "github.com/abcxyz/pkg/testutil"
 	"google.golang.org/grpc/credentials/insecure"
 	"google.golang.org/protobuf/types/known/fieldmaskpb"
 	"google.golang.org/protobuf/types/known/timestamppb"
@@ -458,7 +459,9 @@ func TestPerformActions(t *testing.T) {
 				}
 				t.Errorf("wrong requests %v, want %v", got, want)
 			}
-			testutil.ErrCmp(t, tc.wantErr, gotErr)
+			if diff := pkgtestutil.DiffErrString(gotErr, tc.wantErr); diff != "" {
+				t.Errorf("Unexpected err: %s", diff)
+			}
 
 			if diff := cmp.Diff(tc.expectedPrimary, mockKeyManagement.Labels["primary"]); diff != "" {
 				t.Errorf("Got diff (-want, +got): %v", diff)

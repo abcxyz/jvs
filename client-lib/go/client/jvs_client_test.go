@@ -28,7 +28,7 @@ import (
 	"time"
 
 	v0 "github.com/abcxyz/jvs/apis/v0"
-	"github.com/abcxyz/jvs/pkg/testutil"
+	"github.com/abcxyz/pkg/testutil"
 	"github.com/google/go-cmp/cmp"
 	"github.com/lestrrat-go/jwx/v2/jwa"
 	"github.com/lestrrat-go/jwx/v2/jwk"
@@ -145,7 +145,9 @@ func TestValidateJWT(t *testing.T) {
 		t.Run(tc.name, func(t *testing.T) {
 			t.Parallel()
 			res, err := client.ValidateJWT(tc.jwt)
-			testutil.ErrCmp(t, tc.wantErr, err)
+			if diff := testutil.DiffErrString(err, tc.wantErr); diff != "" {
+				t.Errorf("Unexpected err: %s", diff)
+			}
 			if err != nil {
 				return
 			}

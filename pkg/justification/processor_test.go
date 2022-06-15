@@ -30,6 +30,7 @@ import (
 	"github.com/abcxyz/jvs/pkg/config"
 	"github.com/abcxyz/jvs/pkg/jvscrypto"
 	"github.com/abcxyz/jvs/pkg/testutil"
+	pkgtestutil "github.com/abcxyz/pkg/testutil"
 	"github.com/golang-jwt/jwt"
 	"github.com/google/go-cmp/cmp"
 	"google.golang.org/api/option"
@@ -156,7 +157,9 @@ func TestCreateToken(t *testing.T) {
 			mockKeyManagement.Resps = append(mockKeyManagement.Resps[:0], &kmspb.CryptoKeyVersion{})
 
 			response, gotErr := processor.CreateToken(ctx, tc.request)
-			testutil.ErrCmp(t, tc.wantErr, gotErr)
+			if diff := pkgtestutil.DiffErrString(gotErr, tc.wantErr); diff != "" {
+				t.Errorf("Unexpected err: %s", diff)
+			}
 
 			if gotErr != nil {
 				return
