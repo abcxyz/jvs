@@ -74,7 +74,7 @@ func TestJVS(t *testing.T) {
 	t.Cleanup(func() {
 		testCleanUpKey(ctx, t, kmsClient, keyName)
 		if err := kmsClient.Close(); err != nil {
-			t.Errorf("Clean up of key %s failed: %s", keyName, err)
+			t.Errorf("Clean up of key %s failed: %v", keyName, err)
 		}
 	})
 
@@ -193,13 +193,13 @@ func TestJVS(t *testing.T) {
 			keySet := testKeySetFromKMS(ctx, t, kmsClient, keyName)
 			token, err := jvscrypto.ValidateJWT(keySet, resp.Token)
 			if err != nil {
-				t.Errorf("Couldn't validate signed token: %s", err)
+				t.Errorf("Couldn't validate signed token: %v", err)
 				return
 			}
 
 			tokenMap, err := (*token).AsMap(ctx)
 			if err != nil {
-				t.Errorf("Couldn't convert token to map: %s", err)
+				t.Errorf("Couldn't convert token to map: %v", err)
 				return
 			}
 
@@ -418,7 +418,7 @@ func TestPublicKeys(t *testing.T) {
 	t.Cleanup(func() {
 		testCleanUpKey(ctx, t, kmsClient, keyName)
 		if err := kmsClient.Close(); err != nil {
-			t.Errorf("Clean up of key %s failed: %s", keyName, err)
+			t.Errorf("Clean up of key %s failed: %v", keyName, err)
 		}
 	})
 }
