@@ -391,10 +391,6 @@ func TestPublicKeys(t *testing.T) {
 	if keyRing == "" {
 		t.Fatal("Key ring must be provided using TEST_JVS_KMS_KEY_RING env variable.")
 	}
-	if err != nil {
-		t.Fatalf("failed to setup kms client: %s", err)
-	}
-
 	keyRing = strings.Trim(keyRing, "\"")
 	keyName := testCreateKey(ctx, t, kmsClient, keyRing)
 
@@ -411,6 +407,7 @@ func TestPublicKeys(t *testing.T) {
 		Cache:           cache,
 	}
 
+	// test for one key version
 	testValidatePublicKeys(ctx, t, kmsClient, ks, keyName)
 
 	testCreateKeyVersion(ctx, t, kmsClient, keyName, "2")
@@ -755,7 +752,8 @@ func testValidatePublicKeys(ctx context.Context, tb testing.TB, kmsClient *kms.K
 	tb.Helper()
 	expectedPublicKeys, err := testPublicKeysFromKMS(ctx, tb, kmsClient, keyName)
 	if err != nil {
-		tb.Fatalf("failed to get public keys from KMS")
+		tb.Errorf("failed to get public keys from KMS: %v", err)
+		return
 	}
 	req, err := http.NewRequest("GET", "/.well-known/jwks", nil)
 	if err != nil {
