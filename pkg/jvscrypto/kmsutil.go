@@ -172,8 +172,8 @@ func getPrimary(ctx context.Context, kms *kms.KeyManagementClient, key string) (
 	return "", nil
 }
 
-// setPrimary sets the key version name as primary in the key labels.
-func setPrimary(ctx context.Context, kms *kms.KeyManagementClient, key string, versionName string) error {
+// SetPrimary sets the key version name as primary in the key labels.
+func SetPrimary(ctx context.Context, kms *kms.KeyManagementClient, key, versionName string) error {
 	response, err := kms.GetCryptoKey(ctx, &kmspb.GetCryptoKeyRequest{Name: key})
 	if err != nil {
 		return fmt.Errorf("issue while getting key from KMS: %w", err)
