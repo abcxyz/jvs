@@ -73,8 +73,7 @@ func TestJVS(t *testing.T) {
 	keyName := testCreateKey(ctx, t, kmsClient, keyRing)
 	t.Cleanup(func() {
 		testCleanUpKey(ctx, t, kmsClient, keyName)
-		err := kmsClient.Close()
-		if err != nil {
+		if err := kmsClient.Close(); err != nil {
 			t.Errorf("Clean up of key %s failed: %s", keyName, err)
 		}
 	})
@@ -421,8 +420,7 @@ func TestPublicKeys(t *testing.T) {
 	testValidatePublicKeys(ctx, t, kmsClient, ks, keyName)
 	t.Cleanup(func() {
 		testCleanUpKey(ctx, t, kmsClient, keyName)
-		err := kmsClient.Close()
-		if err != nil {
+		if err := kmsClient.Close(); err != nil {
 			t.Errorf("Clean up of key %s failed: %s", keyName, err)
 		}
 	})
