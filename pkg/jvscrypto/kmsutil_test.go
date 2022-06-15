@@ -26,6 +26,7 @@ import (
 
 	kms "cloud.google.com/go/kms/apiv1"
 	"github.com/abcxyz/jvs/pkg/testutil"
+	pkgtestutil "github.com/abcxyz/pkg/testutil"
 	"github.com/golang-jwt/jwt"
 	"github.com/google/uuid"
 	"github.com/sethvargo/go-gcpkms/pkg/gcpkms"
@@ -145,7 +146,9 @@ func TestVerifyJWTString(t *testing.T) {
 		t.Run(tc.name, func(t *testing.T) {
 			t.Parallel()
 			err := VerifyJWTString(ctx, kms, "projects/*/locations/location1/keyRings/keyring1/cryptoKeys/key1", tc.jwt)
-			testutil.ErrCmp(t, tc.wantErr, err)
+			if diff := pkgtestutil.DiffErrString(err, tc.wantErr); diff != "" {
+				t.Errorf("Unexpected err: %s", diff)
+			}
 		})
 	}
 }

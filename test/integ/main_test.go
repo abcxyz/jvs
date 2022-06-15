@@ -31,7 +31,7 @@ import (
 	"github.com/abcxyz/jvs/pkg/config"
 	"github.com/abcxyz/jvs/pkg/justification"
 	"github.com/abcxyz/jvs/pkg/jvscrypto"
-	"github.com/abcxyz/jvs/pkg/testutil"
+	"github.com/abcxyz/pkg/testutil"
 	"github.com/google/go-cmp/cmp"
 	"github.com/google/go-cmp/cmp/cmpopts"
 	"github.com/google/uuid"
@@ -176,7 +176,9 @@ func TestJVS(t *testing.T) {
 			t.Parallel()
 
 			resp, gotErr := jvsAgent.CreateJustification(ctx, tc.request)
-			testutil.ErrCmp(t, tc.wantErr, gotErr)
+			if diff := testutil.DiffErrString(gotErr, tc.wantErr); diff != "" {
+				t.Errorf("Unexpected err: %s", diff)
+			}
 			if gotErr != nil {
 				return
 			}

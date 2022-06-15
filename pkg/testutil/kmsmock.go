@@ -12,6 +12,8 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
+// Package testutil provides utilities that are intended to enable easier
+// and more concise writing of unit test code.
 package testutil
 
 import (
