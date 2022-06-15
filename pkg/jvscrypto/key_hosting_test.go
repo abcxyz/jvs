@@ -31,6 +31,7 @@ import (
 	"github.com/abcxyz/jvs/pkg/config"
 	"github.com/abcxyz/jvs/pkg/testutil"
 	"github.com/abcxyz/pkg/cache"
+	pkgtestutil "github.com/abcxyz/pkg/testutil"
 	"github.com/google/go-cmp/cmp"
 	"google.golang.org/api/option"
 	kmspb "google.golang.org/genproto/googleapis/cloud/kms/v1"
@@ -154,7 +155,9 @@ func TestJWKSetFormattedString(t *testing.T) {
 				t.Error(err)
 			}
 			got, err := formatJWKString(keys)
-			testutil.ErrCmp(t, tc.wantErr, err)
+			if diff := pkgtestutil.DiffErrString(err, tc.wantErr); diff != "" {
+				t.Errorf("Unexpected err: %s", diff)
+			}
 
 			if err != nil {
 				return

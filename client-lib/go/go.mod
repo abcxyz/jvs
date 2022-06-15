@@ -4,6 +4,7 @@ go 1.18
 
 require (
 	github.com/abcxyz/jvs v0.0.0-20220520175656-c98ac822412a
+	github.com/abcxyz/pkg v0.0.0-20220601222916-c82347de03ae
 	github.com/google/go-cmp v0.5.8
 	github.com/hashicorp/go-multierror v1.1.1
 	github.com/lestrrat-go/jwx/v2 v2.0.2
@@ -16,7 +17,6 @@ require (
 	cloud.google.com/go/compute v1.6.1 // indirect
 	cloud.google.com/go/iam v0.3.0 // indirect
 	cloud.google.com/go/kms v1.4.0 // indirect
-	github.com/abcxyz/pkg v0.0.0-20220601222916-c82347de03ae // indirect
 	github.com/decred/dcrd/dcrec/secp256k1/v4 v4.0.1 // indirect
 	github.com/goccy/go-json v0.9.7 // indirect
 	github.com/golang-jwt/jwt v3.2.2+incompatible // indirect

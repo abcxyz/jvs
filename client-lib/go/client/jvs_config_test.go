@@ -20,7 +20,7 @@ import (
 	"testing"
 	"time"
 
-	"github.com/abcxyz/jvs/pkg/testutil"
+	"github.com/abcxyz/pkg/testutil"
 	"github.com/google/go-cmp/cmp"
 	"github.com/sethvargo/go-envconfig"
 )
@@ -107,7 +107,9 @@ cache_timeout: 1m
 			lookuper := envconfig.MapLookuper(tc.envs)
 			content := bytes.NewBufferString(tc.cfg).Bytes()
 			gotConfig, err := loadJVSConfigFromLookuper(ctx, content, lookuper)
-			testutil.ErrCmp(t, tc.wantErr, err)
+			if diff := testutil.DiffErrString(err, tc.wantErr); diff != "" {
+				t.Errorf("Unexpected err: %s", diff)
+			}
 			if diff := cmp.Diff(tc.wantConfig, gotConfig); diff != "" {
 				t.Errorf("Config unexpected diff (-want,+got):\n%s", diff)
 			}
