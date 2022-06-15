@@ -33,22 +33,22 @@ import (
 	"testing"
 	"time"
 
+	jvspb "github.com/abcxyz/jvs/apis/v0"
+	"github.com/abcxyz/jvs/pkg/justification"
+	"github.com/abcxyz/jvs/pkg/testutil"
 	"github.com/abcxyz/pkg/cache"
+	"github.com/google/go-cmp/cmp/cmpopts"
+	"google.golang.org/protobuf/types/known/durationpb"
 
 	kms "cloud.google.com/go/kms/apiv1"
-	jvspb "github.com/abcxyz/jvs/apis/v0"
 	"github.com/abcxyz/jvs/pkg/config"
-	"github.com/abcxyz/jvs/pkg/justification"
 	"github.com/abcxyz/jvs/pkg/jvscrypto"
-	"github.com/abcxyz/jvs/pkg/testutil"
 	"github.com/google/go-cmp/cmp"
-	"github.com/google/go-cmp/cmp/cmpopts"
 	"github.com/google/uuid"
 	"github.com/lestrrat-go/jwx/v2/jwk"
 	"github.com/sethvargo/go-retry"
 	"google.golang.org/api/iterator"
 	kmspb "google.golang.org/genproto/googleapis/cloud/kms/v1"
-	"google.golang.org/protobuf/types/known/durationpb"
 )
 
 func TestJVS(t *testing.T) {
@@ -217,6 +217,7 @@ func TestJVS(t *testing.T) {
 }
 
 func TestPublicKeys(t *testing.T) {
+	t.Parallel()
 	ctx := context.Background()
 	if !testIsIntegration(t) {
 		// Not an integ test, don't run anything.
@@ -228,23 +229,6 @@ func TestPublicKeys(t *testing.T) {
 	if err != nil {
 		t.Fatalf("failed to setup kms client: %s", err)
 	}
-
-	config, err := config.LoadPublicKeyConfig(ctx, []byte{})
-	if err != nil {
-		t.Fatalf("failed to load public key config: %s", err)
-	}
-
-	cache := cache.New[string](config.CacheTimeout)
-
-	ks := &jvscrypto.KeyServer{
-		KMSClient:       kmsClient,
-		PublicKeyConfig: config,
-		Cache:           cache,
-	}
-
-	// test for no-primary
-	testValidatePublicKeys(ctx, t, kmsClient, ks, "")
-
 	keyRing := os.Getenv("TEST_JVS_KMS_KEY_RING")
 	if keyRing == "" {
 		t.Fatal("Key ring must be provided using TEST_JVS_KMS_KEY_RING env variable.")
@@ -256,10 +240,24 @@ func TestPublicKeys(t *testing.T) {
 	keyRing = strings.Trim(keyRing, "\"")
 	keyName := testCreateKey(ctx, t, kmsClient, keyRing)
 
-	// test for one key version
+	publicKeyConfig := &config.PublicKeyConfig{
+		KeyNames:     []string{keyName},
+		CacheTimeout: 5 * time.Second,
+	}
+
+	cache := cache.New[string](publicKeyConfig.CacheTimeout)
+
+	ks := &jvscrypto.KeyServer{
+		KMSClient:       kmsClient,
+		PublicKeyConfig: publicKeyConfig,
+		Cache:           cache,
+	}
+
 	testValidatePublicKeys(ctx, t, kmsClient, ks, keyName)
 
 	testCreateKeyVersion(ctx, t, kmsClient, keyName, "2")
+	// Wait for the cache timeout
+	time.Sleep(5 * time.Second)
 	// test for multiple key version
 	testValidatePublicKeys(ctx, t, kmsClient, ks, keyName)
 	t.Cleanup(func() {
@@ -367,7 +365,7 @@ func testCreateKeyVersion(ctx context.Context, tb testing.TB, kmsClient *kms.Key
 	r := retry.NewExponential(100 * time.Millisecond)
 	if err := retry.Do(ctx, retry.WithMaxRetries(10, r), func(ctx context.Context) error {
 		ckv, err := kmsClient.GetCryptoKeyVersion(ctx, &kmspb.GetCryptoKeyVersionRequest{
-			Name: ck.Name + "/cryptoKeyVersions/" + keyVersion,
+			Name: ck.Name,
 		})
 		if err != nil {
 			return err
@@ -481,7 +479,7 @@ func testValidatePublicKeys(ctx context.Context, tb testing.TB, kmsClient *kms.K
 	if err != nil {
 		tb.Fatalf("failed to get public keys from KMS")
 	}
-	req, err := http.NewRequest("GET", "/", nil)
+	req, err := http.NewRequest("GET", "/.well-known/jwks", nil)
 	if err != nil {
 		tb.Fatalf("http.NewRequest(): got %v, want no error", err)
 	}
@@ -489,10 +487,11 @@ func testValidatePublicKeys(ctx context.Context, tb testing.TB, kmsClient *kms.K
 	rw := httptest.NewRecorder()
 	ks.ServeHTTP(rw, req)
 	if gotCode, wantCode := rw.Code, http.StatusOK; gotCode != wantCode {
-		tb.Errorf("rw.Code: got %d, want %d", gotCode, wantCode)
+		tb.Errorf("Response Code: got %d, want %d", gotCode, wantCode)
 		return
 	}
 	got := rw.Body.String()
+
 	if diff := cmp.Diff(expectedPublicKeys, got); diff != "" {
 		tb.Errorf("GotPublicKeys diff (-want, +got): %v", diff)
 	}
