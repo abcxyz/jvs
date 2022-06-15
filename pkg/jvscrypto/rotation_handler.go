@@ -267,7 +267,7 @@ func (h *RotationHandler) performActions(ctx context.Context, keyName string, ac
 				result = multierror.Append(result, err)
 			}
 		case ActionPromote:
-			if err := setPrimary(ctx, h.KMSClient, keyName, action.Version.Name); err != nil {
+			if err := SetPrimary(ctx, h.KMSClient, keyName, action.Version.Name); err != nil {
 				result = multierror.Append(result, err)
 			}
 		case ActionCreateNewAndPromote:
@@ -276,7 +276,7 @@ func (h *RotationHandler) performActions(ctx context.Context, keyName string, ac
 				result = multierror.Append(result, err)
 			}
 			logger.Info("Promoting immediately.")
-			if err := setPrimary(ctx, h.KMSClient, keyName, newVer.Name); err != nil {
+			if err := SetPrimary(ctx, h.KMSClient, keyName, newVer.Name); err != nil {
 				result = multierror.Append(result, err)
 			}
 		case ActionDisable:
