@@ -33,22 +33,6 @@ type KeyServer struct {
 	Cache           *cache.Cache[string]
 }
 
-// JWKS represents a JWK Set, used to convert to json representation.
-// https://datatracker.ietf.org/doc/html/rfc7517#section-5 .
-type JWKS struct {
-	Keys []*ECDSAKey `json:"keys"`
-}
-
-// ECDSAKey is the public key information for a Elliptic Curve Digital Signature Algorithm Key. used to serialize the public key
-// into JWK format. https://datatracker.ietf.org/doc/html/rfc7517#section-4 .
-type ECDSAKey struct {
-	Curve string `json:"crv"`
-	ID    string `json:"kid"`
-	Type  string `json:"kty"`
-	X     string `json:"x"`
-	Y     string `json:"y"`
-}
-
 const cacheKey = "jwks"
 
 // ServeHTTP returns the public keys in JWK format.
