@@ -31,6 +31,18 @@ type CLIConfig struct {
 
 	// Server is the JVS server address.
 	Server string `yaml:"server,omitempty" env:"SERVER,overwrite"`
+
+	// Authentication is the authentication config.
+	Authentication *CLIAuthentication `yaml:"authentication,omitempty"`
+}
+
+// CLIAuthentication is the CLI authentication config.
+type CLIAuthentication struct {
+	// Insecure indiates whether to use insecured connection to the JVS server.
+	Insecure bool `yaml:"insecure,omitempty"`
+
+	// GCloud indicates whether to use gcloud idtoken for authentication.
+	GCloud bool `yaml:"use_gcloud,omitempty"`
 }
 
 // Validate checks if the config is valid.
@@ -42,6 +54,10 @@ func (cfg *CLIConfig) Validate() error {
 		err = multierror.Append(err, fmt.Errorf("missing JVS server address"))
 	}
 
+	if cfg.Authentication.Insecure && cfg.Authentication.GCloud {
+		err = multierror.Append(err, fmt.Errorf("only one authentication method can be used"))
+	}
+
 	return err.ErrorOrNil()
 }
 
@@ -49,5 +65,8 @@ func (cfg *CLIConfig) Validate() error {
 func (cfg *CLIConfig) SetDefault() {
 	if cfg.Version == 0 {
 		cfg.Version = DefaultCLIConfigVersion
+	}
+	if cfg.Authentication == nil {
+		cfg.Authentication = &CLIAuthentication{}
 	}
 }

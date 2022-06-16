@@ -47,7 +47,11 @@ func init() {
 	cobra.OnInitialize(initCfg)
 	rootCmd.PersistentFlags().StringVar(&cfgFile, "config", "", "config file (default is $HOME/.jvsctl/config.yaml)")
 	rootCmd.PersistentFlags().String("server", "", "overwrite the JVS server address")
-	viper.BindPFlag("server", rootCmd.PersistentFlags().Lookup("server")) //nolint // not expect err
+	rootCmd.PersistentFlags().Bool("insecure", false, "use insecure connection to JVS server")
+	rootCmd.PersistentFlags().Bool("gcloud-cred", true, "use gcloud credential to authenticate with JVS server")
+	viper.BindPFlag("server", rootCmd.PersistentFlags().Lookup("server"))        //nolint // not expect err
+	viper.BindPFlag("insecure", rootCmd.PersistentFlags().Lookup("insecure"))    //nolint // not expect err
+	viper.BindPFlag("gcloud-cred", rootCmd.PersistentFlags().Lookup("insecure")) //nolint // not expect err
 
 	rootCmd.AddCommand(tokenCmd)
 }

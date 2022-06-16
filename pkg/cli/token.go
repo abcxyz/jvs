@@ -15,10 +15,20 @@
 package cli
 
 import (
+	"context"
+	"crypto/tls"
+	"crypto/x509"
 	"fmt"
 	"time"
 
 	"github.com/spf13/cobra"
+	"google.golang.org/api/idtoken"
+	"google.golang.org/grpc"
+	"google.golang.org/grpc/credentials"
+	"google.golang.org/grpc/credentials/insecure"
+	"google.golang.org/grpc/credentials/oauth"
+
+	jvsapis "github.com/abcxyz/jvs/apis/v0"
 )
 
 var (
@@ -35,6 +45,12 @@ var tokenCmd = &cobra.Command{
 }
 
 func runTokenCmd(cmd *cobra.Command, args []string) error {
+	conn, err := grpc.Dial(cfg.Server)
+	if err != nil {
+		return fmt.Errorf("failed to connect to JVS service: %w", err)
+	}
+	jvsapis.NewJVSServiceClient(conn)
+
 	return fmt.Errorf("not implemented")
 }
 
@@ -43,4 +59,37 @@ func init() {
 	tokenCmd.MarkFlagRequired("explanation") //nolint // not expect err
 	tokenCmd.Flags().BoolVar(&breakglass, "breakglass", false, "Whether it will be a breakglass action")
 	tokenCmd.Flags().DurationVar(&ttl, "ttl", time.Hour, "The token time-to-live duration")
+}
+
+func dialOpt() (grpc.DialOption, error) {
+	if cfg.Authentication.Insecure {
+		return grpc.WithTransportCredentials(insecure.NewCredentials()), nil
+	}
+
+	// The default.
+	systemRoots, err := x509.SystemCertPool()
+	if err != nil {
+		return nil, fmt.Errorf("failed to load system cert pool: %w", err)
+	}
+	//nolint:gosec // We need to support TLS 1.2 for now (G402).
+	cred := credentials.NewTLS(&tls.Config{
+		RootCAs: systemRoots,
+	})
+	return grpc.WithTransportCredentials(cred), nil
+}
+
+func callOpt(ctx context.Context) (grpc.CallOption, error) {
+	if cfg.Authentication.Insecure {
+		return nil, nil
+	}
+
+	ts, err := idtoken.NewTokenSource(ctx, cfg.Server)
+	if err != nil {
+		return nil, fmt.Errorf("failed idtoken.NewTokenSource: %w", err)
+	}
+	token, err := ts.Token()
+	if err != nil {
+		return nil, fmt.Errorf("failed to generate id token: %w", err)
+	}
+	return grpc.PerRPCCredentials(oauth.NewOauthAccess(token)), nil
 }
