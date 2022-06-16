@@ -17,12 +17,18 @@ package jvscrypto
 import (
 	"context"
 	"crypto"
+	"crypto/ecdsa"
 	"crypto/rand"
 	"crypto/sha256"
+	"crypto/x509"
 	"encoding/asn1"
+	"encoding/base64"
+	"encoding/json"
+	"encoding/pem"
 	"errors"
 	"fmt"
 	"math/big"
+	"sort"
 	"strings"
 	"time"
 
@@ -40,6 +46,22 @@ const (
 	primaryKey  = "primary"
 	valuePrefix = "ver_"
 )
+
+// JWKS represents a JWK Set, used to convert to json representation.
+// https://datatracker.ietf.org/doc/html/rfc7517#section-5 .
+type JWKS struct {
+	Keys []*ECDSAKey `json:"keys"`
+}
+
+// ECDSAKey is the public key information for a Elliptic Curve Digital Signature Algorithm Key. used to serialize the public key
+// into JWK format. https://datatracker.ietf.org/doc/html/rfc7517#section-4 .
+type ECDSAKey struct {
+	Curve string `json:"crv"`
+	ID    string `json:"kid"`
+	Type  string `json:"kty"`
+	X     string `json:"x"`
+	Y     string `json:"y"`
+}
 
 // GetLatestKeyVersion looks up the newest enabled key version. If there is no enabled version, this returns nil.
 func GetLatestKeyVersion(ctx context.Context, kms *kms.KeyManagementClient, keyName string) (*kmspb.CryptoKeyVersion, error) {
@@ -222,4 +244,70 @@ func ValidateJWT(keySet jwk.Set, jwtStr string) (*jwt2.Token, error) {
 	}
 
 	return &verifiedToken, nil
+}
+
+// JWKList creates a list of public keys in JWK format.
+// https://datatracker.ietf.org/doc/html/rfc7517#section-4 .
+func JWKList(ctx context.Context, kms *kms.KeyManagementClient, keyName string) ([]*ECDSAKey, error) {
+	it := kms.ListCryptoKeyVersions(ctx, &kmspb.ListCryptoKeyVersionsRequest{
+		Parent: keyName,
+		Filter: "state=ENABLED",
+	})
+
+	jwkList := make([]*ECDSAKey, 0)
+	for {
+		// Could parallelize this. #34
+		ver, err := it.Next()
+		if errors.Is(err, iterator.Done) {
+			break
+		}
+		if err != nil {
+			return nil, fmt.Errorf("err while reading crypto key version list: %w", err)
+		}
+		key, err := kms.GetPublicKey(ctx, &kmspb.GetPublicKeyRequest{Name: ver.Name})
+		if err != nil {
+			return nil, fmt.Errorf("err while getting public key from kms: %w", err)
+		}
+
+		block, _ := pem.Decode([]byte(key.Pem))
+		if block == nil || block.Type != "PUBLIC KEY" {
+			return nil, fmt.Errorf("failed to decode PEM block containing public key")
+		}
+
+		pub, err := x509.ParsePKIXPublicKey(block.Bytes)
+		if err != nil {
+			return nil, fmt.Errorf("failed to parse public key")
+		}
+
+		ecdsaKey, ok := pub.(*ecdsa.PublicKey)
+		if !ok {
+			return nil, fmt.Errorf("unknown key format, expected ecdsa, got %T", pub)
+		}
+		if len(ecdsaKey.X.Bits()) == 0 || len(ecdsaKey.Y.Bits()) == 0 {
+			return nil, fmt.Errorf("unable to determine X and/or Y for ECDSA key")
+		}
+		ek := &ECDSAKey{
+			Curve: "P-256",
+			ID:    ver.Name,
+			Type:  "EC",
+			X:     base64.RawURLEncoding.EncodeToString(ecdsaKey.X.Bytes()),
+			Y:     base64.RawURLEncoding.EncodeToString(ecdsaKey.Y.Bytes()),
+		}
+		jwkList = append(jwkList, ek)
+	}
+	sort.Slice(jwkList, func(i, j int) bool {
+		return (*jwkList[i]).ID < (*jwkList[j]).ID
+	})
+	return jwkList, nil
+}
+
+// FormatJWKString creates a JWK Set converted to string.
+// https://datatracker.ietf.org/doc/html/rfc7517#section-5 .
+func FormatJWKString(wks []*ECDSAKey) (string, error) {
+	jwks := &JWKS{Keys: wks}
+	json, err := json.Marshal(jwks)
+	if err != nil {
+		return "", fmt.Errorf("err while converting jwk to json: %w", err)
+	}
+	return string(json), nil
 }
