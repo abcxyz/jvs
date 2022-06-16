@@ -20,6 +20,8 @@ import (
 	"crypto/x509"
 	"encoding/pem"
 	"errors"
+	"net/http"
+	"net/http/httptest"
 	"os"
 	"strconv"
 	"strings"
@@ -31,6 +33,7 @@ import (
 	"github.com/abcxyz/jvs/pkg/config"
 	"github.com/abcxyz/jvs/pkg/justification"
 	"github.com/abcxyz/jvs/pkg/jvscrypto"
+	"github.com/abcxyz/pkg/cache"
 	"github.com/abcxyz/pkg/testutil"
 	"github.com/google/go-cmp/cmp"
 	"github.com/google/go-cmp/cmp/cmpopts"
@@ -65,9 +68,8 @@ func TestJVS(t *testing.T) {
 	keyName := testCreateKey(ctx, t, kmsClient, keyRing)
 	t.Cleanup(func() {
 		testCleanUpKey(ctx, t, kmsClient, keyName)
-		err := kmsClient.Close()
-		if err != nil {
-			t.Errorf("Clean up of key %s failed: %s", keyName, err)
+		if err := kmsClient.Close(); err != nil {
+			t.Errorf("Clean up of key %s failed: %v", keyName, err)
 		}
 	})
 
@@ -186,13 +188,13 @@ func TestJVS(t *testing.T) {
 			keySet := testKeySetFromKMS(ctx, t, kmsClient, keyName)
 			token, err := jvscrypto.ValidateJWT(keySet, resp.Token)
 			if err != nil {
-				t.Errorf("Couldn't validate signed token: %s", err)
+				t.Errorf("Couldn't validate signed token: %v", err)
 				return
 			}
 
 			tokenMap, err := (*token).AsMap(ctx)
 			if err != nil {
-				t.Errorf("Couldn't convert token to map: %s", err)
+				t.Errorf("Couldn't convert token to map: %v", err)
 				return
 			}
 
@@ -364,6 +366,67 @@ func TestRotator_EdgeCases(t *testing.T) {
 				1: kmspb.CryptoKeyVersion_DISABLED,
 				2: kmspb.CryptoKeyVersion_ENABLED,
 			})
+	})
+}
+
+func TestPublicKeys(t *testing.T) {
+	t.Parallel()
+	ctx := context.Background()
+	if !testIsIntegration(t) {
+		// Not an integ test, don't run anything.
+		t.Skip("Not an integration test, skipping...")
+		return
+	}
+
+	kmsClient, err := kms.NewKeyManagementClient(ctx)
+	if err != nil {
+		t.Fatalf("failed to setup kms client: %s", err)
+	}
+	keyRing := os.Getenv("TEST_JVS_KMS_KEY_RING")
+	if keyRing == "" {
+		t.Fatal("Key ring must be provided using TEST_JVS_KMS_KEY_RING env variable.")
+	}
+	keyRing = strings.Trim(keyRing, "\"")
+	keyName := testCreateKey(ctx, t, kmsClient, keyRing)
+
+	publicKeyConfig := &config.PublicKeyConfig{
+		KeyNames:     []string{keyName},
+		CacheTimeout: 10 * time.Second,
+	}
+
+	cache := cache.New[string](publicKeyConfig.CacheTimeout)
+
+	ks := &jvscrypto.KeyServer{
+		KMSClient:       kmsClient,
+		PublicKeyConfig: publicKeyConfig,
+		Cache:           cache,
+	}
+
+	publicKeys1, publicKeysStr1 := testPublicKeysFromKMS(ctx, t, kmsClient, keyName)
+
+	if len(publicKeys1) != 1 {
+		t.Fatalf("num of key versions in KMS does not match, want %d, got %d", 1, len(publicKeys1))
+	}
+	// test for one key version
+	testValidatePublicKeys(ctx, t, ks, publicKeysStr1)
+
+	testCreateKeyVersion(ctx, t, kmsClient, keyName)
+	// test for cache mechanism
+	testValidatePublicKeys(ctx, t, ks, publicKeysStr1)
+	// Wait for the cache timeout
+	time.Sleep(10 * time.Second)
+	publicKeys2, publicKeysStr2 := testPublicKeysFromKMS(ctx, t, kmsClient, keyName)
+
+	if len(publicKeys2) != 2 {
+		t.Fatalf("num of key versions in KMS does not match, want %d, got %d", 2, len(publicKeys2))
+	}
+	// test for cache timeout mechanism and multiple key version
+	testValidatePublicKeys(ctx, t, ks, publicKeysStr2)
+	t.Cleanup(func() {
+		testCleanUpKey(ctx, t, kmsClient, keyName)
+		if err := kmsClient.Close(); err != nil {
+			t.Errorf("Clean up of key %s failed: %v", keyName, err)
+		}
 	})
 }
 
@@ -599,4 +662,70 @@ func testKeySetFromKMS(ctx context.Context, tb testing.TB, kmsClient *kms.KeyMan
 		tb.Fatalf("Couldn't add jwk to set: %s", err)
 	}
 	return keySet
+}
+
+// Create a new KeyVersion for use with integration tests.
+func testCreateKeyVersion(ctx context.Context, tb testing.TB, kmsClient *kms.KeyManagementClient, keyName string) string {
+	tb.Helper()
+	ck, err := kmsClient.CreateCryptoKeyVersion(ctx, &kmspb.CreateCryptoKeyVersionRequest{
+		Parent:           keyName,
+		CryptoKeyVersion: &kmspb.CryptoKeyVersion{},
+	})
+	if err != nil {
+		tb.Fatalf("failed to create crypto keyVersion: %s", err)
+	}
+
+	// Wait for a key version to be created and enabled.
+	r := retry.NewExponential(100 * time.Millisecond)
+	if err := retry.Do(ctx, retry.WithMaxRetries(10, r), func(ctx context.Context) error {
+		ckv, err := kmsClient.GetCryptoKeyVersion(ctx, &kmspb.GetCryptoKeyVersionRequest{
+			Name: ck.Name,
+		})
+		if err != nil {
+			return err
+		}
+		if ckv.State == kmspb.CryptoKeyVersion_ENABLED {
+			return nil
+		}
+		return errors.New("key is not in ready state")
+	}); err != nil {
+		tb.Fatal("key did not enter ready state")
+	}
+	return ck.Name
+}
+
+// Build public keys list and public keys list converted to string(including public keys).
+func testPublicKeysFromKMS(ctx context.Context, tb testing.TB, kmsClient *kms.KeyManagementClient, keyName string) ([]*jvscrypto.ECDSAKey, string) {
+	tb.Helper()
+	jwks, err := jvscrypto.JWKList(ctx, kmsClient, keyName)
+	if err != nil {
+		tb.Fatalf("err while determining public keys %v", err)
+	}
+	json, err := jvscrypto.FormatJWKString(jwks)
+	if err != nil {
+		tb.Fatalf("err while formatting public keys, %v", err)
+	}
+	return jwks, json
+}
+
+func testValidatePublicKeys(ctx context.Context, tb testing.TB, ks *jvscrypto.KeyServer, expectedPublicKeys string,
+) {
+	tb.Helper()
+
+	req, err := http.NewRequest("GET", "/.well-known/jwks", nil)
+	if err != nil {
+		tb.Fatalf("http.NewRequest(): got %v, want no error", err)
+	}
+
+	rw := httptest.NewRecorder()
+	ks.ServeHTTP(rw, req)
+	if gotCode, wantCode := rw.Code, http.StatusOK; gotCode != wantCode {
+		tb.Errorf("Response Code: got %d, want %d", gotCode, wantCode)
+		return
+	}
+	got := rw.Body.String()
+
+	if diff := cmp.Diff(expectedPublicKeys, got); diff != "" {
+		tb.Errorf("GotPublicKeys diff (-want, +got): %v", diff)
+	}
 }

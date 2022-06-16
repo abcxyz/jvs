@@ -40,7 +40,7 @@ import (
 	"google.golang.org/protobuf/proto"
 )
 
-func TestJWKSetFormattedString(t *testing.T) {
+func TestGenerateJWKString(t *testing.T) {
 	t.Parallel()
 	ctx := context.Background()
 
@@ -97,14 +97,13 @@ func TestJWKSetFormattedString(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	ks := &KeyServer{
-		KMSClient:       kms,
-		PublicKeyConfig: &config.PublicKeyConfig{},
-		Cache:           cache,
-	}
-
 	key := "projects/[PROJECT]/locations/[LOCATION]/keyRings/[KEY_RING]/cryptoKeys/[CRYPTO_KEY]"
 	versionSuffix := "[VERSION]"
+	ks := &KeyServer{
+		KMSClient:       kms,
+		PublicKeyConfig: &config.PublicKeyConfig{KeyNames: []string{key}},
+		Cache:           cache,
+	}
 
 	tests := []struct {
 		name       string
@@ -150,11 +149,7 @@ func TestJWKSetFormattedString(t *testing.T) {
 			mockKMSServer.Labels["primary"] = tc.primary
 			mockKMSServer.NumVersions = tc.numKeys
 
-			keys, err := ks.jwkList(ctx, key)
-			if err != nil {
-				t.Error(err)
-			}
-			got, err := formatJWKString(keys)
+			got, err := ks.generateJWKString(ctx)
 			if diff := pkgtestutil.DiffErrString(err, tc.wantErr); diff != "" {
 				t.Errorf("Unexpected err: %s", diff)
 			}
