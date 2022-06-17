@@ -16,16 +16,88 @@ package idtoken
 
 import (
 	"context"
+	"fmt"
+	"net/url"
 	"os"
 	"testing"
+	"time"
 
+	"github.com/abcxyz/pkg/testutil"
+	"github.com/google/go-cmp/cmp"
+	"github.com/google/go-cmp/cmp/cmpopts"
 	"github.com/lestrrat-go/jwx/v2/jwt"
+	"golang.org/x/oauth2"
 )
+
+type fakeDefaultTokenSource struct {
+	expiry    time.Time
+	idToken   string
+	returnErr error
+}
+
+func (ts *fakeDefaultTokenSource) Token() (*oauth2.Token, error) {
+	if ts.returnErr != nil {
+		return nil, ts.returnErr
+	}
+
+	token := &oauth2.Token{
+		Expiry: ts.expiry,
+	}
+
+	return token.WithExtra(url.Values{
+		"id_token": {ts.idToken},
+	}), nil
+}
+
+func TestIDTokenFromDefaultTokenSource(t *testing.T) {
+	t.Parallel()
+
+	now := time.Now()
+
+	tests := []struct {
+		name      string
+		ts        *fakeDefaultTokenSource
+		wantToken *oauth2.Token
+		wantErr   string
+	}{{
+		name: "success",
+		ts: &fakeDefaultTokenSource{
+			expiry:  now,
+			idToken: "id-token",
+		},
+		wantToken: &oauth2.Token{
+			AccessToken: "id-token",
+			Expiry:      now,
+		},
+	}, {
+		name: "error",
+		ts: &fakeDefaultTokenSource{
+			expiry:    now,
+			returnErr: fmt.Errorf("token err"),
+		},
+		wantErr: "token err",
+	}}
+
+	for _, tc := range tests {
+		tc := tc
+		t.Run(tc.name, func(t *testing.T) {
+			ts := &tokenSource{tokenSource: tc.ts}
+			gotToken, err := ts.Token()
+			if diff := testutil.DiffErrString(err, tc.wantErr); diff != "" {
+				t.Errorf("unexpected err: %s", diff)
+			}
+			if diff := cmp.Diff(tc.wantToken, gotToken, cmpopts.IgnoreUnexported(oauth2.Token{})); diff != "" {
+				t.Errorf("ID token (-want,+got):\n%s", diff)
+			}
+		})
+	}
+}
 
 // Log in as an end user with gcloud.
 // `gcloud auth application-default login`
 // Set env var MANUAL_TEST=true to run the test.
 func TestFromDefaultCredentials(t *testing.T) {
+	t.Parallel()
 	if os.Getenv("MANUAL_TEST") == "" {
 		t.Skip("Skip manual test; set env var MANUAL_TEST to enable")
 	}
