@@ -22,13 +22,13 @@ import (
 	"time"
 
 	"github.com/spf13/cobra"
-	"google.golang.org/api/idtoken"
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/credentials"
 	"google.golang.org/grpc/credentials/insecure"
 	"google.golang.org/grpc/credentials/oauth"
 
 	jvsapis "github.com/abcxyz/jvs/apis/v0"
+	"github.com/abcxyz/jvs/pkg/idtoken"
 )
 
 var (
@@ -83,13 +83,10 @@ func callOpt(ctx context.Context) (grpc.CallOption, error) {
 		return nil, nil
 	}
 
-	ts, err := idtoken.NewTokenSource(ctx, cfg.Server)
-	if err != nil {
-		return nil, fmt.Errorf("failed idtoken.NewTokenSource: %w", err)
-	}
+	ts, err := idtoken.FromDefaultCredentials(ctx)
 	token, err := ts.Token()
 	if err != nil {
-		return nil, fmt.Errorf("failed to generate id token: %w", err)
+		return nil, err
 	}
 	return grpc.PerRPCCredentials(oauth.NewOauthAccess(token)), nil
 }
