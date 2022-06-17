@@ -47,16 +47,18 @@ var tokenCmd = &cobra.Command{
 
 func runTokenCmd(cmd *cobra.Command, args []string) error {
 	ctx := context.Background()
-	dialOpt, err := dialOpt()
+	dialOpts, err := dialOpts()
 	if err != nil {
 		return err
 	}
-	callOpt, err := callOpt(ctx)
+	callOpts, err := callOpts(ctx)
 	if err != nil {
 		return err
 	}
 
-	conn, err := grpc.Dial(cfg.Server, dialOpt)
+	// TODO(#69): Generate breakglass token w/o JVS server.
+
+	conn, err := grpc.Dial(cfg.Server, dialOpts...)
 	if err != nil {
 		return fmt.Errorf("failed to connect to JVS service: %w", err)
 	}
@@ -69,7 +71,7 @@ func runTokenCmd(cmd *cobra.Command, args []string) error {
 		}},
 		Ttl: durationpb.New(ttl),
 	}
-	resp, err := jvsclient.CreateJustification(ctx, req, callOpt)
+	resp, err := jvsclient.CreateJustification(ctx, req, callOpts...)
 	if err != nil {
 		return err
 	}
@@ -85,9 +87,9 @@ func init() {
 	tokenCmd.Flags().DurationVar(&ttl, "ttl", time.Hour, "The token time-to-live duration")
 }
 
-func dialOpt() (grpc.DialOption, error) {
+func dialOpts() ([]grpc.DialOption, error) {
 	if cfg.Authentication.Insecure {
-		return grpc.WithTransportCredentials(insecure.NewCredentials()), nil
+		return []grpc.DialOption{grpc.WithTransportCredentials(insecure.NewCredentials())}, nil
 	}
 
 	// The default.
@@ -99,10 +101,10 @@ func dialOpt() (grpc.DialOption, error) {
 	cred := credentials.NewTLS(&tls.Config{
 		RootCAs: systemRoots,
 	})
-	return grpc.WithTransportCredentials(cred), nil
+	return []grpc.DialOption{grpc.WithTransportCredentials(cred)}, nil
 }
 
-func callOpt(ctx context.Context) (grpc.CallOption, error) {
+func callOpts(ctx context.Context) ([]grpc.CallOption, error) {
 	if cfg.Authentication.Insecure {
 		return nil, nil
 	}
@@ -116,5 +118,5 @@ func callOpt(ctx context.Context) (grpc.CallOption, error) {
 	if err != nil {
 		return nil, err
 	}
-	return grpc.PerRPCCredentials(oauth.NewOauthAccess(token)), nil
+	return []grpc.CallOption{grpc.PerRPCCredentials(oauth.NewOauthAccess(token))}, nil
 }

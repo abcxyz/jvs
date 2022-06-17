@@ -54,16 +54,21 @@ func TestRunTokenCmd(t *testing.T) {
 	t.Parallel()
 
 	tests := []struct {
-		name    string
-		jvs     *fakeJVS
-		wantErr string
+		name        string
+		jvs         *fakeJVS
+		explanation string
+		wantToken   string
+		wantErr     string
 	}{{
-		name: "success",
-		jvs:  &fakeJVS{},
+		name:        "success",
+		jvs:         &fakeJVS{},
+		explanation: "i-have-reason",
+		wantToken:   fmt.Sprintf("tokenized(i-have-reason);ttl=%v", time.Minute),
 	}, {
-		name:    "error",
-		jvs:     &fakeJVS{returnErr: fmt.Errorf("server err")},
-		wantErr: "server err",
+		name:        "error",
+		jvs:         &fakeJVS{returnErr: fmt.Errorf("server err")},
+		explanation: "i-have-reason",
+		wantErr:     "server err",
 	}}
 
 	for _, tc := range tests {
@@ -78,8 +83,8 @@ func TestRunTokenCmd(t *testing.T) {
 					Insecure: true,
 				},
 			}
+			tokenExplanation = tc.explanation
 			ttl = time.Minute
-			tokenExplanation = "i-have-reason"
 
 			buf := &strings.Builder{}
 			cmd := &cobra.Command{}
@@ -90,9 +95,8 @@ func TestRunTokenCmd(t *testing.T) {
 				t.Errorf("unexpected err: %s", diff)
 			}
 
-			wantToken := fmt.Sprintf("tokenized(i-have-reason);ttl=%v", ttl)
-			if gotToken := buf.String(); gotToken != wantToken {
-				t.Errorf("justification token got=%q, want=%q", gotToken, wantToken)
+			if gotToken := buf.String(); gotToken != tc.wantToken {
+				t.Errorf("justification token got=%q, want=%q", gotToken, tc.wantToken)
 			}
 		})
 	}
