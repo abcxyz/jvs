@@ -40,8 +40,9 @@ func TestInitCfg(t *testing.T) {
 	initCfg()
 
 	wantCfg := &config.CLIConfig{
-		Version: 1,
-		Server:  "https://example.com",
+		Version:        1,
+		Server:         "https://example.com",
+		Authentication: &config.CLIAuthentication{},
 	}
 	if diff := cmp.Diff(wantCfg, cfg); diff != "" {
 		t.Errorf("CLI config loaded (-want,+got):\n%s", diff)
