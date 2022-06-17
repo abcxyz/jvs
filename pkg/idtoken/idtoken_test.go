@@ -30,7 +30,7 @@ func TestFromDefaultCredentials(t *testing.T) {
 		t.Skip("Skip manual test; set env var MANUAL_TEST to enable")
 	}
 
-	ts, err := FromDefaultCredentials(context.Background(), DefaultGoogleConfig)
+	ts, err := FromDefaultCredentials(context.Background())
 	if err != nil {
 		t.Errorf("failed to get ID token source: %v", err)
 	}

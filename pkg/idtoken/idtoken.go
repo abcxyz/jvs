@@ -58,7 +58,7 @@ var DefaultGoogleConfig = &Config{
 // https://developers.google.com/accounts/docs/application-default-credentials
 // It only works when the application default credentials is of an end user.
 // Typically it's done with `gcloud auth application-default login`.
-func FromDefaultCredentials(ctx context.Context, cfg *Config) (oauth2.TokenSource, error) {
+func FromDefaultCredentials(ctx context.Context) (oauth2.TokenSource, error) {
 	ts, err := google.DefaultTokenSource(ctx)
 	if err != nil {
 		return nil, fmt.Errorf("failed to find google default credential: %w", err)
@@ -66,7 +66,7 @@ func FromDefaultCredentials(ctx context.Context, cfg *Config) (oauth2.TokenSourc
 
 	return oauth2.ReuseTokenSource(nil, &tokenSource{
 		refreshTokenSource: ts,
-		cfg:                cfg,
+		cfg:                DefaultGoogleConfig,
 	}), nil
 }
 
