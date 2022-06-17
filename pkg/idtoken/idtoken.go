@@ -33,8 +33,8 @@ const (
 	// These configs are gcloud configs:
 	// https://github.com/twistedpair/google-cloud-sdk/blob/master/google-cloud-sdk/lib/googlecloudsdk/core/config.py
 	CloudSDKClientID          = "32555940559.apps.googleusercontent.com"
-	CloudSDKClientNotSoSecret = "ZmssLNjJy2998hD4CTg2ejr2"
-	GoogleOAuthTokenURL       = "https://oauth2.googleapis.com/token"
+	CloudSDKClientNotSoSecret = "ZmssLNjJy2998hD4CTg2ejr2"            //nolint // gcloud not so secret
+	GoogleOAuthTokenURL       = "https://oauth2.googleapis.com/token" //nolint // false positive not a secret
 )
 
 // Config is the config to generate id tokens.
