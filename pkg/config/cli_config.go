@@ -40,9 +40,6 @@ type CLIConfig struct {
 type CLIAuthentication struct {
 	// Insecure indiates whether to use insecured connection to the JVS server.
 	Insecure bool `yaml:"insecure,omitempty"`
-
-	// GCloud indicates whether to use gcloud idtoken for authentication.
-	GCloud bool `yaml:"use_gcloud,omitempty"`
 }
 
 // Validate checks if the config is valid.
@@ -52,10 +49,6 @@ func (cfg *CLIConfig) Validate() error {
 	var err *multierror.Error
 	if cfg.Server == "" {
 		err = multierror.Append(err, fmt.Errorf("missing JVS server address"))
-	}
-
-	if cfg.Authentication.Insecure && cfg.Authentication.GCloud {
-		err = multierror.Append(err, fmt.Errorf("only one authentication method can be used"))
 	}
 
 	return err.ErrorOrNil()
