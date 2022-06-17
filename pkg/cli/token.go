@@ -26,6 +26,7 @@ import (
 	"google.golang.org/grpc/credentials"
 	"google.golang.org/grpc/credentials/insecure"
 	"google.golang.org/grpc/credentials/oauth"
+	"google.golang.org/protobuf/types/known/durationpb"
 
 	jvsapis "github.com/abcxyz/jvs/apis/v0"
 	"github.com/abcxyz/jvs/pkg/idtoken"
@@ -45,13 +46,36 @@ var tokenCmd = &cobra.Command{
 }
 
 func runTokenCmd(cmd *cobra.Command, args []string) error {
-	conn, err := grpc.Dial(cfg.Server)
+	ctx := context.Background()
+	dialOpt, err := dialOpt()
+	if err != nil {
+		return err
+	}
+	callOpt, err := callOpt(ctx)
+	if err != nil {
+		return err
+	}
+
+	conn, err := grpc.Dial(cfg.Server, dialOpt)
 	if err != nil {
 		return fmt.Errorf("failed to connect to JVS service: %w", err)
 	}
-	jvsapis.NewJVSServiceClient(conn)
+	jvsclient := jvsapis.NewJVSServiceClient(conn)
 
-	return fmt.Errorf("not implemented")
+	req := &jvsapis.CreateJustificationRequest{
+		Justifications: []*jvsapis.Justification{{
+			Category: "explanation",
+			Value:    tokenExplanation,
+		}},
+		Ttl: durationpb.New(ttl),
+	}
+	resp, err := jvsclient.CreateJustification(ctx, req, callOpt)
+	if err != nil {
+		return err
+	}
+
+	_, err = cmd.OutOrStdout().Write([]byte(resp.Token))
+	return err
 }
 
 func init() {
@@ -84,6 +108,10 @@ func callOpt(ctx context.Context) (grpc.CallOption, error) {
 	}
 
 	ts, err := idtoken.FromDefaultCredentials(ctx)
+	if err != nil {
+		return nil, err
+	}
+
 	token, err := ts.Token()
 	if err != nil {
 		return nil, err
