@@ -33,7 +33,7 @@ import lombok.extern.slf4j.Slf4j;
  */
 @RequiredArgsConstructor(access = AccessLevel.PACKAGE)
 @Slf4j
-public class JVSClient {
+public class JvsClient {
 
   private final JwkProvider provider;
 
@@ -44,7 +44,7 @@ public class JVSClient {
       jwk = provider.get(jwt.getKeyId());
     } catch (SigningKeyNotFoundException e) {
       log.info("No public key found with id: {}", jwt.getKeyId());
-      throw e;
+      throw new JwkException("Public key not found", e);
     }
     Algorithm algorithm = Algorithm.ECDSA256((ECPublicKey) jwk.getPublicKey(), null);
     algorithm.verify(jwt);

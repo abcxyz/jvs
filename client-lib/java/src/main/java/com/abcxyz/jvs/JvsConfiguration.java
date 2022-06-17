@@ -27,11 +27,11 @@ import lombok.NoArgsConstructor;
  */
 @Data
 @NoArgsConstructor
-public class JVSConfiguration {
+public class JvsConfiguration {
 
   private static final String EXPECTED_VERSION = "1";
 
-  @JsonProperty(value = "version", defaultValue = "1")
+  @JsonProperty(value = "version", defaultValue = EXPECTED_VERSION)
   private String version;
 
   @JsonProperty("endpoint")

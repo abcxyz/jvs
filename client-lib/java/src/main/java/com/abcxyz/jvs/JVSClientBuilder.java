@@ -21,7 +21,7 @@ import com.auth0.jwk.JwkProviderBuilder;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.fasterxml.jackson.dataformat.yaml.YAMLFactory;
 import com.fasterxml.jackson.datatype.jsr310.JavaTimeModule;
-import com.google.api.client.util.Strings;
+import com.google.common.base.Strings;
 import java.io.IOException;
 import java.io.InputStream;
 import java.time.Duration;
@@ -45,22 +45,23 @@ public class JVSClientBuilder {
   static final String ENDPOINT_ENV_KEY = "JVS_ENDPOINT";
   static final String CACHE_TIMEOUT_ENV_KEY = "JVS_CACHE_TIMEOUT";
   static final String VERSION_ENV_KEY = "JVS_VERSION";
+  private static final int CACHE_SIZE = 10;
 
   @Getter(AccessLevel.PACKAGE)
-  JVSConfiguration configuration;
+  JvsConfiguration configuration;
 
   public JVSClientBuilder loadConfigFromFile(String fileName) throws IOException {
     try (InputStream input = getClass().getClassLoader().getResourceAsStream(fileName)) {
       ObjectMapper mapper = new ObjectMapper(new YAMLFactory());
       mapper.registerModule(new JavaTimeModule());
-      configuration = mapper.readValue(input, JVSConfiguration.class);
+      configuration = mapper.readValue(input, JvsConfiguration.class);
       return this;
     }
   }
 
   void updateConfigFromEnvironmentVars() throws DateTimeParseException {
     if (configuration == null) {
-      configuration = new JVSConfiguration();
+      configuration = new JvsConfiguration();
     }
 
     String endpointEnv = getFromEnvironmentVars(ENDPOINT_ENV_KEY);
@@ -83,19 +84,19 @@ public class JVSClientBuilder {
     return System.getenv().getOrDefault(key, null);
   }
 
-  public JVSClient build() {
+  public JvsClient build() {
     // Load env vars and validate config
     updateConfigFromEnvironmentVars();
     configuration.validate();
 
     JwkProvider provider = new JwkProviderBuilder(configuration.getJvsEndpoint())
-        .cached(10, configuration.getCacheTimeout())
+        .cached(CACHE_SIZE, configuration.getCacheTimeout())
         // TODO: by default, the rate limiter allows 10 reqs per minute.
         // https://github.com/auth0/jwks-rsa-java/blob/master/src/main/java/com/auth0/jwk/JwkProviderBuilder.java#L43
         // we can consider if a different rate limit makes more sense for us.
         .rateLimited(true)
         .build();
 
-    return new JVSClient(provider);
+    return new JvsClient(provider);
   }
 }

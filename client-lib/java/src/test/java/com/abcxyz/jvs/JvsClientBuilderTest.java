@@ -23,21 +23,21 @@ import java.time.Duration;
 import org.junit.jupiter.api.Assertions;
 import org.junit.jupiter.api.Test;
 
-public class JVSClientBuilderTest {
+public class JvsClientBuilderTest {
 
   @Test
   public void testLoadConfigurationFromFile() throws Exception {
     JVSClientBuilder builder = new JVSClientBuilder();
     builder.loadConfigFromFile("all_specified.yml");
 
-    JVSConfiguration expectedConfig = new JVSConfiguration();
+    JvsConfiguration expectedConfig = new JvsConfiguration();
     expectedConfig.setVersion("1");
     expectedConfig.setJvsEndpoint("example.com");
     expectedConfig.setCacheTimeout(Duration.parse("PT5M"));
 
-    JVSConfiguration loadedConfig = builder.getConfiguration();
+    JvsConfiguration loadedConfig = builder.getConfiguration();
     Assertions.assertEquals(expectedConfig, loadedConfig);
-    loadedConfig.validate(); // shouldn't throw exception.
+    Assertions.assertDoesNotThrow(() -> loadedConfig.validate());
   }
 
   @Test
@@ -45,16 +45,17 @@ public class JVSClientBuilderTest {
     JVSClientBuilder builder = new JVSClientBuilder();
     builder.loadConfigFromFile("invalid.yml");
 
-    JVSConfiguration expectedConfig = new JVSConfiguration();
+    JvsConfiguration expectedConfig = new JvsConfiguration();
     expectedConfig.setVersion("1");
     expectedConfig.setJvsEndpoint("example.com");
     expectedConfig.setCacheTimeout(Duration.parse("PT-5M"));
 
-    JVSConfiguration loadedConfig = builder.getConfiguration();
+    JvsConfiguration loadedConfig = builder.getConfiguration();
     Assertions.assertEquals(expectedConfig, loadedConfig);
 
     // invalid values, expect exception.
-    Assertions.assertThrows(IllegalArgumentException.class, () -> loadedConfig.validate());
+    IllegalArgumentException thrown = Assertions.assertThrows(IllegalArgumentException.class, () -> loadedConfig.validate());
+    Assertions.assertTrue(thrown.getMessage().contains("Cache timeout is invalid. Must be a positive non-zero duration"));
   }
 
   @Test
@@ -64,13 +65,14 @@ public class JVSClientBuilderTest {
 
     builder.loadConfigFromFile("missing_values.yml");
 
-    JVSConfiguration expectedConfig = new JVSConfiguration();
+    JvsConfiguration expectedConfig = new JvsConfiguration();
     expectedConfig.setVersion("1");
 
-    JVSConfiguration loadedConfig = builder.getConfiguration();
+    JvsConfiguration loadedConfig = builder.getConfiguration();
     Assertions.assertEquals(expectedConfig, loadedConfig);
     // values missing, expect exception.
-    Assertions.assertThrows(IllegalArgumentException.class, () -> loadedConfig.validate());
+    IllegalArgumentException thrown = Assertions.assertThrows(IllegalArgumentException.class, () -> loadedConfig.validate());
+    Assertions.assertTrue(thrown.getMessage().contains("JVS endpoint was not specified"));
 
     when(builder.getFromEnvironmentVars(JVSClientBuilder.ENDPOINT_ENV_KEY)).thenReturn(
         "google.com");
@@ -81,9 +83,9 @@ public class JVSClientBuilderTest {
 
     builder.updateConfigFromEnvironmentVars();
 
-    JVSConfiguration loadedConfig2 = builder.getConfiguration();
+    JvsConfiguration loadedConfig2 = builder.getConfiguration();
     Assertions.assertEquals(expectedConfig, loadedConfig2);
-    loadedConfig2.validate(); // shouldn't throw exception.
+    Assertions.assertDoesNotThrow(() -> loadedConfig2.validate());
   }
 
   @Test
@@ -91,23 +93,20 @@ public class JVSClientBuilderTest {
     JVSClientBuilder b = new JVSClientBuilder();
     JVSClientBuilder builder = spy(b);
 
-    JVSConfiguration expectedConfig = new JVSConfiguration();
+    JvsConfiguration expectedConfig = new JvsConfiguration();
 
-    when(builder.getFromEnvironmentVars(JVSClientBuilder.VERSION_ENV_KEY)).thenReturn(
-        "1");
+    when(builder.getFromEnvironmentVars(JVSClientBuilder.VERSION_ENV_KEY)).thenReturn("1");
     expectedConfig.setVersion("1");
-    when(builder.getFromEnvironmentVars(JVSClientBuilder.ENDPOINT_ENV_KEY)).thenReturn(
-        "google.com");
+    when(builder.getFromEnvironmentVars(JVSClientBuilder.ENDPOINT_ENV_KEY)).thenReturn("google.com");
     expectedConfig.setJvsEndpoint("google.com");
-    when(builder.getFromEnvironmentVars(JVSClientBuilder.CACHE_TIMEOUT_ENV_KEY)).thenReturn(
-        "PT10M");
+    when(builder.getFromEnvironmentVars(JVSClientBuilder.CACHE_TIMEOUT_ENV_KEY)).thenReturn("PT10M");
     expectedConfig.setCacheTimeout(Duration.parse("PT10M"));
 
     builder.updateConfigFromEnvironmentVars();
 
-    JVSConfiguration loadedConfig = builder.getConfiguration();
+    JvsConfiguration loadedConfig = builder.getConfiguration();
     Assertions.assertEquals(expectedConfig, loadedConfig);
-    loadedConfig.validate(); // shouldn't throw exception.
+    Assertions.assertDoesNotThrow(() -> loadedConfig.validate());
   }
 
   @Test
@@ -117,14 +116,14 @@ public class JVSClientBuilderTest {
 
     builder.loadConfigFromFile("all_specified.yml");
 
-    JVSConfiguration expectedConfig = new JVSConfiguration();
+    JvsConfiguration expectedConfig = new JvsConfiguration();
     expectedConfig.setVersion("1");
     expectedConfig.setJvsEndpoint("example.com");
     expectedConfig.setCacheTimeout(Duration.parse("PT5M"));
 
-    JVSConfiguration loadedConfig = builder.getConfiguration();
+    JvsConfiguration loadedConfig = builder.getConfiguration();
     Assertions.assertEquals(expectedConfig, loadedConfig);
-    loadedConfig.validate(); // shouldn't throw exception.
+    Assertions.assertDoesNotThrow(() -> loadedConfig.validate());
 
     when(builder.getFromEnvironmentVars(JVSClientBuilder.ENDPOINT_ENV_KEY)).thenReturn(
         "google.com");
@@ -135,16 +134,16 @@ public class JVSClientBuilderTest {
 
     builder.updateConfigFromEnvironmentVars();
 
-    JVSConfiguration loadedConfig2 = builder.getConfiguration();
+    JvsConfiguration loadedConfig2 = builder.getConfiguration();
     Assertions.assertEquals(expectedConfig, loadedConfig2);
-    loadedConfig2.validate(); // shouldn't throw exception.
+    Assertions.assertDoesNotThrow(() -> loadedConfig2.validate());
   }
 
   @Test
   public void testBuild() throws Exception {
     JVSClientBuilder builder = new JVSClientBuilder();
     builder.loadConfigFromFile("all_specified.yml");
-    JVSClient client = builder.build();
+    JvsClient client = builder.build();
     Assertions.assertNotNull(client);
   }
 
@@ -152,6 +151,7 @@ public class JVSClientBuilderTest {
   public void testBuild_Fail() throws Exception {
     JVSClientBuilder builder = new JVSClientBuilder();
     builder.loadConfigFromFile("missing_values.yml");
-    Assertions.assertThrows(IllegalArgumentException.class, () -> builder.build());
+    IllegalArgumentException thrown = Assertions.assertThrows(IllegalArgumentException.class, () -> builder.build());
+    Assertions.assertTrue(thrown.getMessage().contains("JVS endpoint was not specified"));
   }
 }

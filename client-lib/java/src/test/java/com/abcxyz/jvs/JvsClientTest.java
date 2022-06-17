@@ -40,7 +40,7 @@ import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 
 @ExtendWith(MockitoExtension.class)
-public class JVSClientTest {
+public class JvsClientTest {
 
   static KeyPair key1;
   static KeyPair key2;
@@ -74,7 +74,7 @@ public class JVSClientTest {
     Jwk jwk = mock(Jwk.class);
     when(jwk.getPublicKey()).thenReturn(key1.getPublic());
     when(provider.get(keyId)).thenReturn(jwk);
-    JVSClient client = new JVSClient(provider);
+    JvsClient client = new JvsClient(provider);
     DecodedJWT returnVal = client.validateJWT(token);
     Assertions.assertEquals(claims.get("id"), returnVal.getClaims().get("id").asString());
     Assertions.assertEquals(claims.get("role"), returnVal.getClaims().get("role").asString());
@@ -98,7 +98,8 @@ public class JVSClientTest {
 
     when(provider.get(keyId)).thenThrow(
         new SigningKeyNotFoundException("", new RuntimeException()));
-    JVSClient client = new JVSClient(provider);
-    Assertions.assertThrows(JwkException.class, () -> client.validateJWT(token));
+    JvsClient client = new JvsClient(provider);
+    JwkException thrown = Assertions.assertThrows(JwkException.class, () -> client.validateJWT(token));
+    Assertions.assertTrue(thrown.getMessage().contains("Public key not found"));
   }
 }
