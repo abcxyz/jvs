@@ -32,12 +32,12 @@ func TestFromDefaultCredentials(t *testing.T) {
 
 	ts, err := FromDefaultCredentials(context.Background())
 	if err != nil {
-		t.Errorf("failed to get ID token source: %v", err)
+		t.Fatalf("failed to get ID token source: %v", err)
 	}
 
 	tk, err := ts.Token()
 	if err != nil {
-		t.Errorf("failed to get ID token: %v", err)
+		t.Fatalf("failed to get ID token: %v", err)
 	}
 
 	if _, err := jwt.Parse([]byte(tk.AccessToken), jwt.WithVerify(false)); err != nil {
