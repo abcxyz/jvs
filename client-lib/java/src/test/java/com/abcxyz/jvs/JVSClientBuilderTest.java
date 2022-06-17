@@ -26,7 +26,7 @@ import org.junit.jupiter.api.Test;
 public class JVSClientBuilderTest {
 
   @Test
-  public void testLoadConfigurationFromFile() {
+  public void testLoadConfigurationFromFile() throws Exception {
     JVSClientBuilder builder = new JVSClientBuilder();
     builder.loadConfigFromFile("all_specified.yml");
 
@@ -41,7 +41,7 @@ public class JVSClientBuilderTest {
   }
 
   @Test
-  public void testLoadConfigurationFromFile_Invalid() {
+  public void testLoadConfigurationFromFile_Invalid() throws Exception {
     JVSClientBuilder builder = new JVSClientBuilder();
     builder.loadConfigFromFile("invalid.yml");
 
@@ -58,7 +58,7 @@ public class JVSClientBuilderTest {
   }
 
   @Test
-  public void testLoadConfigurationFromFile_MissingValues_EnvVars() {
+  public void testLoadConfigurationFromFile_MissingValues_EnvVars() throws Exception {
     JVSClientBuilder b = new JVSClientBuilder();
     JVSClientBuilder builder = spy(b);
 
@@ -87,7 +87,7 @@ public class JVSClientBuilderTest {
   }
 
   @Test
-  public void testLoadConfigurationFromFile_JustEnvVars() {
+  public void testLoadConfigurationFromFile_JustEnvVars() throws Exception {
     JVSClientBuilder b = new JVSClientBuilder();
     JVSClientBuilder builder = spy(b);
 
@@ -111,7 +111,7 @@ public class JVSClientBuilderTest {
   }
 
   @Test
-  public void testLoadConfigurationFromFile_EnvVarsOverride() {
+  public void testLoadConfigurationFromFile_EnvVarsOverride() throws Exception {
     JVSClientBuilder b = new JVSClientBuilder();
     JVSClientBuilder builder = spy(b);
 
@@ -141,7 +141,7 @@ public class JVSClientBuilderTest {
   }
 
   @Test
-  public void testBuild() {
+  public void testBuild() throws Exception {
     JVSClientBuilder builder = new JVSClientBuilder();
     builder.loadConfigFromFile("all_specified.yml");
     JVSClient client = builder.build();
@@ -149,7 +149,7 @@ public class JVSClientBuilderTest {
   }
 
   @Test()
-  public void testBuild_Fail() {
+  public void testBuild_Fail() throws Exception {
     JVSClientBuilder builder = new JVSClientBuilder();
     builder.loadConfigFromFile("missing_values.yml");
     Assertions.assertThrows(IllegalArgumentException.class, () -> builder.build());

@@ -48,16 +48,12 @@ public class JVSClientBuilder {
   @Getter(AccessLevel.PACKAGE)
   JVSConfiguration configuration;
 
-  public JVSClientBuilder loadConfigFromFile(String fileName) {
-    try {
-      try (InputStream input = getClass().getClassLoader().getResourceAsStream(fileName)) {
-        ObjectMapper mapper = new ObjectMapper(new YAMLFactory());
-        mapper.registerModule(new JavaTimeModule());
-        configuration = mapper.readValue(input, JVSConfiguration.class);
-        return this;
-      }
-    } catch (IOException e) {
-      throw new RuntimeException(e);
+  public JVSClientBuilder loadConfigFromFile(String fileName) throws IOException {
+    try (InputStream input = getClass().getClassLoader().getResourceAsStream(fileName)) {
+      ObjectMapper mapper = new ObjectMapper(new YAMLFactory());
+      mapper.registerModule(new JavaTimeModule());
+      configuration = mapper.readValue(input, JVSConfiguration.class);
+      return this;
     }
   }
 
