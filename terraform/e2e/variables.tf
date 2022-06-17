@@ -14,9 +14,14 @@
  * limitations under the License.
  */
 
-terraform {
-  backend "gcs" {
-    bucket = "jvs-dev-terraform"
-    prefix = "github-ci"
-  }
+variable "project_id" {
+  type        = string
+  description = "The GCP project to host the justification verification service."
 }
+
+variable "artifact_registry_location" {
+  type        = string
+  default     = "us"
+  description = "The artifact registry location."
+}
+

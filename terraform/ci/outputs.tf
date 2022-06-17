@@ -14,7 +14,10 @@
  * limitations under the License.
  */
 
-variable "user" {
-  type        = string
-  description = "User value will be used to create a unique project per user."
+output "key_ring" {
+  value = google_kms_key_ring.keyring.id
+}
+
+output "workload_identity_provider_name" {
+  value = module.github_actions.workload_identity_provider_name
 }

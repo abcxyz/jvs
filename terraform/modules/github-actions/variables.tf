@@ -14,10 +14,7 @@
  * limitations under the License.
  */
 
-output "jvs_server_url" {
-  value = module.e2e.jvs_server_url
-}
-
-output "public_key_server_url" {
-  value = module.e2e.public_key_server_url
+variable "project_id" {
+  type        = string
+  description = "The GCP project to host the justification verification service."
 }

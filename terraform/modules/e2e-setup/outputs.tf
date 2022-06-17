@@ -21,3 +21,7 @@ output "jvs_server_url" {
 output "public_key_server_url" {
   value = module.public-key.public_key_server_url
 }
+
+output "cert_rotator_server_url" {
+  value = module.cert-rotator.cert_rotator_server_url
+}

@@ -14,22 +14,6 @@
  * limitations under the License.
  */
 
-output "project_id" {
-  value = module.e2e.project_id
-}
-
-output "jvs_service_account" {
-  value = module.e2e.jvs_service_account
-}
-
-output "rotator_service_account" {
-  value = module.e2e.rotator_service_account
-}
-
-output "public_key_service_account" {
-  value = module.e2e.public_key_service_account
-}
-
-output "key_ring" {
-  value = module.e2e.key_ring
+output "workload_identity_provider_name" {
+  value = google_iam_workload_identity_pool_provider.provider.name
 }
