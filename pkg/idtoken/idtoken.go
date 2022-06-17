@@ -81,7 +81,7 @@ type tokenSource struct {
 // With FromDefaultCredentials, we reuse the refresh token from application default credentials.
 // It uses the gcloud client id.
 //
-// TODO: Support custom client id and audience.
+// TODO: Should our CLI support standalone 3-legged OAuth flow w/o relying on gcloud?
 //
 // For a full flow, reference: https://cloud.google.com/iap/docs/authentication-howto#authenticating_from_a_desktop_app
 func (ts *tokenSource) Token() (*oauth2.Token, error) {
