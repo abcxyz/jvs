@@ -29,3 +29,7 @@ output "rotator_service_account" {
 output "public_key_service_account" {
   value = module.e2e.public_key_service_account
 }
+
+output "key_ring" {
+  value = module.e2e.key_ring
+}

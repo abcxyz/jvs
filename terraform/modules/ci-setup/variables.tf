@@ -29,3 +29,9 @@ variable "artifact_registry_location" {
   default     = "us"
   description = "The artifact registry location."
 }
+
+variable "key_location" {
+  type        = string
+  default     = "global"
+  description = "The location where kms key will be created."
+}

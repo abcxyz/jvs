@@ -29,3 +29,7 @@ output "rotator_service_account" {
 output "public_key_service_account" {
   value = google_service_account.public-key-acc.email
 }
+
+output "key_ring" {
+  value = google_kms_key_ring.keyring.id
+}

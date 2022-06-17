@@ -16,6 +16,10 @@
 
 // intended to be run once to set up the environment.
 
+locals {
+  tag = uuid()
+}
+
 resource "google_project" "jvs_project" {
   name            = var.project_id
   project_id      = var.project_id
@@ -63,4 +67,41 @@ resource "google_artifact_registry_repository" "image_registry" {
   repository_id = "docker-images"
   description   = "Container Registry for the images."
   format        = "DOCKER"
+}
+
+resource "google_kms_key_ring" "keyring" {
+  project  = var.project_id
+  name     = "ci-keyring"
+  location = var.key_location
+}
+
+resource "google_kms_key_ring_iam_member" "server_acc_roles" {
+  for_each = toset([
+    "roles/cloudkms.viewer",
+    "roles/cloudkms.cryptoOperator"
+  ])
+
+  key_ring_id = google_kms_key_ring.keyring.id
+  role        = each.key
+  member      = "serviceAccount:${google_service_account.server-acc.email}"
+}
+
+resource "google_kms_key_ring_iam_member" "rotator_acc_roles" {
+  for_each = toset([
+    "roles/cloudkms.admin",
+  ])
+
+  key_ring_id = google_kms_key_ring.keyring.id
+  role        = each.key
+  member      = "serviceAccount:${google_service_account.rotator-acc.email}"
+}
+
+resource "google_kms_key_ring_iam_member" "public_key_acc_roles" {
+  for_each = toset([
+    "roles/cloudkms.publicKeyViewer",
+  ])
+
+  key_ring_id = google_kms_key_ring.keyring.id
+  role        = each.key
+  member      = "serviceAccount:${google_service_account.public-key-acc.email}"
 }
