@@ -15,10 +15,21 @@
 package cli
 
 import (
+	"context"
+	"crypto/tls"
+	"crypto/x509"
 	"fmt"
 	"time"
 
 	"github.com/spf13/cobra"
+	"google.golang.org/grpc"
+	"google.golang.org/grpc/credentials"
+	"google.golang.org/grpc/credentials/insecure"
+	"google.golang.org/grpc/credentials/oauth"
+	"google.golang.org/protobuf/types/known/durationpb"
+
+	jvsapis "github.com/abcxyz/jvs/apis/v0"
+	"github.com/abcxyz/jvs/pkg/idtoken"
 )
 
 var (
@@ -35,7 +46,38 @@ var tokenCmd = &cobra.Command{
 }
 
 func runTokenCmd(cmd *cobra.Command, args []string) error {
-	return fmt.Errorf("not implemented")
+	ctx := context.Background()
+	dialOpts, err := dialOpts()
+	if err != nil {
+		return err
+	}
+	callOpts, err := callOpts(ctx)
+	if err != nil {
+		return err
+	}
+
+	// TODO(#69): Generate breakglass token w/o JVS server.
+
+	conn, err := grpc.Dial(cfg.Server, dialOpts...)
+	if err != nil {
+		return fmt.Errorf("failed to connect to JVS service: %w", err)
+	}
+	jvsclient := jvsapis.NewJVSServiceClient(conn)
+
+	req := &jvsapis.CreateJustificationRequest{
+		Justifications: []*jvsapis.Justification{{
+			Category: "explanation",
+			Value:    tokenExplanation,
+		}},
+		Ttl: durationpb.New(ttl),
+	}
+	resp, err := jvsclient.CreateJustification(ctx, req, callOpts...)
+	if err != nil {
+		return err
+	}
+
+	_, err = cmd.OutOrStdout().Write([]byte(resp.Token))
+	return err
 }
 
 func init() {
@@ -43,4 +85,38 @@ func init() {
 	tokenCmd.MarkFlagRequired("explanation") //nolint // not expect err
 	tokenCmd.Flags().BoolVar(&breakglass, "breakglass", false, "Whether it will be a breakglass action")
 	tokenCmd.Flags().DurationVar(&ttl, "ttl", time.Hour, "The token time-to-live duration")
+}
+
+func dialOpts() ([]grpc.DialOption, error) {
+	if cfg.Authentication.Insecure {
+		return []grpc.DialOption{grpc.WithTransportCredentials(insecure.NewCredentials())}, nil
+	}
+
+	// The default.
+	systemRoots, err := x509.SystemCertPool()
+	if err != nil {
+		return nil, fmt.Errorf("failed to load system cert pool: %w", err)
+	}
+	//nolint:gosec // We need to support TLS 1.2 for now (G402).
+	cred := credentials.NewTLS(&tls.Config{
+		RootCAs: systemRoots,
+	})
+	return []grpc.DialOption{grpc.WithTransportCredentials(cred)}, nil
+}
+
+func callOpts(ctx context.Context) ([]grpc.CallOption, error) {
+	if cfg.Authentication.Insecure {
+		return nil, nil
+	}
+
+	ts, err := idtoken.FromDefaultCredentials(ctx)
+	if err != nil {
+		return nil, err
+	}
+
+	token, err := ts.Token()
+	if err != nil {
+		return nil, err
+	}
+	return []grpc.CallOption{grpc.PerRPCCredentials(oauth.NewOauthAccess(token))}, nil
 }
