@@ -30,14 +30,15 @@ import lombok.AccessLevel;
 import lombok.Getter;
 
 /**
- * JVSClientBuilder can be used to build JVS clients with a cached JwkProvieder. It has values that
+ * JVSClientBuilder can be used to build JVS clients with a cached JwkProvider. It has values that
  * need to be set, and those may be specified in a yaml file through loadConfigFromFile, or
  * environment variables. Set environment variables are automatically loaded when build() is called.
  * If a yaml and environment variable are both set, the env variable is used.
  *
- * env: JVS_VERSION yaml: version. Specifies the version of the configuration. env:
- * JVS_CACHE_TIMEOUT yaml: cache_timeout. Specifies how long until cached public keys are
- * invalidated. env: JVS_ENDPOINT yaml: endpoint. Specifies the url for retrieving public keys.
+ * env: JVS_VERSION yaml: version. Specifies the version of the configuration.
+ * env: JVS_CACHE_TIMEOUT yaml: cache_timeout. Specifies how long until cached public keys are
+ * invalidated.
+ * env: JVS_ENDPOINT yaml: endpoint. Specifies the url for retrieving public keys.
  */
 public class JVSClientBuilder {
 
