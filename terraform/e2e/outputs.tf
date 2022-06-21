@@ -15,7 +15,7 @@
  */
 
 output "workload_identity_provider_name" {
-  value = module.github_actions.workload_identity_provider_name
+  value = module.github_action[0].workload_identity_provider_name
 }
 
 output "jvs_server_url" {

@@ -13,8 +13,9 @@ resource "google_project_service" "server_project_services" {
   disable_on_destroy = false
 }
 
-module "github_actions" {
-  source     = "../modules/github-actions"
+module "github_action" {
+  count        = var.is_local_env ? 0 : 1
+  source     = "../modules/github-action"
   project_id = var.project_id
 }
 

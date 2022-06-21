@@ -50,7 +50,7 @@ resource "google_iam_workload_identity_pool_provider" "provider" {
 resource "google_service_account_iam_member" "external_provider_roles" {
   service_account_id = google_service_account.gh-access-acc.name
   role               = "roles/iam.workloadIdentityUser"
-  member             = "principalSet://iam.googleapis.com/${google_iam_workload_identity_pool.pool.id}/attribute.repository/${local.repo}"
+  member             = "principalSet://iam.googleapis.com/${google_iam_workload_identity_pool.pool.name}/attribute.repository/${local.repo}"
 }
 
 resource "google_project_iam_member" "gh_access_acc_iam" {

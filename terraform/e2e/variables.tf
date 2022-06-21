@@ -25,3 +25,8 @@ variable "artifact_registry_location" {
   description = "The artifact registry location."
 }
 
+variable "is_local_env" {
+  type        = bool
+  default     = false
+  description = "Whether it is deployed in local environment"
+}
