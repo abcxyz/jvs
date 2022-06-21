@@ -1,0 +1,3 @@
+version: 1
+endpoint: example.com
+cache_timeout: PT-5M
