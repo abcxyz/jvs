@@ -36,7 +36,7 @@ resource "google_project_service" "services" {
 
 module "github_action" {
   count      = var.is_local_env ? 0 : 1
-  source     = "../modules/github-action"
+  source     = "abcxyz/infra/modules/github-action/main.tf"
   project_id = var.project_id
 }
 
@@ -57,7 +57,3 @@ module "e2e" {
   source     = "../modules/jvs"
   project_id = var.project_id
 }
-
-
-
-

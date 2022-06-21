@@ -36,15 +36,6 @@ resource "google_project_service" "services" {
   ]
 }
 
-resource "google_kms_key_ring" "keyring" {
-  project  = var.project_id
-  name     = "ci-keyring"
-  location = var.key_location
-  depends_on = [
-    google_project_service.services["cloudkms.googleapis.com"],
-  ]
-}
-
 resource "google_artifact_registry_repository" "image_registry" {
   provider = google-beta
 
@@ -58,6 +49,17 @@ resource "google_artifact_registry_repository" "image_registry" {
   ]
 }
 
+module "github_action" {
+  count      = var.is_local_env ? 0 : 1
+  source     = "abcxyz/infra/modules/github-action/main.tf"
+  project_id = var.project_id
+}
 
-
-
+resource "google_kms_key_ring" "keyring" {
+  project  = var.project_id
+  name     = "ci-keyring"
+  location = var.key_location
+  depends_on = [
+    google_project_service.services["cloudkms.googleapis.com"],
+  ]
+}
