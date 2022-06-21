@@ -15,9 +15,22 @@
 
 ROOT="$(cd "$(dirname "$0")/.." &>/dev/null; pwd -P)"
 
-PROJECT_ID="jvs-test"
-KEYRING_ID="ci-keyring"
-export TEST_JVS_KMS_KEY_RING="projects/${PROJECT_ID}/locations/global/keyRings/${KEYRING_ID}"
+JVS_SERVICE_ACCOUNT="jvs-service-sa@jvs-ci.iam.gserviceaccount.com"
+ROTATOR_SERVICE_ACCOUNT="rotator-sa@jvs-ci.iam.gserviceaccount.com"
+PUB_KEY_SERVICE_ACCOUNT="pubkey-sa@jvs-ci.iam.gserviceaccount.com"
+PROJECT_ID="jvs-ci"
+
+CI_DIR=${ROOT}/terraform/modules/ci-run
+
+cd $CI_DIR
+terraform init
+terraform apply -auto-approve \
+  -var="project_id=${PROJECT_ID}" \
+  -var="jvs_service_account=${JVS_SERVICE_ACCOUNT}" \
+  -var="rotator_service_account=${ROTATOR_SERVICE_ACCOUNT}" \
+  -var="public_key_service_account=${PUB_KEY_SERVICE_ACCOUNT}"
+
+export TEST_JVS_KMS_KEY_RING=$(terraform output key_ring)
 export TEST_JVS_INTEGRATION=true
 
 cd ${ROOT}

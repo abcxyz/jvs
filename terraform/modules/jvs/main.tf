@@ -20,6 +20,27 @@ locals {
   tag = uuid()
 }
 
+resource "google_project_service" "serviceusage" {
+  project            = var.project_id
+  service            = "serviceusage.googleapis.com"
+  disable_on_destroy = false
+}
+
+resource "google_project_service" "services" {
+  project = var.project_id
+  for_each = toset([
+    "cloudresourcemanager.googleapis.com",
+    "cloudkms.googleapis.com",
+    "iam.googleapis.com"
+  ])
+  service            = each.value
+  disable_on_destroy = false
+
+  depends_on = [
+    google_project_service.serviceusage,
+  ]
+}
+
 resource "google_kms_key_ring" "keyring" {
   project  = var.project_id
   name     = "ci-keyring"
