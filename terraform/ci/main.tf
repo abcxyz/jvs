@@ -50,8 +50,7 @@ resource "google_artifact_registry_repository" "image_registry" {
 }
 
 module "github_action" {
-  count      = var.is_local_env ? 0 : 1
-  source     = "abcxyz/infra/modules/github-action/main.tf"
+  source     = "abcxyz/infra/modules/github-action"
   project_id = var.project_id
 }
 

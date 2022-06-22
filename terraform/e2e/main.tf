@@ -35,8 +35,7 @@ resource "google_project_service" "services" {
 }
 
 module "github_action" {
-  count      = var.is_local_env ? 0 : 1
-  source     = "abcxyz/infra/modules/github-action/main.tf"
+  source     = "abcxyz/infra/modules/github-action"
   project_id = var.project_id
 }
 
@@ -53,7 +52,7 @@ resource "google_artifact_registry_repository" "image_registry" {
   ]
 }
 
-module "e2e" {
-  source     = "../modules/jvs"
+module "jvs-e2e" {
+  source     = "../modules/jvs-e2e"
   project_id = var.project_id
 }

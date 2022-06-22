@@ -19,13 +19,13 @@ output "workload_identity_provider_name" {
 }
 
 output "jvs_server_url" {
-  value = module.e2e.jvs_server_url
+  value = module.jvs-e2e.jvs_server_url
 }
 
 output "public_key_server_url" {
-  value = module.e2e.public_key_server_url
+  value = module.jvs-e2e.public_key_server_url
 }
 
 output "cert_rotator_server_url" {
-  value = module.e2e.cert_rotator_server_url
+  value = module.jvs-e2e.cert_rotator_server_url
 }
