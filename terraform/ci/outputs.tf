@@ -19,5 +19,5 @@ output "key_ring" {
 }
 
 output "workload_identity_pool_provider_name" {
-  value = module.abcxyz_pkg.pool_provider_name
+  value = module.workload-identity-federation.pool_provider_name
 }

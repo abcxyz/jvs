@@ -52,7 +52,7 @@ resource "google_project_iam_member" "gh_access_acc_iam" {
   member   = "serviceAccount:${google_service_account.gh-access-acc.email}"
 }
 
-module "abcxyz_pkg" {
+module "workload-identity-federation" {
   source      = "github.com/abcxyz/pkg//terraform/modules/workload-identity-federation"
   project_id  = var.project_id
   github_slug = local.github_slug
@@ -61,7 +61,7 @@ module "abcxyz_pkg" {
 resource "google_service_account_iam_member" "external_provider_roles" {
   service_account_id = google_service_account.gh-access-acc.name
   role               = "roles/iam.workloadIdentityUser"
-  member             = "principalSet://iam.googleapis.com/${module.abcxyz_pkg.pool_name}/attribute.repository/${local.github_slug}"
+  member             = "principalSet://iam.googleapis.com/${module.workload-identity-federation.pool_name}/attribute.repository/${local.github_slug}"
 }
 
 resource "google_artifact_registry_repository" "image_registry" {
