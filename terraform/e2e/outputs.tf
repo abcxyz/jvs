@@ -15,7 +15,7 @@
  */
 
 output "workload_identity_pool_provider_name" {
-  value = module.abcxyz_infra.workload_identity_pool_provider_name
+  value = module.abcxyz_pkg.pool_provider_name
 }
 
 output "jvs_server_url" {
