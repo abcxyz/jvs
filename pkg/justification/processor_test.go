@@ -20,8 +20,12 @@ import (
 	"crypto/elliptic"
 	"crypto/rand"
 	"crypto/x509"
+	"encoding/json"
 	"encoding/pem"
+	"fmt"
 	"net"
+	"net/http"
+	"net/http/httptest"
 	"testing"
 	"time"
 
@@ -30,16 +34,27 @@ import (
 	"github.com/abcxyz/jvs/pkg/config"
 	"github.com/abcxyz/jvs/pkg/jvscrypto"
 	"github.com/abcxyz/jvs/pkg/testutil"
+	"github.com/abcxyz/pkg/grpcutil"
 	pkgtestutil "github.com/abcxyz/pkg/testutil"
 	"github.com/golang-jwt/jwt"
 	"github.com/google/go-cmp/cmp"
+	"github.com/lestrrat-go/jwx/v2/jwk"
 	"google.golang.org/api/option"
 	kmspb "google.golang.org/genproto/googleapis/cloud/kms/v1"
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/credentials/insecure"
+	"google.golang.org/grpc/metadata"
 	"google.golang.org/protobuf/proto"
 	"google.golang.org/protobuf/types/known/durationpb"
 )
+
+type MockJWTAuthHandler struct {
+	grpcutil.JWTAuthenticationHandler
+}
+
+func (j *MockJWTAuthHandler) RequestPrincipal(ctx context.Context) string {
+	return "me@example.com"
+}
 
 func TestCreateToken(t *testing.T) {
 	t.Parallel()
@@ -98,12 +113,58 @@ func TestCreateToken(t *testing.T) {
 	version := key + "[VERSION]"
 	mockKeyManagement.VersionName = version
 
+	authKey, err := ecdsa.GenerateKey(elliptic.P256(), rand.Reader)
+	if err != nil {
+		t.Fatal(err)
+	}
+	ecdsaKey, err := jwk.FromRaw(authKey.PublicKey)
+	if err != nil {
+		t.Fatal(err)
+	}
+	keyID := key + "/cryptoKeyVersions/[VERSION]-0"
+	if err := ecdsaKey.Set(jwk.KeyIDKey, keyID); err != nil {
+		t.Fatal(err)
+	}
+	jwks := make(map[string][]jwk.Key)
+	jwks["keys"] = []jwk.Key{ecdsaKey}
+
+	j, err := json.MarshalIndent(jwks, "", " ")
+	if err != nil {
+		t.Fatal("couldn't create jwks json")
+	}
+
+	path := "/.well-known/jwks"
+	mux := http.NewServeMux()
+	mux.HandleFunc(path, func(w http.ResponseWriter, r *http.Request) {
+		w.WriteHeader(http.StatusOK)
+		fmt.Fprintf(w, "%s", j)
+	})
+
+	svr := httptest.NewServer(mux)
+
+	t.Cleanup(func() {
+		svr.Close()
+	})
+
+	tok := pkgtestutil.CreateJWT(t, "test_id", "user@example.com")
+	validJWT := pkgtestutil.SignToken(t, tok, authKey, keyID)
+
+	ctx = metadata.NewIncomingContext(ctx, metadata.New(map[string]string{
+		"authorization": "Bearer " + validJWT,
+	}))
+
+	authHandler, err := grpcutil.NewJWTAuthenticationHandler(ctx, svr.URL+path)
+	if err != nil {
+		t.Fatal(err)
+	}
+
 	processor := NewProcessor(c, &config.JustificationConfig{
 		Version:            1,
 		KeyName:            key,
 		SignerCacheTimeout: 5 * time.Minute,
 		Issuer:             config.IssuerDefault,
-	})
+	}, authHandler)
+
 	hour, err := time.ParseDuration("3600s")
 	if err != nil {
 		t.Fatal(err)
@@ -175,6 +236,7 @@ func TestCreateToken(t *testing.T) {
 			if err != nil {
 				t.Errorf("Unable to parse created jwt string. %v", err)
 			}
+			// validate email in claims
 			validateClaims(t, claims, tc.request.Justifications)
 			got := token.Header["kid"]
 			want := version + "-0"
@@ -191,6 +253,9 @@ func validateClaims(tb testing.TB, provided *jvspb.JVSClaims, expectedJustificat
 	// test the standard claims filled by processor
 	if provided.StandardClaims.Issuer != config.IssuerDefault {
 		tb.Errorf("audience value %s incorrect, expected %s", provided.StandardClaims.Issuer, config.IssuerDefault)
+	}
+	if provided.StandardClaims.Subject != "user@example.com" {
+		tb.Errorf("subject value %s incorrect, expected %s", provided.StandardClaims.Subject, "user@example.com")
 	}
 	// TODO: as we add more standard claims, add more validations.
 
