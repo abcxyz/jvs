@@ -13,19 +13,7 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-
-output "workload_identity_pool_provider_name" {
-  value = module.abcxyz_infra.workload_identity_pool_provider_name
-}
-
-output "jvs_server_url" {
-  value = module.jvs-e2e.jvs_server_url
-}
-
-output "public_key_server_url" {
-  value = module.jvs-e2e.public_key_server_url
-}
-
-output "cert_rotator_server_url" {
-  value = module.jvs-e2e.cert_rotator_server_url
+module "jvs-e2e" {
+  source     = "../modules/jvs-e2e"
+  project_id = var.project_id
 }

@@ -30,3 +30,9 @@ variable "artifact_registry_location" {
   default     = "us"
   description = "The artifact registry location."
 }
+
+variable "ci_iam_roles" {
+  type        = list(string)
+  default     = []
+  description = "List of IAM roles needed to run integration tests included in CI/CD."
+}

@@ -18,6 +18,6 @@ output "key_ring" {
   value = google_kms_key_ring.keyring.id
 }
 
-output "workload_identity_provider_name" {
-  value = module.github_action[0].workload_identity_provider_name
+output "workload_identity_pool_provider_name" {
+  value = module.abcxyz_infra.workload_identity_pool_provider_name
 }

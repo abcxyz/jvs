@@ -13,11 +13,6 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-
-output "workload_identity_pool_provider_name" {
-  value = module.abcxyz_infra.workload_identity_pool_provider_name
-}
-
 output "jvs_server_url" {
   value = module.jvs-e2e.jvs_server_url
 }

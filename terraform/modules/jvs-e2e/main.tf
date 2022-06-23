@@ -45,6 +45,9 @@ resource "google_kms_key_ring" "keyring" {
   project  = var.project_id
   name     = "ci-keyring"
   location = var.key_location
+  depends_on = [
+    google_project_service.services["cloudkms.googleapis.com"],
+  ]
 }
 
 resource "google_kms_crypto_key" "asymmetric-sign-key" {
@@ -59,6 +62,10 @@ resource "google_kms_crypto_key" "asymmetric-sign-key" {
   lifecycle {
     prevent_destroy = false
   }
+
+  depends_on = [
+    google_project_service.services["cloudkms.googleapis.com"],
+  ]
 }
 
 resource "google_service_account" "server-acc" {

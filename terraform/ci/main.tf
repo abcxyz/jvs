@@ -13,6 +13,9 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
+locals {
+  github_slug = "abcxyz/jvs"
+}
 
 resource "google_project_service" "serviceusage" {
   project            = var.project_id
@@ -49,9 +52,30 @@ resource "google_artifact_registry_repository" "image_registry" {
   ]
 }
 
-module "github_action" {
-  source     = "abcxyz/infra/modules/github-action"
-  project_id = var.project_id
+resource "google_service_account" "gh-access-acc" {
+  project      = var.project_id
+  account_id   = "gh-access-sa"
+  display_name = "GitHub Access Account"
+}
+
+// IAM roles needed to run tests.
+resource "google_project_iam_member" "gh_access_acc_iam" {
+  for_each = toset(var.ci_iam_roles)
+  project  = var.project_id
+  role     = each.key
+  member   = "serviceAccount:${google_service_account.gh-access-acc.email}"
+}
+
+module "abcxyz_infra" {
+  source      = "git@github.com:abcxyz/infra.git//modules/github-action"
+  project_id  = var.project_id
+  github_slug = local.github_slug
+}
+
+resource "google_service_account_iam_member" "external_provider_roles" {
+  service_account_id = google_service_account.gh-access-acc.name
+  role               = "roles/iam.workloadIdentityUser"
+  member             = "principalSet://iam.googleapis.com/${module.abcxyz_infra.workload_identity_pool_name}/attribute.repository/${local.github_slug}"
 }
 
 resource "google_kms_key_ring" "keyring" {
