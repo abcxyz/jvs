@@ -15,19 +15,20 @@
 package cli
 
 import (
+	"bytes"
 	"context"
 	"fmt"
-	"net"
 	"strings"
 	"testing"
 	"time"
 
 	"google.golang.org/grpc"
-	"google.golang.org/grpc/credentials/insecure"
 
 	jvsapis "github.com/abcxyz/jvs/apis/v0"
 	"github.com/abcxyz/jvs/pkg/config"
 	"github.com/abcxyz/pkg/testutil"
+	"github.com/google/go-cmp/cmp"
+	"github.com/lestrrat-go/jwx/v2/jwt"
 	"github.com/spf13/cobra"
 )
 
@@ -50,9 +51,8 @@ func (j *fakeJVS) CreateJustification(_ context.Context, req *jvsapis.CreateJust
 	}, nil
 }
 
-func TestRunTokenCmd(t *testing.T) {
-	t.Parallel()
-
+func TestRunTokenCmd_WithJVSServer(t *testing.T) {
+	// Cannot parallel because the global CLI config.
 	tests := []struct {
 		name        string
 		jvs         *fakeJVS
@@ -74,7 +74,7 @@ func TestRunTokenCmd(t *testing.T) {
 	for _, tc := range tests {
 		// Cannot parallel because the global CLI config.
 		t.Run(tc.name, func(t *testing.T) {
-			server, _ := testFakeGRPCServer(t, func(s *grpc.Server) { jvsapis.RegisterJVSServiceServer(s, tc.jvs) })
+			server, _ := testutil.FakeGRPCServer(t, func(s *grpc.Server) { jvsapis.RegisterJVSServiceServer(s, tc.jvs) })
 
 			// These are global flags.
 			cfg = &config.CLIConfig{
@@ -102,30 +102,70 @@ func TestRunTokenCmd(t *testing.T) {
 	}
 }
 
-// Copied over from Lumberjack. TODO: share it in pkg.
-func testFakeGRPCServer(tb testing.TB, registerFunc func(*grpc.Server)) (string, *grpc.ClientConn) {
-	tb.Helper()
+func TestRunTokenCmd_Breakglass(t *testing.T) {
+	// Cannot parallel because the global CLI config.
+	// These are global flags.
+	cfg = &config.CLIConfig{
+		Server: "example.com",
+		Authentication: &config.CLIAuthentication{
+			Insecure: true,
+		},
+	}
+	breakglass = true
+	tokenExplanation = "i-have-reason"
+	ttl = time.Minute
 
-	s := grpc.NewServer()
-	tb.Cleanup(func() { s.GracefulStop() })
+	startTime := time.Now().Add(-1 * time.Second).UTC()
+	buf := bytes.Buffer{}
+	cmd := &cobra.Command{}
+	cmd.SetOut(&buf)
 
-	registerFunc(s)
-
-	lis, err := net.Listen("tcp", "localhost:0")
-	if err != nil {
-		tb.Fatalf("net.Listen(tcp, localhost:0) failed: %v", err)
+	if err := runTokenCmd(cmd, nil); err != nil {
+		t.Errorf("unexpected error: %v", err)
 	}
 
-	go func() {
-		if err := s.Serve(lis); err != nil {
-			tb.Logf("net.Listen(tcp, localhost:0) serve failed: %v", err)
-		}
-	}()
-
-	addr := lis.Addr().String()
-	conn, err := grpc.Dial(addr, grpc.WithTransportCredentials(insecure.NewCredentials()))
+	gotToken, err := jwt.ParseInsecure(buf.Bytes())
 	if err != nil {
-		tb.Fatalf("failed to dail %q: %s", addr, err)
+		t.Errorf("got invalid token: %v", err)
+		return
 	}
-	return addr, conn
+
+	// Check all time related claims were set
+	if !gotToken.IssuedAt().After(startTime) {
+		t.Errorf(`got "iat" %v want time after %v`, gotToken.IssuedAt(), startTime)
+	}
+	if !gotToken.Expiration().After(startTime.Add(ttl)) {
+		t.Errorf(`got "exp" %v want time after %v`, gotToken.Expiration(), startTime.Add(ttl))
+	}
+	if !gotToken.NotBefore().After(startTime) {
+		t.Errorf(`got "nbf" %v want time after %v`, gotToken.NotBefore(), startTime)
+	}
+	// Check token ID was set
+	if gotToken.JwtID() == "" {
+		t.Errorf("got empty JWT ID")
+	}
+
+	// Convert token to map for easier comparison.
+	gotTokenMap, err := gotToken.AsMap(context.Background())
+	if err != nil {
+		t.Errorf("got invalid token: %v", err)
+		return
+	}
+	wantTokenMap := map[string]interface{}{
+		"aud": []string{"TODO #22"},
+		"iss": "jvsctl",
+		"sub": "jvsctl",
+		"iat": gotToken.IssuedAt(),
+		"exp": gotToken.Expiration(),
+		"nbf": gotToken.NotBefore(),
+		"jti": gotToken.JwtID(),
+		"justs": []interface{}{map[string]interface{}{
+			"category": "breakglass",
+			"value":    "i-have-reason",
+		}},
+	}
+
+	if diff := cmp.Diff(wantTokenMap, gotTokenMap); diff != "" {
+		t.Errorf("breakglass token (-want,+got):\n%s", diff)
+	}
 }

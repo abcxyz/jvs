@@ -21,6 +21,8 @@ import (
 	"fmt"
 	"time"
 
+	"github.com/google/uuid"
+	"github.com/lestrrat-go/jwx/v2/jwt"
 	"github.com/spf13/cobra"
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/credentials"
@@ -47,6 +49,17 @@ var tokenCmd = &cobra.Command{
 
 func runTokenCmd(cmd *cobra.Command, args []string) error {
 	ctx := context.Background()
+
+	// Breakglass won't require JVS server. Handle that first.
+	if breakglass {
+		tok, err := breakglassToken(ctx)
+		if err != nil {
+			return fmt.Errorf("failed to generate breakglass token: %w", err)
+		}
+
+		return printToken(cmd, tok)
+	}
+
 	dialOpts, err := dialOpts()
 	if err != nil {
 		return err
@@ -55,8 +68,6 @@ func runTokenCmd(cmd *cobra.Command, args []string) error {
 	if err != nil {
 		return err
 	}
-
-	// TODO(#69): Generate breakglass token w/o JVS server.
 
 	conn, err := grpc.Dial(cfg.Server, dialOpts...)
 	if err != nil {
@@ -76,8 +87,12 @@ func runTokenCmd(cmd *cobra.Command, args []string) error {
 		return err
 	}
 
-	_, err = cmd.OutOrStdout().Write([]byte(resp.Token))
-	return err
+	return printToken(cmd, []byte(resp.Token))
+}
+
+func printToken(cmd *cobra.Command, tok []byte) (err error) {
+	_, err = cmd.OutOrStdout().Write(tok)
+	return
 }
 
 func init() {
@@ -119,4 +134,30 @@ func callOpts(ctx context.Context) ([]grpc.CallOption, error) {
 		return nil, err
 	}
 	return []grpc.CallOption{grpc.PerRPCCredentials(oauth.NewOauthAccess(token))}, nil
+}
+
+func breakglassToken(ctx context.Context) ([]byte, error) {
+	now := time.Now().UTC()
+	tok, err := jwt.NewBuilder().
+		// aud should be the service being justified to access
+		Audience([]string{"TODO #22"}).
+		Expiration(now.Add(ttl)).
+		JwtID(uuid.New().String()).
+		IssuedAt(now).
+		Issuer(`jvsctl`).
+		NotBefore(now).
+		// sub should be the caller principal but since it's breakglass
+		// we cannot effectively verify the caller identity in the CLI;
+		// use a fixed string instead.
+		Subject("jvsctl").
+		Claim("justs", []*jvsapis.Justification{{
+			Category: "breakglass",
+			Value:    tokenExplanation,
+		}}).
+		Build()
+	if err != nil {
+		return nil, err
+	}
+
+	return jwt.NewSerializer().Serialize(tok)
 }
