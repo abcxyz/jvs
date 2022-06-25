@@ -142,6 +142,9 @@ func TestRunTokenCmd_Breakglass(t *testing.T) {
 	wantClaims := jwt.MapClaims{
 		"aud": "TODO #22",
 		"iss": "jvsctl",
+		// sub should be the caller principal but since it's breakglass
+		// we cannot effectively verify the caller identity in the CLI;
+		// use a fixed string instead.
 		"sub": "jvsctl",
 		"iat": float64(now.UTC().Unix()),
 		"exp": float64(now.UTC().Add(ttl).Unix()),
