@@ -21,8 +21,8 @@ import (
 	"fmt"
 	"time"
 
+	"github.com/golang-jwt/jwt"
 	"github.com/google/uuid"
-	"github.com/lestrrat-go/jwx/v2/jwt"
 	"github.com/spf13/cobra"
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/credentials"
@@ -38,6 +38,9 @@ var (
 	tokenExplanation string
 	breakglass       bool
 	ttl              time.Duration
+
+	// Useful for test.
+	timeFunc = time.Now
 )
 
 var tokenCmd = &cobra.Command{
@@ -56,7 +59,6 @@ func runTokenCmd(cmd *cobra.Command, args []string) error {
 		if err != nil {
 			return fmt.Errorf("failed to generate breakglass token: %w", err)
 		}
-
 		return printToken(cmd, tok)
 	}
 
@@ -87,11 +89,11 @@ func runTokenCmd(cmd *cobra.Command, args []string) error {
 		return err
 	}
 
-	return printToken(cmd, []byte(resp.Token))
+	return printToken(cmd, resp.Token)
 }
 
-func printToken(cmd *cobra.Command, tok []byte) (err error) {
-	_, err = cmd.OutOrStdout().Write(tok)
+func printToken(cmd *cobra.Command, tok string) (err error) {
+	_, err = cmd.OutOrStdout().Write([]byte(tok))
 	return
 }
 
@@ -136,28 +138,30 @@ func callOpts(ctx context.Context) ([]grpc.CallOption, error) {
 	return []grpc.CallOption{grpc.PerRPCCredentials(oauth.NewOauthAccess(token))}, nil
 }
 
-func breakglassToken(ctx context.Context) ([]byte, error) {
-	now := time.Now().UTC()
-	tok, err := jwt.NewBuilder().
-		// aud should be the service being justified to access
-		Audience([]string{"TODO #22"}).
-		Expiration(now.Add(ttl)).
-		JwtID(uuid.New().String()).
-		IssuedAt(now).
-		Issuer(`jvsctl`).
-		NotBefore(now).
-		// sub should be the caller principal but since it's breakglass
-		// we cannot effectively verify the caller identity in the CLI;
-		// use a fixed string instead.
-		Subject("jvsctl").
-		Claim("justs", []*jvsapis.Justification{{
+func breakglassToken(ctx context.Context) (string, error) {
+	now := timeFunc().UTC()
+	claims := &jvsapis.JVSClaims{
+		StandardClaims: &jwt.StandardClaims{
+			Audience:  "TODO #22",
+			ExpiresAt: now.Add(ttl).Unix(),
+			Id:        uuid.New().String(),
+			IssuedAt:  now.Unix(),
+			NotBefore: now.Unix(),
+			Issuer:    "jvsctl",
+			Subject:   "jvsctl",
+		},
+		Justifications: []*jvsapis.Justification{{
 			Category: "breakglass",
 			Value:    tokenExplanation,
-		}}).
-		Build()
-	if err != nil {
-		return nil, err
+		}},
 	}
 
-	return jwt.NewSerializer().Serialize(tok)
+	// Signing method doesn't really matter because we won't sign
+	// breakglass token.
+	tok, err := jwt.NewWithClaims(jwt.SigningMethodES256, claims).SigningString()
+	if err != nil {
+		return "", err
+	}
+
+	return tok + ".NOT_SIGNED", nil
 }
