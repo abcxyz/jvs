@@ -84,6 +84,7 @@ func TestRunTokenCmd_WithJVSServer(t *testing.T) {
 			}
 			tokenExplanation = tc.explanation
 			ttl = time.Minute
+			t.Cleanup(testRunTokenCmdCleanup)
 
 			buf := &strings.Builder{}
 			cmd := &cobra.Command{}
@@ -119,9 +120,7 @@ func TestRunTokenCmd_Breakglass(t *testing.T) {
 	timeFunc = func() time.Time {
 		return now
 	}
-	t.Cleanup(func() {
-		timeFunc = time.Now
-	})
+	t.Cleanup(testRunTokenCmdCleanup)
 
 	buf := &strings.Builder{}
 	cmd := &cobra.Command{}
@@ -158,4 +157,12 @@ func TestRunTokenCmd_Breakglass(t *testing.T) {
 	if diff := cmp.Diff(wantClaims, gotClaims); diff != "" {
 		t.Errorf("breakglass token claims (-want,+got):\n%s", diff)
 	}
+}
+
+func testRunTokenCmdCleanup() {
+	timeFunc = time.Now
+	tokenExplanation = ""
+	ttl = time.Hour
+	breakglass = false
+	cfg = nil
 }
