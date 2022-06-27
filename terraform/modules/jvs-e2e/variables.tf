@@ -19,17 +19,6 @@ variable "project_id" {
   description = "The GCP project to host the justification verification service."
 }
 
-variable "billing_account" {
-  type        = string
-  description = "The billing account to be linked to projects."
-}
-
-variable "artifact_registry_location" {
-  type        = string
-  default     = "us"
-  description = "The artifact registry location."
-}
-
 variable "key_location" {
   type        = string
   default     = "global"
