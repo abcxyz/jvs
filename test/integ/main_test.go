@@ -34,6 +34,7 @@ import (
 	"github.com/abcxyz/jvs/pkg/justification"
 	"github.com/abcxyz/jvs/pkg/jvscrypto"
 	"github.com/abcxyz/pkg/cache"
+	"github.com/abcxyz/pkg/grpcutil"
 	"github.com/abcxyz/pkg/testutil"
 	"github.com/google/go-cmp/cmp"
 	"github.com/google/go-cmp/cmp/cmpopts"
@@ -82,7 +83,12 @@ func TestJVS(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	p := justification.NewProcessor(kmsClient, cfg)
+	authHandler, err := grpcutil.NewJWTAuthenticationHandler(ctx, grpcutil.NoJWTAuthValidation())
+	if err != nil {
+		t.Fatalf("failed to setup grpc auth handler: %v", err)
+	}
+
+	p := justification.NewProcessor(kmsClient, cfg, authHandler)
 	jvsAgent := justification.NewJVSAgent(p)
 
 	tests := []struct {
