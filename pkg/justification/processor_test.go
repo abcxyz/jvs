@@ -20,12 +20,8 @@ import (
 	"crypto/elliptic"
 	"crypto/rand"
 	"crypto/x509"
-	"encoding/json"
 	"encoding/pem"
-	"fmt"
 	"net"
-	"net/http"
-	"net/http/httptest"
 	"testing"
 	"time"
 
@@ -125,26 +121,6 @@ func TestCreateToken(t *testing.T) {
 	if err := ecdsaKey.Set(jwk.KeyIDKey, keyID); err != nil {
 		t.Fatal(err)
 	}
-	jwks := make(map[string][]jwk.Key)
-	jwks["keys"] = []jwk.Key{ecdsaKey}
-
-	j, err := json.MarshalIndent(jwks, "", " ")
-	if err != nil {
-		t.Fatal("couldn't create jwks json")
-	}
-
-	path := "/.well-known/jwks"
-	mux := http.NewServeMux()
-	mux.HandleFunc(path, func(w http.ResponseWriter, r *http.Request) {
-		w.WriteHeader(http.StatusOK)
-		fmt.Fprintf(w, "%s", j)
-	})
-
-	svr := httptest.NewServer(mux)
-
-	t.Cleanup(func() {
-		svr.Close()
-	})
 
 	tok := pkgtestutil.CreateJWT(t, "test_id", "user@example.com")
 	validJWT := pkgtestutil.SignToken(t, tok, authKey, keyID)
@@ -153,7 +129,7 @@ func TestCreateToken(t *testing.T) {
 		"authorization": "Bearer " + validJWT,
 	}))
 
-	authHandler, err := grpcutil.NewJWTAuthenticationHandler(ctx, svr.URL+path)
+	authHandler, err := grpcutil.NewJWTAuthenticationHandler(ctx, grpcutil.NoJWTAuthValidation())
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -236,7 +212,6 @@ func TestCreateToken(t *testing.T) {
 			if err != nil {
 				t.Errorf("Unable to parse created jwt string. %v", err)
 			}
-			// validate email in claims
 			validateClaims(t, claims, tc.request.Justifications)
 			got := token.Header["kid"]
 			want := version + "-0"

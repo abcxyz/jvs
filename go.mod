@@ -4,7 +4,7 @@ go 1.18
 
 require (
 	cloud.google.com/go/kms v1.4.0
-	github.com/abcxyz/pkg v0.0.0-20220623201644-fce63367e287
+	github.com/abcxyz/pkg v0.0.0-20220627210229-493bf5fec862
 	github.com/golang-jwt/jwt v3.2.2+incompatible
 	github.com/google/go-cmp v0.5.8
 	github.com/google/uuid v1.3.0
