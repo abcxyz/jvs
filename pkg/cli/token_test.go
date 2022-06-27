@@ -116,10 +116,7 @@ func TestRunTokenCmd_Breakglass(t *testing.T) {
 	ttl = time.Minute
 
 	// Override timeFunc to have fixed time for test.
-	now := time.Now()
-	timeFunc = func() time.Time {
-		return now
-	}
+	pastTime := time.Now().UTC().Add(-1 * time.Second)
 	t.Cleanup(testRunTokenCmdCleanup)
 
 	buf := &strings.Builder{}
@@ -135,7 +132,17 @@ func TestRunTokenCmd_Breakglass(t *testing.T) {
 	if _, _, err := p.ParseUnverified(buf.String(), gotClaims); err != nil {
 		t.Errorf("unable to parse token got: %v", err)
 	}
-	// Don't compare jti since it's randomly generated
+
+	testCheckClaimTimeGreater(t, gotClaims, "iat", pastTime)
+	delete(gotClaims, "iat")
+	testCheckClaimTimeGreater(t, gotClaims, "nbf", pastTime)
+	delete(gotClaims, "nbf")
+	testCheckClaimTimeGreater(t, gotClaims, "exp", pastTime.Add(ttl))
+	delete(gotClaims, "exp")
+
+	if gotClaims["jti"] == "" {
+		t.Errorf("breakglass token claim 'jti' not set")
+	}
 	delete(gotClaims, "jti")
 
 	wantClaims := jwt.MapClaims{
@@ -145,9 +152,6 @@ func TestRunTokenCmd_Breakglass(t *testing.T) {
 		// we cannot effectively verify the caller identity in the CLI;
 		// use a fixed string instead.
 		"sub": "jvsctl",
-		"iat": float64(now.UTC().Unix()),
-		"exp": float64(now.UTC().Add(ttl).Unix()),
-		"nbf": float64(now.UTC().Unix()),
 		"justs": []interface{}{map[string]interface{}{
 			"category": "breakglass",
 			"value":    "i-have-reason",
@@ -159,8 +163,26 @@ func TestRunTokenCmd_Breakglass(t *testing.T) {
 	}
 }
 
+func testCheckClaimTimeGreater(tb testing.TB, gotClaims jwt.MapClaims, claimKey string, pastTime time.Time) {
+	tb.Helper()
+
+	c, ok := gotClaims[claimKey]
+	if !ok {
+		tb.Errorf("token claim %q not set", claimKey)
+	}
+
+	u, ok := c.(float64)
+	if !ok {
+		tb.Errorf("token claim %q=%v cannot be cast to unix time", claimKey, c)
+	}
+
+	gotTime := time.Unix(int64(u), 0)
+	if !gotTime.After(pastTime) {
+		tb.Errorf("token claim %q got time %v want time after %v", claimKey, gotTime, pastTime)
+	}
+}
+
 func testRunTokenCmdCleanup() {
-	timeFunc = time.Now
 	tokenExplanation = ""
 	ttl = time.Hour
 	breakglass = false

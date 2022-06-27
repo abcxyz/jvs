@@ -38,9 +38,6 @@ var (
 	tokenExplanation string
 	breakglass       bool
 	ttl              time.Duration
-
-	// Useful for test.
-	timeFunc = time.Now
 )
 
 var tokenCmd = &cobra.Command{
@@ -55,6 +52,7 @@ func runTokenCmd(cmd *cobra.Command, args []string) error {
 
 	// Breakglass won't require JVS server. Handle that first.
 	if breakglass {
+		fmt.Fprintln(cmd.ErrOrStderr(), "WARNING: In breakglass mode, the justification token is not signed.")
 		tok, err := breakglassToken(ctx)
 		if err != nil {
 			return fmt.Errorf("failed to generate breakglass token: %w", err)
@@ -139,7 +137,7 @@ func callOpts(ctx context.Context) ([]grpc.CallOption, error) {
 }
 
 func breakglassToken(ctx context.Context) (string, error) {
-	now := timeFunc().UTC()
+	now := time.Now().UTC()
 	claims := &jvsapis.JVSClaims{
 		StandardClaims: &jwt.StandardClaims{
 			Audience:  "TODO #22",
