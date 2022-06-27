@@ -17,4 +17,5 @@ protoc -I. \
   --go_out=. --go-grpc_out=. \
   --go_opt=module=github.com/abcxyz/jvs \
   --go-grpc_opt=module=github.com/abcxyz/jvs \
-  protos/v0/jvs_request.proto protos/v0/jvs_service.proto
+  protos/v0/jvs_request.proto protos/v0/jvs_service.proto \
+  protos/v0/cert_action_request.proto protos/v0/cert_action_service.proto
