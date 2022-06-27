@@ -20,31 +20,34 @@ locals {
   tag = uuid()
 }
 
-resource "google_project" "jvs_project" {
-  name            = var.project_id
-  project_id      = var.project_id
-  billing_account = var.billing_account
+resource "google_project_service" "serviceusage" {
+  project            = var.project_id
+  service            = "serviceusage.googleapis.com"
+  disable_on_destroy = false
 }
 
-resource "google_project_service" "server_project_services" {
-  project = google_project.jvs_project.project_id
+resource "google_project_service" "services" {
+  project = var.project_id
   for_each = toset([
-    "artifactregistry.googleapis.com",
-    "cloudkms.googleapis.com",
     "cloudresourcemanager.googleapis.com",
-    "cloudscheduler.googleapis.com",
-    "compute.googleapis.com",
-    "run.googleapis.com",
-    "serviceusage.googleapis.com",
+    "cloudkms.googleapis.com",
+    "iam.googleapis.com"
   ])
   service            = each.value
   disable_on_destroy = false
+
+  depends_on = [
+    google_project_service.serviceusage,
+  ]
 }
 
 resource "google_kms_key_ring" "keyring" {
   project  = var.project_id
   name     = "ci-keyring"
   location = var.key_location
+  depends_on = [
+    google_project_service.services["cloudkms.googleapis.com"],
+  ]
 }
 
 resource "google_kms_crypto_key" "asymmetric-sign-key" {
@@ -59,6 +62,10 @@ resource "google_kms_crypto_key" "asymmetric-sign-key" {
   lifecycle {
     prevent_destroy = false
   }
+
+  depends_on = [
+    google_project_service.services["cloudkms.googleapis.com"],
+  ]
 }
 
 resource "google_service_account" "server-acc" {
@@ -109,17 +116,6 @@ resource "google_kms_key_ring_iam_member" "public_key_acc_roles" {
   key_ring_id = google_kms_key_ring.keyring.id
   role        = each.key
   member      = "serviceAccount:${google_service_account.public-key-acc.email}"
-}
-
-
-resource "google_artifact_registry_repository" "image_registry" {
-  provider = google-beta
-
-  location      = var.artifact_registry_location
-  project       = var.project_id
-  repository_id = "docker-images"
-  description   = "Container Registry for the images."
-  format        = "DOCKER"
 }
 
 module "jvs-service" {

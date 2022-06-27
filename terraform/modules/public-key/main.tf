@@ -13,6 +13,27 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
+resource "google_project_service" "serviceusage" {
+  project            = var.project_id
+  service            = "serviceusage.googleapis.com"
+  disable_on_destroy = false
+}
+
+resource "google_project_service" "services" {
+  project = var.project_id
+  for_each = toset([
+    "cloudresourcemanager.googleapis.com",
+    "compute.googleapis.com",
+    "run.googleapis.com",
+    "iam.googleapis.com"
+  ])
+  service            = each.value
+  disable_on_destroy = false
+
+  depends_on = [
+    google_project_service.serviceusage,
+  ]
+}
 
 resource "null_resource" "build" {
   triggers = {
