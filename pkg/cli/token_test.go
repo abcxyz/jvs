@@ -17,6 +17,7 @@ package cli
 import (
 	"context"
 	"fmt"
+	"strconv"
 	"strings"
 	"testing"
 	"time"
@@ -116,11 +117,12 @@ func TestRunTokenCmd_Breakglass(t *testing.T) {
 	ttl = time.Minute
 
 	// Override timeFunc to have fixed time for test.
-	pastTime := time.Now().UTC().Add(-1 * time.Second)
+	now := time.Now().Unix()
 	t.Cleanup(testRunTokenCmdCleanup)
 
 	buf := &strings.Builder{}
 	cmd := &cobra.Command{}
+	cmd.SetArgs([]string{"--iat", strconv.FormatInt(now, 10)})
 	cmd.SetOut(buf)
 
 	if err := runTokenCmd(cmd, nil); err != nil {
@@ -132,13 +134,6 @@ func TestRunTokenCmd_Breakglass(t *testing.T) {
 	if _, _, err := p.ParseUnverified(buf.String(), gotClaims); err != nil {
 		t.Errorf("unable to parse token got: %v", err)
 	}
-
-	testCheckClaimTimeGreater(t, gotClaims, "iat", pastTime)
-	delete(gotClaims, "iat")
-	testCheckClaimTimeGreater(t, gotClaims, "nbf", pastTime)
-	delete(gotClaims, "nbf")
-	testCheckClaimTimeGreater(t, gotClaims, "exp", pastTime.Add(ttl))
-	delete(gotClaims, "exp")
 
 	if gotClaims["jti"] == "" {
 		t.Errorf("breakglass token claim 'jti' not set")
@@ -152,6 +147,9 @@ func TestRunTokenCmd_Breakglass(t *testing.T) {
 		// we cannot effectively verify the caller identity in the CLI;
 		// use a fixed string instead.
 		"sub": "jvsctl",
+		"iat": float64(now),
+		"exp": float64(time.Unix(now, 0).Add(ttl).Unix()),
+		"nbf": float64(now),
 		"justs": []interface{}{map[string]interface{}{
 			"category": "breakglass",
 			"value":    "i-have-reason",
@@ -160,25 +158,6 @@ func TestRunTokenCmd_Breakglass(t *testing.T) {
 
 	if diff := cmp.Diff(wantClaims, gotClaims); diff != "" {
 		t.Errorf("breakglass token claims (-want,+got):\n%s", diff)
-	}
-}
-
-func testCheckClaimTimeGreater(tb testing.TB, gotClaims jwt.MapClaims, claimKey string, pastTime time.Time) {
-	tb.Helper()
-
-	c, ok := gotClaims[claimKey]
-	if !ok {
-		tb.Errorf("token claim %q not set", claimKey)
-	}
-
-	u, ok := c.(float64)
-	if !ok {
-		tb.Errorf("token claim %q=%v cannot be cast to unix time", claimKey, c)
-	}
-
-	gotTime := time.Unix(int64(u), 0)
-	if !gotTime.After(pastTime) {
-		tb.Errorf("token claim %q got time %v want time after %v", claimKey, gotTime, pastTime)
 	}
 }
 
