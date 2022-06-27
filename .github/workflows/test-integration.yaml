@@ -16,6 +16,7 @@ concurrency:
 jobs:
   integration:
     env:
+      # TODO: change it to jvs-test later
       # project: xiyue-jvs-test-8
       PROJECT_NUMBER: '597007824015'
 

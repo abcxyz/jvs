@@ -15,6 +15,7 @@
 
 ROOT="$(cd "$(dirname "$0")/.." &>/dev/null; pwd -P)"
 
+# TODO: change it to jvs-test later
 PROJECT_ID="xiyue-jvs-test-8"
 KEYRING_ID="ci-keyring"
 export TEST_JVS_KMS_KEY_RING="projects/${PROJECT_ID}/locations/global/keyRings/${KEYRING_ID}"
