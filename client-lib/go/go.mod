@@ -4,10 +4,10 @@ go 1.18
 
 require (
 	github.com/abcxyz/jvs v0.0.0-20220520175656-c98ac822412a
-	github.com/abcxyz/pkg v0.0.0-20220601222916-c82347de03ae
+	github.com/abcxyz/pkg v0.0.0-20220623224804-dcc35d3247af
 	github.com/google/go-cmp v0.5.8
 	github.com/hashicorp/go-multierror v1.1.1
-	github.com/lestrrat-go/jwx/v2 v2.0.2
+	github.com/lestrrat-go/jwx/v2 v2.0.3
 	github.com/sethvargo/go-envconfig v0.6.2
 	gopkg.in/yaml.v2 v2.4.0
 )
@@ -26,7 +26,7 @@ require (
 	github.com/hashicorp/errwrap v1.1.0 // indirect
 	github.com/lestrrat-go/blackmagic v1.0.1 // indirect
 	github.com/lestrrat-go/httpcc v1.0.1 // indirect
-	github.com/lestrrat-go/httprc v1.0.1 // indirect
+	github.com/lestrrat-go/httprc v1.0.2 // indirect
 	github.com/lestrrat-go/iter v1.0.2 // indirect
 	github.com/lestrrat-go/option v1.0.0 // indirect
 	go.opencensus.io v0.23.0 // indirect

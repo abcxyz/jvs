@@ -17,17 +17,18 @@ package cli
 import (
 	"context"
 	"fmt"
-	"net"
+	"strconv"
 	"strings"
 	"testing"
 	"time"
 
 	"google.golang.org/grpc"
-	"google.golang.org/grpc/credentials/insecure"
 
 	jvsapis "github.com/abcxyz/jvs/apis/v0"
 	"github.com/abcxyz/jvs/pkg/config"
 	"github.com/abcxyz/pkg/testutil"
+	"github.com/golang-jwt/jwt"
+	"github.com/google/go-cmp/cmp"
 	"github.com/spf13/cobra"
 )
 
@@ -50,9 +51,8 @@ func (j *fakeJVS) CreateJustification(_ context.Context, req *jvsapis.CreateJust
 	}, nil
 }
 
-func TestRunTokenCmd(t *testing.T) {
-	t.Parallel()
-
+func TestRunTokenCmd_WithJVSServer(t *testing.T) {
+	// Cannot parallel because the global CLI config.
 	tests := []struct {
 		name        string
 		jvs         *fakeJVS
@@ -74,7 +74,7 @@ func TestRunTokenCmd(t *testing.T) {
 	for _, tc := range tests {
 		// Cannot parallel because the global CLI config.
 		t.Run(tc.name, func(t *testing.T) {
-			server, _ := testFakeGRPCServer(t, func(s *grpc.Server) { jvsapis.RegisterJVSServiceServer(s, tc.jvs) })
+			server, _ := testutil.FakeGRPCServer(t, func(s *grpc.Server) { jvsapis.RegisterJVSServiceServer(s, tc.jvs) })
 
 			// These are global flags.
 			cfg = &config.CLIConfig{
@@ -85,6 +85,7 @@ func TestRunTokenCmd(t *testing.T) {
 			}
 			tokenExplanation = tc.explanation
 			ttl = time.Minute
+			t.Cleanup(testRunTokenCmdCleanup)
 
 			buf := &strings.Builder{}
 			cmd := &cobra.Command{}
@@ -102,30 +103,67 @@ func TestRunTokenCmd(t *testing.T) {
 	}
 }
 
-// Copied over from Lumberjack. TODO: share it in pkg.
-func testFakeGRPCServer(tb testing.TB, registerFunc func(*grpc.Server)) (string, *grpc.ClientConn) {
-	tb.Helper()
+func TestRunTokenCmd_Breakglass(t *testing.T) {
+	// Cannot parallel because the global CLI config.
+	// These are global flags.
+	cfg = &config.CLIConfig{
+		Server: "example.com",
+		Authentication: &config.CLIAuthentication{
+			Insecure: true,
+		},
+	}
+	breakglass = true
+	tokenExplanation = "i-have-reason"
+	ttl = time.Minute
 
-	s := grpc.NewServer()
-	tb.Cleanup(func() { s.GracefulStop() })
+	// Override timeFunc to have fixed time for test.
+	now := time.Now().Unix()
+	t.Cleanup(testRunTokenCmdCleanup)
 
-	registerFunc(s)
+	buf := &strings.Builder{}
+	cmd := &cobra.Command{}
+	cmd.SetArgs([]string{"--iat", strconv.FormatInt(now, 10)})
+	cmd.SetOut(buf)
 
-	lis, err := net.Listen("tcp", "localhost:0")
-	if err != nil {
-		tb.Fatalf("net.Listen(tcp, localhost:0) failed: %v", err)
+	if err := runTokenCmd(cmd, nil); err != nil {
+		t.Errorf("unexpected error: %v", err)
 	}
 
-	go func() {
-		if err := s.Serve(lis); err != nil {
-			tb.Logf("net.Listen(tcp, localhost:0) serve failed: %v", err)
-		}
-	}()
-
-	addr := lis.Addr().String()
-	conn, err := grpc.Dial(addr, grpc.WithTransportCredentials(insecure.NewCredentials()))
-	if err != nil {
-		tb.Fatalf("failed to dail %q: %s", addr, err)
+	p := &jwt.Parser{}
+	gotClaims := jwt.MapClaims{}
+	if _, _, err := p.ParseUnverified(buf.String(), gotClaims); err != nil {
+		t.Errorf("unable to parse token got: %v", err)
 	}
-	return addr, conn
+
+	if gotClaims["jti"] == "" {
+		t.Errorf("breakglass token claim 'jti' not set")
+	}
+	delete(gotClaims, "jti")
+
+	wantClaims := jwt.MapClaims{
+		"aud": "TODO #22",
+		"iss": "jvsctl",
+		// sub should be the caller principal but since it's breakglass
+		// we cannot effectively verify the caller identity in the CLI;
+		// use a fixed string instead.
+		"sub": "jvsctl",
+		"iat": float64(now),
+		"exp": float64(time.Unix(now, 0).Add(ttl).Unix()),
+		"nbf": float64(now),
+		"justs": []interface{}{map[string]interface{}{
+			"category": "breakglass",
+			"value":    "i-have-reason",
+		}},
+	}
+
+	if diff := cmp.Diff(wantClaims, gotClaims); diff != "" {
+		t.Errorf("breakglass token claims (-want,+got):\n%s", diff)
+	}
+}
+
+func testRunTokenCmdCleanup() {
+	tokenExplanation = ""
+	ttl = time.Hour
+	breakglass = false
+	cfg = nil
 }
