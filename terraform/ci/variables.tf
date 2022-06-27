@@ -14,9 +14,25 @@
  * limitations under the License.
  */
 
-terraform {
-  backend "gcs" {
-    bucket = "jvs-dev-terraform"
-    prefix = "dev"
-  }
+variable "project_id" {
+  type        = string
+  description = "The GCP project to host the justification verification service."
+}
+
+variable "key_location" {
+  type        = string
+  default     = "global"
+  description = "The location where kms key will be created."
+}
+
+variable "artifact_registry_location" {
+  type        = string
+  default     = "us"
+  description = "The artifact registry location."
+}
+
+variable "ci_iam_roles" {
+  type        = list(string)
+  default     = []
+  description = "List of IAM roles needed to run integration tests included in CI/CD."
 }

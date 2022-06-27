@@ -14,9 +14,18 @@
  * limitations under the License.
  */
 
-terraform {
-  backend "gcs" {
-    bucket = "jvs-dev-terraform"
-    prefix = "github-ci"
-  }
+output "workload_identity_pool_provider_name" {
+  value = module.workload-identity-federation.pool_provider_name
+}
+
+output "jvs_server_url" {
+  value = module.jvs_e2e.jvs_server_url
+}
+
+output "public_key_server_url" {
+  value = module.jvs_e2e.public_key_server_url
+}
+
+output "cert_rotator_server_url" {
+  value = module.jvs_e2e.cert_rotator_server_url
 }

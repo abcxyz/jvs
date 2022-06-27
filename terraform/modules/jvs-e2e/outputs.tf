@@ -15,9 +15,13 @@
  */
 
 output "jvs_server_url" {
-  value = module.e2e.jvs_server_url
+  value = module.jvs-service.jvs_server_url
 }
 
 output "public_key_server_url" {
-  value = module.e2e.public_key_server_url
+  value = module.public-key.public_key_server_url
+}
+
+output "cert_rotator_server_url" {
+  value = module.cert-rotator.cert_rotator_server_url
 }

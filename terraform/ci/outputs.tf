@@ -14,18 +14,10 @@
  * limitations under the License.
  */
 
-variable "project_id" {
-  type        = string
-  description = "The GCP project to host the justification verification service."
+output "key_ring" {
+  value = google_kms_key_ring.keyring.id
 }
 
-variable "billing_account" {
-  type        = string
-  description = "The billing account to be linked to projects."
-}
-
-variable "artifact_registry_location" {
-  type        = string
-  default     = "us"
-  description = "The artifact registry location."
+output "workload_identity_pool_provider_name" {
+  value = module.workload-identity-federation.pool_provider_name
 }
