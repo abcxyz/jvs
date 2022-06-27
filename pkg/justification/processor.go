@@ -24,6 +24,7 @@ import (
 	"github.com/abcxyz/jvs/pkg/config"
 	"github.com/abcxyz/jvs/pkg/jvscrypto"
 	"github.com/abcxyz/pkg/cache"
+	"github.com/abcxyz/pkg/grpcutil"
 	"github.com/abcxyz/pkg/logging"
 	"github.com/golang-jwt/jwt"
 	"github.com/google/uuid"
@@ -38,9 +39,10 @@ import (
 // mints a token.
 type Processor struct {
 	jvspb.UnimplementedJVSServiceServer
-	kms    *kms.KeyManagementClient
-	config *config.JustificationConfig
-	cache  *cache.Cache[*signerWithID]
+	kms         *kms.KeyManagementClient
+	config      *config.JustificationConfig
+	cache       *cache.Cache[*signerWithID]
+	authHandler *grpcutil.JWTAuthenticationHandler
 }
 
 type signerWithID struct {
@@ -49,12 +51,13 @@ type signerWithID struct {
 }
 
 // NewProcessor creates a processor with the signer cache initialized.
-func NewProcessor(kms *kms.KeyManagementClient, config *config.JustificationConfig) *Processor {
+func NewProcessor(kms *kms.KeyManagementClient, config *config.JustificationConfig, authHandler *grpcutil.JWTAuthenticationHandler) *Processor {
 	cache := cache.New[*signerWithID](config.SignerCacheTimeout)
 	return &Processor{
-		kms:    kms,
-		config: config,
-		cache:  cache,
+		kms:         kms,
+		config:      config,
+		cache:       cache,
+		authHandler: authHandler,
 	}
 }
 
@@ -70,7 +73,11 @@ func (p *Processor) CreateToken(ctx context.Context, request *jvspb.CreateJustif
 		logger.Error("Couldn't validate request", zap.Error(err))
 		return "", status.Error(codes.InvalidArgument, "couldn't validate request")
 	}
-	token := p.createToken(ctx, request)
+	token, err := p.createToken(ctx, request)
+	if err != nil {
+		logger.Error("Couldn't create token", zap.Error(err))
+		return "", status.Error(codes.Internal, "couldn't create token")
+	}
 
 	signer, err := p.cache.WriteThruLookup(cacheKey, func() (*signerWithID, error) {
 		return p.getLatestSigner(ctx)
@@ -130,8 +137,13 @@ func (p *Processor) runValidations(request *jvspb.CreateJustificationRequest) er
 }
 
 // createToken creates a key with the correct claims and sign it using KMS key.
-func (p *Processor) createToken(ctx context.Context, request *jvspb.CreateJustificationRequest) *jwt.Token {
+func (p *Processor) createToken(ctx context.Context, request *jvspb.CreateJustificationRequest) (*jwt.Token, error) {
 	now := time.Now().UTC()
+	email, err := p.authHandler.RequestPrincipal(ctx)
+	if err != nil {
+		return nil, fmt.Errorf("unable to get email of requestor: %w", err)
+	}
+
 	claims := &jvspb.JVSClaims{
 		StandardClaims: &jwt.StandardClaims{
 			Audience:  "TODO #22",
@@ -140,10 +152,10 @@ func (p *Processor) createToken(ctx context.Context, request *jvspb.CreateJustif
 			IssuedAt:  now.Unix(),
 			Issuer:    p.config.Issuer,
 			NotBefore: now.Unix(),
-			Subject:   "TODO #22",
+			Subject:   email,
 		},
 		Justifications: request.Justifications,
 	}
 
-	return jwt.NewWithClaims(jwt.SigningMethodES256, claims)
+	return jwt.NewWithClaims(jwt.SigningMethodES256, claims), nil
 }
