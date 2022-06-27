@@ -14,19 +14,18 @@
  * limitations under the License.
  */
 
-variable "project_id" {
-  type        = string
-  description = "The GCP project to host the justification verification service."
+output "workload_identity_pool_provider_name" {
+  value = module.workload-identity-federation.pool_provider_name
 }
 
-variable "artifact_registry_location" {
-  type        = string
-  default     = "us"
-  description = "The artifact registry location."
+output "jvs_server_url" {
+  value = module.jvs_e2e.jvs_server_url
 }
 
-variable "e2e_iam_roles" {
-  type        = list(string)
-  default     = []
-  description = "List of IAM roles needed to run e2e tests included in CI/CD."
+output "public_key_server_url" {
+  value = module.jvs_e2e.public_key_server_url
+}
+
+output "cert_rotator_server_url" {
+  value = module.jvs_e2e.cert_rotator_server_url
 }

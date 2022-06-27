@@ -46,7 +46,7 @@ resource "google_service_account" "gh-access-acc" {
 
 // IAM roles needed to run tests.
 resource "google_project_iam_member" "gh_access_acc_iam" {
-  for_each = toset(var.e2e_iam_roles)
+  for_each = toset(var.e2e_test_iam_roles)
   project  = var.project_id
   role     = each.key
   member   = "serviceAccount:${google_service_account.gh-access-acc.email}"
@@ -77,7 +77,7 @@ resource "google_artifact_registry_repository" "image_registry" {
   ]
 }
 
-module "jvs-e2e" {
+module "jvs_e2e" {
   source     = "../modules/jvs-e2e"
   project_id = var.project_id
 }
