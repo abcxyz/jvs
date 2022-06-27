@@ -102,7 +102,7 @@ func init() {
 	tokenCmd.Flags().BoolVar(&breakglass, "breakglass", false, "Whether it will be a breakglass action")
 	tokenCmd.Flags().DurationVar(&ttl, "ttl", time.Hour, "The token time-to-live duration")
 	tokenCmd.Flags().Int64Var(&issTimeUnix, "iat", time.Now().Unix(), "A hidden flag to specify token issue time")
-	tokenCmd.Flags().MarkHidden("iat")
+	tokenCmd.Flags().MarkHidden("iat") //nolint // not expect err
 }
 
 func dialOpts() ([]grpc.DialOption, error) {
