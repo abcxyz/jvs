@@ -25,7 +25,6 @@ service CertificateActionService {
   rpc CertificateAction(CertificateActionRequest) returns (CertificateActionResponse);
 }
 
-// CertificateActionResponse contains a boolean for success.
+// CertificateActionResponse is a blank response.
 message CertificateActionResponse {
-  bool success = 1;
 }

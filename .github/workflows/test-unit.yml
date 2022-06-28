@@ -39,3 +39,18 @@ jobs:
       directory: 'client-lib/go'
       go_version: '1.18'
       go_packages: './...'
+
+  # Java client
+  java_lint_client:
+    uses: 'abcxyz/pkg/.github/workflows/java-lint.yml@main'
+    with:
+      java_version: '11'
+
+  java_test_client:
+    runs-on: 'ubuntu-latest'
+    steps:
+      - uses: 'actions/checkout@v3'
+
+      - name: Run test script
+        run: |-
+          mvn clean test --no-transfer-progress -f client-lib/java

@@ -51,9 +51,10 @@ public class JvsConfiguration {
     }
 
     if (cacheTimeout == null || cacheTimeout.isNegative() || cacheTimeout.isZero()) {
-      throw new IllegalArgumentException(String.format(
-          "Cache timeout is invalid. Must be a positive non-zero duration, but was set to %s",
-          cacheTimeout));
+      throw new IllegalArgumentException(
+          String.format(
+              "Cache timeout is invalid. Must be a positive non-zero duration, but was set to %s",
+              cacheTimeout));
     }
   }
 }
