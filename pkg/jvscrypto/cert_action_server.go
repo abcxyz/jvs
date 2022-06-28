@@ -20,24 +20,21 @@ import (
 	jvspb "github.com/abcxyz/jvs/apis/v0"
 )
 
-// JVSAgent is the implementation of the justification verification server.
+// CertificateActionAgent is the implementation of the certificate action server.
 type CertificateActionAgent struct {
 	jvspb.CertificateActionServiceServer
 	Service *CertificateActionService
 }
 
-// NewJVSAgent creates a new JVSAgent.
+// NewCertificateActionAgent creates a new CertificateActionAgent.
 func NewCertificateActionAgent(s *CertificateActionService) *CertificateActionAgent {
 	return &CertificateActionAgent{Service: s}
 }
 
 func (a *CertificateActionAgent) CertificateAction(ctx context.Context, req *jvspb.CertificateActionRequest) (*jvspb.CertificateActionResponse, error) {
-	success, err := a.Service.CertificateAction(ctx, req)
-	if err != nil {
+	if err := a.Service.CertificateAction(ctx, req); err != nil {
 		return nil, err
 	}
 
-	return &jvspb.CertificateActionResponse{
-		Success: success,
-	}, nil
+	return &jvspb.CertificateActionResponse{}, nil
 }

@@ -451,12 +451,6 @@ func TestPerformActions(t *testing.T) {
 			}
 
 			if want, got := tc.expectedRequests, mockKeyManagement.Reqs; !slicesEq(want, got) {
-				for _, msg := range got {
-					t.Errorf("gotty: %s", msg)
-				}
-				for _, msg := range want {
-					t.Errorf("wanty: %s", msg)
-				}
 				t.Errorf("wrong requests %v, want %v", got, want)
 			}
 			if diff := pkgtestutil.DiffErrString(gotErr, tc.wantErr); diff != "" {

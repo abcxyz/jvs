@@ -18,13 +18,13 @@ import (
 	"context"
 	"fmt"
 	"net"
+	"os"
 	"os/signal"
 	"syscall"
 
 	kms "cloud.google.com/go/kms/apiv1"
 	jvspb "github.com/abcxyz/jvs/apis/v0"
 	"github.com/abcxyz/jvs/pkg/config"
-	"github.com/abcxyz/jvs/pkg/justification"
 	"github.com/abcxyz/jvs/pkg/jvscrypto"
 	"github.com/abcxyz/pkg/logging"
 	"go.opentelemetry.io/contrib/instrumentation/google.golang.org/grpc/otelgrpc"
@@ -70,15 +70,22 @@ func realMain(ctx context.Context) error {
 	}
 
 	cas := &jvscrypto.CertificateActionService{
-		Handler: handler,
+		Handler:   handler,
+		KMSClient: kmsClient,
 	}
-	jvsAgent := justification.NewJVSAgent()
-	jvspb.RegisterJVSServiceServer(s, jvsAgent)
+	casAgent := jvscrypto.NewCertificateActionAgent(cas)
+	jvspb.RegisterCertificateActionServiceServer(s, casAgent)
 	reflection.Register(s)
 
-	lis, err := net.Listen("tcp", ":"+cfg.Port)
+	port := os.Getenv("PORT")
+	if port == "" {
+		port = "8080"
+		logger.Debug("defaulting to port ", zap.String("port", port))
+	}
+
+	lis, err := net.Listen("tcp", ":"+port)
 	if err != nil {
-		return fmt.Errorf("failed to listen on port %s: %w", cfg.Port, err)
+		return fmt.Errorf("failed to listen on port %s: %w", port, err)
 	}
 
 	// TODO: Do we need a gRPC health check server?
