@@ -35,10 +35,12 @@ import lombok.Getter;
  * environment variables. Set environment variables are automatically loaded when build() is called.
  * If a yaml and environment variable are both set, the env variable is used.
  *
- * env: JVS_VERSION yaml: version. Specifies the version of the configuration.
- * env: JVS_CACHE_TIMEOUT yaml: cache_timeout. Specifies how long until cached public keys are
+ * <p>env: JVS_VERSION yaml: version. Specifies the version of the configuration.
+ *
+ * <p>env: JVS_CACHE_TIMEOUT yaml: cache_timeout. Specifies how long until cached public keys are
  * invalidated.
- * env: JVS_ENDPOINT yaml: endpoint. Specifies the url for retrieving public keys.
+ *
+ * <p>env: JVS_ENDPOINT yaml: endpoint. Specifies the url for retrieving public keys.
  */
 public class JVSClientBuilder {
 
@@ -89,13 +91,14 @@ public class JVSClientBuilder {
     updateConfigFromEnvironmentVars();
     configuration.validate();
 
-    JwkProvider provider = new JwkProviderBuilder(configuration.getJvsEndpoint())
-        .cached(CACHE_SIZE, configuration.getCacheTimeout())
-        // TODO: by default, the rate limiter allows 10 reqs per minute.
-        // https://github.com/auth0/jwks-rsa-java/blob/master/src/main/java/com/auth0/jwk/JwkProviderBuilder.java#L43
-        // we can consider if a different rate limit makes more sense for us.
-        .rateLimited(true)
-        .build();
+    JwkProvider provider =
+        new JwkProviderBuilder(configuration.getJvsEndpoint())
+            .cached(CACHE_SIZE, configuration.getCacheTimeout())
+            // TODO: by default, the rate limiter allows 10 reqs per minute.
+            // https://github.com/auth0/jwks-rsa-java/blob/master/src/main/java/com/auth0/jwk/JwkProviderBuilder.java#L43
+            // we can consider if a different rate limit makes more sense for us.
+            .rateLimited(true)
+            .build();
 
     return new JvsClient(provider);
   }

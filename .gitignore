@@ -1,10 +1,4 @@
-# Created by https://www.toptal.com/developers/gitignore/api/go
-# Edit at https://www.toptal.com/developers/gitignore?templates=go
-
 ### Go ###
-# If you prefer the allow list template instead of the deny list, see community template:
-# https://github.com/github/gitignore/blob/main/community/Golang/Go.AllowList.gitignore
-#
 # Binaries for programs and plugins
 *.exe
 *.exe~
@@ -27,8 +21,6 @@ go.work
 ### Go Patch ###
 /vendor/
 /Godeps/
-
-# End of https://www.toptal.com/developers/gitignore/api/go
 
 ### IDE related and tmp files ###
 bazel-*
@@ -55,3 +47,52 @@ override.tf.json
 *_override.tf
 *_override.tf.json
 
+### macOS ###
+# General
+.DS_Store
+.AppleDouble
+.LSOverride
+
+### Maven ###
+target/
+pom.xml.tag
+pom.xml.releaseBackup
+pom.xml.versionsBackup
+pom.xml.next
+release.properties
+dependency-reduced-pom.xml
+buildNumber.properties
+.mvn/timing.properties
+.mvn/wrapper/maven-wrapper.jar
+!**/src/main/**/target/
+!**/src/test/**/target/
+.apt_generated*
+
+### Maven Patch ###
+# Eclipse m2e generated files
+# Eclipse Core
+.project
+# JDT-specific (Eclipse Java Development Tools)
+.classpath
+
+### Java ###
+# Compiled class file
+*.class
+
+# Log file
+*.log
+
+# Package Files #
+*.jar
+*.war
+
+### IntelliJ IDEA ###
+.idea
+*.iws
+*.iml
+*.ipr
+.factorypath
+.settings
+
+# Go workspace file
+go.work

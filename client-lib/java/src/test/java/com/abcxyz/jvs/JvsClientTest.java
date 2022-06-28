@@ -45,8 +45,7 @@ public class JvsClientTest {
   static KeyPair key1;
   static KeyPair key2;
 
-  @Mock
-  JwkProvider provider;
+  @Mock JwkProvider provider;
 
   @BeforeAll
   public static void setup() throws Exception {
@@ -66,10 +65,12 @@ public class JvsClientTest {
     claims.put("role", "user");
     claims.put("created", new Date());
 
-    String token = Jwts.builder()
-        .setClaims(claims)
-        .setHeaderParam("kid", keyId)
-        .signWith(key1.getPrivate(), SignatureAlgorithm.ES256).compact();
+    String token =
+        Jwts.builder()
+            .setClaims(claims)
+            .setHeaderParam("kid", keyId)
+            .signWith(SignatureAlgorithm.ES256, key1.getPrivate())
+            .compact();
 
     Jwk jwk = mock(Jwk.class);
     when(jwk.getPublicKey()).thenReturn(key1.getPublic());
@@ -78,8 +79,8 @@ public class JvsClientTest {
     DecodedJWT returnVal = client.validateJWT(token);
     Assertions.assertEquals(claims.get("id"), returnVal.getClaims().get("id").asString());
     Assertions.assertEquals(claims.get("role"), returnVal.getClaims().get("role").asString());
-    Assertions.assertEquals(claims.get("created"),
-        new Date(returnVal.getClaims().get("created").asLong()));
+    Assertions.assertEquals(
+        claims.get("created"), new Date(returnVal.getClaims().get("created").asLong()));
   }
 
   @Test
@@ -91,15 +92,18 @@ public class JvsClientTest {
     claims.put("role", "user");
     claims.put("created", new Date());
 
-    String token = Jwts.builder()
-        .setClaims(claims)
-        .setHeaderParam("kid", keyId)
-        .signWith(key2.getPrivate(), SignatureAlgorithm.ES256).compact();
+    String token =
+        Jwts.builder()
+            .setClaims(claims)
+            .setHeaderParam("kid", keyId)
+            .signWith(SignatureAlgorithm.ES256, key2.getPrivate())
+            .compact();
 
-    when(provider.get(keyId)).thenThrow(
-        new SigningKeyNotFoundException("", new RuntimeException()));
+    when(provider.get(keyId))
+        .thenThrow(new SigningKeyNotFoundException("", new RuntimeException()));
     JvsClient client = new JvsClient(provider);
-    JwkException thrown = Assertions.assertThrows(JwkException.class, () -> client.validateJWT(token));
+    JwkException thrown =
+        Assertions.assertThrows(JwkException.class, () -> client.validateJWT(token));
     Assertions.assertTrue(thrown.getMessage().contains("Public key not found"));
   }
 }

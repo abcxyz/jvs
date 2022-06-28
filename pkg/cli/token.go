@@ -21,6 +21,8 @@ import (
 	"fmt"
 	"time"
 
+	"github.com/golang-jwt/jwt"
+	"github.com/google/uuid"
 	"github.com/spf13/cobra"
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/credentials"
@@ -36,6 +38,7 @@ var (
 	tokenExplanation string
 	breakglass       bool
 	ttl              time.Duration
+	issTimeUnix      int64
 )
 
 var tokenCmd = &cobra.Command{
@@ -47,6 +50,17 @@ var tokenCmd = &cobra.Command{
 
 func runTokenCmd(cmd *cobra.Command, args []string) error {
 	ctx := context.Background()
+
+	// Breakglass won't require JVS server. Handle that first.
+	if breakglass {
+		fmt.Fprintln(cmd.ErrOrStderr(), "WARNING: In breakglass mode, the justification token is not signed.")
+		tok, err := breakglassToken(ctx, issTimeUnix)
+		if err != nil {
+			return fmt.Errorf("failed to generate breakglass token: %w", err)
+		}
+		return printToken(cmd, tok)
+	}
+
 	dialOpts, err := dialOpts()
 	if err != nil {
 		return err
@@ -55,8 +69,6 @@ func runTokenCmd(cmd *cobra.Command, args []string) error {
 	if err != nil {
 		return err
 	}
-
-	// TODO(#69): Generate breakglass token w/o JVS server.
 
 	conn, err := grpc.Dial(cfg.Server, dialOpts...)
 	if err != nil {
@@ -76,8 +88,12 @@ func runTokenCmd(cmd *cobra.Command, args []string) error {
 		return err
 	}
 
-	_, err = cmd.OutOrStdout().Write([]byte(resp.Token))
-	return err
+	return printToken(cmd, resp.Token)
+}
+
+func printToken(cmd *cobra.Command, tok string) (err error) {
+	_, err = cmd.OutOrStdout().Write([]byte(tok))
+	return
 }
 
 func init() {
@@ -85,6 +101,8 @@ func init() {
 	tokenCmd.MarkFlagRequired("explanation") //nolint // not expect err
 	tokenCmd.Flags().BoolVar(&breakglass, "breakglass", false, "Whether it will be a breakglass action")
 	tokenCmd.Flags().DurationVar(&ttl, "ttl", time.Hour, "The token time-to-live duration")
+	tokenCmd.Flags().Int64Var(&issTimeUnix, "iat", time.Now().Unix(), "A hidden flag to specify token issue time")
+	tokenCmd.Flags().MarkHidden("iat") //nolint // not expect err
 }
 
 func dialOpts() ([]grpc.DialOption, error) {
@@ -119,4 +137,32 @@ func callOpts(ctx context.Context) ([]grpc.CallOption, error) {
 		return nil, err
 	}
 	return []grpc.CallOption{grpc.PerRPCCredentials(oauth.NewOauthAccess(token))}, nil
+}
+
+func breakglassToken(ctx context.Context, nowUnix int64) (string, error) {
+	now := time.Unix(nowUnix, 0)
+	claims := &jvsapis.JVSClaims{
+		StandardClaims: &jwt.StandardClaims{
+			Audience:  "TODO #22",
+			ExpiresAt: now.Add(ttl).Unix(),
+			Id:        uuid.New().String(),
+			IssuedAt:  now.Unix(),
+			NotBefore: now.Unix(),
+			Issuer:    "jvsctl",
+			Subject:   "jvsctl",
+		},
+		Justifications: []*jvsapis.Justification{{
+			Category: "breakglass",
+			Value:    tokenExplanation,
+		}},
+	}
+
+	// Signing method doesn't really matter because we won't sign
+	// breakglass token.
+	tok, err := jwt.NewWithClaims(jwt.SigningMethodES256, claims).SigningString()
+	if err != nil {
+		return "", err
+	}
+
+	return tok + ".NOT_SIGNED", nil
 }
