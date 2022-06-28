@@ -16,9 +16,27 @@
 ROOT="$(cd "$(dirname "$0")/.." &>/dev/null; pwd -P)"
 
 # TODO: change it to jvs-test later
-PROJECT_ID="xiyue-jvs-test-8"
-KEYRING_ID="ci-keyring"
-export TEST_JVS_KMS_KEY_RING="projects/${PROJECT_ID}/locations/global/keyRings/${KEYRING_ID}"
+while getopts ":p:k:" opt; do
+  case $opt in
+    p) project_id="$OPTARG"
+    ;;
+    k) keyring_id="$OPTARG"
+    ;;
+    \?) echo "Invalid option -$OPTARG" >&2
+    exit 1
+    ;;
+  esac
+
+  case $OPTARG in
+    -*) echo "Option $opt needs a valid argument"
+    exit 1
+    ;;
+  esac
+done
+
+printf "Argument project_id is %s\n" "$project_id"
+printf "Argument keyring_id is %s\n" "$keyring_id"
+export TEST_JVS_KMS_KEY_RING="projects/${project_id}/locations/global/keyRings/${keyring_id}"
 export TEST_JVS_INTEGRATION=true
 
 cd ${ROOT}
