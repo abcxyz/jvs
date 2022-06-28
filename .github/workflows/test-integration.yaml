@@ -16,8 +16,10 @@ concurrency:
 jobs:
   integration:
     env:
-      # project: jvs-ci
-      PROJECT_NUMBER: '1039479707997'
+      # project: jvs-ci-test
+      PROJECT_NUMBER: '1096923323432'
+      PROJECT_ID: 'jvs-ci-test'
+      KEYRING_ID: 'ci-keyring'
 
     permissions:
       contents: 'read'
@@ -49,15 +51,7 @@ jobs:
         uses: 'google-github-actions/auth@ceee102ec2387dd9e844e01b530ccd4ec87ce955' # ratchet:google-github-actions/auth@v0
         with:
           workload_identity_provider: 'projects/${{ env.PROJECT_NUMBER }}/locations/global/workloadIdentityPools/github-pool/providers/github-provider'
-          service_account: 'gh-access-sa@jvs-ci.iam.gserviceaccount.com'
-          token_format: 'access_token' # Needed for Terraform workaround
-
-      # TODO: Workload Identity doesn't work with GCS Provider.
-      # https://github.com/google-github-actions/auth/issues/89
-      - name: 'Workaround Terraform issue'
-        shell: 'bash'
-        run: |-
-          echo "GOOGLE_OAUTH_ACCESS_TOKEN=${{ steps.auth.outputs.access_token }}" >> $GITHUB_ENV
+          service_account: 'gh-access-sa@${{ env.PROJECT_ID }}.iam.gserviceaccount.com'
 
       - name: 'Install and configure gcloud'
         uses: 'google-github-actions/setup-gcloud@877d4953d2c70a0ba7ef3290ae968eb24af233bb' # ratchet:google-github-actions/setup-gcloud@v0
