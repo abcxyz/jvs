@@ -34,6 +34,8 @@ while getopts ":p:k:" opt; do
   esac
 done
 
+[  -z "$project_id" ] &&  { echo "Error: project_id is empty"; exit 1; }
+[  -z "$keyring_id" ] &&  { echo "Error: keyring_id is empty"; exit 1; }
 printf "Argument project_id is %s\n" "$project_id"
 printf "Argument keyring_id is %s\n" "$keyring_id"
 export TEST_JVS_KMS_KEY_RING="projects/${project_id}/locations/global/keyRings/${keyring_id}"
