@@ -18,7 +18,6 @@ jobs:
     env:
       # project: jvs-ci-test
       PROJECT_NUMBER: '1096923323432'
-      PROJECT_ID: 'jvs-ci-test'
 
     permissions:
       contents: 'read'
@@ -50,11 +49,11 @@ jobs:
         uses: 'google-github-actions/auth@ceee102ec2387dd9e844e01b530ccd4ec87ce955' # ratchet:google-github-actions/auth@v0
         with:
           workload_identity_provider: 'projects/${{ env.PROJECT_NUMBER }}/locations/global/workloadIdentityPools/github-pool/providers/github-provider'
-          service_account: 'gh-access-sa@{{ env.PROJECT_ID }}.iam.gserviceaccount.com'
+          service_account: 'gh-access-sa@jvs-ci-test.iam.gserviceaccount.com'
 
       - name: 'Install and configure gcloud'
         uses: 'google-github-actions/setup-gcloud@877d4953d2c70a0ba7ef3290ae968eb24af233bb' # ratchet:google-github-actions/setup-gcloud@v0
 
       - name: 'Run integration tests'
         run: |-
-          ./scripts/integration_build.sh -p {{ env.PROJECT_ID }} -k "ci-keyring"
+          ./scripts/integration_build.sh -p "jvs-ci-test" -k "ci-keyring"
