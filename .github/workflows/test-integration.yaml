@@ -18,6 +18,8 @@ jobs:
     env:
       # project: jvs-ci-test
       PROJECT_NUMBER: '1096923323432'
+      PROJECT_ID: 'jvs-ci-test'
+      KEYRING_ID: 'ci-keyring'
 
     permissions:
       contents: 'read'
@@ -56,4 +58,4 @@ jobs:
 
       - name: 'Run integration tests'
         run: |-
-          ./scripts/integration_build.sh -p "jvs-ci-test" -k "ci-keyring"
+          ./scripts/integration_build.sh

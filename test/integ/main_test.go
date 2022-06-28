@@ -29,288 +29,282 @@ import (
 	"time"
 
 	kms "cloud.google.com/go/kms/apiv1"
-	jvspb "github.com/abcxyz/jvs/apis/v0"
 	"github.com/abcxyz/jvs/pkg/config"
-	"github.com/abcxyz/jvs/pkg/justification"
 	"github.com/abcxyz/jvs/pkg/jvscrypto"
 	"github.com/abcxyz/pkg/cache"
-	"github.com/abcxyz/pkg/grpcutil"
-	"github.com/abcxyz/pkg/testutil"
 	"github.com/google/go-cmp/cmp"
-	"github.com/google/go-cmp/cmp/cmpopts"
 	"github.com/google/uuid"
 	"github.com/lestrrat-go/jwx/v2/jwk"
 	"github.com/sethvargo/go-retry"
 	"google.golang.org/api/iterator"
 	kmspb "google.golang.org/genproto/googleapis/cloud/kms/v1"
-	"google.golang.org/protobuf/types/known/durationpb"
 	"google.golang.org/protobuf/types/known/fieldmaskpb"
 )
 
-func TestJVS(t *testing.T) {
-	t.Parallel()
-	ctx := context.Background()
-	if !testIsIntegration(t) {
-		// Not an integ test, don't run anything.
-		t.Skip("Not an integration test, skipping...")
-		return
-	}
-	keyRing := os.Getenv("TEST_JVS_KMS_KEY_RING")
-	if keyRing == "" {
-		t.Fatal("Key ring must be provided using TEST_JVS_KMS_KEY_RING env variable.")
-	}
-
-	kmsClient, err := kms.NewKeyManagementClient(ctx)
-	if err != nil {
-		t.Fatalf("failed to setup kms client: %s", err)
-	}
-
-	keyRing = strings.Trim(keyRing, "\"")
-	keyName := testCreateKey(ctx, t, kmsClient, keyRing)
-	t.Cleanup(func() {
-		testCleanUpKey(ctx, t, kmsClient, keyName)
-		if err := kmsClient.Close(); err != nil {
-			t.Errorf("Clean up of key %s failed: %v", keyName, err)
-		}
-	})
-
-	cfg := &config.JustificationConfig{
-		Version: 1,
-		KeyName: keyName,
-		Issuer:  "ci-test",
-	}
-	if err := cfg.Validate(); err != nil {
-		t.Fatal(err)
-	}
-
-	authHandler, err := grpcutil.NewJWTAuthenticationHandler(ctx, grpcutil.NoJWTAuthValidation())
-	if err != nil {
-		t.Fatalf("failed to setup grpc auth handler: %v", err)
-	}
-
-	p := justification.NewProcessor(kmsClient, cfg, authHandler)
-	jvsAgent := justification.NewJVSAgent(p)
-
-	tests := []struct {
-		name     string
-		request  *jvspb.CreateJustificationRequest
-		wantErr  string
-		wantResp map[string]interface{}
-	}{
-		{
-			name: "happy_path",
-			request: &jvspb.CreateJustificationRequest{
-				Justifications: []*jvspb.Justification{
-					{
-						Category: "explanation",
-						Value:    "This is a test.",
-					},
-				},
-				Ttl: &durationpb.Duration{
-					Seconds: 3600,
-				},
-			},
-			wantResp: map[string]interface{}{
-				"aud": []string{"TODO #22"},
-				"iss": "ci-test",
-				"justs": []any{
-					map[string]any{"category": "explanation", "value": "This is a test."},
-				},
-				"sub": "TODO #22",
-			},
-		},
-		{
-			name: "unknown_justification",
-			request: &jvspb.CreateJustificationRequest{
-				Justifications: []*jvspb.Justification{
-					{
-						Category: "who-knows",
-						Value:    "This is a test.",
-					},
-				},
-				Ttl: &durationpb.Duration{
-					Seconds: 3600,
-				},
-			},
-			wantErr: "couldn't validate request",
-		},
-		{
-			name: "blank_justification",
-			request: &jvspb.CreateJustificationRequest{
-				Justifications: []*jvspb.Justification{
-					{
-						Category: "explanation",
-						Value:    "",
-					},
-				},
-				Ttl: &durationpb.Duration{
-					Seconds: 3600,
-				},
-			},
-			wantErr: "couldn't validate request",
-		},
-		{
-			name: "no_ttl",
-			request: &jvspb.CreateJustificationRequest{
-				Justifications: []*jvspb.Justification{
-					{
-						Category: "explanation",
-						Value:    "This is a test.",
-					},
-				},
-			},
-			wantErr: "couldn't validate request",
-		},
-		{
-			name: "no_justification",
-			request: &jvspb.CreateJustificationRequest{
-				Justifications: []*jvspb.Justification{},
-				Ttl: &durationpb.Duration{
-					Seconds: 3600,
-				},
-			},
-			wantErr: "couldn't validate request",
-		},
-		{
-			name:    "empty_request",
-			request: &jvspb.CreateJustificationRequest{},
-			wantErr: "couldn't validate request",
-		},
-	}
-
-	for _, tc := range tests {
-		tc := tc
-		t.Run(tc.name, func(t *testing.T) {
-			t.Parallel()
-
-			resp, gotErr := jvsAgent.CreateJustification(ctx, tc.request)
-			if diff := testutil.DiffErrString(gotErr, tc.wantErr); diff != "" {
-				t.Errorf("Unexpected err: %s", diff)
-			}
-			if gotErr != nil {
-				return
-			}
-
-			keySet := testKeySetFromKMS(ctx, t, kmsClient, keyName)
-			token, err := jvscrypto.ValidateJWT(keySet, resp.Token)
-			if err != nil {
-				t.Errorf("Couldn't validate signed token: %v", err)
-				return
-			}
-
-			tokenMap, err := (*token).AsMap(ctx)
-			if err != nil {
-				t.Errorf("Couldn't convert token to map: %v", err)
-				return
-			}
-
-			// These fields are set based on time, and we cannot know what they will be set to.
-			ignoreFields := map[string]interface{}{
-				"exp": nil,
-				"iat": nil,
-				"jti": nil,
-				"nbf": nil,
-			}
-			ignoreOpt := cmpopts.IgnoreMapEntries(func(k string, v interface{}) bool { _, ok := ignoreFields[k]; return ok })
-			if diff := cmp.Diff(tc.wantResp, tokenMap, ignoreOpt); diff != "" {
-				t.Errorf("Got diff (-want, +got): %v", diff)
-			}
-		})
-	}
-}
-
-func TestRotator(t *testing.T) {
-	t.Parallel()
-	ctx := context.Background()
-	if !testIsIntegration(t) {
-		// Not an integ test, don't run anything.
-		t.Skip("Not an integration test, skipping...")
-		return
-	}
-
-	kmsClient, keyName := testSetupRotator(ctx, t)
-
-	cfg := &config.CryptoConfig{
-		Version:          1,
-		KeyTTL:           7 * time.Second,
-		GracePeriod:      2 * time.Second, // rotate after 5 seconds
-		PropagationDelay: time.Second,
-		DisabledPeriod:   time.Second,
-		KeyNames:         []string{keyName},
-	}
-	if err := cfg.Validate(); err != nil {
-		t.Fatal(err)
-	}
-	r := &jvscrypto.RotationHandler{
-		KMSClient:    kmsClient,
-		CryptoConfig: cfg,
-	}
-
-	// Validate we have a single enabled key that is primary.
-	testValidateKeyVersionState(ctx, t, kmsClient, keyName, 1,
-		map[int]kmspb.CryptoKeyVersion_CryptoKeyVersionState{
-			1: kmspb.CryptoKeyVersion_ENABLED,
-		})
-
-	// These tests must be run in sequence, and they have waits in between. Therefore, they cannot
-	// be parallelized, and aren't a good fit for table testing.
-
-	t.Run("new_key_creation", func(t *testing.T) {
-		time.Sleep(5001 * time.Millisecond) // Wait past the next rotation event
-		if err := r.RotateKey(ctx, keyName); err != nil {
-			t.Fatalf("err when trying to rotate: %s", err)
-			return
-		}
-		time.Sleep(50 * time.Millisecond) // Reduces chance key will be in "pending generation" state
-		// Validate we have created a new key, but haven't set it as primary yet.
-		testValidateKeyVersionState(ctx, t, kmsClient, keyName, 1,
-			map[int]kmspb.CryptoKeyVersion_CryptoKeyVersionState{
-				1: kmspb.CryptoKeyVersion_ENABLED,
-				2: kmspb.CryptoKeyVersion_ENABLED,
-			})
-	})
-
-	t.Run("new_key_promotion", func(t *testing.T) {
-		time.Sleep(1001 * time.Millisecond) // Wait past the propagation delay.
-		if err := r.RotateKey(ctx, keyName); err != nil {
-			t.Fatalf("err when trying to rotate: %s", err)
-		}
-		// Validate our new key has been set to primary
-		testValidateKeyVersionState(ctx, t, kmsClient, keyName, 2,
-			map[int]kmspb.CryptoKeyVersion_CryptoKeyVersionState{
-				1: kmspb.CryptoKeyVersion_ENABLED,
-				2: kmspb.CryptoKeyVersion_ENABLED,
-			})
-	})
-
-	t.Run("old_key_disable", func(t *testing.T) {
-		time.Sleep(2001 * time.Millisecond) // Wait past the grace period.
-		if err := r.RotateKey(ctx, keyName); err != nil {
-			t.Fatalf("err when trying to rotate: %s", err)
-		}
-		// Validate that our old key has been disabled.
-		testValidateKeyVersionState(ctx, t, kmsClient, keyName, 2,
-			map[int]kmspb.CryptoKeyVersion_CryptoKeyVersionState{
-				1: kmspb.CryptoKeyVersion_DISABLED,
-				2: kmspb.CryptoKeyVersion_ENABLED,
-			})
-	})
-
-	t.Run("old_key_destroy", func(t *testing.T) {
-		time.Sleep(2001 * time.Millisecond) // Wait past the disabled period and next rotation event.
-		if err := r.RotateKey(ctx, keyName); err != nil {
-			t.Fatalf("err when trying to rotate: %s", err)
-		}
-		time.Sleep(50 * time.Millisecond) // Reduces chance key will be in "pending generation" state
-		// Validate that our old key has been scheduled for destruction, and cycle has started again.
-		testValidateKeyVersionState(ctx, t, kmsClient, keyName, 2,
-			map[int]kmspb.CryptoKeyVersion_CryptoKeyVersionState{
-				1: kmspb.CryptoKeyVersion_DESTROY_SCHEDULED,
-				2: kmspb.CryptoKeyVersion_ENABLED,
-				3: kmspb.CryptoKeyVersion_ENABLED,
-			})
-	})
-}
+//func TestJVS(t *testing.T) {
+//	t.Parallel()
+//	ctx := context.Background()
+//	if !testIsIntegration(t) {
+//		// Not an integ test, don't run anything.
+//		t.Skip("Not an integration test, skipping...")
+//		return
+//	}
+//	keyRing := os.Getenv("TEST_JVS_KMS_KEY_RING")
+//	if keyRing == "" {
+//		t.Fatal("Key ring must be provided using TEST_JVS_KMS_KEY_RING env variable.")
+//	}
+//
+//	kmsClient, err := kms.NewKeyManagementClient(ctx)
+//	if err != nil {
+//		t.Fatalf("failed to setup kms client: %s", err)
+//	}
+//
+//	keyRing = strings.Trim(keyRing, "\"")
+//	keyName := testCreateKey(ctx, t, kmsClient, keyRing)
+//	t.Cleanup(func() {
+//		testCleanUpKey(ctx, t, kmsClient, keyName)
+//		if err := kmsClient.Close(); err != nil {
+//			t.Errorf("Clean up of key %s failed: %v", keyName, err)
+//		}
+//	})
+//
+//	cfg := &config.JustificationConfig{
+//		Version: 1,
+//		KeyName: keyName,
+//		Issuer:  "ci-test",
+//	}
+//	if err := cfg.Validate(); err != nil {
+//		t.Fatal(err)
+//	}
+//
+//	authHandler, err := grpcutil.NewJWTAuthenticationHandler(ctx, grpcutil.NoJWTAuthValidation())
+//	if err != nil {
+//		t.Fatalf("failed to setup grpc auth handler: %v", err)
+//	}
+//
+//	p := justification.NewProcessor(kmsClient, cfg, authHandler)
+//	jvsAgent := justification.NewJVSAgent(p)
+//
+//	tests := []struct {
+//		name     string
+//		request  *jvspb.CreateJustificationRequest
+//		wantErr  string
+//		wantResp map[string]interface{}
+//	}{
+//		{
+//			name: "happy_path",
+//			request: &jvspb.CreateJustificationRequest{
+//				Justifications: []*jvspb.Justification{
+//					{
+//						Category: "explanation",
+//						Value:    "This is a test.",
+//					},
+//				},
+//				Ttl: &durationpb.Duration{
+//					Seconds: 3600,
+//				},
+//			},
+//			wantResp: map[string]interface{}{
+//				"aud": []string{"TODO #22"},
+//				"iss": "ci-test",
+//				"justs": []any{
+//					map[string]any{"category": "explanation", "value": "This is a test."},
+//				},
+//				"sub": "TODO #22",
+//			},
+//		},
+//		{
+//			name: "unknown_justification",
+//			request: &jvspb.CreateJustificationRequest{
+//				Justifications: []*jvspb.Justification{
+//					{
+//						Category: "who-knows",
+//						Value:    "This is a test.",
+//					},
+//				},
+//				Ttl: &durationpb.Duration{
+//					Seconds: 3600,
+//				},
+//			},
+//			wantErr: "couldn't validate request",
+//		},
+//		{
+//			name: "blank_justification",
+//			request: &jvspb.CreateJustificationRequest{
+//				Justifications: []*jvspb.Justification{
+//					{
+//						Category: "explanation",
+//						Value:    "",
+//					},
+//				},
+//				Ttl: &durationpb.Duration{
+//					Seconds: 3600,
+//				},
+//			},
+//			wantErr: "couldn't validate request",
+//		},
+//		{
+//			name: "no_ttl",
+//			request: &jvspb.CreateJustificationRequest{
+//				Justifications: []*jvspb.Justification{
+//					{
+//						Category: "explanation",
+//						Value:    "This is a test.",
+//					},
+//				},
+//			},
+//			wantErr: "couldn't validate request",
+//		},
+//		{
+//			name: "no_justification",
+//			request: &jvspb.CreateJustificationRequest{
+//				Justifications: []*jvspb.Justification{},
+//				Ttl: &durationpb.Duration{
+//					Seconds: 3600,
+//				},
+//			},
+//			wantErr: "couldn't validate request",
+//		},
+//		{
+//			name:    "empty_request",
+//			request: &jvspb.CreateJustificationRequest{},
+//			wantErr: "couldn't validate request",
+//		},
+//	}
+//
+//	for _, tc := range tests {
+//		tc := tc
+//		t.Run(tc.name, func(t *testing.T) {
+//			t.Parallel()
+//
+//			resp, gotErr := jvsAgent.CreateJustification(ctx, tc.request)
+//			if diff := testutil.DiffErrString(gotErr, tc.wantErr); diff != "" {
+//				t.Errorf("Unexpected err: %s", diff)
+//			}
+//			if gotErr != nil {
+//				return
+//			}
+//
+//			keySet := testKeySetFromKMS(ctx, t, kmsClient, keyName)
+//			token, err := jvscrypto.ValidateJWT(keySet, resp.Token)
+//			if err != nil {
+//				t.Errorf("Couldn't validate signed token: %v", err)
+//				return
+//			}
+//
+//			tokenMap, err := (*token).AsMap(ctx)
+//			if err != nil {
+//				t.Errorf("Couldn't convert token to map: %v", err)
+//				return
+//			}
+//
+//			// These fields are set based on time, and we cannot know what they will be set to.
+//			ignoreFields := map[string]interface{}{
+//				"exp": nil,
+//				"iat": nil,
+//				"jti": nil,
+//				"nbf": nil,
+//			}
+//			ignoreOpt := cmpopts.IgnoreMapEntries(func(k string, v interface{}) bool { _, ok := ignoreFields[k]; return ok })
+//			if diff := cmp.Diff(tc.wantResp, tokenMap, ignoreOpt); diff != "" {
+//				t.Errorf("Got diff (-want, +got): %v", diff)
+//			}
+//		})
+//	}
+//}
+//
+//func TestRotator(t *testing.T) {
+//	t.Parallel()
+//	ctx := context.Background()
+//	if !testIsIntegration(t) {
+//		// Not an integ test, don't run anything.
+//		t.Skip("Not an integration test, skipping...")
+//		return
+//	}
+//
+//	kmsClient, keyName := testSetupRotator(ctx, t)
+//
+//	cfg := &config.CryptoConfig{
+//		Version:          1,
+//		KeyTTL:           7 * time.Second,
+//		GracePeriod:      2 * time.Second, // rotate after 5 seconds
+//		PropagationDelay: time.Second,
+//		DisabledPeriod:   time.Second,
+//		KeyNames:         []string{keyName},
+//	}
+//	if err := cfg.Validate(); err != nil {
+//		t.Fatal(err)
+//	}
+//	r := &jvscrypto.RotationHandler{
+//		KMSClient:    kmsClient,
+//		CryptoConfig: cfg,
+//	}
+//
+//	// Validate we have a single enabled key that is primary.
+//	testValidateKeyVersionState(ctx, t, kmsClient, keyName, 1,
+//		map[int]kmspb.CryptoKeyVersion_CryptoKeyVersionState{
+//			1: kmspb.CryptoKeyVersion_ENABLED,
+//		})
+//
+//	// These tests must be run in sequence, and they have waits in between. Therefore, they cannot
+//	// be parallelized, and aren't a good fit for table testing.
+//
+//	t.Run("new_key_creation", func(t *testing.T) {
+//		time.Sleep(5001 * time.Millisecond) // Wait past the next rotation event
+//		if err := r.RotateKey(ctx, keyName); err != nil {
+//			t.Fatalf("err when trying to rotate: %s", err)
+//			return
+//		}
+//		time.Sleep(50 * time.Millisecond) // Reduces chance key will be in "pending generation" state
+//		// Validate we have created a new key, but haven't set it as primary yet.
+//		testValidateKeyVersionState(ctx, t, kmsClient, keyName, 1,
+//			map[int]kmspb.CryptoKeyVersion_CryptoKeyVersionState{
+//				1: kmspb.CryptoKeyVersion_ENABLED,
+//				2: kmspb.CryptoKeyVersion_ENABLED,
+//			})
+//	})
+//
+//	t.Run("new_key_promotion", func(t *testing.T) {
+//		time.Sleep(1001 * time.Millisecond) // Wait past the propagation delay.
+//		if err := r.RotateKey(ctx, keyName); err != nil {
+//			t.Fatalf("err when trying to rotate: %s", err)
+//		}
+//		// Validate our new key has been set to primary
+//		testValidateKeyVersionState(ctx, t, kmsClient, keyName, 2,
+//			map[int]kmspb.CryptoKeyVersion_CryptoKeyVersionState{
+//				1: kmspb.CryptoKeyVersion_ENABLED,
+//				2: kmspb.CryptoKeyVersion_ENABLED,
+//			})
+//	})
+//
+//	t.Run("old_key_disable", func(t *testing.T) {
+//		time.Sleep(2001 * time.Millisecond) // Wait past the grace period.
+//		if err := r.RotateKey(ctx, keyName); err != nil {
+//			t.Fatalf("err when trying to rotate: %s", err)
+//		}
+//		// Validate that our old key has been disabled.
+//		testValidateKeyVersionState(ctx, t, kmsClient, keyName, 2,
+//			map[int]kmspb.CryptoKeyVersion_CryptoKeyVersionState{
+//				1: kmspb.CryptoKeyVersion_DISABLED,
+//				2: kmspb.CryptoKeyVersion_ENABLED,
+//			})
+//	})
+//
+//	t.Run("old_key_destroy", func(t *testing.T) {
+//		time.Sleep(2001 * time.Millisecond) // Wait past the disabled period and next rotation event.
+//		if err := r.RotateKey(ctx, keyName); err != nil {
+//			t.Fatalf("err when trying to rotate: %s", err)
+//		}
+//		time.Sleep(50 * time.Millisecond) // Reduces chance key will be in "pending generation" state
+//		// Validate that our old key has been scheduled for destruction, and cycle has started again.
+//		testValidateKeyVersionState(ctx, t, kmsClient, keyName, 2,
+//			map[int]kmspb.CryptoKeyVersion_CryptoKeyVersionState{
+//				1: kmspb.CryptoKeyVersion_DESTROY_SCHEDULED,
+//				2: kmspb.CryptoKeyVersion_ENABLED,
+//				3: kmspb.CryptoKeyVersion_ENABLED,
+//			})
+//	})
+//}
 
 func TestRotator_EdgeCases(t *testing.T) {
 	t.Parallel()

@@ -12,33 +12,13 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
-
+set -u # -u makes bash error on undefined variables
 ROOT="$(cd "$(dirname "$0")/.." &>/dev/null; pwd -P)"
 
-# TODO: change it to jvs-test later
-while getopts ":p:k:" opt; do
-  case $opt in
-    p) project_id="$OPTARG"
-    ;;
-    k) keyring_id="$OPTARG"
-    ;;
-    \?) echo "Invalid option -$OPTARG" >&2
-    exit 1
-    ;;
-  esac
+printf "Argument project_id is %s\n" "${PROJECT_ID}"
+printf "Argument keyring_id is %s\n" "${KEYRING_ID}"
 
-  case $OPTARG in
-    -*) echo "Option $opt needs a valid argument"
-    exit 1
-    ;;
-  esac
-done
-
-[  -z "$project_id" ] &&  { echo "Error: project_id is empty"; exit 1; }
-[  -z "$keyring_id" ] &&  { echo "Error: keyring_id is empty"; exit 1; }
-printf "Argument project_id is %s\n" "$project_id"
-printf "Argument keyring_id is %s\n" "$keyring_id"
-export TEST_JVS_KMS_KEY_RING="projects/${project_id}/locations/global/keyRings/${keyring_id}"
+export TEST_JVS_KMS_KEY_RING="projects/${PROJECT_ID}/locations/global/keyRings/${KEYRING_ID}"
 export TEST_JVS_INTEGRATION=true
 
 cd ${ROOT}
