@@ -23,7 +23,7 @@ message CertificateActionRequest {
   repeated Action actions = 1;
 }
 
-// Justification is intended to be used to provide reasons that data access is required.
+// Action is intended to specify an action to be taken on a certificate version.
 message Action {
   uint32 version = 1;
   enum ACTION {

@@ -42,11 +42,11 @@ const (
 	Action_ROTATE Action_ACTION = 0
 	// This will immediately disable the version specified. If the version is primary, it will make a new primary and
 	// promote that new key to primary. This is intended to make it invalid for use in JWT validation as soon as possible.
-	// However, until client caches are removed, JWTs could still be validated using the version.
+	// However, until client caches are updated, JWTs could still be validated using the version.
 	Action_FORCE_DISABLE Action_ACTION = 1
 	// This will immediately destroy the version specified. If the version is primary, it will make a new primary and
 	// promote that new key to primary. This is intended to make it invalid for use in JWT validation as soon as possible.
-	// However, until client caches are removed, JWTs could still be validated using the version.
+	// However, until client caches are updated, JWTs could still be validated using the version.
 	Action_FORCE_DESTROY Action_ACTION = 2
 )
 
@@ -139,7 +139,7 @@ func (x *CertificateActionRequest) GetActions() []*Action {
 	return nil
 }
 
-// Justification is intended to be used to provide reasons that data access is required.
+// Action is intended to specify an action to be taken on a certificate version.
 type Action struct {
 	state         protoimpl.MessageState
 	sizeCache     protoimpl.SizeCache
