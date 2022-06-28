@@ -28,9 +28,7 @@ import lombok.AccessLevel;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 
-/**
- * A Client for use when validating JVS tokens. Can be build using JVSClientBuilder.
- */
+/** A Client for use when validating JVS tokens. Can be build using JVSClientBuilder. */
 @RequiredArgsConstructor(access = AccessLevel.PACKAGE)
 @Slf4j
 public class JvsClient {
