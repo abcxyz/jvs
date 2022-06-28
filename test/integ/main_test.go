@@ -17,6 +17,9 @@ package integ
 
 import (
 	"context"
+	"crypto/ecdsa"
+	"crypto/elliptic"
+	"crypto/rand"
 	"crypto/x509"
 	"encoding/pem"
 	"errors"
@@ -43,6 +46,7 @@ import (
 	"github.com/sethvargo/go-retry"
 	"google.golang.org/api/iterator"
 	kmspb "google.golang.org/genproto/googleapis/cloud/kms/v1"
+	"google.golang.org/grpc/metadata"
 	"google.golang.org/protobuf/types/known/durationpb"
 	"google.golang.org/protobuf/types/known/fieldmaskpb"
 )
@@ -88,6 +92,26 @@ func TestJVS(t *testing.T) {
 		t.Fatalf("failed to setup grpc auth handler: %v", err)
 	}
 
+	authKey, err := ecdsa.GenerateKey(elliptic.P256(), rand.Reader)
+	if err != nil {
+		t.Fatal(err)
+	}
+	ecdsaKey, err := jwk.FromRaw(authKey.PublicKey)
+	if err != nil {
+		t.Fatal(err)
+	}
+	key := "projects/[PROJECT]/locations/[LOCATION]/keyRings/[KEY_RING]/cryptoKeys/[CRYPTO_KEY]"
+	keyID := key + "/cryptoKeyVersions/[VERSION]-0"
+	if err := ecdsaKey.Set(jwk.KeyIDKey, keyID); err != nil {
+		t.Fatal(err)
+	}
+
+	tok := testutil.CreateJWT(t, "test_id", "user@example.com")
+	validJWT := testutil.SignToken(t, tok, authKey, keyID)
+	ctx = metadata.NewIncomingContext(ctx, metadata.New(map[string]string{
+		"authorization": "Bearer " + validJWT,
+	}))
+
 	p := justification.NewProcessor(kmsClient, cfg, authHandler)
 	jvsAgent := justification.NewJVSAgent(p)
 
@@ -116,7 +140,7 @@ func TestJVS(t *testing.T) {
 				"justs": []any{
 					map[string]any{"category": "explanation", "value": "This is a test."},
 				},
-				"sub": "TODO #22",
+				"sub": "user@example.com",
 			},
 		},
 		{
