@@ -54,8 +54,12 @@ public class JvsClientBuilderTest {
     Assertions.assertEquals(expectedConfig, loadedConfig);
 
     // invalid values, expect exception.
-    IllegalArgumentException thrown = Assertions.assertThrows(IllegalArgumentException.class, () -> loadedConfig.validate());
-    Assertions.assertTrue(thrown.getMessage().contains("Cache timeout is invalid. Must be a positive non-zero duration"));
+    IllegalArgumentException thrown =
+        Assertions.assertThrows(IllegalArgumentException.class, () -> loadedConfig.validate());
+    Assertions.assertTrue(
+        thrown
+            .getMessage()
+            .contains("Cache timeout is invalid. Must be a positive non-zero duration"));
   }
 
   @Test
@@ -71,14 +75,15 @@ public class JvsClientBuilderTest {
     JvsConfiguration loadedConfig = builder.getConfiguration();
     Assertions.assertEquals(expectedConfig, loadedConfig);
     // values missing, expect exception.
-    IllegalArgumentException thrown = Assertions.assertThrows(IllegalArgumentException.class, () -> loadedConfig.validate());
+    IllegalArgumentException thrown =
+        Assertions.assertThrows(IllegalArgumentException.class, () -> loadedConfig.validate());
     Assertions.assertTrue(thrown.getMessage().contains("JVS endpoint was not specified"));
 
-    when(builder.getFromEnvironmentVars(JVSClientBuilder.ENDPOINT_ENV_KEY)).thenReturn(
-        "google.com");
+    when(builder.getFromEnvironmentVars(JVSClientBuilder.ENDPOINT_ENV_KEY))
+        .thenReturn("google.com");
     expectedConfig.setJvsEndpoint("google.com");
-    when(builder.getFromEnvironmentVars(JVSClientBuilder.CACHE_TIMEOUT_ENV_KEY)).thenReturn(
-        "PT10M");
+    when(builder.getFromEnvironmentVars(JVSClientBuilder.CACHE_TIMEOUT_ENV_KEY))
+        .thenReturn("PT10M");
     expectedConfig.setCacheTimeout(Duration.parse("PT10M"));
 
     builder.updateConfigFromEnvironmentVars();
@@ -97,9 +102,11 @@ public class JvsClientBuilderTest {
 
     when(builder.getFromEnvironmentVars(JVSClientBuilder.VERSION_ENV_KEY)).thenReturn("1");
     expectedConfig.setVersion("1");
-    when(builder.getFromEnvironmentVars(JVSClientBuilder.ENDPOINT_ENV_KEY)).thenReturn("google.com");
+    when(builder.getFromEnvironmentVars(JVSClientBuilder.ENDPOINT_ENV_KEY))
+        .thenReturn("google.com");
     expectedConfig.setJvsEndpoint("google.com");
-    when(builder.getFromEnvironmentVars(JVSClientBuilder.CACHE_TIMEOUT_ENV_KEY)).thenReturn("PT10M");
+    when(builder.getFromEnvironmentVars(JVSClientBuilder.CACHE_TIMEOUT_ENV_KEY))
+        .thenReturn("PT10M");
     expectedConfig.setCacheTimeout(Duration.parse("PT10M"));
 
     builder.updateConfigFromEnvironmentVars();
@@ -125,11 +132,11 @@ public class JvsClientBuilderTest {
     Assertions.assertEquals(expectedConfig, loadedConfig);
     Assertions.assertDoesNotThrow(() -> loadedConfig.validate());
 
-    when(builder.getFromEnvironmentVars(JVSClientBuilder.ENDPOINT_ENV_KEY)).thenReturn(
-        "google.com");
+    when(builder.getFromEnvironmentVars(JVSClientBuilder.ENDPOINT_ENV_KEY))
+        .thenReturn("google.com");
     expectedConfig.setJvsEndpoint("google.com");
-    when(builder.getFromEnvironmentVars(JVSClientBuilder.CACHE_TIMEOUT_ENV_KEY)).thenReturn(
-        "PT10M");
+    when(builder.getFromEnvironmentVars(JVSClientBuilder.CACHE_TIMEOUT_ENV_KEY))
+        .thenReturn("PT10M");
     expectedConfig.setCacheTimeout(Duration.parse("PT10M"));
 
     builder.updateConfigFromEnvironmentVars();
@@ -151,7 +158,8 @@ public class JvsClientBuilderTest {
   public void testBuild_Fail() throws Exception {
     JVSClientBuilder builder = new JVSClientBuilder();
     builder.loadConfigFromFile("missing_values.yml");
-    IllegalArgumentException thrown = Assertions.assertThrows(IllegalArgumentException.class, () -> builder.build());
+    IllegalArgumentException thrown =
+        Assertions.assertThrows(IllegalArgumentException.class, () -> builder.build());
     Assertions.assertTrue(thrown.getMessage().contains("JVS endpoint was not specified"));
   }
 }
