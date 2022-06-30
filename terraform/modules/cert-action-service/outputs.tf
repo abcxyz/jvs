@@ -14,18 +14,6 @@
  * limitations under the License.
  */
 
-output "jvs_server_url" {
-  value = module.jvs-service.jvs_server_url
-}
-
-output "public_key_server_url" {
-  value = module.public-key.public_key_server_url
-}
-
-output "cert_rotator_server_url" {
-  value = module.cert-rotator.cert_rotator_server_url
-}
-
 output "cert_action_server_url" {
-  value = module.cert-actions.cert_action_server_url
+  value = google_cloud_run_service.server.status.0.url
 }
