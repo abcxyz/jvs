@@ -143,10 +143,7 @@ func TestGenerateJWKString(t *testing.T) {
 	for _, tc := range tests {
 		tc := tc
 		t.Run(tc.name, func(t *testing.T) {
-			mockKMSServer.KeyName = key
-			mockKMSServer.VersionName = key + "/cryptoKeyVersions/" + versionSuffix
-			mockKMSServer.Labels = make(map[string]string)
-			mockKMSServer.Labels["primary"] = tc.primary
+			mockKMSServer.Setup(nil, key, key+"/cryptoKeyVersions/"+versionSuffix, tc.primary)
 			mockKMSServer.NumVersions = tc.numKeys
 
 			got, err := ks.generateJWKString(ctx)

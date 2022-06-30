@@ -323,15 +323,7 @@ func TestCertificateAction(t *testing.T) {
 	for _, tc := range tests {
 		tc := tc
 		t.Run(tc.name, func(t *testing.T) {
-			mockKMS.Reqs = nil
-			mockKMS.Err = tc.serverErr
-			mockKMS.KeyName = parent
-			mockKMS.VersionName = versionName
-
-			mockKMS.Resps = append(mockKMS.Resps[:0], &kmspb.CryptoKeyVersion{Name: versionName + "-new"})
-
-			mockKMS.Labels = make(map[string]string)
-			mockKMS.Labels["primary"] = tc.priorPrimary
+			mockKMS.Setup(tc.serverErr, parent, versionName, tc.priorPrimary)
 
 			gotErr := service.CertificateAction(ctx, tc.request)
 

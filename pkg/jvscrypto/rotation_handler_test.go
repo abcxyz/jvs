@@ -434,15 +434,7 @@ func TestPerformActions(t *testing.T) {
 	for _, tc := range tests {
 		tc := tc
 		t.Run(tc.name, func(t *testing.T) {
-			mockKeyManagement.Reqs = nil
-			mockKeyManagement.Err = tc.serverErr
-			mockKeyManagement.KeyName = parent
-			mockKeyManagement.VersionName = versionName
-
-			mockKeyManagement.Resps = append(mockKeyManagement.Resps[:0], &kmspb.CryptoKeyVersion{Name: versionName + "-new"})
-
-			mockKeyManagement.Labels = make(map[string]string)
-			mockKeyManagement.Labels["primary"] = tc.priorPrimary
+			mockKeyManagement.Setup(tc.serverErr, parent, versionName, tc.priorPrimary)
 
 			gotErr := handler.performActions(ctx, parent, tc.actions)
 
