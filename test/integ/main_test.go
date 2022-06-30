@@ -460,6 +460,140 @@ func TestPublicKeys(t *testing.T) {
 	})
 }
 
+func TestCertActions(t *testing.T) {
+	t.Parallel()
+	ctx := context.Background()
+	if !testIsIntegration(t) {
+		// Not an integ test, don't run anything.
+		t.Skip("Not an integration test, skipping...")
+		return
+	}
+
+	kmsClient, keyName := testSetupRotator(ctx, t)
+
+	cfg := &config.CryptoConfig{
+		Version:          1,
+		KeyTTL:           7 * time.Second,
+		GracePeriod:      2 * time.Second, // rotate after 5 seconds
+		PropagationDelay: time.Second,
+		DisabledPeriod:   time.Second,
+		KeyNames:         []string{keyName},
+	}
+	if err := cfg.Validate(); err != nil {
+		t.Fatal(err)
+	}
+	r := &jvscrypto.RotationHandler{
+		KMSClient:    kmsClient,
+		CryptoConfig: cfg,
+	}
+
+	s := &jvscrypto.CertificateActionService{
+		Handler:   r,
+		KMSClient: kmsClient,
+	}
+
+	// Validate we have a single enabled key that is primary.
+	testValidateKeyVersionState(ctx, t, kmsClient, keyName, 1,
+		map[int]kmspb.CryptoKeyVersion_CryptoKeyVersionState{
+			1: kmspb.CryptoKeyVersion_ENABLED,
+		})
+
+	// These tests must be run in sequence, and they have waits in between. Therefore, they cannot
+	// be parallelized, and aren't a good fit for table testing.
+
+	t.Run("graceful_rotation", func(t *testing.T) {
+		actions := []*jvspb.Action{
+			{
+				Version: keyName + "/cryptoKeyVersions/1",
+				Action:  jvspb.Action_ROTATE,
+			},
+		}
+		if err := s.CertificateAction(ctx, &jvspb.CertificateActionRequest{Actions: actions}); err != nil {
+			t.Fatalf("err when trying to rotate: %s", err)
+			return
+		}
+		time.Sleep(50 * time.Millisecond) // Reduces chance key will be in "pending generation" state
+		// Validate we have created a new key, and set it as primary
+		testValidateKeyVersionState(ctx, t, kmsClient, keyName, 2,
+			map[int]kmspb.CryptoKeyVersion_CryptoKeyVersionState{
+				1: kmspb.CryptoKeyVersion_ENABLED,
+				2: kmspb.CryptoKeyVersion_ENABLED,
+			})
+	})
+
+	t.Run("no_op", func(t *testing.T) {
+		actions := []*jvspb.Action{
+			{
+				Version: keyName + "/cryptoKeyVersions/1",
+				Action:  jvspb.Action_ROTATE,
+			},
+		}
+		if err := s.CertificateAction(ctx, &jvspb.CertificateActionRequest{Actions: actions}); err != nil {
+			t.Fatalf("err when trying to rotate: %s", err)
+			return
+		}
+		time.Sleep(50 * time.Millisecond) // Reduces chance key will be in "pending generation" state
+
+		// 1 is not a primary, so calling rotate on it again should do nothing.
+		testValidateKeyVersionState(ctx, t, kmsClient, keyName, 2,
+			map[int]kmspb.CryptoKeyVersion_CryptoKeyVersionState{
+				1: kmspb.CryptoKeyVersion_ENABLED,
+				2: kmspb.CryptoKeyVersion_ENABLED,
+			})
+	})
+
+	t.Run("force_disable", func(t *testing.T) {
+		actions := []*jvspb.Action{
+			{
+				Version: keyName + "/cryptoKeyVersions/1",
+				Action:  jvspb.Action_FORCE_DISABLE,
+			},
+			{
+				Version: keyName + "/cryptoKeyVersions/2",
+				Action:  jvspb.Action_FORCE_DISABLE,
+			},
+		}
+		if err := s.CertificateAction(ctx, &jvspb.CertificateActionRequest{Actions: actions}); err != nil {
+			t.Fatalf("err when trying to disable: %s", err)
+		}
+		time.Sleep(50 * time.Millisecond) // Reduces chance key will be in "pending generation" state
+
+		// Validate we created a new key, and set it to primary, disabled 2 others.
+		testValidateKeyVersionState(ctx, t, kmsClient, keyName, 3,
+			map[int]kmspb.CryptoKeyVersion_CryptoKeyVersionState{
+				1: kmspb.CryptoKeyVersion_DISABLED,
+				2: kmspb.CryptoKeyVersion_DISABLED,
+				3: kmspb.CryptoKeyVersion_ENABLED,
+			})
+	})
+
+	t.Run("force_destroy", func(t *testing.T) {
+		actions := []*jvspb.Action{
+			{
+				Version: keyName + "/cryptoKeyVersions/2",
+				Action:  jvspb.Action_FORCE_DESTROY,
+			},
+			{
+				Version: keyName + "/cryptoKeyVersions/3",
+				Action:  jvspb.Action_FORCE_DESTROY,
+			},
+		}
+		if err := s.CertificateAction(ctx, &jvspb.CertificateActionRequest{Actions: actions}); err != nil {
+			t.Fatalf("err when trying to disable: %s", err)
+		}
+		time.Sleep(50 * time.Millisecond) // Reduces chance key will be in "pending generation" state
+
+		// Validate we created a new key, and scheduled 2&3 for destroying.
+		testValidateKeyVersionState(ctx, t, kmsClient, keyName, 4,
+			map[int]kmspb.CryptoKeyVersion_CryptoKeyVersionState{
+				1: kmspb.CryptoKeyVersion_DISABLED,
+				2: kmspb.CryptoKeyVersion_DESTROY_SCHEDULED,
+				3: kmspb.CryptoKeyVersion_DESTROY_SCHEDULED,
+				4: kmspb.CryptoKeyVersion_ENABLED,
+			})
+	})
+}
+
 // Set up KMS, create a key, and set the primary.
 func testSetupRotator(ctx context.Context, tb testing.TB) (*kms.KeyManagementClient, string) {
 	tb.Helper()
