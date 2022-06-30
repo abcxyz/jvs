@@ -14,6 +14,6 @@
  * limitations under the License.
  */
 
-output "jvs_server_url" {
+output "cert_action_server_url" {
   value = google_cloud_run_service.server.status.0.url
 }

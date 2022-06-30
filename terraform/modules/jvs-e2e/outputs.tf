@@ -25,3 +25,7 @@ output "public_key_server_url" {
 output "cert_rotator_server_url" {
   value = module.cert-rotator.cert_rotator_server_url
 }
+
+output "cert_action_server_url" {
+  value = module.cert-actions.cert_action_server_url
+}
