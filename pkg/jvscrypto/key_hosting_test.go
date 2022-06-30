@@ -37,73 +37,24 @@ import (
 	kmspb "google.golang.org/genproto/googleapis/cloud/kms/v1"
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/credentials/insecure"
-	"google.golang.org/protobuf/proto"
 )
 
 func TestGenerateJWKString(t *testing.T) {
 	t.Parallel()
 	ctx := context.Background()
 
-	var clientOpt option.ClientOption
-	mockKMSServer := &testutil.MockKeyManagementServer{
-		UnimplementedKeyManagementServiceServer: kmspb.UnimplementedKeyManagementServiceServer{},
-		Reqs:                                    make([]proto.Message, 1),
-		Err:                                     nil,
-		Resps:                                   make([]proto.Message, 1),
-	}
-
 	privateKey, err := ecdsa.GenerateKey(elliptic.P256(), rand.Reader)
 	if err != nil {
 		t.Fatal(err)
 	}
-	mockKMSServer.PrivateKey = privateKey
 	x509EncodedPub, err := x509.MarshalPKIXPublicKey(privateKey.Public())
 	if err != nil {
 		t.Fatal(err)
 	}
 	pemEncodedPub := pem.EncodeToMemory(&pem.Block{Type: "PUBLIC KEY", Bytes: x509EncodedPub})
-	mockKMSServer.PublicKey = string(pemEncodedPub)
-
-	serv := grpc.NewServer()
-	kmspb.RegisterKeyManagementServiceServer(serv, mockKMSServer)
-
-	lis, err := net.Listen("tcp", "localhost:0")
-	if err != nil {
-		t.Fatal(err)
-	}
-	// not checked, but makes linter happy
-	errs := make(chan error, 1)
-	go func() {
-		errs <- serv.Serve(lis)
-		close(errs)
-	}()
-
-	conn, err := grpc.Dial(lis.Addr().String(), grpc.WithTransportCredentials(insecure.NewCredentials()))
-	if err != nil {
-		t.Fatal(err)
-	}
-	clientOpt = option.WithGRPCConn(conn)
-	t.Cleanup(func() {
-		conn.Close()
-	})
-
-	kms, err := kms.NewKeyManagementClient(ctx, clientOpt)
-	if err != nil {
-		t.Fatal(err)
-	}
-
-	cache := cache.New[string](5 * time.Minute)
-	if err != nil {
-		t.Fatal(err)
-	}
 
 	key := "projects/[PROJECT]/locations/[LOCATION]/keyRings/[KEY_RING]/cryptoKeys/[CRYPTO_KEY]"
 	versionSuffix := "[VERSION]"
-	ks := &KeyServer{
-		KMSClient:       kms,
-		PublicKeyConfig: &config.PublicKeyConfig{KeyNames: []string{key}},
-		Cache:           cache,
-	}
 
 	tests := []struct {
 		name       string
@@ -143,8 +94,49 @@ func TestGenerateJWKString(t *testing.T) {
 	for _, tc := range tests {
 		tc := tc
 		t.Run(tc.name, func(t *testing.T) {
-			mockKMSServer.Setup(nil, key, key+"/cryptoKeyVersions/"+versionSuffix, tc.primary)
+			mockKMSServer := testutil.NewMockKeyManagementServer(nil, key, key+"/cryptoKeyVersions/"+versionSuffix, tc.primary)
+			mockKMSServer.PrivateKey = privateKey
+			mockKMSServer.PublicKey = string(pemEncodedPub)
 			mockKMSServer.NumVersions = tc.numKeys
+
+			serv := grpc.NewServer()
+			kmspb.RegisterKeyManagementServiceServer(serv, mockKMSServer)
+
+			lis, err := net.Listen("tcp", "localhost:0")
+			if err != nil {
+				t.Fatal(err)
+			}
+			// not checked, but makes linter happy
+			errs := make(chan error, 1)
+			go func() {
+				errs <- serv.Serve(lis)
+				close(errs)
+			}()
+
+			conn, err := grpc.Dial(lis.Addr().String(), grpc.WithTransportCredentials(insecure.NewCredentials()))
+			if err != nil {
+				t.Fatal(err)
+			}
+			clientOpt := option.WithGRPCConn(conn)
+			t.Cleanup(func() {
+				conn.Close()
+			})
+
+			kms, err := kms.NewKeyManagementClient(ctx, clientOpt)
+			if err != nil {
+				t.Fatal(err)
+			}
+
+			cache := cache.New[string](5 * time.Minute)
+			if err != nil {
+				t.Fatal(err)
+			}
+
+			ks := &KeyServer{
+				KMSClient:       kms,
+				PublicKeyConfig: &config.PublicKeyConfig{KeyNames: []string{key}},
+				Cache:           cache,
+			}
 
 			got, err := ks.generateJWKString(ctx)
 			if diff := pkgtestutil.DiffErrString(err, tc.wantErr); diff != "" {

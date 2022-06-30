@@ -34,57 +34,9 @@ import (
 	"google.golang.org/protobuf/types/known/fieldmaskpb"
 )
 
-var (
-	opt     option.ClientOption
-	mockKMS = &testutil.MockKeyManagementServer{
-		UnimplementedKeyManagementServiceServer: kmspb.UnimplementedKeyManagementServiceServer{},
-		Reqs:                                    make([]proto.Message, 1),
-		Err:                                     nil,
-		Resps:                                   make([]proto.Message, 1),
-	}
-)
-
 func TestCertificateAction(t *testing.T) {
 	t.Parallel()
 	ctx := context.Background()
-
-	serv := grpc.NewServer()
-	kmspb.RegisterKeyManagementServiceServer(serv, mockKMS)
-
-	lis, err := net.Listen("tcp", "localhost:0")
-	if err != nil {
-		t.Fatal(err)
-	}
-	// not checked, but makes linter happy
-	errs := make(chan error, 1)
-	go func() {
-		errs <- serv.Serve(lis)
-		close(errs)
-	}()
-
-	conn, err := grpc.Dial(lis.Addr().String(), grpc.WithTransportCredentials(insecure.NewCredentials()))
-	if err != nil {
-		t.Fatal(err)
-	}
-	opt = option.WithGRPCConn(conn)
-	t.Cleanup(func() {
-		conn.Close()
-	})
-
-	c, err := kms.NewKeyManagementClient(ctx, opt)
-	if err != nil {
-		t.Fatal(err)
-	}
-
-	handler := &RotationHandler{
-		KMSClient:    c,
-		CryptoConfig: &config.CryptoConfig{},
-	}
-
-	service := &CertificateActionService{
-		Handler:   handler,
-		KMSClient: c,
-	}
 
 	parent := fmt.Sprintf("projects/%s/locations/%s/keyRings/%s/cryptoKeys/%s", "[PROJECT]", "[LOCATION]", "[KEY_RING]", "[CRYPTO_KEY]")
 	versionSuffix := "[VERSION]"
@@ -323,7 +275,45 @@ func TestCertificateAction(t *testing.T) {
 	for _, tc := range tests {
 		tc := tc
 		t.Run(tc.name, func(t *testing.T) {
-			mockKMS.Setup(tc.serverErr, parent, versionName, tc.priorPrimary)
+			mockKMS := testutil.NewMockKeyManagementServer(tc.serverErr, parent, versionName, tc.priorPrimary)
+
+			serv := grpc.NewServer()
+			kmspb.RegisterKeyManagementServiceServer(serv, mockKMS)
+
+			lis, err := net.Listen("tcp", "localhost:0")
+			if err != nil {
+				t.Fatal(err)
+			}
+			// not checked, but makes linter happy
+			errs := make(chan error, 1)
+			go func() {
+				errs <- serv.Serve(lis)
+				close(errs)
+			}()
+
+			conn, err := grpc.Dial(lis.Addr().String(), grpc.WithTransportCredentials(insecure.NewCredentials()))
+			if err != nil {
+				t.Fatal(err)
+			}
+			opt := option.WithGRPCConn(conn)
+			t.Cleanup(func() {
+				conn.Close()
+			})
+
+			c, err := kms.NewKeyManagementClient(ctx, opt)
+			if err != nil {
+				t.Fatal(err)
+			}
+
+			handler := &RotationHandler{
+				KMSClient:    c,
+				CryptoConfig: &config.CryptoConfig{},
+			}
+
+			service := &CertificateActionService{
+				Handler:   handler,
+				KMSClient: c,
+			}
 
 			gotErr := service.CertificateAction(ctx, tc.request)
 

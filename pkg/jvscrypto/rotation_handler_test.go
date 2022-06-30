@@ -39,16 +39,6 @@ import (
 	"google.golang.org/protobuf/testing/protocmp"
 )
 
-var (
-	clientOpt         option.ClientOption
-	mockKeyManagement = &testutil.MockKeyManagementServer{
-		UnimplementedKeyManagementServiceServer: kmspb.UnimplementedKeyManagementServiceServer{},
-		Reqs:                                    make([]proto.Message, 1),
-		Err:                                     nil,
-		Resps:                                   make([]proto.Message, 1),
-	}
-)
-
 func TestGetKeyNameFromVersion(t *testing.T) {
 	t.Parallel()
 
@@ -265,39 +255,6 @@ func TestPerformActions(t *testing.T) {
 	t.Parallel()
 	ctx := context.Background()
 
-	serv := grpc.NewServer()
-	kmspb.RegisterKeyManagementServiceServer(serv, mockKeyManagement)
-
-	lis, err := net.Listen("tcp", "localhost:0")
-	if err != nil {
-		t.Fatal(err)
-	}
-	// not checked, but makes linter happy
-	errs := make(chan error, 1)
-	go func() {
-		errs <- serv.Serve(lis)
-		close(errs)
-	}()
-
-	conn, err := grpc.Dial(lis.Addr().String(), grpc.WithTransportCredentials(insecure.NewCredentials()))
-	if err != nil {
-		t.Fatal(err)
-	}
-	clientOpt = option.WithGRPCConn(conn)
-	t.Cleanup(func() {
-		conn.Close()
-	})
-
-	c, err := kms.NewKeyManagementClient(ctx, clientOpt)
-	if err != nil {
-		t.Fatal(err)
-	}
-
-	handler := &RotationHandler{
-		KMSClient:    c,
-		CryptoConfig: &config.CryptoConfig{},
-	}
-
 	parent := fmt.Sprintf("projects/%s/locations/%s/keyRings/%s/cryptoKeys/%s", "[PROJECT]", "[LOCATION]", "[KEY_RING]", "[CRYPTO_KEY]")
 	versionSuffix := "[VERSION]"
 	versionName := fmt.Sprintf("%s/cryptoKeyVersions/%s", parent, versionSuffix)
@@ -434,7 +391,40 @@ func TestPerformActions(t *testing.T) {
 	for _, tc := range tests {
 		tc := tc
 		t.Run(tc.name, func(t *testing.T) {
-			mockKeyManagement.Setup(tc.serverErr, parent, versionName, tc.priorPrimary)
+			mockKeyManagement := testutil.NewMockKeyManagementServer(tc.serverErr, parent, versionName, tc.priorPrimary)
+			mockKeyManagement.Resps = append(mockKeyManagement.Resps[:0], &kmspb.CryptoKeyVersion{Name: versionName + "-new"})
+			serv := grpc.NewServer()
+			kmspb.RegisterKeyManagementServiceServer(serv, mockKeyManagement)
+
+			lis, err := net.Listen("tcp", "localhost:0")
+			if err != nil {
+				t.Fatal(err)
+			}
+			// not checked, but makes linter happy
+			errs := make(chan error, 1)
+			go func() {
+				errs <- serv.Serve(lis)
+				close(errs)
+			}()
+
+			conn, err := grpc.Dial(lis.Addr().String(), grpc.WithTransportCredentials(insecure.NewCredentials()))
+			if err != nil {
+				t.Fatal(err)
+			}
+			clientOpt := option.WithGRPCConn(conn)
+			t.Cleanup(func() {
+				conn.Close()
+			})
+
+			c, err := kms.NewKeyManagementClient(ctx, clientOpt)
+			if err != nil {
+				t.Fatal(err)
+			}
+
+			handler := &RotationHandler{
+				KMSClient:    c,
+				CryptoConfig: &config.CryptoConfig{},
+			}
 
 			gotErr := handler.performActions(ctx, parent, tc.actions)
 
