@@ -52,7 +52,7 @@ resource "null_resource" "build" {
   }
 }
 
-resource "google_cloud_run_service" "server" {
+resource "google_cloud_run_service" "cert-action" {
   name     = "cert-action-service-${var.tag}"
   location = var.region
   project  = var.project_id
