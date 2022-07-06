@@ -508,9 +508,8 @@ func TestCertActions(t *testing.T) {
 				Action:  jvspb.Action_ROTATE,
 			},
 		}
-		if err := s.CertificateAction(ctx, &jvspb.CertificateActionRequest{Actions: actions}); err != nil {
-			t.Fatalf("err when trying to rotate: %s", err)
-			return
+		if _, err := s.CertificateAction(ctx, &jvspb.CertificateActionRequest{Actions: actions}); err != nil {
+			t.FailNow()
 		}
 		time.Sleep(50 * time.Millisecond) // Reduces chance key will be in "pending generation" state
 		// Validate we have created a new key, and set it as primary
@@ -528,9 +527,8 @@ func TestCertActions(t *testing.T) {
 				Action:  jvspb.Action_ROTATE,
 			},
 		}
-		if err := s.CertificateAction(ctx, &jvspb.CertificateActionRequest{Actions: actions}); err != nil {
-			t.Fatalf("err when trying to rotate: %s", err)
-			return
+		if _, err := s.CertificateAction(ctx, &jvspb.CertificateActionRequest{Actions: actions}); err != nil {
+			t.FailNow()
 		}
 		time.Sleep(50 * time.Millisecond) // Reduces chance key will be in "pending generation" state
 
@@ -553,8 +551,8 @@ func TestCertActions(t *testing.T) {
 				Action:  jvspb.Action_FORCE_DISABLE,
 			},
 		}
-		if err := s.CertificateAction(ctx, &jvspb.CertificateActionRequest{Actions: actions}); err != nil {
-			t.Fatalf("err when trying to disable: %s", err)
+		if _, err := s.CertificateAction(ctx, &jvspb.CertificateActionRequest{Actions: actions}); err != nil {
+			t.FailNow()
 		}
 		time.Sleep(50 * time.Millisecond) // Reduces chance key will be in "pending generation" state
 
@@ -578,8 +576,8 @@ func TestCertActions(t *testing.T) {
 				Action:  jvspb.Action_FORCE_DESTROY,
 			},
 		}
-		if err := s.CertificateAction(ctx, &jvspb.CertificateActionRequest{Actions: actions}); err != nil {
-			t.Fatalf("err when trying to disable: %s", err)
+		if _, err := s.CertificateAction(ctx, &jvspb.CertificateActionRequest{Actions: actions}); err != nil {
+			t.FailNow()
 		}
 		time.Sleep(50 * time.Millisecond) // Reduces chance key will be in "pending generation" state
 
