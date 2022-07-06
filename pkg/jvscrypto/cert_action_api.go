@@ -31,7 +31,7 @@ type CertificateActionService struct {
 }
 
 // CertificateAction implements the certificate action API which performs manual actions on cert versions.
-// this wraps certificateAction and adds a blank response
+// this wraps certificateAction and adds a blank response.
 func (p *CertificateActionService) CertificateAction(ctx context.Context, request *jvspb.CertificateActionRequest) (*jvspb.CertificateActionResponse, error) {
 	return &jvspb.CertificateActionResponse{}, p.certificateAction(ctx, request)
 }
