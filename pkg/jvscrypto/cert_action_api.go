@@ -31,7 +31,12 @@ type CertificateActionService struct {
 }
 
 // CertificateAction implements the certificate action API which performs manual actions on cert versions.
-func (p *CertificateActionService) CertificateAction(ctx context.Context, request *jvspb.CertificateActionRequest) error {
+// this wraps certificateAction and adds a blank response
+func (p *CertificateActionService) CertificateAction(ctx context.Context, request *jvspb.CertificateActionRequest) (*jvspb.CertificateActionResponse, error) {
+	return &jvspb.CertificateActionResponse{}, p.certificateAction(ctx, request)
+}
+
+func (p *CertificateActionService) certificateAction(ctx context.Context, request *jvspb.CertificateActionRequest) error {
 	// create map of key -> version actions list
 	actions := make(map[string][]*actionTuple)
 	for _, action := range request.GetActions() {
@@ -51,7 +56,6 @@ func (p *CertificateActionService) CertificateAction(ctx context.Context, reques
 
 		primary, err := getPrimary(ctx, p.KMSClient, key)
 		if err != nil {
-			// Should we err?
 			return fmt.Errorf("couldn't determine current primary: %w", err)
 		}
 
