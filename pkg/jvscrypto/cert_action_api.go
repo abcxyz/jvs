@@ -51,7 +51,6 @@ func (p *CertificateActionService) CertificateAction(ctx context.Context, reques
 
 		primary, err := getPrimary(ctx, p.KMSClient, key)
 		if err != nil {
-			// Should we err?
 			return fmt.Errorf("couldn't determine current primary: %w", err)
 		}
 

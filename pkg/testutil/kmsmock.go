@@ -161,14 +161,12 @@ func (s *MockKeyManagementServer) UpdateCryptoKey(ctx context.Context, req *kmsp
 }
 
 // NewMockKeyManagementServer sets up a mock KMS server with required values for use in testing.
-func NewMockKeyManagementServer(returnErr error, keyName string, versionName string, primary string) *MockKeyManagementServer {
+func NewMockKeyManagementServer(returnErr error, keyName, versionName, primary string) *MockKeyManagementServer {
 	return &MockKeyManagementServer{
-		UnimplementedKeyManagementServiceServer: kmspb.UnimplementedKeyManagementServiceServer{},
-		Reqs:                                    nil,
-		Err:                                     returnErr,
-		Resps:                                   []proto.Message{&kmspb.CryptoKeyVersion{Name: versionName + "-new"}},
-		KeyName:                                 keyName,
-		VersionName:                             versionName,
-		Labels:                                  map[string]string{"primary": primary},
+		Err:         returnErr,
+		Resps:       []proto.Message{&kmspb.CryptoKeyVersion{Name: versionName + "-new"}},
+		KeyName:     keyName,
+		VersionName: versionName,
+		Labels:      map[string]string{"primary": primary},
 	}
 }
