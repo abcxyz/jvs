@@ -501,7 +501,7 @@ func TestCertActions(t *testing.T) {
 	// These tests must be run in sequence, and they have waits in between. Therefore, they cannot
 	// be parallelized, and aren't a good fit for table testing.
 
-	t.Run("graceful_rotation", func(t *testing.T) {
+	if pass := t.Run("graceful_rotation", func(t *testing.T) {
 		actions := []*jvspb.Action{
 			{
 				Version: keyName + "/cryptoKeyVersions/1",
@@ -509,7 +509,7 @@ func TestCertActions(t *testing.T) {
 			},
 		}
 		if _, err := s.CertificateAction(ctx, &jvspb.CertificateActionRequest{Actions: actions}); err != nil {
-			t.FailNow()
+			t.Fatalf("err when trying to rotate: %s", err)
 		}
 		time.Sleep(50 * time.Millisecond) // Reduces chance key will be in "pending generation" state
 		// Validate we have created a new key, and set it as primary
@@ -518,9 +518,11 @@ func TestCertActions(t *testing.T) {
 				1: kmspb.CryptoKeyVersion_ENABLED,
 				2: kmspb.CryptoKeyVersion_ENABLED,
 			})
-	})
+	}); !pass {
+		t.FailNow()
+	}
 
-	t.Run("no_op", func(t *testing.T) {
+	if pass := t.Run("no_op", func(t *testing.T) {
 		actions := []*jvspb.Action{
 			{
 				Version: keyName + "/cryptoKeyVersions/1",
@@ -528,7 +530,7 @@ func TestCertActions(t *testing.T) {
 			},
 		}
 		if _, err := s.CertificateAction(ctx, &jvspb.CertificateActionRequest{Actions: actions}); err != nil {
-			t.FailNow()
+			t.Fatalf("err when trying to rotate: %s", err)
 		}
 		time.Sleep(50 * time.Millisecond) // Reduces chance key will be in "pending generation" state
 
@@ -538,9 +540,11 @@ func TestCertActions(t *testing.T) {
 				1: kmspb.CryptoKeyVersion_ENABLED,
 				2: kmspb.CryptoKeyVersion_ENABLED,
 			})
-	})
+	}); !pass {
+		t.FailNow()
+	}
 
-	t.Run("force_disable", func(t *testing.T) {
+	if pass := t.Run("force_disable", func(t *testing.T) {
 		actions := []*jvspb.Action{
 			{
 				Version: keyName + "/cryptoKeyVersions/1",
@@ -552,7 +556,7 @@ func TestCertActions(t *testing.T) {
 			},
 		}
 		if _, err := s.CertificateAction(ctx, &jvspb.CertificateActionRequest{Actions: actions}); err != nil {
-			t.FailNow()
+			t.Fatalf("err when trying to disable: %s", err)
 		}
 		time.Sleep(50 * time.Millisecond) // Reduces chance key will be in "pending generation" state
 
@@ -563,9 +567,11 @@ func TestCertActions(t *testing.T) {
 				2: kmspb.CryptoKeyVersion_DISABLED,
 				3: kmspb.CryptoKeyVersion_ENABLED,
 			})
-	})
+	}); !pass {
+		t.FailNow()
+	}
 
-	t.Run("force_destroy", func(t *testing.T) {
+	if pass := t.Run("force_destroy", func(t *testing.T) {
 		actions := []*jvspb.Action{
 			{
 				Version: keyName + "/cryptoKeyVersions/2",
@@ -577,7 +583,7 @@ func TestCertActions(t *testing.T) {
 			},
 		}
 		if _, err := s.CertificateAction(ctx, &jvspb.CertificateActionRequest{Actions: actions}); err != nil {
-			t.FailNow()
+			t.Fatalf("err when trying to destroy: %s", err)
 		}
 		time.Sleep(50 * time.Millisecond) // Reduces chance key will be in "pending generation" state
 
@@ -589,7 +595,9 @@ func TestCertActions(t *testing.T) {
 				3: kmspb.CryptoKeyVersion_DESTROY_SCHEDULED,
 				4: kmspb.CryptoKeyVersion_ENABLED,
 			})
-	})
+	}); !pass {
+		t.FailNow()
+	}
 }
 
 // Set up KMS, create a key, and set the primary.
