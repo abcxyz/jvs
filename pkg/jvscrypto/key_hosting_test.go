@@ -23,7 +23,6 @@ import (
 	"encoding/base64"
 	"encoding/pem"
 	"fmt"
-	"net"
 	"testing"
 	"time"
 
@@ -36,7 +35,6 @@ import (
 	"google.golang.org/api/option"
 	kmspb "google.golang.org/genproto/googleapis/cloud/kms/v1"
 	"google.golang.org/grpc"
-	"google.golang.org/grpc/credentials/insecure"
 )
 
 func TestGenerateJWKString(t *testing.T) {
@@ -94,29 +92,14 @@ func TestGenerateJWKString(t *testing.T) {
 	for _, tc := range tests {
 		tc := tc
 		t.Run(tc.name, func(t *testing.T) {
-			mockKMSServer := testutil.NewMockKeyManagementServer(nil, key, key+"/cryptoKeyVersions/"+versionSuffix, tc.primary)
+			mockKMSServer := testutil.NewMockKeyManagementServer(key, key+"/cryptoKeyVersions/"+versionSuffix, tc.primary)
 			mockKMSServer.PrivateKey = privateKey
 			mockKMSServer.PublicKey = string(pemEncodedPub)
 			mockKMSServer.NumVersions = tc.numKeys
 
-			serv := grpc.NewServer()
-			kmspb.RegisterKeyManagementServiceServer(serv, mockKMSServer)
-
-			lis, err := net.Listen("tcp", "localhost:0")
-			if err != nil {
-				t.Fatal(err)
-			}
-			// not checked, but makes linter happy
-			errs := make(chan error, 1)
-			go func() {
-				errs <- serv.Serve(lis)
-				close(errs)
-			}()
-
-			conn, err := grpc.Dial(lis.Addr().String(), grpc.WithTransportCredentials(insecure.NewCredentials()))
-			if err != nil {
-				t.Fatal(err)
-			}
+			_, conn := pkgtestutil.FakeGRPCServer(t, func(s *grpc.Server) {
+				kmspb.RegisterKeyManagementServiceServer(s, mockKMSServer)
+			})
 			clientOpt := option.WithGRPCConn(conn)
 			t.Cleanup(func() {
 				conn.Close()

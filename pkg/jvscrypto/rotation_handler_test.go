@@ -391,7 +391,8 @@ func TestPerformActions(t *testing.T) {
 	for _, tc := range tests {
 		tc := tc
 		t.Run(tc.name, func(t *testing.T) {
-			mockKeyManagement := testutil.NewMockKeyManagementServer(tc.serverErr, parent, versionName, tc.priorPrimary)
+			mockKeyManagement := testutil.NewMockKeyManagementServer(parent, versionName, tc.priorPrimary)
+			mockKeyManagement.Err = tc.serverErr
 			mockKeyManagement.Resps = append(mockKeyManagement.Resps[:0], &kmspb.CryptoKeyVersion{Name: versionName + "-new"})
 			serv := grpc.NewServer()
 			kmspb.RegisterKeyManagementServiceServer(serv, mockKeyManagement)

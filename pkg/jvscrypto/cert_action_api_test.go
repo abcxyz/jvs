@@ -275,7 +275,8 @@ func TestCertificateAction(t *testing.T) {
 	for _, tc := range tests {
 		tc := tc
 		t.Run(tc.name, func(t *testing.T) {
-			mockKMS := testutil.NewMockKeyManagementServer(tc.serverErr, parent, versionName, tc.priorPrimary)
+			mockKMS := testutil.NewMockKeyManagementServer(parent, versionName, tc.priorPrimary)
+			mockKMS.Err = tc.serverErr
 
 			serv := grpc.NewServer()
 			kmspb.RegisterKeyManagementServiceServer(serv, mockKMS)
@@ -315,7 +316,7 @@ func TestCertificateAction(t *testing.T) {
 				KMSClient: c,
 			}
 
-			gotErr := service.CertificateAction(ctx, tc.request)
+			gotErr := service.certificateAction(ctx, tc.request)
 
 			if err != nil {
 				t.Fatal(err)
