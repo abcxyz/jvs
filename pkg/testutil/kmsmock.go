@@ -93,6 +93,18 @@ func (s *MockKeyManagementServer) GetCryptoKey(ctx context.Context, req *kmspb.G
 	}, nil
 }
 
+func (s *MockKeyManagementServer) GetCryptoKeyVersion(ctx context.Context, req *kmspb.GetCryptoKeyVersionRequest) (*kmspb.CryptoKeyVersion, error) {
+	s.reqMu.Lock()
+	defer s.reqMu.Unlock()
+	s.Reqs = append(s.Reqs, req)
+	if s.Err != nil {
+		return nil, s.Err
+	}
+	return &kmspb.CryptoKeyVersion{
+		Name: req.Name,
+	}, nil
+}
+
 func (s *MockKeyManagementServer) AsymmetricSign(ctx context.Context, req *kmspb.AsymmetricSignRequest) (*kmspb.AsymmetricSignResponse, error) {
 	s.reqMu.Lock()
 	defer s.reqMu.Unlock()
@@ -146,4 +158,14 @@ func (s *MockKeyManagementServer) UpdateCryptoKey(ctx context.Context, req *kmsp
 	s.Labels = req.CryptoKey.Labels
 
 	return &kmspb.CryptoKey{}, nil
+}
+
+// NewMockKeyManagementServer sets up a mock KMS server with required values for use in testing.
+func NewMockKeyManagementServer(keyName, versionName, primary string) *MockKeyManagementServer {
+	return &MockKeyManagementServer{
+		Resps:       []proto.Message{&kmspb.CryptoKeyVersion{Name: versionName + "-new"}},
+		KeyName:     keyName,
+		VersionName: versionName,
+		Labels:      map[string]string{"primary": primary},
+	}
 }
