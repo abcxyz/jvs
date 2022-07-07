@@ -25,7 +25,7 @@ message CertificateActionRequest {
 
 // Action is intended to specify an action to be taken on a certificate version.
 message Action {
-  uint32 version = 1;
+  string version = 1;
   enum ACTION {
     // This rotates the specified key gracefully. it will make a new primary and promote that new key to primary,
     // but will not immediately disable the version specified (so it can still be used for JWT validation).
