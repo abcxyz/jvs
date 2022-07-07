@@ -31,7 +31,12 @@ type CertificateActionService struct {
 }
 
 // CertificateAction implements the certificate action API which performs manual actions on cert versions.
-func (p *CertificateActionService) CertificateAction(ctx context.Context, request *jvspb.CertificateActionRequest) error {
+// this wraps certificateAction and adds a blank response.
+func (p *CertificateActionService) CertificateAction(ctx context.Context, request *jvspb.CertificateActionRequest) (*jvspb.CertificateActionResponse, error) {
+	return &jvspb.CertificateActionResponse{}, p.certificateAction(ctx, request)
+}
+
+func (p *CertificateActionService) certificateAction(ctx context.Context, request *jvspb.CertificateActionRequest) error {
 	// create map of key -> version actions list
 	actions := make(map[string][]*actionTuple)
 	for _, action := range request.GetActions() {
@@ -51,7 +56,6 @@ func (p *CertificateActionService) CertificateAction(ctx context.Context, reques
 
 		primary, err := getPrimary(ctx, p.KMSClient, key)
 		if err != nil {
-			// Should we err?
 			return fmt.Errorf("couldn't determine current primary: %w", err)
 		}
 
@@ -78,6 +82,10 @@ func determineActions(ver *kmspb.CryptoKeyVersion, action jvspb.Action_ACTION, p
 		})
 	}
 
+	// See if any additional forced actions are necessary. If we specified rotate as the action, then there is no
+	// additional actions to be taken. If that version is primary, we have already created a new key and set the
+	// new key as primary. If we have specified we also want to force disable or destroy the key, there are additonal
+	// actions that need to be taken.
 	if action == jvspb.Action_FORCE_DISABLE {
 		actionsToPerform = append(actionsToPerform, &actionTuple{
 			Action:  ActionDisable,

@@ -74,7 +74,7 @@ func realMain(ctx context.Context) error {
 		KMSClient: kmsClient,
 	}
 	casAgent := jvscrypto.NewCertificateActionAgent(cas)
-	jvspb.RegisterCertificateActionServiceServer(s, casAgent)
+	jvspb.RegisterCertificateActionServiceServer(s, cas)
 	reflection.Register(s)
 
 	port := os.Getenv("PORT")
