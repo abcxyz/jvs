@@ -17,7 +17,6 @@ package jvscrypto
 import (
 	"context"
 	"fmt"
-	"net"
 	"testing"
 
 	kms "cloud.google.com/go/kms/apiv1"
@@ -29,7 +28,6 @@ import (
 	"google.golang.org/api/option"
 	kmspb "google.golang.org/genproto/googleapis/cloud/kms/v1"
 	"google.golang.org/grpc"
-	"google.golang.org/grpc/credentials/insecure"
 	"google.golang.org/protobuf/proto"
 	"google.golang.org/protobuf/types/known/fieldmaskpb"
 )
@@ -281,21 +279,10 @@ func TestCertificateAction(t *testing.T) {
 			serv := grpc.NewServer()
 			kmspb.RegisterKeyManagementServiceServer(serv, mockKMS)
 
-			lis, err := net.Listen("tcp", "localhost:0")
-			if err != nil {
-				t.Fatal(err)
-			}
-			// not checked, but makes linter happy
-			errs := make(chan error, 1)
-			go func() {
-				errs <- serv.Serve(lis)
-				close(errs)
-			}()
+			_, conn := pkgtestutil.FakeGRPCServer(t, func(s *grpc.Server) {
+				kmspb.RegisterKeyManagementServiceServer(s, mockKMS)
+			})
 
-			conn, err := grpc.Dial(lis.Addr().String(), grpc.WithTransportCredentials(insecure.NewCredentials()))
-			if err != nil {
-				t.Fatal(err)
-			}
 			opt := option.WithGRPCConn(conn)
 			t.Cleanup(func() {
 				conn.Close()

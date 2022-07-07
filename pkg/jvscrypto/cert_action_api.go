@@ -82,6 +82,10 @@ func determineActions(ver *kmspb.CryptoKeyVersion, action jvspb.Action_ACTION, p
 		})
 	}
 
+	// See if any additional forced actions are necessary. If we specified rotate as the action, then there is no
+	// additional actions to be taken. If that version is primary, we have already created a new key and set the
+	// new key as primary. If we have specified we also want to force disable or destroy the key, there are additonal
+	// actions that need to be taken.
 	if action == jvspb.Action_FORCE_DISABLE {
 		actionsToPerform = append(actionsToPerform, &actionTuple{
 			Action:  ActionDisable,

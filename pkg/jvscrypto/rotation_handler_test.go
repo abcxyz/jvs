@@ -19,7 +19,6 @@ package jvscrypto
 import (
 	"context"
 	"fmt"
-	"net"
 	"testing"
 	"time"
 
@@ -27,7 +26,6 @@ import (
 	"github.com/abcxyz/jvs/pkg/config"
 	"github.com/abcxyz/jvs/pkg/testutil"
 	pkgtestutil "github.com/abcxyz/pkg/testutil"
-	"google.golang.org/grpc/credentials/insecure"
 	"google.golang.org/protobuf/types/known/fieldmaskpb"
 	"google.golang.org/protobuf/types/known/timestamppb"
 
@@ -397,21 +395,10 @@ func TestPerformActions(t *testing.T) {
 			serv := grpc.NewServer()
 			kmspb.RegisterKeyManagementServiceServer(serv, mockKeyManagement)
 
-			lis, err := net.Listen("tcp", "localhost:0")
-			if err != nil {
-				t.Fatal(err)
-			}
-			// not checked, but makes linter happy
-			errs := make(chan error, 1)
-			go func() {
-				errs <- serv.Serve(lis)
-				close(errs)
-			}()
+			_, conn := pkgtestutil.FakeGRPCServer(t, func(s *grpc.Server) {
+				kmspb.RegisterKeyManagementServiceServer(s, mockKeyManagement)
+			})
 
-			conn, err := grpc.Dial(lis.Addr().String(), grpc.WithTransportCredentials(insecure.NewCredentials()))
-			if err != nil {
-				t.Fatal(err)
-			}
 			clientOpt := option.WithGRPCConn(conn)
 			t.Cleanup(func() {
 				conn.Close()
