@@ -140,6 +140,19 @@ module "cert-rotator" {
   depends_on            = [google_kms_key_ring_iam_member.rotator_acc_roles]
 }
 
+module "cert-actions" {
+  source                = "../cert-action-service"
+  project_id            = var.project_id
+  key_id                = google_kms_crypto_key.asymmetric-sign-key.id
+  service_account       = google_service_account.rotator-acc.email
+  tag                   = local.tag
+  key_disabled_period   = var.key_disabled_period
+  key_grace_period      = var.key_grace_period
+  key_propagation_delay = var.key_propagation_delay
+  key_ttl               = var.key_ttl
+  depends_on            = [google_kms_key_ring_iam_member.rotator_acc_roles]
+}
+
 module "public-key" {
   source          = "../public-key"
   project_id      = var.project_id
