@@ -80,4 +80,5 @@ resource "google_artifact_registry_repository" "image_registry" {
 module "jvs_e2e" {
   source     = "../modules/jvs-e2e"
   project_id = var.project_id
+  tag        = "e2e"
 }
