@@ -48,3 +48,13 @@ variable "key_propagation_delay" {
   default     = "2m"
   description = "length of time that it takes for a change in the key in KMS to be reflected in the client"
 }
+
+variable "tag" {
+  type        = string
+  default     = ""
+  description = "Tag is used for service naming; by default the tag is random on each apply; specify a tag to override"
+}
+
+locals {
+  tag = var.tag == "" ? uuid() : var.tag
+}
