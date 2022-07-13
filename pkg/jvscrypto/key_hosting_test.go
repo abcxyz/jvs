@@ -107,6 +107,9 @@ func TestGenerateJWKString(t *testing.T) {
 			t.Cleanup(func() {
 				mockFsCleanupFunc()
 			})
+			if err != nil {
+				t.Fatalf("failed to create fake FireStore client and server: %v", err)
+			}
 			dummyTimestamp := timestamppb.New(time.Date(2019, time.May, 15, 0, 0, 0, 0, time.UTC))
 			keyNameDoc := &firestorepb.Document{
 				Name:       fmt.Sprintf("projects/%s/databases/(default)/documents/JVS/%s", fakeProjectID, firestore.PublicKeyConfigDoc),

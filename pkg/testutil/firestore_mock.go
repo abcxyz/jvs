@@ -25,8 +25,6 @@ import (
 	"strings"
 
 	"cloud.google.com/go/firestore"
-	"github.com/golang/protobuf/ptypes"
-	emptypb "github.com/golang/protobuf/ptypes/empty"
 	"google.golang.org/api/option"
 	firestorepb "google.golang.org/genproto/googleapis/firestore/v1"
 	"google.golang.org/genproto/googleapis/rpc/status"
@@ -34,12 +32,12 @@ import (
 	"google.golang.org/grpc/credentials/insecure"
 	"google.golang.org/grpc/metadata"
 	"google.golang.org/protobuf/proto"
+	"google.golang.org/protobuf/types/known/emptypb"
 )
 
 var (
 	_ = io.EOF
 	//nolint
-	_ = ptypes.MarshalAny
 	_ status.Status
 )
 
@@ -67,7 +65,8 @@ func (s *MockFirestoreServer) GetDocument(ctx context.Context, req *firestorepb.
 	if s.Error != nil {
 		return nil, s.Error
 	}
-	return s.Resps[0].(*firestorepb.Document), nil //nolint, only for testing
+	//nolint
+	return s.Resps[0].(*firestorepb.Document), nil
 }
 
 func (s *MockFirestoreServer) ListDocuments(ctx context.Context, req *firestorepb.ListDocumentsRequest) (*firestorepb.ListDocumentsResponse, error) {
