@@ -78,7 +78,8 @@ func (s *MockFirestoreServer) ListDocuments(ctx context.Context, req *firestorep
 	if s.Error != nil {
 		return nil, s.Error
 	}
-	return s.Resps[0].(*firestorepb.ListDocumentsResponse), nil //nolint, only for testing
+	//nolint
+	return s.Resps[0].(*firestorepb.ListDocumentsResponse), nil
 }
 
 func (s *MockFirestoreServer) CreateDocument(ctx context.Context, req *firestorepb.CreateDocumentRequest) (*firestorepb.Document, error) {
@@ -90,7 +91,8 @@ func (s *MockFirestoreServer) CreateDocument(ctx context.Context, req *firestore
 	if s.Error != nil {
 		return nil, s.Error
 	}
-	return s.Resps[0].(*firestorepb.Document), nil //nolint, only for testing
+	//nolint
+	return s.Resps[0].(*firestorepb.Document), nil
 }
 
 func (s *MockFirestoreServer) UpdateDocument(ctx context.Context, req *firestorepb.UpdateDocumentRequest) (*firestorepb.Document, error) {
@@ -102,7 +104,8 @@ func (s *MockFirestoreServer) UpdateDocument(ctx context.Context, req *firestore
 	if s.Error != nil {
 		return nil, s.Error
 	}
-	return s.Resps[0].(*firestorepb.Document), nil //nolint, only for testing
+	//nolint
+	return s.Resps[0].(*firestorepb.Document), nil
 }
 
 func (s *MockFirestoreServer) DeleteDocument(ctx context.Context, req *firestorepb.DeleteDocumentRequest) (*emptypb.Empty, error) {
@@ -114,7 +117,8 @@ func (s *MockFirestoreServer) DeleteDocument(ctx context.Context, req *firestore
 	if s.Error != nil {
 		return nil, s.Error
 	}
-	return s.Resps[0].(*emptypb.Empty), nil //nolint, only for testing
+	//nolint
+	return s.Resps[0].(*emptypb.Empty), nil
 }
 
 func (s *MockFirestoreServer) BatchGetDocuments(req *firestorepb.BatchGetDocumentsRequest, stream firestorepb.Firestore_BatchGetDocumentsServer) error {
@@ -127,7 +131,8 @@ func (s *MockFirestoreServer) BatchGetDocuments(req *firestorepb.BatchGetDocumen
 		return s.Error
 	}
 	for _, v := range s.Resps {
-		if err := stream.Send(v.(*firestorepb.BatchGetDocumentsResponse)); err != nil { //nolint, only for testing
+		//nolint
+		if err := stream.Send(v.(*firestorepb.BatchGetDocumentsResponse)); err != nil {
 			return err
 		}
 	}
@@ -143,7 +148,8 @@ func (s *MockFirestoreServer) BeginTransaction(ctx context.Context, req *firesto
 	if s.Error != nil {
 		return nil, s.Error
 	}
-	return s.Resps[0].(*firestorepb.BeginTransactionResponse), nil //nolint, only for testing
+	//nolint
+	return s.Resps[0].(*firestorepb.BeginTransactionResponse), nil
 }
 
 func (s *MockFirestoreServer) Commit(ctx context.Context, req *firestorepb.CommitRequest) (*firestorepb.CommitResponse, error) {
@@ -155,7 +161,8 @@ func (s *MockFirestoreServer) Commit(ctx context.Context, req *firestorepb.Commi
 	if s.Error != nil {
 		return nil, s.Error
 	}
-	return s.Resps[0].(*firestorepb.CommitResponse), nil //nolint, only for testing
+	//nolint
+	return s.Resps[0].(*firestorepb.CommitResponse), nil
 }
 
 func (s *MockFirestoreServer) Rollback(ctx context.Context, req *firestorepb.RollbackRequest) (*emptypb.Empty, error) {
@@ -167,7 +174,8 @@ func (s *MockFirestoreServer) Rollback(ctx context.Context, req *firestorepb.Rol
 	if s.Error != nil {
 		return nil, s.Error
 	}
-	return s.Resps[0].(*emptypb.Empty), nil //nolint, only for testing
+	//nolint
+	return s.Resps[0].(*emptypb.Empty), nil
 }
 
 func (s *MockFirestoreServer) RunQuery(req *firestorepb.RunQueryRequest, stream firestorepb.Firestore_RunQueryServer) error {
@@ -180,7 +188,8 @@ func (s *MockFirestoreServer) RunQuery(req *firestorepb.RunQueryRequest, stream 
 		return s.Error
 	}
 	for _, v := range s.Resps {
-		if err := stream.Send(v.(*firestorepb.RunQueryResponse)); err != nil { //nolint, only for testing
+		//nolint
+		if err := stream.Send(v.(*firestorepb.RunQueryResponse)); err != nil {
 			return err
 		}
 	}
@@ -205,9 +214,10 @@ func (s *MockFirestoreServer) Write(stream firestorepb.Firestore_WriteServer) er
 		return s.Error
 	}
 	for _, v := range s.Resps {
+		//nolint
 		if err := stream.Send(v.(*firestorepb.WriteResponse)); err != nil {
 			return err
-		} //nolint, only for testing
+		}
 	}
 	return nil
 }
@@ -230,7 +240,8 @@ func (s *MockFirestoreServer) Listen(stream firestorepb.Firestore_ListenServer) 
 		return s.Error
 	}
 	for _, v := range s.Resps {
-		if err := stream.Send(v.(*firestorepb.ListenResponse)); err != nil { //nolint, only for testing
+		//nolint
+		if err := stream.Send(v.(*firestorepb.ListenResponse)); err != nil {
 			return err
 		}
 	}
@@ -246,7 +257,8 @@ func (s *MockFirestoreServer) ListCollectionIds(ctx context.Context, req *firest
 	if s.Error != nil {
 		return nil, s.Error
 	}
-	return s.Resps[0].(*firestorepb.ListCollectionIdsResponse), nil //nolint, only for testing
+	//nolint
+	return s.Resps[0].(*firestorepb.ListCollectionIdsResponse), nil
 }
 
 func NewMockFS(projectID string) (*firestore.Client, *MockFirestoreServer, func(), error) {

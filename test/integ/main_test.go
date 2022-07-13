@@ -114,7 +114,7 @@ func TestJVS(t *testing.T) {
 	}))
 
 	// TODO: use real firestore client
-	mockFSClient, _, err, mockFsCleanupFunc := jvstestutil.NewMockFS("testProject")
+	mockFSClient, _, mockFsCleanupFunc, err := jvstestutil.NewMockFS("testProject")
 	t.Cleanup(func() {
 		mockFsCleanupFunc()
 	})
