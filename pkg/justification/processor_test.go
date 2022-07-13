@@ -110,7 +110,7 @@ func TestCreateToken(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	mockFSClient, mockFSServer, err, mockFsCleanupFunc := testutil.NewMockFS(fakeProjectID)
+	mockFSClient, mockFSServer, mockFsCleanupFunc, err := testutil.NewMockFS(fakeProjectID)
 	t.Cleanup(func() {
 		mockFsCleanupFunc()
 	})

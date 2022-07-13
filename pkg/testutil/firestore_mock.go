@@ -38,6 +38,7 @@ import (
 
 var (
 	_ = io.EOF
+	//nolint
 	_ = ptypes.MarshalAny
 	_ status.Status
 )
