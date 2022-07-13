@@ -103,7 +103,7 @@ func TestGenerateJWKString(t *testing.T) {
 			mockKMSServer.PrivateKey = privateKey
 			mockKMSServer.PublicKey = string(pemEncodedPub)
 			mockKMSServer.NumVersions = tc.numKeys
-			mockFSClient, mockFSServer, err, mockFsCleanupFunc := testutil.NewMockFS(fakeProjectID)
+			mockFSClient, mockFSServer, mockFsCleanupFunc, err := testutil.NewMockFS(fakeProjectID)
 			t.Cleanup(func() {
 				mockFsCleanupFunc()
 			})

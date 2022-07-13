@@ -486,7 +486,7 @@ func TestCertActions(t *testing.T) {
 		GracePeriod:      2 * time.Second, // rotate after 5 seconds
 		PropagationDelay: time.Second,
 		DisabledPeriod:   time.Second,
-		KeyNames:         []string{keyName},
+		// TODO: fix integration tests after remove KeyName from config
 	}
 	if err := cfg.Validate(); err != nil {
 		t.Fatal(err)
