@@ -23,7 +23,6 @@ import (
 	"encoding/base64"
 	"encoding/pem"
 	"fmt"
-	"net"
 	"testing"
 	"time"
 
@@ -38,8 +37,6 @@ import (
 	kmspb "google.golang.org/genproto/googleapis/cloud/kms/v1"
 	firestorepb "google.golang.org/genproto/googleapis/firestore/v1"
 	"google.golang.org/grpc"
-	"google.golang.org/grpc/credentials/insecure"
-	"google.golang.org/protobuf/proto"
 	"google.golang.org/protobuf/types/known/timestamppb"
 )
 
@@ -48,74 +45,21 @@ func TestGenerateJWKString(t *testing.T) {
 	ctx := context.Background()
 
 	fakeProjectID := "fakeProject"
-	var clientOpt option.ClientOption
-	mockKMSServer := &testutil.MockKeyManagementServer{
-		UnimplementedKeyManagementServiceServer: kmspb.UnimplementedKeyManagementServiceServer{},
-		Reqs:                                    make([]proto.Message, 1),
-		Err:                                     nil,
-		Resps:                                   make([]proto.Message, 1),
-	}
-
 	privateKey, err := ecdsa.GenerateKey(elliptic.P256(), rand.Reader)
 	if err != nil {
 		t.Fatal(err)
 	}
-	mockKMSServer.PrivateKey = privateKey
 	x509EncodedPub, err := x509.MarshalPKIXPublicKey(privateKey.Public())
 	if err != nil {
 		t.Fatal(err)
 	}
 	pemEncodedPub := pem.EncodeToMemory(&pem.Block{Type: "PUBLIC KEY", Bytes: x509EncodedPub})
-	mockKMSServer.PublicKey = string(pemEncodedPub)
 
-	serv := grpc.NewServer()
-	kmspb.RegisterKeyManagementServiceServer(serv, mockKMSServer)
-
-	lis, err := net.Listen("tcp", "localhost:0")
-	if err != nil {
-		t.Fatal(err)
-	}
-	// not checked, but makes linter happy
-	errs := make(chan error, 1)
-	go func() {
-		errs <- serv.Serve(lis)
-		close(errs)
-	}()
-
-	conn, err := grpc.Dial(lis.Addr().String(), grpc.WithTransportCredentials(insecure.NewCredentials()))
-	if err != nil {
-		t.Fatal(err)
-	}
-	clientOpt = option.WithGRPCConn(conn)
-	t.Cleanup(func() {
-		conn.Close()
-	})
-
-	kms, err := kms.NewKeyManagementClient(ctx, clientOpt)
-	if err != nil {
-		t.Fatal(err)
-	}
-
-	cache := cache.New[string](5 * time.Minute)
-	if err != nil {
-		t.Fatal(err)
-	}
-
-	mockFSClient, mockFSServer, err, mockFsCleanupFunc := testutil.NewMockFS(fakeProjectID)
-	t.Cleanup(func() {
-		mockFsCleanupFunc()
-	})
 	if err != nil {
 		t.Fatalf("failed to create fake FireStore client and server: %v", err)
 	}
 	key := "projects/[PROJECT]/locations/[LOCATION]/keyRings/[KEY_RING]/cryptoKeys/[CRYPTO_KEY]"
 	versionSuffix := "[VERSION]"
-	ks := &KeyServer{
-		KMSClient:       kms,
-		FsClient:        mockFSClient,
-		PublicKeyConfig: &config.PublicKeyConfig{ProjectID: fakeProjectID},
-		Cache:           cache,
-	}
 
 	tests := []struct {
 		name       string
@@ -155,11 +99,14 @@ func TestGenerateJWKString(t *testing.T) {
 	for _, tc := range tests {
 		tc := tc
 		t.Run(tc.name, func(t *testing.T) {
-			mockKMSServer.KeyName = key
-			mockKMSServer.VersionName = key + "/cryptoKeyVersions/" + versionSuffix
-			mockKMSServer.Labels = make(map[string]string)
-			mockKMSServer.Labels["primary"] = tc.primary
+			mockKMSServer := testutil.NewMockKeyManagementServer(key, key+"/cryptoKeyVersions/"+versionSuffix, tc.primary)
+			mockKMSServer.PrivateKey = privateKey
+			mockKMSServer.PublicKey = string(pemEncodedPub)
 			mockKMSServer.NumVersions = tc.numKeys
+			mockFSClient, mockFSServer, err, mockFsCleanupFunc := testutil.NewMockFS(fakeProjectID)
+			t.Cleanup(func() {
+				mockFsCleanupFunc()
+			})
 			dummyTimestamp := timestamppb.New(time.Date(2019, time.May, 15, 0, 0, 0, 0, time.UTC))
 			keyNameDoc := &firestorepb.Document{
 				Name:       fmt.Sprintf("projects/%s/databases/(default)/documents/JVS/%s", fakeProjectID, firestore.PublicKeyConfigDoc),
@@ -187,6 +134,31 @@ func TestGenerateJWKString(t *testing.T) {
 				},
 			}
 			mockFSServer.Resps = append(mockFSServer.Resps[:0], batchGetDocsResp)
+
+			_, conn := pkgtestutil.FakeGRPCServer(t, func(s *grpc.Server) {
+				kmspb.RegisterKeyManagementServiceServer(s, mockKMSServer)
+			})
+			clientOpt := option.WithGRPCConn(conn)
+			t.Cleanup(func() {
+				conn.Close()
+			})
+
+			kms, err := kms.NewKeyManagementClient(ctx, clientOpt)
+			if err != nil {
+				t.Fatal(err)
+			}
+
+			cache := cache.New[string](5 * time.Minute)
+			if err != nil {
+				t.Fatal(err)
+			}
+
+			ks := &KeyServer{
+				KMSClient:       kms,
+				FsClient:        mockFSClient,
+				PublicKeyConfig: &config.PublicKeyConfig{ProjectID: fakeProjectID},
+				Cache:           cache,
+			}
 
 			got, err := ks.generateJWKString(ctx)
 			if diff := pkgtestutil.DiffErrString(err, tc.wantErr); diff != "" {

@@ -37,7 +37,7 @@ import (
 	"google.golang.org/grpc/status"
 )
 
-// Processor performs the necessary loggeric to validate a justification, then
+// Processor performs the necessary logic to validate a justification, then
 // mints a token.
 type Processor struct {
 	jvspb.UnimplementedJVSServiceServer

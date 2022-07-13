@@ -14,47 +14,54 @@
  * limitations under the License.
  */
 
+variable "region" {
+  type        = string
+  default     = "us-central1"
+  description = "The default region for resources in the project; individual resources could have more specific variables defined to specify their region/location"
+}
+
 variable "project_id" {
   type        = string
   description = "The GCP project to host the justification verification service."
 }
 
-variable "key_location" {
+variable "artifact_registry_location" {
   type        = string
-  default     = "global"
-  description = "The location where kms key will be created."
+  default     = "us"
+  description = "The artifact registry location."
+}
+
+variable "key_id" {
+  type        = string
+  description = "kms key id for use with signing"
 }
 
 variable "key_ttl" {
   type        = string
-  default     = "10m"
   description = "the length of time that we expect a key to be valid for"
 }
 
 variable "key_grace_period" {
   type        = string
-  default     = "5m"
   description = "length of time between when we rotate the key and when an old Key Version is no longer valid and available"
 }
 
 variable "key_disabled_period" {
   type        = string
-  default     = "5m"
   description = "length of time between when the key is disabled and when we delete the key"
 }
 
 variable "key_propagation_delay" {
   type        = string
-  default     = "2m"
   description = "length of time that it takes for a change in the key in KMS to be reflected in the client"
+}
+
+variable "service_account" {
+  type        = string
+  description = "The service account email address to be used by the JVS"
 }
 
 variable "tag" {
   type        = string
-  default     = ""
-  description = "Tag is used for service naming; by default the tag is random on each apply; specify a tag to override"
-}
-
-locals {
-  tag = var.tag == "" ? uuid() : var.tag
+  description = "Tag that is intended to be unique across ci runs"
 }

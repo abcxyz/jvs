@@ -14,18 +14,11 @@
  * limitations under the License.
  */
 
-output "jvs_server_url" {
-  value = module.jvs-service.jvs_server_url
-}
-
-output "public_key_server_url" {
-  value = module.public-key.public_key_server_url
-}
-
-output "cert_rotator_server_url" {
-  value = module.cert-rotator.cert_rotator_server_url
-}
-
-output "cert_action_server_url" {
-  value = module.cert-actions.cert_action_server_url
+resource "google_monitoring_dashboard" "dashboard" {
+  project = var.project_id
+  dashboard_json = templatefile("${path.module}/dashboard.json", {
+    jvs_service_name           = var.jvs_service_name
+    cert_rotation_service_name = var.cert_rotation_service_name
+    public_key_service_name    = var.public_key_service_name
+  })
 }

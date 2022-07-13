@@ -14,18 +14,22 @@
  * limitations under the License.
  */
 
-output "jvs_server_url" {
-  value = module.jvs-service.jvs_server_url
+variable "project_id" {
+  type        = string
+  description = "The GCP project to host the dashboards."
 }
 
-output "public_key_server_url" {
-  value = module.public-key.public_key_server_url
+variable "jvs_service_name" {
+  type        = string
+  description = "The Justficaition Verification Cloud Run service to monitor."
 }
 
-output "cert_rotator_server_url" {
-  value = module.cert-rotator.cert_rotator_server_url
+variable "cert_rotation_service_name" {
+  type        = string
+  description = "The Cert Rotation Cloud Run service to monitor."
 }
 
-output "cert_action_server_url" {
-  value = module.cert-actions.cert_action_server_url
+variable "public_key_service_name" {
+  type        = string
+  description = "The Public Key Cloud Run service to monitor."
 }
