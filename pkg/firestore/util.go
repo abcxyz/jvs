@@ -38,12 +38,12 @@ type KMSConfig struct {
 // [END firestore_data_custom_type_definition]
 
 func GetKMSConfig(ctx context.Context, fsClient *firestore.Client, collectionPath, docID string) (*KMSConfig, error) {
-	kSnap, err := fsClient.Collection(collectionPath).Doc(docID).Get(ctx)
+	snap, err := fsClient.Collection(collectionPath).Doc(docID).Get(ctx)
 	if err != nil {
 		return nil, fmt.Errorf("failed to read from Collection %s Doc %s: %w", collectionPath, docID, err)
 	}
 	var kmsConfig KMSConfig
-	err = kSnap.DataTo(&kmsConfig)
+	err = snap.DataTo(&kmsConfig)
 	if err != nil {
 		return nil, fmt.Errorf("failed to use firestore document's fields to populate struct: %w", err)
 	}
