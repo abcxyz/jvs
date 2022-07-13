@@ -25,7 +25,6 @@ import (
 	"strings"
 
 	"cloud.google.com/go/firestore"
-	"github.com/golang/protobuf/proto"
 	"github.com/golang/protobuf/ptypes"
 	emptypb "github.com/golang/protobuf/ptypes/empty"
 	"google.golang.org/api/option"
@@ -34,6 +33,7 @@ import (
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/credentials/insecure"
 	"google.golang.org/grpc/metadata"
+	"google.golang.org/protobuf/proto"
 )
 
 var (
