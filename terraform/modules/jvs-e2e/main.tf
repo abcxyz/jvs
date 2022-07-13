@@ -16,10 +16,6 @@
 
 // intended to be run once to set up the environment.
 
-locals {
-  tag = uuid()
-}
-
 resource "google_project_service" "serviceusage" {
   project            = var.project_id
   service            = "serviceusage.googleapis.com"
@@ -160,4 +156,12 @@ module "public-key" {
   service_account = google_service_account.public-key-acc.email
   tag             = local.tag
   depends_on      = [google_kms_key_ring_iam_member.public_key_acc_roles]
+}
+
+module "monitoring" {
+  source                     = "../monitoring"
+  project_id                 = var.project_id
+  jvs_service_name           = "jvs-${local.tag}"
+  cert_rotation_service_name = "cert-rotator-${local.tag}"
+  public_key_service_name    = "pubkey-${local.tag}"
 }
