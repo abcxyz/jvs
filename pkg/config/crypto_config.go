@@ -45,11 +45,8 @@ type CryptoConfig struct {
 	// DisabledPeriod is a time between when the key is disabled, and when we delete the key.
 	DisabledPeriod time.Duration `yaml:"disabled_period,omitempty" env:"DISABLED_PERIOD,overwrite"`
 
-	// TODO: This is intended to be temporary, and will eventually be retrieved from a persistent external datastore
-	// https://github.com/abcxyz/jvs/issues/17
-	// KeyName format: `projects/*/locations/*/keyRings/*/cryptoKeys/*`
-	// https://pkg.go.dev/google.golang.org/genproto/googleapis/cloud/kms/v1#CryptoKey
-	KeyNames []string `yaml:"key_names,omitempty" env:"KEY_NAMES,overwrite"`
+	// ProjectID is the ID of GCP project where the Firestore documents with the KMS key locates
+	ProjectID string `yaml:"project_id,omitempty" env:"PROJECT_ID,overwrite"`
 }
 
 // Validate checks if the config is valid.
@@ -76,6 +73,10 @@ func (cfg *CryptoConfig) Validate() error {
 	// Propagation delay must be lower than grace period.
 	if cfg.PropagationDelay <= 0 || cfg.PropagationDelay > cfg.GracePeriod {
 		err = multierror.Append(err, fmt.Errorf("propagation delay is invalid: %v", cfg.PropagationDelay))
+	}
+
+	if cfg.ProjectID == "" {
+		err = multierror.Append(err, fmt.Errorf("blank project id is invalid"))
 	}
 
 	return err.ErrorOrNil()

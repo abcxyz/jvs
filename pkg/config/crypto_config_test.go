@@ -29,6 +29,7 @@ func TestLoadCryptoConfig(t *testing.T) {
 	t.Parallel()
 	ctx := context.Background()
 
+	fakeProjectID := "fakeProject"
 	tests := []struct {
 		name       string
 		cfg        string
@@ -44,6 +45,7 @@ key_ttl: 720h # 30 days
 grace_period: 2h
 disabled_period: 720h # 30 days
 propagation_delay: 1h
+project_id : fakeProject
 `,
 			wantConfig: &CryptoConfig{
 				Version:          1,
@@ -51,6 +53,7 @@ propagation_delay: 1h
 				GracePeriod:      2 * time.Hour,   // 2 hours
 				DisabledPeriod:   720 * time.Hour, // 30 days
 				PropagationDelay: time.Hour,       // 1 hour
+				ProjectID:        fakeProjectID,
 			},
 		},
 		{
@@ -61,6 +64,7 @@ propagation_time: 30m
 grace_period: 2h
 disabled_period: 720h # 30 days
 propagation_delay: 1h
+project_id : fakeProject
 `,
 			wantConfig: &CryptoConfig{
 				Version:          1,
@@ -68,6 +72,7 @@ propagation_delay: 1h
 				GracePeriod:      2 * time.Hour,   // 2 hours
 				DisabledPeriod:   720 * time.Hour, // 30 days
 				PropagationDelay: time.Hour,       // 1 hour
+				ProjectID:        fakeProjectID,
 			},
 		},
 		{
@@ -78,6 +83,7 @@ key_ttl: 720h # 30 days
 grace_period: 2h
 disabled_period: 720h # 30 days
 propagation_delay: 1h
+project_id : fakeProject
 `,
 			wantConfig: nil,
 			wantErr:    "failed validating config: 1 error occurred:\n\t* unexpected Version 255 want 1\n\n",
@@ -90,6 +96,7 @@ key_ttl: 720h # 30 days
 grace_period: 2h
 disabled_period: 720h # 30 days
 propagation_delay: 3h
+project_id : fakeProject
 `,
 			wantConfig: nil,
 			wantErr:    "failed validating config: 1 error occurred:\n\t* propagation delay is invalid: 3h0m0s\n\n",
@@ -101,15 +108,28 @@ version: 1
 grace_period: 2h
 disabled_period: 720h # 30 days
 propagation_delay: 1h
+project_id : fakeProject
 `,
 			wantConfig: nil,
 			wantErr:    "failed validating config: 1 error occurred:\n\t* key ttl is invalid: 0s\n\n",
 		},
 		{
+			name: "test_blank_project_id",
+			cfg: `
+version: 1
+key_ttl: 720h # 30 days
+grace_period: 2h
+disabled_period: 720h # 30 days
+propagation_delay: 1h
+`,
+			wantConfig: nil,
+			wantErr:    "failed validating config: 1 error occurred:\n\t* blank project id is invalid\n\n",
+		},
+		{
 			name:       "test_empty",
 			cfg:        "",
 			wantConfig: nil,
-			wantErr:    "failed validating config: 4 errors occurred:\n\t* key ttl is invalid: 0s\n\t* grace period is invalid: 0s\n\t* disabled period is invalid: 0s\n\t* propagation delay is invalid: 0s\n\n",
+			wantErr:    "failed validating config: 5 errors occurred:\n\t* key ttl is invalid: 0s\n\t* grace period is invalid: 0s\n\t* disabled period is invalid: 0s\n\t* propagation delay is invalid: 0s\n\t* blank project id is invalid\n\n",
 		},
 		{
 			name: "test_negative",
@@ -119,6 +139,7 @@ key_ttl: -720h
 grace_period: -2h
 disabled_period: -720h
 propagation_delay: -1h
+project_id : fakeProject
 `,
 			wantConfig: nil,
 			wantErr:    "failed validating config: 4 errors occurred:\n\t* key ttl is invalid: -720h0m0s\n\t* grace period is invalid: -2h0m0s\n\t* disabled period is invalid: -720h0m0s\n\t* propagation delay is invalid: -1h0m0s\n\n",
@@ -131,10 +152,12 @@ key_ttl: 720h # 30 days
 grace_period: 2h
 disabled_period: 720h # 30 days
 propagation_delay: 1h
+project_id : fakeProject
 `,
 			envs: map[string]string{
 				"JVS_KEY_TTL":      "1080h", // 45 days
 				"JVS_GRACE_PERIOD": "4h",
+				"JVS_PROJECT_ID":   "fakeProject2",
 			},
 			wantConfig: &CryptoConfig{
 				Version:          1,
@@ -142,6 +165,7 @@ propagation_delay: 1h
 				GracePeriod:      4 * time.Hour,    // 4 hours
 				DisabledPeriod:   720 * time.Hour,  // 30 days
 				PropagationDelay: time.Hour,        // 1 hour
+				ProjectID:        "fakeProject2",
 			},
 		},
 		{
@@ -152,6 +176,7 @@ propagation_delay: 1h
 				"JVS_GRACE_PERIOD":      "4h",
 				"JVS_DISABLED_PERIOD":   "1080h", // 45 days
 				"JVS_PROPAGATION_DELAY": "1h",
+				"JVS_PROJECT_ID":        fakeProjectID,
 			},
 			wantConfig: &CryptoConfig{
 				Version:          1,
@@ -159,6 +184,7 @@ propagation_delay: 1h
 				GracePeriod:      4 * time.Hour,    // 4 hours
 				DisabledPeriod:   1080 * time.Hour, // 45 days
 				PropagationDelay: time.Hour,        // 1 hour
+				ProjectID:        fakeProjectID,
 			},
 		},
 	}
@@ -187,6 +213,7 @@ func TestRotationAge(t *testing.T) {
 		KeyTTL:         720 * time.Hour, // 30 days
 		GracePeriod:    2 * time.Hour,   // 2 hours
 		DisabledPeriod: 720 * time.Hour, // 30 days
+		ProjectID:      "fakeProject",
 	}
 	expected, err := time.ParseDuration("718h") // 29 days, 22 hours
 	if err != nil {
@@ -204,6 +231,7 @@ func TestDestroyAge(t *testing.T) {
 		KeyTTL:         720 * time.Hour, // 30 days
 		GracePeriod:    2 * time.Hour,   // 2 hours
 		DisabledPeriod: 720 * time.Hour, // 30 days
+		ProjectID:      "fakeProject",
 	}
 	expected, err := time.ParseDuration("1440h") // 60 days
 	if err != nil {

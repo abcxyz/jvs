@@ -19,9 +19,11 @@ import (
 	"fmt"
 	"time"
 
+	"cloud.google.com/go/firestore"
 	kms "cloud.google.com/go/kms/apiv1"
 	jvspb "github.com/abcxyz/jvs/apis/v0"
 	"github.com/abcxyz/jvs/pkg/config"
+	fsutil "github.com/abcxyz/jvs/pkg/firestore"
 	"github.com/abcxyz/jvs/pkg/jvscrypto"
 	"github.com/abcxyz/pkg/cache"
 	"github.com/abcxyz/pkg/grpcutil"
@@ -40,6 +42,7 @@ import (
 type Processor struct {
 	jvspb.UnimplementedJVSServiceServer
 	kms         *kms.KeyManagementClient
+	fsClient    *firestore.Client
 	config      *config.JustificationConfig
 	cache       *cache.Cache[*signerWithID]
 	authHandler *grpcutil.JWTAuthenticationHandler
@@ -51,10 +54,11 @@ type signerWithID struct {
 }
 
 // NewProcessor creates a processor with the signer cache initialized.
-func NewProcessor(kms *kms.KeyManagementClient, config *config.JustificationConfig, authHandler *grpcutil.JWTAuthenticationHandler) *Processor {
+func NewProcessor(kms *kms.KeyManagementClient, fsClient *firestore.Client, config *config.JustificationConfig, authHandler *grpcutil.JWTAuthenticationHandler) *Processor {
 	cache := cache.New[*signerWithID](config.SignerCacheTimeout)
 	return &Processor{
 		kms:         kms,
+		fsClient:    fsClient,
 		config:      config,
 		cache:       cache,
 		authHandler: authHandler,
@@ -98,7 +102,14 @@ func (p *Processor) CreateToken(ctx context.Context, request *jvspb.CreateJustif
 }
 
 func (p *Processor) getLatestSigner(ctx context.Context) (*signerWithID, error) {
-	ver, err := jvscrypto.GetLatestKeyVersion(ctx, p.kms, p.config.KeyName)
+	kmsConfig, err := fsutil.GetKMSConfig(ctx, p.fsClient, fsutil.Collection, fsutil.JustificationConfigDoc)
+	if err != nil {
+		return nil, fmt.Errorf("failed to get kms config: %w", err)
+	}
+	if len(kmsConfig.KeyNames) != 1 {
+		return nil, fmt.Errorf("there can be only one key from kmsConfig %v", kmsConfig.KeyNames)
+	}
+	ver, err := jvscrypto.GetLatestKeyVersion(ctx, p.kms, kmsConfig.KeyNames[0])
 	if err != nil {
 		return nil, fmt.Errorf("failed to get key version, %w", err)
 	}

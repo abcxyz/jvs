@@ -40,9 +40,8 @@ type JustificationConfig struct {
 	// Service configuration.
 	Port string `yaml:"port,omitempty" env:"PORT,overwrite"`
 
-	// KeyName format: `projects/*/locations/*/keyRings/*/cryptoKeys/*`
-	// https://pkg.go.dev/google.golang.org/genproto/googleapis/cloud/kms/v1#CryptoKey
-	KeyName string `yaml:"key,omitempty" env:"KEY,overwrite"`
+	// ProjectID is the ID of GCP project where the Firestore documents with the KMS key locates
+	ProjectID string `yaml:"project_id,omitempty" env:"PROJECT_ID,overwrite"`
 
 	// SignerCacheTimeout is the duration that keys stay in cache before being revoked.
 	SignerCacheTimeout time.Duration `yaml:"signer_cache_timeout" env:"SIGNER_CACHE_TIMEOUT,overwrite"`
@@ -60,6 +59,9 @@ func (cfg *JustificationConfig) Validate() error {
 	}
 	if cfg.SignerCacheTimeout <= 0 {
 		err = multierror.Append(err, fmt.Errorf("cache timeout invalid: %d", cfg.SignerCacheTimeout))
+	}
+	if cfg.ProjectID == "" {
+		err = multierror.Append(err, fmt.Errorf("blank project id is invalid"))
 	}
 	return err.ErrorOrNil()
 }

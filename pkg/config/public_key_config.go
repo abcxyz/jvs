@@ -19,17 +19,15 @@ import (
 	"fmt"
 	"time"
 
+	"github.com/hashicorp/go-multierror"
 	"github.com/sethvargo/go-envconfig"
 	"gopkg.in/yaml.v2"
 )
 
 // PublicKeyConfig is the config used for public key hosting.
 type PublicKeyConfig struct {
-	// TODO: This is intended to be temporary, and will eventually be retrieved from a persistent external datastore
-	// https://github.com/abcxyz/jvs/issues/17
-	// KeyName format: `projects/*/locations/*/keyRings/*/cryptoKeys/*`
-	// https://pkg.go.dev/google.golang.org/genproto/googleapis/cloud/kms/v1#PublicKeyKey
-	KeyNames     []string      `yaml:"key_names,omitempty" env:"KEY_NAMES,overwrite"`
+	// ProjectID is the ID of GCP project where the Firestore documents with the KMS key locates
+	ProjectID    string        `yaml:"project_ID,omitempty" env:"PROJECT_ID,overwrite"`
 	CacheTimeout time.Duration `yaml:"cache_timeout" env:"CACHE_TIMEOUT"`
 	Port         string        `env:"PORT,default=8080"`
 }
@@ -52,5 +50,17 @@ func loadPublicKeyConfigFromLookuper(ctx context.Context, b []byte, lookuper env
 		return nil, fmt.Errorf("failed to process environment: %w", err)
 	}
 
+	if err := cfg.Validate(); err != nil {
+		return nil, fmt.Errorf("failed validating config: %w", err)
+	}
 	return cfg, nil
+}
+
+// Validate checks if the config is valid.
+func (cfg *PublicKeyConfig) Validate() error {
+	var err *multierror.Error
+	if cfg.ProjectID == "" {
+		err = multierror.Append(err, fmt.Errorf("blank project id is invalid"))
+	}
+	return err.ErrorOrNil()
 }

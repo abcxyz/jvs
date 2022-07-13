@@ -21,21 +21,22 @@ import (
 	"strings"
 	"time"
 
+	"cloud.google.com/go/firestore"
+	kms "cloud.google.com/go/kms/apiv1"
 	"github.com/abcxyz/jvs/pkg/config"
 	"github.com/abcxyz/pkg/logging"
-	"go.uber.org/zap"
-	"google.golang.org/protobuf/types/known/fieldmaskpb"
-
-	kms "cloud.google.com/go/kms/apiv1"
 	"github.com/hashicorp/go-multierror"
+	"go.uber.org/zap"
 	"google.golang.org/api/iterator"
 	kmspb "google.golang.org/genproto/googleapis/cloud/kms/v1"
+	"google.golang.org/protobuf/types/known/fieldmaskpb"
 )
 
 // RotationHandler handles all necessary rotation actions for asymmetric keys based off a provided
 // configuration.
 type RotationHandler struct {
 	KMSClient    *kms.KeyManagementClient
+	FsClient     *firestore.Client
 	CryptoConfig *config.CryptoConfig
 }
 

@@ -3,6 +3,8 @@ module github.com/abcxyz/jvs
 go 1.18
 
 require (
+	cloud.google.com/go/compute v1.6.1
+	cloud.google.com/go/firestore v1.6.1
 	cloud.google.com/go/kms v1.4.0
 	github.com/abcxyz/pkg v0.0.0-20220627210229-493bf5fec862
 	github.com/golang-jwt/jwt v3.2.2+incompatible
@@ -28,7 +30,6 @@ require (
 
 require (
 	cloud.google.com/go v0.102.0 // indirect
-	cloud.google.com/go/compute v1.6.1 // indirect
 	cloud.google.com/go/iam v0.3.0 // indirect
 	github.com/decred/dcrd/dcrec/secp256k1/v4 v4.0.1 // indirect
 	github.com/fsnotify/fsnotify v1.5.4 // indirect
@@ -64,6 +65,7 @@ require (
 	golang.org/x/net v0.0.0-20220531201128-c960675eff93 // indirect
 	golang.org/x/sys v0.0.0-20220520151302-bc2c85ada10a // indirect
 	golang.org/x/text v0.3.7 // indirect
+	golang.org/x/xerrors v0.0.0-20220517211312-f3a8303e98df // indirect
 	google.golang.org/appengine v1.6.7 // indirect
 	gopkg.in/ini.v1 v1.66.4 // indirect
 	gopkg.in/yaml.v3 v3.0.1 // indirect

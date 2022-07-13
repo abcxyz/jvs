@@ -24,6 +24,7 @@ import (
 	"syscall"
 	"time"
 
+	"cloud.google.com/go/firestore"
 	kms "cloud.google.com/go/kms/apiv1"
 	"github.com/abcxyz/jvs/pkg/config"
 	"github.com/abcxyz/jvs/pkg/jvscrypto"
@@ -62,10 +63,15 @@ func realMain(ctx context.Context) error {
 		return fmt.Errorf("failed to load config: %w", err)
 	}
 
+	fsClient, err := firestore.NewClient(ctx, config.ProjectID)
+	if err != nil {
+		return fmt.Errorf("failed to setup FireSore client: %w", err)
+	}
 	cache := cache.New[string](config.CacheTimeout)
 
 	ks := &jvscrypto.KeyServer{
 		KMSClient:       kmsClient,
+		FsClient:        fsClient,
 		PublicKeyConfig: config,
 		Cache:           cache,
 	}

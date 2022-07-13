@@ -24,8 +24,10 @@ import (
 	"syscall"
 	"time"
 
+	"cloud.google.com/go/firestore"
 	kms "cloud.google.com/go/kms/apiv1"
 	"github.com/abcxyz/jvs/pkg/config"
+	fsutil "github.com/abcxyz/jvs/pkg/firestore"
 	"github.com/abcxyz/jvs/pkg/jvscrypto"
 	"github.com/abcxyz/pkg/logging"
 	"github.com/hashicorp/go-multierror"
@@ -38,12 +40,17 @@ type server struct {
 
 // ServeHTTP rotates a single key's versions.
 func (s *server) ServeHTTP(w http.ResponseWriter, r *http.Request) {
-	logger := logging.FromContext(r.Context())
+	ctx := r.Context()
+	logger := logging.FromContext(ctx)
 	logger.Info("received request", zap.Any("url", r.URL))
 
 	var errs error
-	// TODO: load keys from DB instead. https://github.com/abcxyz/jvs/issues/17
-	for _, key := range s.handler.CryptoConfig.KeyNames {
+	kmsConfig, err := fsutil.GetKMSConfig(ctx, s.handler.FsClient, fsutil.Collection, fsutil.CertRotationConfigDoc)
+	if err != nil {
+		logger.Error("ran into errors while getting kms config", zap.Error(err))
+		return
+	}
+	for _, key := range kmsConfig.KeyNames {
 		if err := s.handler.RotateKey(r.Context(), key); err != nil {
 			errs = multierror.Append(errs, fmt.Errorf("error while rotating key %s: %w", key, err))
 			continue
@@ -88,8 +95,13 @@ func realMain(ctx context.Context) error {
 		return fmt.Errorf("failed to load config: %w", err)
 	}
 
+	fsClient, err := firestore.NewClient(ctx, config.ProjectID)
+	if err != nil {
+		return fmt.Errorf("failed to setup FireSore client: %w", err)
+	}
 	handler := &jvscrypto.RotationHandler{
 		KMSClient:    kmsClient,
+		FsClient:     fsClient,
 		CryptoConfig: config,
 	}
 

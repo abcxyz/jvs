@@ -19,9 +19,11 @@ import (
 	"fmt"
 	"net/http"
 
+	"cloud.google.com/go/firestore"
 	kms "cloud.google.com/go/kms/apiv1"
 
 	"github.com/abcxyz/jvs/pkg/config"
+	fsutil "github.com/abcxyz/jvs/pkg/firestore"
 	"github.com/abcxyz/pkg/cache"
 	"github.com/abcxyz/pkg/logging"
 )
@@ -29,6 +31,7 @@ import (
 // KeyServer provides all valid and active public keys in a JWKS format.
 type KeyServer struct {
 	KMSClient       *kms.KeyManagementClient
+	FsClient        *firestore.Client
 	PublicKeyConfig *config.PublicKeyConfig
 	Cache           *cache.Cache[string]
 }
@@ -51,7 +54,11 @@ func (k *KeyServer) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 
 func (k *KeyServer) generateJWKString(ctx context.Context) (string, error) {
 	jwks := make([]*ECDSAKey, 0)
-	for _, key := range k.PublicKeyConfig.KeyNames {
+	kmsConfig, err := fsutil.GetKMSConfig(ctx, k.FsClient, fsutil.Collection, fsutil.PublicKeyConfigDoc)
+	if err != nil {
+		return "", fmt.Errorf("failed to get kms config: %w", err)
+	}
+	for _, key := range kmsConfig.KeyNames {
 		list, err := JWKList(ctx, k.KMSClient, key)
 		if err != nil {
 			return "", fmt.Errorf("err while determining public keys %w", err)

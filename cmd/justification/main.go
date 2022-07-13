@@ -21,6 +21,7 @@ import (
 	"os/signal"
 	"syscall"
 
+	"cloud.google.com/go/firestore"
 	kms "cloud.google.com/go/kms/apiv1"
 	jvspb "github.com/abcxyz/jvs/apis/v0"
 	"github.com/abcxyz/jvs/pkg/config"
@@ -64,12 +65,17 @@ func realMain(ctx context.Context) error {
 		return fmt.Errorf("failed to setup kms client: %w", err)
 	}
 
+	fsClient, err := firestore.NewClient(ctx, cfg.ProjectID)
+	if err != nil {
+		return fmt.Errorf("failed to setup FireSore client: %w", err)
+	}
+
 	authHandler, err := grpcutil.NewJWTAuthenticationHandler(ctx, grpcutil.NoJWTAuthValidation())
 	if err != nil {
 		return fmt.Errorf("failed to setup grpc auth handler: %w", err)
 	}
 
-	p := justification.NewProcessor(kmsClient, cfg, authHandler)
+	p := justification.NewProcessor(kmsClient, fsClient, cfg, authHandler)
 	jvsAgent := justification.NewJVSAgent(p)
 	jvspb.RegisterJVSServiceServer(s, jvsAgent)
 	reflection.Register(s)

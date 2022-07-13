@@ -36,6 +36,7 @@ import (
 	"github.com/abcxyz/jvs/pkg/config"
 	"github.com/abcxyz/jvs/pkg/justification"
 	"github.com/abcxyz/jvs/pkg/jvscrypto"
+	jvstestutil "github.com/abcxyz/jvs/pkg/testutil"
 	"github.com/abcxyz/pkg/cache"
 	"github.com/abcxyz/pkg/grpcutil"
 	"github.com/abcxyz/pkg/testutil"
@@ -80,8 +81,8 @@ func TestJVS(t *testing.T) {
 
 	cfg := &config.JustificationConfig{
 		Version: 1,
-		KeyName: keyName,
-		Issuer:  "ci-test",
+		// TODO: fix integration tests after remove KeyName from config
+		Issuer: "ci-test",
 	}
 	if err := cfg.Validate(); err != nil {
 		t.Fatal(err)
@@ -112,7 +113,15 @@ func TestJVS(t *testing.T) {
 		"authorization": "Bearer " + validJWT,
 	}))
 
-	p := justification.NewProcessor(kmsClient, cfg, authHandler)
+	// TODO: use real firestore client
+	mockFSClient, _, err, mockFsCleanupFunc := jvstestutil.NewMockFS("testProject")
+	t.Cleanup(func() {
+		mockFsCleanupFunc()
+	})
+	if err != nil {
+		t.Fatalf("failed to create fake FireStore client and server: %v", err)
+	}
+	p := justification.NewProcessor(kmsClient, mockFSClient, cfg, authHandler)
 	jvsAgent := justification.NewJVSAgent(p)
 
 	tests := []struct {
@@ -260,7 +269,7 @@ func TestRotator(t *testing.T) {
 		GracePeriod:      2 * time.Second, // rotate after 5 seconds
 		PropagationDelay: time.Second,
 		DisabledPeriod:   time.Second,
-		KeyNames:         []string{keyName},
+		// TODO: fix integration tests after remove KeyNames from config
 	}
 	if err := cfg.Validate(); err != nil {
 		t.Fatal(err)
@@ -353,7 +362,7 @@ func TestRotator_EdgeCases(t *testing.T) {
 		GracePeriod:      time.Second,
 		PropagationDelay: time.Second,
 		DisabledPeriod:   time.Second,
-		KeyNames:         []string{keyName},
+		// TODO: fix integration tests after remove KeyName from config
 	}
 	if err := cfg.Validate(); err != nil {
 		t.Fatal(err)
@@ -420,7 +429,7 @@ func TestPublicKeys(t *testing.T) {
 	keyName := testCreateKey(ctx, t, kmsClient, keyRing)
 
 	publicKeyConfig := &config.PublicKeyConfig{
-		KeyNames:     []string{keyName},
+		// TODO: fix integration tests after remove KeyName from config
 		CacheTimeout: 10 * time.Second,
 	}
 

@@ -29,6 +29,7 @@ func TestLoadJustificationConfig(t *testing.T) {
 	t.Parallel()
 	ctx := context.Background()
 
+	fakeProjectID := "fakeProject"
 	tests := []struct {
 		name       string
 		cfg        string
@@ -43,28 +44,32 @@ port: 123
 version: 1
 signer_cache_timeout: 1m
 issuer: jvs
+project_id: fakeProject
 `,
 			wantConfig: &JustificationConfig{
 				Port:               "123",
 				Version:            1,
 				SignerCacheTimeout: 1 * time.Minute,
 				Issuer:             "jvs",
+				ProjectID:          fakeProjectID,
 			},
 		},
 		{
 			name: "test_default",
-			cfg:  ``,
+			cfg:  `project_id: fakeProject`,
 			wantConfig: &JustificationConfig{
 				Port:               "8080",
 				Version:            1,
 				SignerCacheTimeout: 5 * time.Minute,
 				Issuer:             "jvs.abcxyz.dev",
+				ProjectID:          fakeProjectID,
 			},
 		},
 		{
 			name: "test_wrong_version",
 			cfg: `
 version: 255
+project_id: fakeProject
 `,
 			wantConfig: nil,
 			wantErr:    "failed validating config: 1 error occurred:\n\t* unexpected Version 255 want 1\n\n",
@@ -73,9 +78,21 @@ version: 255
 			name: "test_invalid_signer_cache_timeout",
 			cfg: `
 signer_cache_timeout: -1m
+project_id: fakeProject
 `,
 			wantConfig: nil,
 			wantErr:    "failed validating config: 1 error occurred:\n\t* cache timeout invalid: -60000000000\n\n",
+		},
+		{
+			name: "test_blank_project_id",
+			cfg: `
+port: 123
+version: 1
+signer_cache_timeout: 1m
+issuer: jvs
+`,
+			wantConfig: nil,
+			wantErr:    "failed validating config: 1 error occurred:\n\t* blank project id is invalid\n\n",
 		},
 		{
 			name: "all_values_specified_env_override",
@@ -84,18 +101,21 @@ version: 1
 port: 8080
 signer_cache_timeout: 1m
 issuer: jvs
+project_id: fakeProject
 `,
 			envs: map[string]string{
 				"JVS_VERSION":              "1",
 				"JVS_PORT":                 "tcp",
 				"JVS_SIGNER_CACHE_TIMEOUT": "2m",
 				"JVS_ISSUER":               "other",
+				"JVS_PROJECT_ID":           "fakeProject2",
 			},
 			wantConfig: &JustificationConfig{
 				Version:            1,
 				Port:               "tcp",
 				SignerCacheTimeout: 2 * time.Minute,
 				Issuer:             "other",
+				ProjectID:          "fakeProject2",
 			},
 		},
 	}

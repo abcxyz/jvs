@@ -21,6 +21,7 @@ import (
 	"crypto/rand"
 	"crypto/x509"
 	"encoding/pem"
+	"fmt"
 	"net"
 	"testing"
 	"time"
@@ -28,6 +29,7 @@ import (
 	kms "cloud.google.com/go/kms/apiv1"
 	jvspb "github.com/abcxyz/jvs/apis/v0"
 	"github.com/abcxyz/jvs/pkg/config"
+	"github.com/abcxyz/jvs/pkg/firestore"
 	"github.com/abcxyz/jvs/pkg/jvscrypto"
 	"github.com/abcxyz/jvs/pkg/testutil"
 	"github.com/abcxyz/pkg/grpcutil"
@@ -37,11 +39,13 @@ import (
 	"github.com/lestrrat-go/jwx/v2/jwk"
 	"google.golang.org/api/option"
 	kmspb "google.golang.org/genproto/googleapis/cloud/kms/v1"
+	firestorepb "google.golang.org/genproto/googleapis/firestore/v1"
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/credentials/insecure"
 	"google.golang.org/grpc/metadata"
 	"google.golang.org/protobuf/proto"
 	"google.golang.org/protobuf/types/known/durationpb"
+	"google.golang.org/protobuf/types/known/timestamppb"
 )
 
 type MockJWTAuthHandler struct {
@@ -56,6 +60,7 @@ func TestCreateToken(t *testing.T) {
 	t.Parallel()
 	ctx := context.Background()
 
+	fakeProjectID := "fakeProject"
 	var clientOpt option.ClientOption
 	mockKeyManagement := &testutil.MockKeyManagementServer{
 		UnimplementedKeyManagementServiceServer: kmspb.UnimplementedKeyManagementServiceServer{},
@@ -105,6 +110,14 @@ func TestCreateToken(t *testing.T) {
 		t.Fatal(err)
 	}
 
+	mockFSClient, mockFSServer, err, mockFsCleanupFunc := testutil.NewMockFS(fakeProjectID)
+	t.Cleanup(func() {
+		mockFsCleanupFunc()
+	})
+	if err != nil {
+		t.Fatalf("failed to create fake FireStore client and server: %v", err)
+	}
+
 	key := "projects/[PROJECT]/locations/[LOCATION]/keyRings/[KEY_RING]/cryptoKeys/[CRYPTO_KEY]"
 	version := key + "[VERSION]"
 	mockKeyManagement.VersionName = version
@@ -134,9 +147,9 @@ func TestCreateToken(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	processor := NewProcessor(c, &config.JustificationConfig{
+	processor := NewProcessor(c, mockFSClient, &config.JustificationConfig{
 		Version:            1,
-		KeyName:            key,
+		ProjectID:          fakeProjectID,
 		SignerCacheTimeout: 5 * time.Minute,
 		Issuer:             config.IssuerDefault,
 	}, authHandler)
@@ -192,6 +205,34 @@ func TestCreateToken(t *testing.T) {
 			mockKeyManagement.Err = tc.serverErr
 
 			mockKeyManagement.Resps = append(mockKeyManagement.Resps[:0], &kmspb.CryptoKeyVersion{})
+
+			dummyTimestamp := timestamppb.New(time.Date(2019, time.May, 15, 0, 0, 0, 0, time.UTC))
+			keyNameDoc := &firestorepb.Document{
+				Name:       fmt.Sprintf("projects/%s/databases/(default)/documents/JVS/%s", fakeProjectID, firestore.JustificationConfigDoc),
+				CreateTime: dummyTimestamp,
+				UpdateTime: dummyTimestamp,
+				Fields: map[string]*firestorepb.Value{
+					"key_names": {
+						ValueType: &firestorepb.Value_ArrayValue{
+							ArrayValue: &firestorepb.ArrayValue{
+								Values: []*firestorepb.Value{
+									{
+										ValueType: &firestorepb.Value_StringValue{
+											StringValue: key,
+										},
+									},
+								},
+							},
+						},
+					},
+				},
+			}
+			batchGetDocsResp := &firestorepb.BatchGetDocumentsResponse{
+				Result: &firestorepb.BatchGetDocumentsResponse_Found{
+					Found: keyNameDoc,
+				},
+			}
+			mockFSServer.Resps = append(mockFSServer.Resps[:0], batchGetDocsResp)
 
 			response, gotErr := processor.CreateToken(ctx, tc.request)
 			if diff := pkgtestutil.DiffErrString(gotErr, tc.wantErr); diff != "" {

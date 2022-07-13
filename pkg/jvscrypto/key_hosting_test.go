@@ -29,21 +29,25 @@ import (
 
 	kms "cloud.google.com/go/kms/apiv1"
 	"github.com/abcxyz/jvs/pkg/config"
+	"github.com/abcxyz/jvs/pkg/firestore"
 	"github.com/abcxyz/jvs/pkg/testutil"
 	"github.com/abcxyz/pkg/cache"
 	pkgtestutil "github.com/abcxyz/pkg/testutil"
 	"github.com/google/go-cmp/cmp"
 	"google.golang.org/api/option"
 	kmspb "google.golang.org/genproto/googleapis/cloud/kms/v1"
+	firestorepb "google.golang.org/genproto/googleapis/firestore/v1"
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/credentials/insecure"
 	"google.golang.org/protobuf/proto"
+	"google.golang.org/protobuf/types/known/timestamppb"
 )
 
 func TestGenerateJWKString(t *testing.T) {
 	t.Parallel()
 	ctx := context.Background()
 
+	fakeProjectID := "fakeProject"
 	var clientOpt option.ClientOption
 	mockKMSServer := &testutil.MockKeyManagementServer{
 		UnimplementedKeyManagementServiceServer: kmspb.UnimplementedKeyManagementServiceServer{},
@@ -97,11 +101,19 @@ func TestGenerateJWKString(t *testing.T) {
 		t.Fatal(err)
 	}
 
+	mockFSClient, mockFSServer, err, mockFsCleanupFunc := testutil.NewMockFS(fakeProjectID)
+	t.Cleanup(func() {
+		mockFsCleanupFunc()
+	})
+	if err != nil {
+		t.Fatalf("failed to create fake FireStore client and server: %v", err)
+	}
 	key := "projects/[PROJECT]/locations/[LOCATION]/keyRings/[KEY_RING]/cryptoKeys/[CRYPTO_KEY]"
 	versionSuffix := "[VERSION]"
 	ks := &KeyServer{
 		KMSClient:       kms,
-		PublicKeyConfig: &config.PublicKeyConfig{KeyNames: []string{key}},
+		FsClient:        mockFSClient,
+		PublicKeyConfig: &config.PublicKeyConfig{ProjectID: fakeProjectID},
 		Cache:           cache,
 	}
 
@@ -148,6 +160,33 @@ func TestGenerateJWKString(t *testing.T) {
 			mockKMSServer.Labels = make(map[string]string)
 			mockKMSServer.Labels["primary"] = tc.primary
 			mockKMSServer.NumVersions = tc.numKeys
+			dummyTimestamp := timestamppb.New(time.Date(2019, time.May, 15, 0, 0, 0, 0, time.UTC))
+			keyNameDoc := &firestorepb.Document{
+				Name:       fmt.Sprintf("projects/%s/databases/(default)/documents/JVS/%s", fakeProjectID, firestore.PublicKeyConfigDoc),
+				CreateTime: dummyTimestamp,
+				UpdateTime: dummyTimestamp,
+				Fields: map[string]*firestorepb.Value{
+					"key_names": {
+						ValueType: &firestorepb.Value_ArrayValue{
+							ArrayValue: &firestorepb.ArrayValue{
+								Values: []*firestorepb.Value{
+									{
+										ValueType: &firestorepb.Value_StringValue{
+											StringValue: key,
+										},
+									},
+								},
+							},
+						},
+					},
+				},
+			}
+			batchGetDocsResp := &firestorepb.BatchGetDocumentsResponse{
+				Result: &firestorepb.BatchGetDocumentsResponse_Found{
+					Found: keyNameDoc,
+				},
+			}
+			mockFSServer.Resps = append(mockFSServer.Resps[:0], batchGetDocsResp)
 
 			got, err := ks.generateJWKString(ctx)
 			if diff := pkgtestutil.DiffErrString(err, tc.wantErr); diff != "" {
