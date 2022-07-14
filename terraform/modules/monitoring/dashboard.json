@@ -15,7 +15,7 @@
             "dataSets": [
               {
                 "minAlignmentPeriod": "60s",
-                "plotType": "STACKED_BAR",
+                "plotType": "LINE",
                 "targetAxis": "Y1",
                 "timeSeriesQuery": {
                   "apiSource": "DEFAULT_CLOUD",
@@ -26,14 +26,9 @@
                       "groupByFields": [
                         "metric.label.\"response_code\""
                       ],
-                      "perSeriesAligner": "ALIGN_COUNT"
+                      "perSeriesAligner": "ALIGN_RATE"
                     },
-                    "filter": "metric.type=\"run.googleapis.com/request_count\" resource.type=\"cloud_run_revision\" resource.label.\"service_name\"=\"${jvs_service_name}\"",
-                    "secondaryAggregation": {
-                      "alignmentPeriod": "60s",
-                      "crossSeriesReducer": "REDUCE_NONE",
-                      "perSeriesAligner": "ALIGN_COUNT"
-                    }
+                    "filter": "metric.type=\"run.googleapis.com/request_count\" resource.type=\"cloud_run_revision\" resource.label.\"service_name\"=\"${jvs_service_name}\""
                   }
                 }
               }
@@ -93,7 +88,7 @@
       {
         "height": 2,
         "widget": {
-          "title": "Cloud Run: Request Count for Cert Rotation Server",
+          "title": "Cloud Run: Memory usage for Justification Verification Server",
           "xyChart": {
             "chartOptions": {
               "mode": "COLOR"
@@ -101,25 +96,17 @@
             "dataSets": [
               {
                 "minAlignmentPeriod": "60s",
-                "plotType": "STACKED_BAR",
+                "plotType": "LINE",
                 "targetAxis": "Y1",
                 "timeSeriesQuery": {
                   "apiSource": "DEFAULT_CLOUD",
                   "timeSeriesFilter": {
                     "aggregation": {
                       "alignmentPeriod": "60s",
-                      "crossSeriesReducer": "REDUCE_SUM",
-                      "groupByFields": [
-                        "metric.label.\"response_code\""
-                      ],
-                      "perSeriesAligner": "ALIGN_COUNT"
+                      "crossSeriesReducer": "REDUCE_PERCENTILE_99",
+                      "perSeriesAligner": "ALIGN_SUM"
                     },
-                    "filter": "metric.type=\"run.googleapis.com/request_count\" resource.type=\"cloud_run_revision\" resource.label.\"service_name\"=\"${cert_rotation_service_name}\"",
-                    "secondaryAggregation": {
-                      "alignmentPeriod": "60s",
-                      "crossSeriesReducer": "REDUCE_NONE",
-                      "perSeriesAligner": "ALIGN_COUNT"
-                    }
+                    "filter": "metric.type=\"run.googleapis.com/container/memory/utilizations\" resource.type=\"cloud_run_revision\" resource.label.\"service_name\"=\"${jvs_service_name}\""
                   }
                 }
               }
@@ -135,6 +122,123 @@
         "width": 2,
         "xPos": 0,
         "yPos": 2
+      },
+      {
+        "height": 2,
+        "widget": {
+          "title": "Cloud Run: CPU usage for Justification Verification Server",
+          "xyChart": {
+            "chartOptions": {
+              "mode": "COLOR"
+            },
+            "dataSets": [
+              {
+                "minAlignmentPeriod": "60s",
+                "plotType": "LINE",
+                "targetAxis": "Y1",
+                "timeSeriesQuery": {
+                  "apiSource": "DEFAULT_CLOUD",
+                  "timeSeriesFilter": {
+                    "aggregation": {
+                      "alignmentPeriod": "60s",
+                      "crossSeriesReducer": "REDUCE_PERCENTILE_99",
+                      "perSeriesAligner": "ALIGN_SUM"
+                    },
+                    "filter": "metric.type=\"run.googleapis.com/container/cpu/utilizations\" resource.type=\"cloud_run_revision\" resource.label.\"service_name\"=\"${jvs_service_name}\""
+                  }
+                }
+              }
+            ],
+            "thresholds": [],
+            "timeshiftDuration": "0s",
+            "yAxis": {
+              "label": "y1Axis",
+              "scale": "LINEAR"
+            }
+          }
+        },
+        "width": 2,
+        "xPos": 2,
+        "yPos": 2
+      },
+      {
+        "height": 2,
+        "widget": {
+          "title": "Cloud Run: Container Instance Count for Justification Verification Server",
+          "xyChart": {
+            "chartOptions": {
+              "mode": "COLOR"
+            },
+            "dataSets": [
+              {
+                "minAlignmentPeriod": "60s",
+                "plotType": "LINE",
+                "targetAxis": "Y1",
+                "timeSeriesQuery": {
+                  "apiSource": "DEFAULT_CLOUD",
+                  "timeSeriesFilter": {
+                    "aggregation": {
+                      "alignmentPeriod": "60s",
+                      "crossSeriesReducer": "REDUCE_SUM",
+                      "perSeriesAligner": "ALIGN_MAX"
+                    },
+                    "filter": "metric.type=\"run.googleapis.com/container/instance_count\" resource.type=\"cloud_run_revision\" resource.label.\"service_name\"=\"${jvs_service_name}\""
+                  }
+                }
+              }
+            ],
+            "thresholds": [],
+            "timeshiftDuration": "0s",
+            "yAxis": {
+              "label": "y1Axis",
+              "scale": "LINEAR"
+            }
+          }
+        },
+        "width": 2,
+        "xPos": 0,
+        "yPos": 4
+      },
+      {
+        "height": 2,
+        "widget": {
+          "title": "Cloud Run: Request Count for Cert Rotation Server",
+          "xyChart": {
+            "chartOptions": {
+              "mode": "COLOR"
+            },
+            "dataSets": [
+              {
+                "minAlignmentPeriod": "60s",
+                "plotType": "LINE",
+                "targetAxis": "Y1",
+                "timeSeriesQuery": {
+                  "apiSource": "DEFAULT_CLOUD",
+                  "timeSeriesFilter": {
+                    "aggregation": {
+                      "alignmentPeriod": "60s",
+                      "crossSeriesReducer": "REDUCE_SUM",
+                      "groupByFields": [
+                        "metric.label.\"response_code\""
+                      ],
+                      "perSeriesAligner": "ALIGN_RATE"
+                    },
+                    "filter": "metric.type=\"run.googleapis.com/request_count\" resource.type=\"cloud_run_revision\" resource.label.\"service_name\"=\"${cert_rotation_service_name}\""
+                  }
+                }
+              }
+            ],
+            "thresholds": [],
+            "timeshiftDuration": "0s",
+            "yAxis": {
+              "label": "y1Axis",
+              "scale": "LINEAR"
+            }
+          }
+        },
+        "width": 2,
+        "xPos": 2,
+        "yPos": 4
       },
       {
         "height": 2,
@@ -158,7 +262,7 @@
                       "groupByFields": [
                         "metric.label.\"response_code\""
                       ],
-                      "perSeriesAligner": "ALIGN_DELTA"
+                      "perSeriesAligner": "ALIGN_SUM"
                     },
                     "filter": "metric.type=\"run.googleapis.com/request_latencies\" resource.type=\"cloud_run_revision\" resource.label.\"service_name\"=\"${cert_rotation_service_name}\""
                   }
@@ -173,13 +277,13 @@
           }
         },
         "width": 2,
-        "xPos": 2,
-        "yPos": 2
+        "xPos": 0,
+        "yPos": 6
       },
       {
         "height": 2,
         "widget": {
-          "title": "Cloud Run: Request Count for Public Key Server",
+          "title": "Cloud Run: Memory usage for Cert Rotation Server",
           "xyChart": {
             "chartOptions": {
               "mode": "COLOR"
@@ -187,25 +291,55 @@
             "dataSets": [
               {
                 "minAlignmentPeriod": "60s",
-                "plotType": "STACKED_BAR",
+                "plotType": "LINE",
                 "targetAxis": "Y1",
                 "timeSeriesQuery": {
                   "apiSource": "DEFAULT_CLOUD",
                   "timeSeriesFilter": {
                     "aggregation": {
                       "alignmentPeriod": "60s",
-                      "crossSeriesReducer": "REDUCE_SUM",
-                      "groupByFields": [
-                        "metric.label.\"response_code\""
-                      ],
-                      "perSeriesAligner": "ALIGN_COUNT"
+                      "crossSeriesReducer": "REDUCE_PERCENTILE_99",
+                      "perSeriesAligner": "ALIGN_SUM"
                     },
-                    "filter": "metric.type=\"run.googleapis.com/request_count\" resource.type=\"cloud_run_revision\" resource.label.\"service_name\"=\"${public_key_service_name}\"",
-                    "secondaryAggregation": {
+                    "filter": "metric.type=\"run.googleapis.com/container/memory/utilizations\" resource.type=\"cloud_run_revision\" resource.label.\"service_name\"=\"${cert_rotation_service_name}\""
+                  }
+                }
+              }
+            ],
+            "thresholds": [],
+            "timeshiftDuration": "0s",
+            "yAxis": {
+              "label": "y1Axis",
+              "scale": "LINEAR"
+            }
+          }
+        },
+        "width": 2,
+        "xPos": 2,
+        "yPos": 6
+      },
+      {
+        "height": 2,
+        "widget": {
+          "title": "Cloud Run: CPU usage for Cert Rotation Server",
+          "xyChart": {
+            "chartOptions": {
+              "mode": "COLOR"
+            },
+            "dataSets": [
+              {
+                "minAlignmentPeriod": "60s",
+                "plotType": "LINE",
+                "targetAxis": "Y1",
+                "timeSeriesQuery": {
+                  "apiSource": "DEFAULT_CLOUD",
+                  "timeSeriesFilter": {
+                    "aggregation": {
                       "alignmentPeriod": "60s",
-                      "crossSeriesReducer": "REDUCE_NONE",
-                      "perSeriesAligner": "ALIGN_COUNT"
-                    }
+                      "crossSeriesReducer": "REDUCE_PERCENTILE_99",
+                      "perSeriesAligner": "ALIGN_SUM"
+                    },
+                    "filter": "metric.type=\"run.googleapis.com/container/cpu/utilizations\" resource.type=\"cloud_run_revision\" resource.label.\"service_name\"=\"${cert_rotation_service_name}\""
                   }
                 }
               }
@@ -220,7 +354,86 @@
         },
         "width": 2,
         "xPos": 0,
-        "yPos": 4
+        "yPos": 8
+      },
+      {
+        "height": 2,
+        "widget": {
+          "title": "Cloud Run: Container Instance Count for Cert Rotation Server",
+          "xyChart": {
+            "chartOptions": {
+              "mode": "COLOR"
+            },
+            "dataSets": [
+              {
+                "minAlignmentPeriod": "60s",
+                "plotType": "LINE",
+                "targetAxis": "Y1",
+                "timeSeriesQuery": {
+                  "apiSource": "DEFAULT_CLOUD",
+                  "timeSeriesFilter": {
+                    "aggregation": {
+                      "alignmentPeriod": "60s",
+                      "crossSeriesReducer": "REDUCE_SUM",
+                      "perSeriesAligner": "ALIGN_MAX"
+                    },
+                    "filter": "metric.type=\"run.googleapis.com/container/instance_count\" resource.type=\"cloud_run_revision\" resource.label.\"service_name\"=\"${cert_rotation_service_name}\""
+                  }
+                }
+              }
+            ],
+            "thresholds": [],
+            "timeshiftDuration": "0s",
+            "yAxis": {
+              "label": "y1Axis",
+              "scale": "LINEAR"
+            }
+          }
+        },
+        "width": 2,
+        "xPos": 2,
+        "yPos": 8
+      },
+      {
+        "height": 2,
+        "widget": {
+          "title": "Cloud Run: Request Count for Public Key Server",
+          "xyChart": {
+            "chartOptions": {
+              "mode": "COLOR"
+            },
+            "dataSets": [
+              {
+                "minAlignmentPeriod": "60s",
+                "plotType": "LINE",
+                "targetAxis": "Y1",
+                "timeSeriesQuery": {
+                  "apiSource": "DEFAULT_CLOUD",
+                  "timeSeriesFilter": {
+                    "aggregation": {
+                      "alignmentPeriod": "60s",
+                      "crossSeriesReducer": "REDUCE_SUM",
+                      "groupByFields": [
+                        "metric.label.\"response_code\""
+                      ],
+                      "perSeriesAligner": "ALIGN_RATE"
+                    },
+                    "filter": "metric.type=\"run.googleapis.com/request_count\" resource.type=\"cloud_run_revision\" resource.label.\"service_name\"=\"${public_key_service_name}\""
+                  }
+                }
+              }
+            ],
+            "thresholds": [],
+            "timeshiftDuration": "0s",
+            "yAxis": {
+              "label": "y1Axis",
+              "scale": "LINEAR"
+            }
+          }
+        },
+        "width": 2,
+        "xPos": 0,
+        "yPos": 10
       },
       {
         "height": 2,
@@ -260,7 +473,121 @@
         },
         "width": 2,
         "xPos": 2,
-        "yPos": 4
+        "yPos": 10
+      },
+      {
+        "height": 2,
+        "widget": {
+          "title": "Cloud Run: Memory usage for Public Key Server",
+          "xyChart": {
+            "chartOptions": {
+              "mode": "COLOR"
+            },
+            "dataSets": [
+              {
+                "minAlignmentPeriod": "60s",
+                "plotType": "LINE",
+                "targetAxis": "Y1",
+                "timeSeriesQuery": {
+                  "apiSource": "DEFAULT_CLOUD",
+                  "timeSeriesFilter": {
+                    "aggregation": {
+                      "alignmentPeriod": "60s",
+                      "crossSeriesReducer": "REDUCE_PERCENTILE_99",
+                      "perSeriesAligner": "ALIGN_SUM"
+                    },
+                    "filter": "metric.type=\"run.googleapis.com/container/memory/utilizations\" resource.type=\"cloud_run_revision\" resource.label.\"service_name\"=\"${public_key_service_name}\""
+                  }
+                }
+              }
+            ],
+            "thresholds": [],
+            "timeshiftDuration": "0s",
+            "yAxis": {
+              "label": "y1Axis",
+              "scale": "LINEAR"
+            }
+          }
+        },
+        "width": 2,
+        "xPos": 0,
+        "yPos": 12
+      },
+      {
+        "height": 2,
+        "widget": {
+          "title": "Cloud Run: CPU usage for Public Key Server",
+          "xyChart": {
+            "chartOptions": {
+              "mode": "COLOR"
+            },
+            "dataSets": [
+              {
+                "minAlignmentPeriod": "60s",
+                "plotType": "LINE",
+                "targetAxis": "Y1",
+                "timeSeriesQuery": {
+                  "apiSource": "DEFAULT_CLOUD",
+                  "timeSeriesFilter": {
+                    "aggregation": {
+                      "alignmentPeriod": "60s",
+                      "crossSeriesReducer": "REDUCE_PERCENTILE_99",
+                      "perSeriesAligner": "ALIGN_SUM"
+                    },
+                    "filter": "metric.type=\"run.googleapis.com/container/cpu/utilizations\" resource.type=\"cloud_run_revision\" resource.label.\"service_name\"=\"${public_key_service_name}\""
+                  }
+                }
+              }
+            ],
+            "thresholds": [],
+            "timeshiftDuration": "0s",
+            "yAxis": {
+              "label": "y1Axis",
+              "scale": "LINEAR"
+            }
+          }
+        },
+        "width": 2,
+        "xPos": 2,
+        "yPos": 12
+      },
+      {
+        "height": 2,
+        "widget": {
+          "title": "Cloud Run: Container Instance Count for Public Key Server",
+          "xyChart": {
+            "chartOptions": {
+              "mode": "COLOR"
+            },
+            "dataSets": [
+              {
+                "minAlignmentPeriod": "60s",
+                "plotType": "LINE",
+                "targetAxis": "Y1",
+                "timeSeriesQuery": {
+                  "apiSource": "DEFAULT_CLOUD",
+                  "timeSeriesFilter": {
+                    "aggregation": {
+                      "alignmentPeriod": "60s",
+                      "crossSeriesReducer": "REDUCE_SUM",
+                      "perSeriesAligner": "ALIGN_MAX"
+                    },
+                    "filter": "metric.type=\"run.googleapis.com/container/instance_count\" resource.type=\"cloud_run_revision\" resource.label.\"service_name\"=\"${public_key_service_name}\""
+                  }
+                }
+              }
+            ],
+            "thresholds": [],
+            "timeshiftDuration": "0s",
+            "yAxis": {
+              "label": "y1Axis",
+              "scale": "LINEAR"
+            }
+          }
+        },
+        "width": 2,
+        "xPos": 0,
+        "yPos": 14
       }
     ]
   }
