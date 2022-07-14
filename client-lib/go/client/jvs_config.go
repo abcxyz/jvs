@@ -19,54 +19,40 @@ import (
 	"fmt"
 	"time"
 
+	"github.com/abcxyz/jvs/pkg/config"
 	"github.com/hashicorp/go-multierror"
 	"github.com/sethvargo/go-envconfig"
 	"gopkg.in/yaml.v2"
 )
 
-const (
-	// Version default for config.
-	Version             = 1
-	CacheTimeoutDefault = 5 * time.Minute
-)
+var versions = config.NewVersionList("1")
 
 // JVSConfig is the jvs client configuration.
 type JVSConfig struct {
 	// Version is the version of the config.
-	Version uint8 `yaml:"version,omitempty" env:"VERSION,overwrite"`
+	Version string `yaml:"version,omitempty" env:"VERSION,overwrite,default=1"`
 
 	// JVS Endpoint. Expected to be fully qualified, including port. ex. http://127.0.0.1:8080
 	JVSEndpoint string `yaml:"endpoint,omitempty" env:"ENDPOINT,overwrite"`
 
 	// CacheTimeout is the duration that keys stay in cache before being revoked.
-	CacheTimeout time.Duration `yaml:"cache_timeout" env:"CACHE_TIMEOUT,overwrite"`
+	CacheTimeout time.Duration `yaml:"cache_timeout" env:"CACHE_TIMEOUT,overwrite,default=5m"`
 }
 
 // Validate checks if the config is valid.
 func (cfg *JVSConfig) Validate() error {
-	cfg.SetDefault()
 	var err *multierror.Error
-	if cfg.Version != Version {
-		err = multierror.Append(err, fmt.Errorf("unexpected Version %d want %d", cfg.Version, Version))
+	if !versions.Contains(cfg.Version) {
+		err = multierror.Append(err, fmt.Errorf("version %q is invalid, valid versions are: %q",
+			cfg.Version, versions.List()))
 	}
 	if cfg.JVSEndpoint == "" {
 		err = multierror.Append(err, fmt.Errorf("endpoint must be set"))
 	}
 	if cfg.CacheTimeout <= 0 {
-		err = multierror.Append(err, fmt.Errorf("cache timeout invalid: %d", cfg.CacheTimeout))
+		err = multierror.Append(err, fmt.Errorf("cache timeout must be a positive duration, got %q", cfg.CacheTimeout))
 	}
 	return err.ErrorOrNil()
-}
-
-// SetDefault sets defaults for the config.
-func (cfg *JVSConfig) SetDefault() {
-	if cfg.Version == 0 {
-		cfg.Version = Version
-	}
-	if cfg.CacheTimeout == 0 {
-		// env config lib doesn't gracefully handle env overrides with defaults, have to set manually.
-		cfg.CacheTimeout = CacheTimeoutDefault
-	}
 }
 
 // LoadJVSConfig calls the necessary methods to load in config using the OsLookuper which finds env variables specified on the host.

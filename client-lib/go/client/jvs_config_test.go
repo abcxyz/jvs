@@ -44,7 +44,7 @@ endpoint: example.com:8080
 cache_timeout: 1m
 `,
 			wantConfig: &JVSConfig{
-				Version:      1,
+				Version:      "1",
 				JVSEndpoint:  "example.com:8080",
 				CacheTimeout: time.Minute,
 			},
@@ -55,7 +55,7 @@ cache_timeout: 1m
 endpoint: example.com:8080
 `,
 			wantConfig: &JVSConfig{
-				Version:      1,
+				Version:      "1",
 				JVSEndpoint:  "example.com:8080",
 				CacheTimeout: 5 * time.Minute,
 			},
@@ -68,7 +68,7 @@ endpoint: example.com:8080
 cache_timeout: 1m
 `,
 			wantConfig: nil,
-			wantErr:    "failed validating config: 1 error occurred:\n\t* unexpected Version 255 want 1\n\n",
+			wantErr:    `version "255" is invalid, valid versions are:`,
 		},
 		{
 			name: "test_invalid_timeout",
@@ -78,7 +78,7 @@ endpoint: example.com:8080
 cache_timeout: -1m
 `,
 			wantConfig: nil,
-			wantErr:    "failed validating config: 1 error occurred:\n\t* cache timeout invalid: -60000000000\n\n",
+			wantErr:    `cache timeout must be a positive duration, got "-1m0s"`,
 		},
 		{
 			name: "all_values_specified_env_override",
@@ -93,7 +93,7 @@ cache_timeout: 1m
 				"JVS_CACHE_TIMEOUT": "2m",
 			},
 			wantConfig: &JVSConfig{
-				Version:      1,
+				Version:      "1",
 				JVSEndpoint:  "other.net:443",
 				CacheTimeout: 2 * time.Minute,
 			},

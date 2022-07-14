@@ -91,7 +91,7 @@ func TestValidateJWT(t *testing.T) {
 	})
 
 	client, err := NewJVSClient(ctx, &JVSConfig{
-		Version:      1,
+		Version:      "1",
 		JVSEndpoint:  svr.URL + path,
 		CacheTimeout: 5 * time.Minute,
 	})

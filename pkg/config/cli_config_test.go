@@ -21,21 +21,31 @@ import (
 	"github.com/google/go-cmp/cmp"
 )
 
-func TestValidateCLIConfig(t *testing.T) {
+func TestCLIConfig_Validate(t *testing.T) {
 	t.Parallel()
 
 	tests := []struct {
 		name    string
 		cfg     *CLIConfig
 		wantErr string
-	}{{
-		name: "no_error",
-		cfg:  &CLIConfig{Server: "example.com"},
-	}, {
-		name:    "missing_server_error",
-		cfg:     &CLIConfig{},
-		wantErr: "missing JVS server address",
-	}}
+	}{
+		{
+			name: "no_error",
+			cfg:  &CLIConfig{Server: "example.com"},
+		},
+		{
+			name: "bad_version",
+			cfg: &CLIConfig{
+				Version: "255",
+			},
+			wantErr: "missing JVS server address",
+		},
+		{
+			name:    "missing_server_error",
+			cfg:     &CLIConfig{},
+			wantErr: "missing JVS server address",
+		},
+	}
 
 	for _, tc := range tests {
 		tc := tc
@@ -49,7 +59,7 @@ func TestValidateCLIConfig(t *testing.T) {
 	}
 }
 
-func TestSetDefault(t *testing.T) {
+func TestCLIConfig_SetDefault(t *testing.T) {
 	t.Parallel()
 
 	tests := []struct {
@@ -60,15 +70,17 @@ func TestSetDefault(t *testing.T) {
 		name: "default_empty_authentication",
 		cfg:  &CLIConfig{},
 		wantCfg: &CLIConfig{
-			Version:        1,
+			Version:        "1",
 			Authentication: &CLIAuthentication{},
 		},
 	}}
 
 	for _, tc := range tests {
 		tc := tc
+
 		t.Run(tc.name, func(t *testing.T) {
 			t.Parallel()
+
 			tc.cfg.SetDefault()
 			if diff := cmp.Diff(tc.wantCfg, tc.cfg); diff != "" {
 				t.Errorf("config with defaults (-want,+got):\n%s", diff)

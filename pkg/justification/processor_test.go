@@ -135,10 +135,10 @@ func TestCreateToken(t *testing.T) {
 	}
 
 	processor := NewProcessor(c, &config.JustificationConfig{
-		Version:            1,
+		Version:            "1",
 		KeyName:            key,
 		SignerCacheTimeout: 5 * time.Minute,
-		Issuer:             config.IssuerDefault,
+		Issuer:             "test-iss",
 	}, authHandler)
 
 	hour, err := time.ParseDuration("3600s")
@@ -226,11 +226,11 @@ func validateClaims(tb testing.TB, provided *jvspb.JVSClaims, expectedJustificat
 	tb.Helper()
 
 	// test the standard claims filled by processor
-	if provided.StandardClaims.Issuer != config.IssuerDefault {
-		tb.Errorf("audience value %s incorrect, expected %s", provided.StandardClaims.Issuer, config.IssuerDefault)
+	if got, want := provided.Issuer, "test-iss"; got != want {
+		tb.Errorf("audience value %s incorrect, expected %s", got, want)
 	}
-	if provided.StandardClaims.Subject != "user@example.com" {
-		tb.Errorf("subject value %s incorrect, expected %s", provided.StandardClaims.Subject, "user@example.com")
+	if got, want := provided.Subject, "user@example.com"; got != want {
+		tb.Errorf("subject value %s incorrect, expected %s", got, want)
 	}
 	// TODO: as we add more standard claims, add more validations.
 
