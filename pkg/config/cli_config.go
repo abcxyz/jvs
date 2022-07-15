@@ -20,17 +20,15 @@ import (
 	"github.com/hashicorp/go-multierror"
 )
 
-const (
-	// DefaultCLIConfigVersion is the default CLI config version.
-	DefaultCLIConfigVersion = 1
-)
+// CLIConfigVersions is the list of allowed versions for the CLIConfig.
+var CLIConfigVersions = NewVersionList("1")
 
 type CLIConfig struct {
 	// Version is the version of the config.
-	Version uint8 `yaml:"version,omitempty" env:"VERSION,overwrite"`
+	Version string `yaml:"version,omitempty"`
 
 	// Server is the JVS server address.
-	Server string `yaml:"server,omitempty" env:"SERVER,overwrite"`
+	Server string `yaml:"server,omitempty"`
 
 	// Authentication is the authentication config.
 	Authentication *CLIAuthentication `yaml:"authentication,omitempty"`
@@ -47,6 +45,12 @@ func (cfg *CLIConfig) Validate() error {
 	cfg.SetDefault()
 
 	var err *multierror.Error
+
+	if !CLIConfigVersions.Contains(cfg.Version) {
+		err = multierror.Append(err, fmt.Errorf("version %q is invalid, valid versions are: %q",
+			cfg.Version, CLIConfigVersions.List()))
+	}
+
 	if cfg.Server == "" {
 		err = multierror.Append(err, fmt.Errorf("missing JVS server address"))
 	}
@@ -56,8 +60,8 @@ func (cfg *CLIConfig) Validate() error {
 
 // SetDefault sets default for the config.
 func (cfg *CLIConfig) SetDefault() {
-	if cfg.Version == 0 {
-		cfg.Version = DefaultCLIConfigVersion
+	if cfg.Version == "" {
+		cfg.Version = "1"
 	}
 	if cfg.Authentication == nil {
 		cfg.Authentication = &CLIAuthentication{}

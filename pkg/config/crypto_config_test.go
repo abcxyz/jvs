@@ -25,6 +25,25 @@ import (
 	"github.com/sethvargo/go-envconfig"
 )
 
+func TestCryptoConfig_Defaults(t *testing.T) {
+	t.Parallel()
+
+	ctx := context.Background()
+
+	var cryptoConfig CryptoConfig
+	if err := envconfig.ProcessWith(ctx, &cryptoConfig, envconfig.MapLookuper(nil)); err != nil {
+		t.Fatal(err)
+	}
+
+	want := &CryptoConfig{
+		Version: "1",
+	}
+
+	if diff := cmp.Diff(want, &cryptoConfig); diff != "" {
+		t.Errorf("config with defaults (-want, +got):\n%s", diff)
+	}
+}
+
 func TestLoadCryptoConfig(t *testing.T) {
 	t.Parallel()
 	ctx := context.Background()
@@ -46,7 +65,7 @@ disabled_period: 720h # 30 days
 propagation_delay: 1h
 `,
 			wantConfig: &CryptoConfig{
-				Version:          1,
+				Version:          "1",
 				KeyTTL:           720 * time.Hour, // 30 days
 				GracePeriod:      2 * time.Hour,   // 2 hours
 				DisabledPeriod:   720 * time.Hour, // 30 days
@@ -63,7 +82,7 @@ disabled_period: 720h # 30 days
 propagation_delay: 1h
 `,
 			wantConfig: &CryptoConfig{
-				Version:          1,
+				Version:          "1",
 				KeyTTL:           720 * time.Hour, // 30 days
 				GracePeriod:      2 * time.Hour,   // 2 hours
 				DisabledPeriod:   720 * time.Hour, // 30 days
@@ -74,54 +93,75 @@ propagation_delay: 1h
 			name: "test_wrong_version",
 			cfg: `
 version: 255
-key_ttl: 720h # 30 days
-grace_period: 2h
-disabled_period: 720h # 30 days
-propagation_delay: 1h
 `,
 			wantConfig: nil,
-			wantErr:    "failed validating config: 1 error occurred:\n\t* unexpected Version 255 want 1\n\n",
+			wantErr:    `version "255" is invalid, valid versions are:`,
 		},
 		{
-			name: "test_invalid_propagation_delay",
-			cfg: `
-version: 1
-key_ttl: 720h # 30 days
-grace_period: 2h
-disabled_period: 720h # 30 days
-propagation_delay: 3h
-`,
+			name:       "test_empty_key_ttl",
+			cfg:        ``,
 			wantConfig: nil,
-			wantErr:    "failed validating config: 1 error occurred:\n\t* propagation delay is invalid: 3h0m0s\n\n",
+			wantErr:    `key ttl must be a positive duration, got "0s"`,
 		},
 		{
-			name: "test_empty_ttl",
-			cfg: `
-version: 1
-grace_period: 2h
-disabled_period: 720h # 30 days
-propagation_delay: 1h
-`,
+			name:       "test_empty_grace_period",
+			cfg:        ``,
 			wantConfig: nil,
-			wantErr:    "failed validating config: 1 error occurred:\n\t* key ttl is invalid: 0s\n\n",
+			wantErr:    `grace period must be a positive duration, got "0s"`,
 		},
 		{
-			name:       "test_empty",
-			cfg:        "",
+			name:       "test_empty_disabled_period",
+			cfg:        ``,
 			wantConfig: nil,
-			wantErr:    "failed validating config: 4 errors occurred:\n\t* key ttl is invalid: 0s\n\t* grace period is invalid: 0s\n\t* disabled period is invalid: 0s\n\t* propagation delay is invalid: 0s\n\n",
+			wantErr:    `disabled period must be a positive duration, got "0s"`,
 		},
 		{
-			name: "test_negative",
+			name:       "test_empty_propagation_delay",
+			cfg:        ``,
+			wantConfig: nil,
+			wantErr:    `propagation delay must be a positive duration, got "0s"`,
+		},
+
+		{
+			name: "test_negative_key_ttl",
 			cfg: `
-version: 1
 key_ttl: -720h
+`,
+			wantConfig: nil,
+			wantErr:    `key ttl must be a positive duration, got "-720h0m0s"`,
+		},
+		{
+			name: "test_negative_grace_period",
+			cfg: `
 grace_period: -2h
+`,
+			wantConfig: nil,
+			wantErr:    `grace period must be a positive duration, got "-2h0m0s"`,
+		},
+		{
+			name: "test_negative_disabled_period",
+			cfg: `
 disabled_period: -720h
+`,
+			wantConfig: nil,
+			wantErr:    `disabled period must be a positive duration, got "-720h0m0s"`,
+		},
+		{
+			name: "test_negative_propagation_delay",
+			cfg: `
 propagation_delay: -1h
 `,
 			wantConfig: nil,
-			wantErr:    "failed validating config: 4 errors occurred:\n\t* key ttl is invalid: -720h0m0s\n\t* grace period is invalid: -2h0m0s\n\t* disabled period is invalid: -720h0m0s\n\t* propagation delay is invalid: -1h0m0s\n\n",
+			wantErr:    `propagation delay must be a positive duration, got "-1h0m0s"`,
+		},
+		{
+			name: "test_propagation_delay_greater_than_grace_period",
+			cfg: `
+grace_period: 1h
+propagation_delay: 2h
+`,
+			wantConfig: nil,
+			wantErr:    `propagation delay "2h0m0s" must be less than grace period "1h0m0s"`,
 		},
 		{
 			name: "all_values_specified_env_override",
@@ -137,7 +177,7 @@ propagation_delay: 1h
 				"JVS_GRACE_PERIOD": "4h",
 			},
 			wantConfig: &CryptoConfig{
-				Version:          1,
+				Version:          "1",
 				KeyTTL:           1080 * time.Hour, // 45 days
 				GracePeriod:      4 * time.Hour,    // 4 hours
 				DisabledPeriod:   720 * time.Hour,  // 30 days
@@ -154,7 +194,7 @@ propagation_delay: 1h
 				"JVS_PROPAGATION_DELAY": "1h",
 			},
 			wantConfig: &CryptoConfig{
-				Version:          1,
+				Version:          "1",
 				KeyTTL:           1080 * time.Hour, // 45 days
 				GracePeriod:      4 * time.Hour,    // 4 hours
 				DisabledPeriod:   1080 * time.Hour, // 45 days
@@ -165,8 +205,10 @@ propagation_delay: 1h
 
 	for _, tc := range tests {
 		tc := tc
+
 		t.Run(tc.name, func(t *testing.T) {
 			t.Parallel()
+
 			lookuper := envconfig.MapLookuper(tc.envs)
 			content := bytes.NewBufferString(tc.cfg).Bytes()
 			gotConfig, err := loadCryptoConfigFromLookuper(ctx, content, lookuper)
@@ -182,8 +224,9 @@ propagation_delay: 1h
 
 func TestRotationAge(t *testing.T) {
 	t.Parallel()
+
 	cfg := &CryptoConfig{
-		Version:        1,
+		Version:        "1",
 		KeyTTL:         720 * time.Hour, // 30 days
 		GracePeriod:    2 * time.Hour,   // 2 hours
 		DisabledPeriod: 720 * time.Hour, // 30 days
@@ -199,8 +242,9 @@ func TestRotationAge(t *testing.T) {
 
 func TestDestroyAge(t *testing.T) {
 	t.Parallel()
+
 	cfg := &CryptoConfig{
-		Version:        1,
+		Version:        "1",
 		KeyTTL:         720 * time.Hour, // 30 days
 		GracePeriod:    2 * time.Hour,   // 2 hours
 		DisabledPeriod: 720 * time.Hour, // 30 days
