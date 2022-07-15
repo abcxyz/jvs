@@ -40,7 +40,7 @@ func TestInitCfg(t *testing.T) {
 	initCfg()
 
 	wantCfg := &config.CLIConfig{
-		Version:        1,
+		Version:        "1",
 		Server:         "https://example.com",
 		Authentication: &config.CLIAuthentication{},
 	}

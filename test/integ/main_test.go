@@ -79,9 +79,10 @@ func TestJVS(t *testing.T) {
 	})
 
 	cfg := &config.JustificationConfig{
-		Version: 1,
-		KeyName: keyName,
-		Issuer:  "ci-test",
+		Version:            "1",
+		KeyName:            keyName,
+		Issuer:             "ci-test",
+		SignerCacheTimeout: 1 * time.Nanosecond, // no caching
 	}
 	if err := cfg.Validate(); err != nil {
 		t.Fatal(err)
@@ -255,7 +256,7 @@ func TestRotator(t *testing.T) {
 	kmsClient, keyName := testSetupRotator(ctx, t)
 
 	cfg := &config.CryptoConfig{
-		Version:          1,
+		Version:          "1",
 		KeyTTL:           7 * time.Second,
 		GracePeriod:      2 * time.Second, // rotate after 5 seconds
 		PropagationDelay: time.Second,
@@ -348,7 +349,7 @@ func TestRotator_EdgeCases(t *testing.T) {
 	kmsClient, keyName := testSetupRotator(ctx, t)
 
 	cfg := &config.CryptoConfig{
-		Version:          1,
+		Version:          "1",
 		KeyTTL:           99 * time.Hour,
 		GracePeriod:      time.Second,
 		PropagationDelay: time.Second,
@@ -472,7 +473,7 @@ func TestCertActions(t *testing.T) {
 	kmsClient, keyName := testSetupRotator(ctx, t)
 
 	cfg := &config.CryptoConfig{
-		Version:          1,
+		Version:          "1",
 		KeyTTL:           7 * time.Second,
 		GracePeriod:      2 * time.Second, // rotate after 5 seconds
 		PropagationDelay: time.Second,

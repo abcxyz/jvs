@@ -25,6 +25,28 @@ import (
 	"github.com/sethvargo/go-envconfig"
 )
 
+func TestJustificationConfig_Defaults(t *testing.T) {
+	t.Parallel()
+
+	ctx := context.Background()
+
+	var justificationConfig JustificationConfig
+	if err := envconfig.ProcessWith(ctx, &justificationConfig, envconfig.MapLookuper(nil)); err != nil {
+		t.Fatal(err)
+	}
+
+	want := &JustificationConfig{
+		Version:            "1",
+		Port:               "8080",
+		SignerCacheTimeout: 5 * time.Minute,
+		Issuer:             "jvs.abcxyz.dev",
+	}
+
+	if diff := cmp.Diff(want, &justificationConfig); diff != "" {
+		t.Errorf("config with defaults (-want, +got):\n%s", diff)
+	}
+}
+
 func TestLoadJustificationConfig(t *testing.T) {
 	t.Parallel()
 	ctx := context.Background()
@@ -46,7 +68,7 @@ issuer: jvs
 `,
 			wantConfig: &JustificationConfig{
 				Port:               "123",
-				Version:            1,
+				Version:            "1",
 				SignerCacheTimeout: 1 * time.Minute,
 				Issuer:             "jvs",
 			},
@@ -56,7 +78,7 @@ issuer: jvs
 			cfg:  ``,
 			wantConfig: &JustificationConfig{
 				Port:               "8080",
-				Version:            1,
+				Version:            "1",
 				SignerCacheTimeout: 5 * time.Minute,
 				Issuer:             "jvs.abcxyz.dev",
 			},
@@ -67,7 +89,7 @@ issuer: jvs
 version: 255
 `,
 			wantConfig: nil,
-			wantErr:    "failed validating config: 1 error occurred:\n\t* unexpected Version 255 want 1\n\n",
+			wantErr:    `version "255" is invalid, valid versions are:`,
 		},
 		{
 			name: "test_invalid_signer_cache_timeout",
@@ -75,7 +97,7 @@ version: 255
 signer_cache_timeout: -1m
 `,
 			wantConfig: nil,
-			wantErr:    "failed validating config: 1 error occurred:\n\t* cache timeout invalid: -60000000000\n\n",
+			wantErr:    `cache timeout must be a positive duration, got -1m0s`,
 		},
 		{
 			name: "all_values_specified_env_override",
@@ -92,7 +114,7 @@ issuer: jvs
 				"JVS_ISSUER":               "other",
 			},
 			wantConfig: &JustificationConfig{
-				Version:            1,
+				Version:            "1",
 				Port:               "tcp",
 				SignerCacheTimeout: 2 * time.Minute,
 				Issuer:             "other",
@@ -102,8 +124,10 @@ issuer: jvs
 
 	for _, tc := range tests {
 		tc := tc
+
 		t.Run(tc.name, func(t *testing.T) {
 			t.Parallel()
+
 			lookuper := envconfig.MapLookuper(tc.envs)
 			content := bytes.NewBufferString(tc.cfg).Bytes()
 			gotConfig, err := loadJustificationConfigFromLookuper(ctx, content, lookuper)
