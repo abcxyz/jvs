@@ -25,15 +25,13 @@ import (
 	"gopkg.in/yaml.v2"
 )
 
-const (
-	// Version default for config.
-	Version = 1
-)
+// CryptoConfigVersions is the list of allowed versions for the CryptoConfig.
+var CryptoConfigVersions = NewVersionList("1")
 
 // CryptoConfig is the full jvs config.
 type CryptoConfig struct {
 	// Version is the version of the config.
-	Version uint8 `yaml:"version,omitempty" env:"VERSION,overwrite"`
+	Version string `yaml:"version,omitempty" env:"VERSION,overwrite,default=1"`
 
 	// -- Crypto variables --
 	// KeyTTL is the length of time that we expect a key to be valid for.
@@ -54,39 +52,35 @@ type CryptoConfig struct {
 
 // Validate checks if the config is valid.
 func (cfg *CryptoConfig) Validate() error {
-	cfg.SetDefault()
-
 	var err *multierror.Error
-	if cfg.Version != Version {
-		err = multierror.Append(err, fmt.Errorf("unexpected Version %d want %d", cfg.Version, Version))
+
+	if !CryptoConfigVersions.Contains(cfg.Version) {
+		err = multierror.Append(err, fmt.Errorf("version %q is invalid, valid versions are: %q",
+			cfg.Version, CryptoConfigVersions.List()))
 	}
 
 	if cfg.KeyTTL <= 0 {
-		err = multierror.Append(err, fmt.Errorf("key ttl is invalid: %v", cfg.KeyTTL))
+		err = multierror.Append(err, fmt.Errorf("key ttl must be a positive duration, got %q", cfg.KeyTTL))
 	}
 
 	if cfg.GracePeriod <= 0 {
-		err = multierror.Append(err, fmt.Errorf("grace period is invalid: %v", cfg.GracePeriod))
+		err = multierror.Append(err, fmt.Errorf("grace period must be a positive duration, got %q", cfg.GracePeriod))
 	}
 
 	if cfg.DisabledPeriod <= 0 {
-		err = multierror.Append(err, fmt.Errorf("disabled period is invalid: %v", cfg.DisabledPeriod))
+		err = multierror.Append(err, fmt.Errorf("disabled period must be a positive duration, got %q", cfg.DisabledPeriod))
 	}
 
-	// Propagation delay must be lower than grace period.
-	if cfg.PropagationDelay <= 0 || cfg.PropagationDelay > cfg.GracePeriod {
-		err = multierror.Append(err, fmt.Errorf("propagation delay is invalid: %v", cfg.PropagationDelay))
+	// Propagation delay must be positive but less than than grace period.
+	if cfg.PropagationDelay <= 0 {
+		err = multierror.Append(err, fmt.Errorf("propagation delay must be a positive duration, got %q", cfg.PropagationDelay))
+	}
+	if cfg.PropagationDelay > cfg.GracePeriod {
+		err = multierror.Append(err, fmt.Errorf("propagation delay %q must be less than grace period %q",
+			cfg.PropagationDelay, cfg.GracePeriod))
 	}
 
 	return err.ErrorOrNil()
-}
-
-// SetDefault sets default for the config.
-func (cfg *CryptoConfig) SetDefault() {
-	// TODO: set defaults for other fields if necessary.
-	if cfg.Version == 0 {
-		cfg.Version = Version
-	}
 }
 
 // GetRotationAge gets the duration after a key has been created that a new key should be created.

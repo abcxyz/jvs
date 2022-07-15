@@ -3,12 +3,12 @@ module github.com/abcxyz/jvs/client-lib/go
 go 1.18
 
 require (
-	github.com/abcxyz/jvs v0.0.0-20220520175656-c98ac822412a
+	github.com/abcxyz/jvs v0.0.0-00010101000000-000000000000
 	github.com/abcxyz/pkg v0.0.0-20220627210229-493bf5fec862
 	github.com/google/go-cmp v0.5.8
 	github.com/hashicorp/go-multierror v1.1.1
 	github.com/lestrrat-go/jwx/v2 v2.0.3
-	github.com/sethvargo/go-envconfig v0.6.2
+	github.com/sethvargo/go-envconfig v0.8.0
 	gopkg.in/yaml.v2 v2.4.0
 )
 
