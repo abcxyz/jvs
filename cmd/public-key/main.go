@@ -76,8 +76,9 @@ func realMain(ctx context.Context) error {
 	// Create the server and listen in a goroutine.
 	logger.Debug("starting server on port", zap.String("port", config.Port))
 	server := &http.Server{
-		Addr:    ":" + config.Port,
-		Handler: mux,
+		Addr:              ":" + config.Port,
+		Handler:           mux,
+		ReadHeaderTimeout: 2 * time.Second,
 	}
 	serverErrCh := make(chan error, 1)
 	go func() {
