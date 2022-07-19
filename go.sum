@@ -67,8 +67,8 @@ dmitri.shuralyov.com/gpu/mtl v0.0.0-20190408044501-666a987793e9/go.mod h1:H6x//7
 github.com/BurntSushi/toml v0.3.1/go.mod h1:xHWCNGjB5oqiDr8zfno3MHue2Ht5sIBksp03qcyfWMU=
 github.com/BurntSushi/xgb v0.0.0-20160522181843-27f122750802/go.mod h1:IVnqGOEym/WlBOVXweHU+Q+/VP0lqqI8lqeDx9IjBqo=
 github.com/OneOfOne/xxhash v1.2.2/go.mod h1:HSdplMjZKSmBqAxg5vPj2TmRDmfkzw+cTzAElWljhcU=
-github.com/abcxyz/pkg v0.0.0-20220627210229-493bf5fec862 h1:DEU4U/AgVWsxWhrO9rBUytuuXL6tznVPDxx2q2DI6c0=
-github.com/abcxyz/pkg v0.0.0-20220627210229-493bf5fec862/go.mod h1:Sz/e+0vW0XIIeeIS4KDLIeh1Bb/CPAvQiZOdOTBiW4k=
+github.com/abcxyz/pkg v0.0.0-20220719233420-62c7b76c10e9 h1:ROwNYAzdaFBjS9dTzmTjwgW84QaKQWxUFm3zlSbP77I=
+github.com/abcxyz/pkg v0.0.0-20220719233420-62c7b76c10e9/go.mod h1:Sz/e+0vW0XIIeeIS4KDLIeh1Bb/CPAvQiZOdOTBiW4k=
 github.com/antihax/optional v1.0.0/go.mod h1:uupD/76wgC+ih3iEmQUL+0Ugr19nfwCT1kdvxnR2qWY=
 github.com/benbjohnson/clock v1.1.0 h1:Q92kusRqC1XV2MjkWETPvjJVqKetz1OzxZB7mHJLju8=
 github.com/benbjohnson/clock v1.1.0/go.mod h1:J11/hYXuz8f4ySSvYwY0FKfm+ezbsZBKZxNJlLklBHA=
