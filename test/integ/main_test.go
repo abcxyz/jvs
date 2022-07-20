@@ -32,10 +32,10 @@ import (
 	"time"
 
 	"cloud.google.com/go/firestore"
-
 	kms "cloud.google.com/go/kms/apiv1"
 	jvspb "github.com/abcxyz/jvs/apis/v0"
 	"github.com/abcxyz/jvs/pkg/config"
+	firestoreutil "github.com/abcxyz/jvs/pkg/firestore"
 	"github.com/abcxyz/jvs/pkg/justification"
 	"github.com/abcxyz/jvs/pkg/jvscrypto"
 	"github.com/abcxyz/pkg/cache"
@@ -69,6 +69,7 @@ func TestJVS(t *testing.T) {
 	if keyRing == "" {
 		t.Fatal("Firestore project id must be provided using TEST_JVS_FIRESTORE_PROJECT_ID env variable.")
 	}
+	justificationConfigFullPath := "JVS/JustificationConfig"
 
 	kmsClient, err := kms.NewKeyManagementClient(ctx)
 	if err != nil {
@@ -124,8 +125,15 @@ func TestJVS(t *testing.T) {
 		t.Fatalf("failed to create Firestore client: %v", err)
 	}
 
-	fireStoreRemoteConfig := config.NewFirestoreRemoteConfig(firestoreClient, "JVS/JustificationConfig")
+	testCreateRemoteConfig(ctx, t, firestoreClient, justificationConfigFullPath, firestoreutil.KMSJustificationConfig{KeyName: keyName})
+	t.Cleanup(func() {
+		testCleanUpRemoteConfig(ctx, t, firestoreClient, justificationConfigFullPath)
+		if err := firestoreClient.Close(); err != nil {
+			t.Errorf("clean up of firestore client failed: %v", err)
+		}
+	})
 
+	fireStoreRemoteConfig := config.NewFirestoreRemoteConfig(firestoreClient, "JVS/JustificationConfig")
 	p := justification.NewProcessor(kmsClient, fireStoreRemoteConfig, cfg, authHandler)
 	jvsAgent := justification.NewJVSAgent(p)
 
@@ -911,5 +919,21 @@ func testValidatePublicKeys(ctx context.Context, tb testing.TB, ks *jvscrypto.Ke
 
 	if diff := cmp.Diff(expectedPublicKeys, got); diff != "" {
 		tb.Errorf("GotPublicKeys diff (-want, +got): %v", diff)
+	}
+}
+
+func testCreateRemoteConfig(ctx context.Context, tb testing.TB, firestoreClient *firestore.Client, docFullPath string, data interface{}) {
+	tb.Helper()
+	_, err := firestoreClient.Doc(docFullPath).Create(ctx, data)
+	if err != nil {
+		tb.Fatalf("failed to create remote config at path %v with error %v", docFullPath, err)
+	}
+}
+
+func testCleanUpRemoteConfig(ctx context.Context, tb testing.TB, firestoreClient *firestore.Client, docFullPath string) {
+	tb.Helper()
+	_, err := firestoreClient.Doc(docFullPath).Delete(ctx)
+	if err != nil {
+		tb.Errorf("failed to cleanup remote config at path %v with error %v", docFullPath, err)
 	}
 }

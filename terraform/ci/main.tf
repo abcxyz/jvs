@@ -30,6 +30,7 @@ resource "google_project_service" "services" {
     "iamcredentials.googleapis.com",
     "artifactregistry.googleapis.com",
     "cloudkms.googleapis.com",
+    "firestore.googleapis.com",
   ])
   service            = each.value
   disable_on_destroy = false
