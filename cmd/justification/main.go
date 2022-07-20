@@ -68,7 +68,6 @@ func realMain(ctx context.Context) error {
 		err := kmsClient.Close()
 		if err != nil {
 			logger.Errorf("failed to close kms client with error %w", kmsClient)
-
 		}
 	}(kmsClient)
 
@@ -86,7 +85,6 @@ func realMain(ctx context.Context) error {
 		err := firestoreClient.Close()
 		if err != nil {
 			logger.Errorf("failed to close firestore client with error %w", kmsClient)
-
 		}
 	}(firestoreClient)
 
