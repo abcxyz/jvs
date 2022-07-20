@@ -4,7 +4,7 @@ go 1.18
 
 require (
 	github.com/abcxyz/jvs v0.0.0-00010101000000-000000000000
-	github.com/abcxyz/pkg v0.0.0-20220627210229-493bf5fec862
+	github.com/abcxyz/pkg v0.0.0-20220719233420-62c7b76c10e9
 	github.com/google/go-cmp v0.5.8
 	github.com/hashicorp/go-multierror v1.1.1
 	github.com/lestrrat-go/jwx/v2 v2.0.3
