@@ -5,13 +5,13 @@ go 1.18
 require (
 	cloud.google.com/go/firestore v1.6.1
 	cloud.google.com/go/kms v1.4.0
-	github.com/abcxyz/pkg v0.0.0-20220627210229-493bf5fec862
+	github.com/abcxyz/pkg v0.0.0-20220719233420-62c7b76c10e9
 	github.com/golang-jwt/jwt v3.2.2+incompatible
 	github.com/google/go-cmp v0.5.8
 	github.com/google/uuid v1.3.0
 	github.com/hashicorp/go-multierror v1.1.1
 	github.com/lestrrat-go/jwx/v2 v2.0.3
-	github.com/sethvargo/go-envconfig v0.6.2
+	github.com/sethvargo/go-envconfig v0.8.0
 	github.com/sethvargo/go-gcpkms v0.1.0
 	github.com/sethvargo/go-retry v0.2.3
 	github.com/spf13/cobra v1.4.0

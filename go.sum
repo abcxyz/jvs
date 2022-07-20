@@ -69,8 +69,8 @@ dmitri.shuralyov.com/gpu/mtl v0.0.0-20190408044501-666a987793e9/go.mod h1:H6x//7
 github.com/BurntSushi/toml v0.3.1/go.mod h1:xHWCNGjB5oqiDr8zfno3MHue2Ht5sIBksp03qcyfWMU=
 github.com/BurntSushi/xgb v0.0.0-20160522181843-27f122750802/go.mod h1:IVnqGOEym/WlBOVXweHU+Q+/VP0lqqI8lqeDx9IjBqo=
 github.com/OneOfOne/xxhash v1.2.2/go.mod h1:HSdplMjZKSmBqAxg5vPj2TmRDmfkzw+cTzAElWljhcU=
-github.com/abcxyz/pkg v0.0.0-20220627210229-493bf5fec862 h1:DEU4U/AgVWsxWhrO9rBUytuuXL6tznVPDxx2q2DI6c0=
-github.com/abcxyz/pkg v0.0.0-20220627210229-493bf5fec862/go.mod h1:Sz/e+0vW0XIIeeIS4KDLIeh1Bb/CPAvQiZOdOTBiW4k=
+github.com/abcxyz/pkg v0.0.0-20220719233420-62c7b76c10e9 h1:ROwNYAzdaFBjS9dTzmTjwgW84QaKQWxUFm3zlSbP77I=
+github.com/abcxyz/pkg v0.0.0-20220719233420-62c7b76c10e9/go.mod h1:Sz/e+0vW0XIIeeIS4KDLIeh1Bb/CPAvQiZOdOTBiW4k=
 github.com/antihax/optional v1.0.0/go.mod h1:uupD/76wgC+ih3iEmQUL+0Ugr19nfwCT1kdvxnR2qWY=
 github.com/benbjohnson/clock v1.1.0 h1:Q92kusRqC1XV2MjkWETPvjJVqKetz1OzxZB7mHJLju8=
 github.com/benbjohnson/clock v1.1.0/go.mod h1:J11/hYXuz8f4ySSvYwY0FKfm+ezbsZBKZxNJlLklBHA=
@@ -262,8 +262,8 @@ github.com/rogpeppe/fastuuid v1.2.0/go.mod h1:jVj6XXZzXRy/MSR5jhDC/2q6DgLz+nrA6L
 github.com/rogpeppe/go-internal v1.3.0/go.mod h1:M8bDsm7K2OlrFYOpmOWEs/qY81heoFRclV5y23lUDJ4=
 github.com/rogpeppe/go-internal v1.6.1 h1:/FiVV8dS/e+YqF2JvO3yXRFbBLTIuSDkuC7aBOAvL+k=
 github.com/russross/blackfriday/v2 v2.1.0/go.mod h1:+Rmxgy9KzJVeS9/2gXHxylqXiyQDYRxCVz55jmeOWTM=
-github.com/sethvargo/go-envconfig v0.6.2 h1:982sW5Fc4zj7GWCGbt+tfjvl5fOUm/zMZXLT/hBBfr0=
-github.com/sethvargo/go-envconfig v0.6.2/go.mod h1:00S1FAhRUuTNJazWBWcJGvEHOM+NO6DhoRMAOX7FY5o=
+github.com/sethvargo/go-envconfig v0.8.0 h1:AcmdAewSFAc7pQ1Ghz+vhZkilUtxX559QlDuLLiSkdI=
+github.com/sethvargo/go-envconfig v0.8.0/go.mod h1:Iz1Gy1Sf3T64TQlJSvee81qDhf7YIlt8GMUX6yyNFs0=
 github.com/sethvargo/go-gcpkms v0.1.0 h1:pyjDLqLwpk9pMjDSTilPpaUjgP1AfSjX9WGzitZwGUY=
 github.com/sethvargo/go-gcpkms v0.1.0/go.mod h1:33BuvqUjsYk0bpMgn+WCclCYtMLOyaqtn5j0fCo4vvk=
 github.com/sethvargo/go-retry v0.2.3 h1:oYlgvIvsju3jNbottWABtbnoLC+GDtLdBHxKWxQm/iU=

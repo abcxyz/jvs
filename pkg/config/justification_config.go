@@ -25,58 +25,41 @@ import (
 	"gopkg.in/yaml.v2"
 )
 
-const (
-	// Version default for config.
-	CurrentVersion            = 1
-	SignerCacheTimeoutDefault = 5 * time.Minute
-	IssuerDefault             = "jvs.abcxyz.dev"
-)
+// JustificationConfigVersions is the list of allowed versions for the
+// JustificationConfig.
+var JustificationConfigVersions = NewVersionList("1")
 
 // JustificationConfig is the full jvs config.
 type JustificationConfig struct {
 	// Version is the version of the config.
-	Version uint8 `yaml:"version,omitempty" env:"VERSION,overwrite"`
+	Version string `yaml:"version,omitempty" env:"VERSION,overwrite,default=1"`
 
 	// Service configuration.
-	Port string `yaml:"port,omitempty" env:"PORT,overwrite"`
+	Port string `yaml:"port,omitempty" env:"PORT,overwrite,default=8080"`
 
 	FirestoreProjectID string `yaml:"firestore_project_id,omitempty" env:"FIRESTORE_PROJECT_ID,overwrite"`
 
 	// SignerCacheTimeout is the duration that keys stay in cache before being revoked.
-	SignerCacheTimeout time.Duration `yaml:"signer_cache_timeout" env:"SIGNER_CACHE_TIMEOUT,overwrite"`
+	SignerCacheTimeout time.Duration `yaml:"signer_cache_timeout" env:"SIGNER_CACHE_TIMEOUT,overwrite,default=5m"`
 
 	// Issuer will be used to set the issuer field when signing JWTs
-	Issuer string `yaml:"issuer" env:"ISSUER,overwrite"`
+	Issuer string `yaml:"issuer" env:"ISSUER,overwrite,default=jvs.abcxyz.dev"`
 }
 
 // Validate checks if the config is valid.
 func (cfg *JustificationConfig) Validate() error {
-	cfg.SetDefault()
 	var err *multierror.Error
-	if cfg.Version != CurrentVersion {
-		err = multierror.Append(err, fmt.Errorf("unexpected Version %d want %d", cfg.Version, CurrentVersion))
+
+	if !JustificationConfigVersions.Contains(cfg.Version) {
+		err = multierror.Append(err, fmt.Errorf("version %q is invalid, valid versions are: %q",
+			cfg.Version, JustificationConfigVersions.List()))
 	}
+
 	if cfg.SignerCacheTimeout <= 0 {
-		err = multierror.Append(err, fmt.Errorf("cache timeout invalid: %d", cfg.SignerCacheTimeout))
+		err = multierror.Append(err, fmt.Errorf("cache timeout must be a positive duration, got %s",
+			cfg.SignerCacheTimeout))
 	}
 	return err.ErrorOrNil()
-}
-
-// SetDefault sets default for the config.
-func (cfg *JustificationConfig) SetDefault() {
-	if cfg.Port == "" {
-		cfg.Port = "8080"
-	}
-	if cfg.Version == 0 {
-		cfg.Version = Version
-	}
-	if cfg.SignerCacheTimeout == 0 {
-		// env config lib doesn't gracefully handle env overrides with defaults, have to set manually.
-		cfg.SignerCacheTimeout = SignerCacheTimeoutDefault
-	}
-	if cfg.Issuer == "" {
-		cfg.Issuer = IssuerDefault
-	}
 }
 
 // LoadJustificationConfig calls the necessary methods to load in config using the OsLookuper which finds env variables specified on the host.
