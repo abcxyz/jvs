@@ -31,6 +31,8 @@ import (
 	"testing"
 	"time"
 
+	"cloud.google.com/go/firestore"
+
 	kms "cloud.google.com/go/kms/apiv1"
 	jvspb "github.com/abcxyz/jvs/apis/v0"
 	"github.com/abcxyz/jvs/pkg/config"
@@ -63,6 +65,10 @@ func TestJVS(t *testing.T) {
 	if keyRing == "" {
 		t.Fatal("Key ring must be provided using TEST_JVS_KMS_KEY_RING env variable.")
 	}
+	fireStoreProjectID := os.Getenv("TEST_JVS_FIRESTORE_PROJECT_ID")
+	if keyRing == "" {
+		t.Fatal("Firestore project id must be provided using TEST_JVS_FIRESTORE_PROJECT_ID env variable.")
+	}
 
 	kmsClient, err := kms.NewKeyManagementClient(ctx)
 	if err != nil {
@@ -80,7 +86,7 @@ func TestJVS(t *testing.T) {
 
 	cfg := &config.JustificationConfig{
 		Version:            "1",
-		KeyName:            keyName,
+		FirestoreProjectID: fireStoreProjectID,
 		Issuer:             "ci-test",
 		SignerCacheTimeout: 1 * time.Nanosecond, // no caching
 	}
@@ -113,7 +119,14 @@ func TestJVS(t *testing.T) {
 		"authorization": "Bearer " + validJWT,
 	}))
 
-	p := justification.NewProcessor(kmsClient, cfg, authHandler)
+	firestoreClient, err := firestore.NewClient(ctx, cfg.FirestoreProjectID)
+	if err != nil {
+		t.Fatalf("failed to create Firestore client: %v", err)
+	}
+
+	fireStoreRemoteConfig := config.NewFirestoreRemoteConfig(firestoreClient, "JVS/JustificationConfig")
+
+	p := justification.NewProcessor(kmsClient, fireStoreRemoteConfig, cfg, authHandler)
 	jvsAgent := justification.NewJVSAgent(p)
 
 	tests := []struct {

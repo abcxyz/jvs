@@ -22,7 +22,6 @@ import (
 	"syscall"
 
 	"cloud.google.com/go/firestore"
-
 	kms "cloud.google.com/go/kms/apiv1"
 	jvspb "github.com/abcxyz/jvs/apis/v0"
 	"github.com/abcxyz/jvs/pkg/config"

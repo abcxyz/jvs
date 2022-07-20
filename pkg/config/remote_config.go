@@ -11,7 +11,7 @@ import (
 type RemoteConfig interface {
 	GetRemoteConfigTo(ctx context.Context, data interface{}) error
 
-	UpdateRemoteConfig(ctx context.Context, configPath string, value interface{}) error // configPath represent the fields that reference a value, accepts simpler form of field path as a string in which the individual fields are separated by '/' as the configPath
+	UpdateRemoteConfig(ctx context.Context, configPath string, value interface{}) error // configPath represent the fields that reference a value, accepts simpler form of field path as a string in which the individual fields are separated by '/' as the configPath.
 }
 
 type FirestoreRemoteConfig struct {
@@ -38,7 +38,7 @@ func (fireStoreRemoteCfg FirestoreRemoteConfig) GetRemoteConfigTo(ctx context.Co
 	return nil
 }
 
-// UpdateRemoteConfig :Firestore implementation accepts simpler form of field path as a string in which the individual fields are separated by dots as the configPath
+// UpdateRemoteConfig :Firestore implementation accepts simpler form of field path as a string in which the individual fields are separated by dots as the configPath.
 func (fireStoreRemoteCfg FirestoreRemoteConfig) UpdateRemoteConfig(ctx context.Context, configPath string, value interface{}) error {
 	doc := fireStoreRemoteCfg.client.Doc(fireStoreRemoteCfg.docFullPath)
 	s := strings.Split(configPath, "/")
