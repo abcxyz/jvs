@@ -20,10 +20,13 @@ import (
 	"crypto/elliptic"
 	"crypto/rand"
 	"crypto/x509"
+	"encoding/json"
 	"encoding/pem"
 	"net"
 	"testing"
 	"time"
+
+	"github.com/abcxyz/jvs/pkg/firestore"
 
 	kms "cloud.google.com/go/kms/apiv1"
 	jvspb "github.com/abcxyz/jvs/apis/v0"
@@ -50,6 +53,18 @@ type MockJWTAuthHandler struct {
 
 func (j *MockJWTAuthHandler) RequestPrincipal(ctx context.Context) string {
 	return "me@example.com"
+}
+
+type MockFirestoreRemoteConfig struct {
+	config []byte
+}
+
+func (m MockFirestoreRemoteConfig) GetRemoteConfigTo(ctx context.Context, data interface{}) error {
+	return json.Unmarshal(m.config, data)
+}
+
+func (m MockFirestoreRemoteConfig) UpdateRemoteConfig(ctx context.Context, configPath string, value interface{}) error {
+	return nil
 }
 
 func TestCreateToken(t *testing.T) {
@@ -133,10 +148,16 @@ func TestCreateToken(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
+	kmsJustificationConfig := firestore.KMSJustificationConfig{KeyName: key}
+	configBytes, err := json.Marshal(kmsJustificationConfig)
+	if err != nil {
+		t.Fatal(err)
+	}
+	remoteConfig := MockFirestoreRemoteConfig{config: configBytes}
 
-	processor := NewProcessor(c, &config.JustificationConfig{
+	processor := NewProcessor(c, remoteConfig, &config.JustificationConfig{
 		Version:            1,
-		KeyName:            key,
+		FirestoreProjectID: "fakeProject",
 		SignerCacheTimeout: 5 * time.Minute,
 		Issuer:             config.IssuerDefault,
 	}, authHandler)

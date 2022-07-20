@@ -19,6 +19,8 @@ import (
 	"fmt"
 	"time"
 
+	"github.com/abcxyz/jvs/pkg/firestore"
+
 	kms "cloud.google.com/go/kms/apiv1"
 	jvspb "github.com/abcxyz/jvs/apis/v0"
 	"github.com/abcxyz/jvs/pkg/config"
@@ -39,10 +41,11 @@ import (
 // mints a token.
 type Processor struct {
 	jvspb.UnimplementedJVSServiceServer
-	kms         *kms.KeyManagementClient
-	config      *config.JustificationConfig
-	cache       *cache.Cache[*signerWithID]
-	authHandler *grpcutil.JWTAuthenticationHandler
+	kms          *kms.KeyManagementClient
+	remoteConfig config.RemoteConfig
+	config       *config.JustificationConfig
+	cache        *cache.Cache[*signerWithID]
+	authHandler  *grpcutil.JWTAuthenticationHandler
 }
 
 type signerWithID struct {
@@ -51,13 +54,15 @@ type signerWithID struct {
 }
 
 // NewProcessor creates a processor with the signer cache initialized.
-func NewProcessor(kms *kms.KeyManagementClient, config *config.JustificationConfig, authHandler *grpcutil.JWTAuthenticationHandler) *Processor {
+func NewProcessor(kms *kms.KeyManagementClient, remoteConfig config.RemoteConfig, config *config.JustificationConfig, authHandler *grpcutil.JWTAuthenticationHandler) *Processor {
 	cache := cache.New[*signerWithID](config.SignerCacheTimeout)
+
 	return &Processor{
-		kms:         kms,
-		config:      config,
-		cache:       cache,
-		authHandler: authHandler,
+		kms:          kms,
+		remoteConfig: remoteConfig,
+		config:       config,
+		cache:        cache,
+		authHandler:  authHandler,
 	}
 }
 
@@ -98,7 +103,12 @@ func (p *Processor) CreateToken(ctx context.Context, request *jvspb.CreateJustif
 }
 
 func (p *Processor) getLatestSigner(ctx context.Context) (*signerWithID, error) {
-	ver, err := jvscrypto.GetLatestKeyVersion(ctx, p.kms, p.config.KeyName)
+	var kmsJustificationConfig firestore.KMSJustificationConfig
+	err := p.remoteConfig.GetRemoteConfigTo(ctx, &kmsJustificationConfig)
+	if err != nil {
+		return nil, fmt.Errorf("failed to get remoteConfig: %w", err)
+	}
+	ver, err := jvscrypto.GetLatestKeyVersion(ctx, p.kms, kmsJustificationConfig.KeyName)
 	if err != nil {
 		return nil, fmt.Errorf("failed to get key version, %w", err)
 	}

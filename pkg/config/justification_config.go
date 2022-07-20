@@ -40,9 +40,7 @@ type JustificationConfig struct {
 	// Service configuration.
 	Port string `yaml:"port,omitempty" env:"PORT,overwrite"`
 
-	// KeyName format: `projects/*/locations/*/keyRings/*/cryptoKeys/*`
-	// https://pkg.go.dev/google.golang.org/genproto/googleapis/cloud/kms/v1#CryptoKey
-	KeyName string `yaml:"key,omitempty" env:"KEY,overwrite"`
+	FirestoreProjectID string `yaml:"firestore_project_id,omitempty" env:"FIRESTORE_PROJECT_ID,overwrite"`
 
 	// SignerCacheTimeout is the duration that keys stay in cache before being revoked.
 	SignerCacheTimeout time.Duration `yaml:"signer_cache_timeout" env:"SIGNER_CACHE_TIMEOUT,overwrite"`
