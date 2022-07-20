@@ -64,6 +64,13 @@ func realMain(ctx context.Context) error {
 	if err != nil {
 		return fmt.Errorf("failed to setup kms client: %w", err)
 	}
+	defer func(kmsClient *kms.KeyManagementClient) {
+		err := kmsClient.Close()
+		if err != nil {
+			logger.Errorf("failed to close kms client with error %w", kmsClient)
+
+		}
+	}(kmsClient)
 
 	authHandler, err := grpcutil.NewJWTAuthenticationHandler(ctx, grpcutil.NoJWTAuthValidation())
 	if err != nil {
@@ -74,6 +81,14 @@ func realMain(ctx context.Context) error {
 	if err != nil {
 		return fmt.Errorf("failed to create Firestore client: %w", err)
 	}
+
+	defer func(fireStoreClient *firestore.Client) {
+		err := firestoreClient.Close()
+		if err != nil {
+			logger.Errorf("failed to close firestore client with error %w", kmsClient)
+
+		}
+	}(firestoreClient)
 
 	fireStoreRemoteConfig := config.NewFirestoreRemoteConfig(firestoreClient, "JVS/JustificationConfig")
 	p := justification.NewProcessor(kmsClient, fireStoreRemoteConfig, cfg, authHandler)
