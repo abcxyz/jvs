@@ -68,7 +68,7 @@ func TestJVS(t *testing.T) {
 	if keyRing == "" {
 		t.Fatal("Firestore project id must be provided using TEST_JVS_FIRESTORE_PROJECT_ID env variable.")
 	}
-	justificationConfigFullPath := "JVS/JustificationConfig"
+	justificationConfigFullPath := "jvs/key_config"
 
 	kmsClient, err := kms.NewKeyManagementClient(ctx)
 	if err != nil {
@@ -132,7 +132,7 @@ func TestJVS(t *testing.T) {
 		}
 	})
 
-	fireStoreRemoteConfig := config.NewFirestoreRemoteConfig(firestoreClient, "JVS/JustificationConfig")
+	fireStoreRemoteConfig := config.NewFirestoreRemoteConfig(firestoreClient, justificationConfigFullPath)
 	p := justification.NewProcessor(kmsClient, fireStoreRemoteConfig, cfg, authHandler)
 	jvsAgent := justification.NewJVSAgent(p)
 

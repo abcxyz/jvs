@@ -19,8 +19,6 @@ package testutil
 import (
 	"bytes"
 	"context"
-	"encoding/json"
-
 	"github.com/spf13/afero"
 	"github.com/spf13/viper"
 )
@@ -54,19 +52,6 @@ func (m MockRemoteConfig) GetByKey(ctx context.Context, key string) (any, error)
 }
 
 func (m MockRemoteConfig) SetByKey(ctx context.Context, key string, value any) error {
-	if key == "" {
-		vBytes, err := json.Marshal(value)
-		if err != nil {
-			return err
-		}
-		if err := m.v.ReadConfig(bytes.NewBuffer(vBytes)); err != nil {
-			return err
-		}
-		if err := m.v.WriteConfigAs(m.fileName + ".json"); err != nil {
-			return err
-		}
-	} else {
-		m.v.Set(key, value)
-	}
+	m.v.Set(key, value)
 	return nil
 }

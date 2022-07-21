@@ -21,11 +21,10 @@ import (
 	"os/signal"
 	"syscall"
 
-	"github.com/abcxyz/jvs/pkg/cleanup"
-
 	"cloud.google.com/go/firestore"
 	kms "cloud.google.com/go/kms/apiv1"
 	jvspb "github.com/abcxyz/jvs/apis/v0"
+	"github.com/abcxyz/jvs/pkg/cleanup"
 	"github.com/abcxyz/jvs/pkg/config"
 	"github.com/abcxyz/jvs/pkg/justification"
 	"github.com/abcxyz/pkg/grpcutil"
@@ -35,6 +34,10 @@ import (
 	"golang.org/x/sync/errgroup"
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/reflection"
+)
+
+const (
+	jvsKeyConfigPath = "jvs/key_config"
 )
 
 func main() {
@@ -79,7 +82,7 @@ func realMain(ctx context.Context) error {
 	}
 	defer cleanup.GracefulClose(logger, firestoreClient)
 
-	fireStoreRemoteConfig := config.NewFirestoreRemoteConfig(firestoreClient, "jvs/key_config")
+	fireStoreRemoteConfig := config.NewFirestoreRemoteConfig(firestoreClient, jvsKeyConfigPath)
 	p := justification.NewProcessor(kmsClient, fireStoreRemoteConfig, cfg, authHandler)
 	jvsAgent := justification.NewJVSAgent(p)
 	jvspb.RegisterJVSServiceServer(s, jvsAgent)

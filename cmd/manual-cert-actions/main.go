@@ -22,10 +22,9 @@ import (
 	"os/signal"
 	"syscall"
 
-	"github.com/abcxyz/jvs/pkg/cleanup"
-
 	kms "cloud.google.com/go/kms/apiv1"
 	jvspb "github.com/abcxyz/jvs/apis/v0"
+	"github.com/abcxyz/jvs/pkg/cleanup"
 	"github.com/abcxyz/jvs/pkg/config"
 	"github.com/abcxyz/jvs/pkg/jvscrypto"
 	"github.com/abcxyz/pkg/logging"
