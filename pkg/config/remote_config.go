@@ -22,11 +22,13 @@ import (
 )
 
 type RemoteConfig interface {
+	// Load read remote config and store the result in the value pointed to by data.
 	Load(ctx context.Context, data any) error
 
+	// GetByKey get remote config by key
 	GetByKey(ctx context.Context, key string) (any, error)
 
-	// SetByKey accepts simpler form of field path as a string in which the individual fields are separated by dots as the key.
+	// SetByKey set remote config by key, accepts simpler form of field path as a string in which the individual fields are separated by dots as the key.
 	SetByKey(ctx context.Context, key string, value any) error
 }
 
@@ -35,8 +37,8 @@ type FirestoreRemoteConfig struct {
 	docFullPath string
 }
 
-func NewFirestoreRemoteConfig(client *firestore.Client, docFullPath string) FirestoreRemoteConfig {
-	return FirestoreRemoteConfig{
+func NewFirestoreRemoteConfig(client *firestore.Client, docFullPath string) *FirestoreRemoteConfig {
+	return &FirestoreRemoteConfig{
 		client:      client,
 		docFullPath: docFullPath,
 	}
@@ -47,8 +49,7 @@ func (fireStoreRemoteCfg FirestoreRemoteConfig) Load(ctx context.Context, data a
 	if err != nil {
 		return fmt.Errorf("failed to read from FireStore Doc %s: %w", fireStoreRemoteCfg.docFullPath, err)
 	}
-	err = snap.DataTo(data)
-	if err != nil {
+	if err = snap.DataTo(data); err != nil {
 		return fmt.Errorf("failed to use firestore document's fields to populate struct: %w", err)
 	}
 	return nil
