@@ -19,6 +19,7 @@ package testutil
 import (
 	"bytes"
 	"context"
+
 	"github.com/spf13/afero"
 	"github.com/spf13/viper"
 )
