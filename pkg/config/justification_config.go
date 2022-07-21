@@ -59,6 +59,10 @@ func (cfg *JustificationConfig) Validate() error {
 		err = multierror.Append(err, fmt.Errorf("cache timeout must be a positive duration, got %s",
 			cfg.SignerCacheTimeout))
 	}
+
+	if cfg.FirestoreProjectID == "" {
+		err = multierror.Append(err, fmt.Errorf("firestore project id can't be empty"))
+	}
 	return err.ErrorOrNil()
 }
 

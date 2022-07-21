@@ -21,6 +21,8 @@ import (
 	"os/signal"
 	"syscall"
 
+	"github.com/abcxyz/jvs/pkg/cleanup"
+
 	"cloud.google.com/go/firestore"
 	kms "cloud.google.com/go/kms/apiv1"
 	jvspb "github.com/abcxyz/jvs/apis/v0"
@@ -64,12 +66,7 @@ func realMain(ctx context.Context) error {
 	if err != nil {
 		return fmt.Errorf("failed to setup kms client: %w", err)
 	}
-	defer func(kmsClient *kms.KeyManagementClient) {
-		err := kmsClient.Close()
-		if err != nil {
-			logger.Errorf("failed to close kms client with error %w", kmsClient)
-		}
-	}(kmsClient)
+	defer cleanup.GracefulClose(logger, kmsClient)
 
 	authHandler, err := grpcutil.NewJWTAuthenticationHandler(ctx, grpcutil.NoJWTAuthValidation())
 	if err != nil {
@@ -80,15 +77,9 @@ func realMain(ctx context.Context) error {
 	if err != nil {
 		return fmt.Errorf("failed to create Firestore client: %w", err)
 	}
+	defer cleanup.GracefulClose(logger, firestoreClient)
 
-	defer func(fireStoreClient *firestore.Client) {
-		err := firestoreClient.Close()
-		if err != nil {
-			logger.Errorf("failed to close firestore client with error %w", kmsClient)
-		}
-	}(firestoreClient)
-
-	fireStoreRemoteConfig := config.NewFirestoreRemoteConfig(firestoreClient, "JVS/JustificationConfig")
+	fireStoreRemoteConfig := config.NewFirestoreRemoteConfig(firestoreClient, "jvs/key_config")
 	p := justification.NewProcessor(kmsClient, fireStoreRemoteConfig, cfg, authHandler)
 	jvsAgent := justification.NewJVSAgent(p)
 	jvspb.RegisterJVSServiceServer(s, jvsAgent)

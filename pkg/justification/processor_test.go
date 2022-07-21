@@ -26,8 +26,6 @@ import (
 	"testing"
 	"time"
 
-	"github.com/abcxyz/jvs/pkg/firestore"
-
 	kms "cloud.google.com/go/kms/apiv1"
 	jvspb "github.com/abcxyz/jvs/apis/v0"
 	"github.com/abcxyz/jvs/pkg/config"
@@ -53,18 +51,6 @@ type MockJWTAuthHandler struct {
 
 func (j *MockJWTAuthHandler) RequestPrincipal(ctx context.Context) string {
 	return "me@example.com"
-}
-
-type MockFirestoreRemoteConfig struct {
-	config []byte
-}
-
-func (m MockFirestoreRemoteConfig) GetRemoteConfigTo(ctx context.Context, data interface{}) error {
-	return json.Unmarshal(m.config, data)
-}
-
-func (m MockFirestoreRemoteConfig) UpdateRemoteConfig(ctx context.Context, configPath string, value interface{}) error {
-	return nil
 }
 
 func TestCreateToken(t *testing.T) {
@@ -148,12 +134,15 @@ func TestCreateToken(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	kmsJustificationConfig := firestore.KMSJustificationConfig{KeyName: key}
-	configBytes, err := json.Marshal(kmsJustificationConfig)
+	jvsKeyConfig := config.JVSKeyConfig{KeyName: key}
+	configBytes, err := json.Marshal(jvsKeyConfig)
 	if err != nil {
 		t.Fatal(err)
 	}
-	remoteConfig := MockFirestoreRemoteConfig{config: configBytes}
+	remoteConfig, err := testutil.NewMockRemoteConfig(string(configBytes), "processor_test_mock_remote_config.json")
+	if err != nil {
+		t.Fatalf("failed to create mock remote config: %v", err)
+	}
 
 	processor := NewProcessor(c, remoteConfig, &config.JustificationConfig{
 		FirestoreProjectID: "fakeProject",

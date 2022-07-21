@@ -19,8 +19,6 @@ import (
 	"fmt"
 	"time"
 
-	"github.com/abcxyz/jvs/pkg/firestore"
-
 	kms "cloud.google.com/go/kms/apiv1"
 	jvspb "github.com/abcxyz/jvs/apis/v0"
 	"github.com/abcxyz/jvs/pkg/config"
@@ -103,12 +101,12 @@ func (p *Processor) CreateToken(ctx context.Context, request *jvspb.CreateJustif
 }
 
 func (p *Processor) getLatestSigner(ctx context.Context) (*signerWithID, error) {
-	var kmsJustificationConfig firestore.KMSJustificationConfig
-	err := p.remoteConfig.GetRemoteConfigTo(ctx, &kmsJustificationConfig)
+	var jvsKeyConfig config.JVSKeyConfig
+	err := p.remoteConfig.LoadRemoteConfigTo(ctx, &jvsKeyConfig)
 	if err != nil {
 		return nil, fmt.Errorf("failed to get remoteConfig: %w", err)
 	}
-	ver, err := jvscrypto.GetLatestKeyVersion(ctx, p.kms, kmsJustificationConfig.KeyName)
+	ver, err := jvscrypto.GetLatestKeyVersion(ctx, p.kms, jvsKeyConfig.KeyName)
 	if err != nil {
 		return nil, fmt.Errorf("failed to get key version, %w", err)
 	}

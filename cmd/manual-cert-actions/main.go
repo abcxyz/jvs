@@ -22,6 +22,8 @@ import (
 	"os/signal"
 	"syscall"
 
+	"github.com/abcxyz/jvs/pkg/cleanup"
+
 	kms "cloud.google.com/go/kms/apiv1"
 	jvspb "github.com/abcxyz/jvs/apis/v0"
 	"github.com/abcxyz/jvs/pkg/config"
@@ -63,6 +65,7 @@ func realMain(ctx context.Context) error {
 	if err != nil {
 		return fmt.Errorf("failed to setup kms client: %w", err)
 	}
+	defer cleanup.GracefulClose(logger, kmsClient)
 
 	handler := &jvscrypto.RotationHandler{
 		KMSClient:    kmsClient,

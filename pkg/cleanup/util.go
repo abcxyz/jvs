@@ -12,9 +12,16 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-package firestore
+package cleanup
 
-type KMSJustificationConfig struct {
-	// KeyName format: `[projects/*/locations/*/keyRings/*/cryptoKeys/*]`
-	KeyName string `firestore:"key_name,omitempty"`
+import (
+	"io"
+
+	"go.uber.org/zap"
+)
+
+func GracefulClose(logger *zap.SugaredLogger, c io.Closer) {
+	if err := c.Close(); err != nil {
+		logger.Errorf("failed to close: %v", err)
+	}
 }
