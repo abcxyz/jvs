@@ -45,11 +45,15 @@ func NewMockRemoteConfig(jsonStr, fileName string) (*MockRemoteConfig, error) {
 	return &MockRemoteConfig{fileName: fileName, v: v}, nil
 }
 
-func (m MockRemoteConfig) LoadRemoteConfigTo(ctx context.Context, data interface{}) error {
+func (m MockRemoteConfig) Load(ctx context.Context, data any) error {
 	return m.v.Unmarshal(data)
 }
 
-func (m MockRemoteConfig) UpdateRemoteConfig(ctx context.Context, key string, value interface{}) error {
+func (m MockRemoteConfig) GetByKey(ctx context.Context, key string) (any, error) {
+	return m.v.Get(key), nil
+}
+
+func (m MockRemoteConfig) SetByKey(ctx context.Context, key string, value any) error {
 	if key == "" {
 		vBytes, err := json.Marshal(value)
 		if err != nil {
