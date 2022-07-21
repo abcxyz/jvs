@@ -31,14 +31,14 @@ public class JvsConfiguration {
 
   private static final String EXPECTED_VERSION = "1";
 
-  @JsonProperty(value = "version", defaultValue = EXPECTED_VERSION)
-  private String version;
+  @JsonProperty(value = "version")
+  private String version = EXPECTED_VERSION;
 
   @JsonProperty("endpoint")
-  private String jvsEndpoint;
+  private String jvsEndpoint = "localhost:8080";
 
   @JsonProperty("cache_timeout")
-  private Duration cacheTimeout;
+  private Duration cacheTimeout = Duration.ofMinutes(5);
 
   public void validate() throws IllegalArgumentException {
     if (!version.equals(EXPECTED_VERSION)) {
