@@ -44,15 +44,15 @@ func NewFakeRemoteConfig(jsonStr, fileName string) (*FakeRemoteConfig, error) {
 	return &FakeRemoteConfig{fileName: fileName, v: v}, nil
 }
 
-func (m *FakeRemoteConfig) Load(ctx context.Context, data any) error {
+func (m *FakeRemoteConfig) Unmarshal(ctx context.Context, data any) error {
 	return m.v.Unmarshal(data)
 }
 
-func (m *FakeRemoteConfig) GetByKey(ctx context.Context, key string) (any, error) {
+func (m *FakeRemoteConfig) Get(ctx context.Context, key string) (any, error) {
 	return m.v.Get(key), nil
 }
 
-func (m *FakeRemoteConfig) SetByKey(ctx context.Context, key string, value any) error {
+func (m *FakeRemoteConfig) Set(ctx context.Context, key string, value any) error {
 	m.v.Set(key, value)
 	return nil
 }

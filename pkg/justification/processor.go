@@ -102,7 +102,7 @@ func (p *Processor) CreateToken(ctx context.Context, request *jvspb.CreateJustif
 
 func (p *Processor) getLatestSigner(ctx context.Context) (*signerWithID, error) {
 	var jvsKeyConfig config.JVSKeyConfig
-	err := p.remoteConfig.Load(ctx, &jvsKeyConfig)
+	err := p.remoteConfig.Unmarshal(ctx, &jvsKeyConfig)
 	if err != nil {
 		return nil, fmt.Errorf("failed to get remoteConfig: %w", err)
 	}
