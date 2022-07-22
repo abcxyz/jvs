@@ -26,11 +26,11 @@ resource "google_project_service" "serviceusage" {
 resource "google_project_service" "services" {
   project = var.project_id
   for_each = toset([
-    "cloudresourcemanager.googleapis.com",
-    "iamcredentials.googleapis.com",
     "artifactregistry.googleapis.com",
     "cloudkms.googleapis.com",
+    "cloudresourcemanager.googleapis.com",
     "firestore.googleapis.com",
+    "iamcredentials.googleapis.com",
   ])
   service            = each.value
   disable_on_destroy = false
