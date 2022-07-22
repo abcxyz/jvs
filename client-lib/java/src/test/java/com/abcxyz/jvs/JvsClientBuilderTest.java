@@ -71,13 +71,11 @@ public class JvsClientBuilderTest {
 
     JvsConfiguration expectedConfig = new JvsConfiguration();
     expectedConfig.setVersion("1");
+    expectedConfig.setJvsEndpoint("localhost:8080");
+    expectedConfig.setCacheTimeout(Duration.parse("PT5M"));
 
     JvsConfiguration loadedConfig = builder.getConfiguration();
     Assertions.assertEquals(expectedConfig, loadedConfig);
-    // values missing, expect exception.
-    IllegalArgumentException thrown =
-        Assertions.assertThrows(IllegalArgumentException.class, () -> loadedConfig.validate());
-    Assertions.assertTrue(thrown.getMessage().contains("JVS endpoint was not specified"));
 
     when(builder.getFromEnvironmentVars(JVSClientBuilder.ENDPOINT_ENV_KEY))
         .thenReturn("google.com");
@@ -155,11 +153,17 @@ public class JvsClientBuilderTest {
   }
 
   @Test()
-  public void testBuild_Fail() throws Exception {
+  public void testBuild_MissingValues() throws Exception {
     JVSClientBuilder builder = new JVSClientBuilder();
     builder.loadConfigFromFile("missing_values.yml");
-    IllegalArgumentException thrown =
-        Assertions.assertThrows(IllegalArgumentException.class, () -> builder.build());
-    Assertions.assertTrue(thrown.getMessage().contains("JVS endpoint was not specified"));
+
+    JvsConfiguration expectedConfig = new JvsConfiguration();
+    expectedConfig.setVersion("1");
+    expectedConfig.setJvsEndpoint("localhost:8080");
+    expectedConfig.setCacheTimeout(Duration.parse("PT5M"));
+
+    JvsConfiguration loadedConfig = builder.getConfiguration();
+    Assertions.assertEquals(expectedConfig, loadedConfig);
+    Assertions.assertDoesNotThrow(() -> loadedConfig.validate());
   }
 }

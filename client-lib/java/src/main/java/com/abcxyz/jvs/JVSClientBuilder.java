@@ -50,7 +50,7 @@ public class JVSClientBuilder {
   private static final int CACHE_SIZE = 10;
 
   @Getter(AccessLevel.PACKAGE)
-  JvsConfiguration configuration;
+  JvsConfiguration configuration = new JvsConfiguration();
 
   public JVSClientBuilder loadConfigFromFile(String fileName) throws IOException {
     try (InputStream input = getClass().getClassLoader().getResourceAsStream(fileName)) {
@@ -84,6 +84,16 @@ public class JVSClientBuilder {
 
   String getFromEnvironmentVars(String key) {
     return System.getenv().getOrDefault(key, null);
+  }
+
+  public JVSClientBuilder withJvsEndpoint(String jvsEndpoint) {
+    configuration.setJvsEndpoint(jvsEndpoint);
+    return this;
+  }
+
+  public JVSClientBuilder withCacheTimeout(Duration cacheTimeout) {
+    configuration.setCacheTimeout(cacheTimeout);
+    return this;
   }
 
   public JvsClient build() {
