@@ -24,12 +24,13 @@ import (
 	"github.com/spf13/viper"
 )
 
-// FakeRemoteConfig in memory viper implementation of interface `RemoteConfig`
+// FakeRemoteConfig in memory viper implementation of interface `RemoteConfig`.
 type FakeRemoteConfig struct {
 	fileName string
 	v        *viper.Viper
 }
 
+// NewFakeRemoteConfig allocates and returns a new FakeRemoteConfig which is used to reading/writing config stored at location pointed by `fileName`.
 func NewFakeRemoteConfig(jsonStr, fileName string) (*FakeRemoteConfig, error) {
 	v := viper.New()
 	fs := afero.NewMemMapFs()
@@ -45,14 +46,17 @@ func NewFakeRemoteConfig(jsonStr, fileName string) (*FakeRemoteConfig, error) {
 	return &FakeRemoteConfig{fileName: fileName, v: v}, nil
 }
 
+// Unmarshal read the whole document and store the result in the value pointed to by 'data'.
 func (m *FakeRemoteConfig) Unmarshal(ctx context.Context, data any) error {
 	return m.v.Unmarshal(data)
 }
 
+// Get get document's field by 'key'.
 func (m *FakeRemoteConfig) Get(ctx context.Context, key string) (any, error) {
 	return m.v.Get(key), nil
 }
 
+// Set set document's field by 'key', accepts simpler form of field path as a string in which the individual fields are separated by dots as the key.
 func (m *FakeRemoteConfig) Set(ctx context.Context, key string, value any) error {
 	m.v.Set(key, value)
 	return nil
