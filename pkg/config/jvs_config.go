@@ -93,5 +93,5 @@ func loadJustificationConfigFromLookuper(ctx context.Context, b []byte, lookuper
 
 type JVSKeyConfig struct {
 	// KeyName format: `[projects/*/locations/*/keyRings/*/cryptoKeys/*]`
-	KeyName string `firestore:"key_name,omitempty"`
+	KeyName string `yaml:"key_name,omitempty" firestore:"key_name,omitempty"`
 }
