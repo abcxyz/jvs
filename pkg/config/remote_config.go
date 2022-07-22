@@ -21,19 +21,19 @@ import (
 	"cloud.google.com/go/firestore"
 )
 
-// RemoteConfig for remote support of reading/writing config
+// RemoteConfig for remote support of reading/writing config.
 type RemoteConfig interface {
-	// Unmarshal read remote config and store the result in the value pointed to by 'data'
+	// Unmarshal read remote config and store the result in the value pointed to by 'data'.
 	Unmarshal(ctx context.Context, data any) error
 
-	// Get get remote config by 'key'
+	// Get get remote config by 'key'.
 	Get(ctx context.Context, key string) (any, error)
 
 	// Set set remote config by 'key', accepts simpler form of field path as a string in which the individual fields are separated by dots as the key.
 	Set(ctx context.Context, key string, value any) error
 }
 
-// FirestoreConfig for support of reading/writing config in Firestore
+// FirestoreConfig for support of reading/writing config in Firestore.
 type FirestoreConfig struct {
 	client      *firestore.Client
 	docFullPath string
@@ -47,6 +47,7 @@ func NewFirestoreConfig(client *firestore.Client, docFullPath string) *Firestore
 	}
 }
 
+// Unmarshal read the whole firestore document and store the result in the value pointed to by 'data'.
 func (fireStoreRemoteCfg *FirestoreConfig) Unmarshal(ctx context.Context, data any) error {
 	snap, err := fireStoreRemoteCfg.client.Doc(fireStoreRemoteCfg.docFullPath).Get(ctx)
 	if err != nil {
@@ -58,6 +59,7 @@ func (fireStoreRemoteCfg *FirestoreConfig) Unmarshal(ctx context.Context, data a
 	return nil
 }
 
+// Get get firestore document's field by 'key'.
 func (fireStoreRemoteCfg *FirestoreConfig) Get(ctx context.Context, key string) (any, error) {
 	snap, err := fireStoreRemoteCfg.client.Doc(fireStoreRemoteCfg.docFullPath).Get(ctx)
 	if err != nil {
@@ -70,6 +72,7 @@ func (fireStoreRemoteCfg *FirestoreConfig) Get(ctx context.Context, key string) 
 	return value, nil
 }
 
+// Set set firestore document's field by 'key', accepts simpler form of field path as a string in which the individual fields are separated by dots as the key.
 func (fireStoreRemoteCfg *FirestoreConfig) Set(ctx context.Context, key string, value any) error {
 	doc := fireStoreRemoteCfg.client.Doc(fireStoreRemoteCfg.docFullPath)
 	if _, err := doc.Update(ctx, []firestore.Update{{Path: key, Value: value}}); err != nil {
