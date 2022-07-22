@@ -139,12 +139,12 @@ func TestCreateToken(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	remoteConfig, err := testutil.NewFakeRemoteConfig(string(configBytes), "processor_test_mock_remote_config.json")
+	keyConfig, err := testutil.NewFakeRemoteConfig(string(configBytes), "processor_test_mock_remote_config.json")
 	if err != nil {
 		t.Fatalf("failed to create mock remote config: %v", err)
 	}
 
-	processor := NewProcessor(c, remoteConfig, &config.JustificationConfig{
+	processor := NewProcessor(c, keyConfig, &config.JustificationConfig{
 		FirestoreProjectID: "fakeProject",
 		Version:            "1",
 		SignerCacheTimeout: 5 * time.Minute,

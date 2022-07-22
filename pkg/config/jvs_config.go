@@ -25,6 +25,10 @@ import (
 	"gopkg.in/yaml.v2"
 )
 
+const (
+	JVSKeyNameField = "key_name"
+)
+
 // JustificationConfigVersions is the list of allowed versions for the
 // JustificationConfig.
 var JustificationConfigVersions = NewVersionList("1")
@@ -95,5 +99,5 @@ func loadJustificationConfigFromLookuper(ctx context.Context, b []byte, lookuper
 // JVSKeyConfig is the config used for KMS Key storing in jvs.
 type JVSKeyConfig struct {
 	// KeyName format: `[projects/*/locations/*/keyRings/*/cryptoKeys/*]`
-	KeyName string `yaml:"key_name,omitempty" firestore:"key_name,omitempty"`
+	KeyName string `yaml:"key_name,omitempty" json:"key_name,omitempty" firestore:"key_name,omitempty"`
 }

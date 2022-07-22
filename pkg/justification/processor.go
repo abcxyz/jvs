@@ -39,11 +39,11 @@ import (
 // mints a token.
 type Processor struct {
 	jvspb.UnimplementedJVSServiceServer
-	kms          *kms.KeyManagementClient
-	remoteConfig config.RemoteConfig
-	config       *config.JustificationConfig
-	cache        *cache.Cache[*signerWithID]
-	authHandler  *grpcutil.JWTAuthenticationHandler
+	kms         *kms.KeyManagementClient
+	keyConfig   config.RemoteConfig
+	config      *config.JustificationConfig
+	cache       *cache.Cache[*signerWithID]
+	authHandler *grpcutil.JWTAuthenticationHandler
 }
 
 type signerWithID struct {
@@ -52,15 +52,15 @@ type signerWithID struct {
 }
 
 // NewProcessor creates a processor with the signer cache initialized.
-func NewProcessor(kms *kms.KeyManagementClient, remoteConfig config.RemoteConfig, config *config.JustificationConfig, authHandler *grpcutil.JWTAuthenticationHandler) *Processor {
+func NewProcessor(kms *kms.KeyManagementClient, keyConfig config.RemoteConfig, config *config.JustificationConfig, authHandler *grpcutil.JWTAuthenticationHandler) *Processor {
 	cache := cache.New[*signerWithID](config.SignerCacheTimeout)
 
 	return &Processor{
-		kms:          kms,
-		remoteConfig: remoteConfig,
-		config:       config,
-		cache:        cache,
-		authHandler:  authHandler,
+		kms:         kms,
+		keyConfig:   keyConfig,
+		config:      config,
+		cache:       cache,
+		authHandler: authHandler,
 	}
 }
 
@@ -101,12 +101,11 @@ func (p *Processor) CreateToken(ctx context.Context, request *jvspb.CreateJustif
 }
 
 func (p *Processor) getLatestSigner(ctx context.Context) (*signerWithID, error) {
-	var jvsKeyConfig config.JVSKeyConfig
-	err := p.remoteConfig.Unmarshal(ctx, &jvsKeyConfig)
+	keyName, err := p.keyConfig.Get(ctx, config.JVSKeyNameField)
 	if err != nil {
 		return nil, fmt.Errorf("failed to get remoteConfig: %w", err)
 	}
-	ver, err := jvscrypto.GetLatestKeyVersion(ctx, p.kms, jvsKeyConfig.KeyName)
+	ver, err := jvscrypto.GetLatestKeyVersion(ctx, p.kms, keyName.(string))
 	if err != nil {
 		return nil, fmt.Errorf("failed to get key version, %w", err)
 	}
