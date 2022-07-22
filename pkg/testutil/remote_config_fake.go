@@ -29,7 +29,7 @@ type FakeRemoteConfig struct {
 	v        *viper.Viper
 }
 
-func NewMockRemoteConfig(jsonStr, fileName string) (*FakeRemoteConfig, error) {
+func NewFakeRemoteConfig(jsonStr, fileName string) (*FakeRemoteConfig, error) {
 	v := viper.New()
 	fs := afero.NewMemMapFs()
 	v.SetFs(fs)
@@ -44,15 +44,15 @@ func NewMockRemoteConfig(jsonStr, fileName string) (*FakeRemoteConfig, error) {
 	return &FakeRemoteConfig{fileName: fileName, v: v}, nil
 }
 
-func (m FakeRemoteConfig) Load(ctx context.Context, data any) error {
+func (m *FakeRemoteConfig) Load(ctx context.Context, data any) error {
 	return m.v.Unmarshal(data)
 }
 
-func (m FakeRemoteConfig) GetByKey(ctx context.Context, key string) (any, error) {
+func (m *FakeRemoteConfig) GetByKey(ctx context.Context, key string) (any, error) {
 	return m.v.Get(key), nil
 }
 
-func (m FakeRemoteConfig) SetByKey(ctx context.Context, key string, value any) error {
+func (m *FakeRemoteConfig) SetByKey(ctx context.Context, key string, value any) error {
 	m.v.Set(key, value)
 	return nil
 }

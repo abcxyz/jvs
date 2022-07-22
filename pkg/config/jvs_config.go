@@ -37,6 +37,7 @@ type JustificationConfig struct {
 	// Service configuration.
 	Port string `yaml:"port,omitempty" env:"PORT,overwrite,default=8080"`
 
+	// FirestoreProjectID is the ID of GCP project where the Firestore documents with the KMS key locates
 	FirestoreProjectID string `yaml:"firestore_project_id,omitempty" env:"FIRESTORE_PROJECT_ID,overwrite"`
 
 	// SignerCacheTimeout is the duration that keys stay in cache before being revoked.

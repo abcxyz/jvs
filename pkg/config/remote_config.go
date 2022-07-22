@@ -22,29 +22,29 @@ import (
 )
 
 type RemoteConfig interface {
-	// Load read remote config and store the result in the value pointed to by data.
+	// Load read remote config and store the result in the value pointed to by 'data'
 	Load(ctx context.Context, data any) error
 
-	// GetByKey get remote config by key
+	// GetByKey get remote config by 'key'
 	GetByKey(ctx context.Context, key string) (any, error)
 
-	// SetByKey set remote config by key, accepts simpler form of field path as a string in which the individual fields are separated by dots as the key.
+	// SetByKey set remote config by 'key', accepts simpler form of field path as a string in which the individual fields are separated by dots as the key.
 	SetByKey(ctx context.Context, key string, value any) error
 }
 
-type FirestoreRemoteConfig struct {
+type FirestoreConfig struct {
 	client      *firestore.Client
 	docFullPath string
 }
 
-func NewFirestoreRemoteConfig(client *firestore.Client, docFullPath string) *FirestoreRemoteConfig {
-	return &FirestoreRemoteConfig{
+func NewFirestoreRemoteConfig(client *firestore.Client, docFullPath string) *FirestoreConfig {
+	return &FirestoreConfig{
 		client:      client,
 		docFullPath: docFullPath,
 	}
 }
 
-func (fireStoreRemoteCfg FirestoreRemoteConfig) Load(ctx context.Context, data any) error {
+func (fireStoreRemoteCfg *FirestoreConfig) Load(ctx context.Context, data any) error {
 	snap, err := fireStoreRemoteCfg.client.Doc(fireStoreRemoteCfg.docFullPath).Get(ctx)
 	if err != nil {
 		return fmt.Errorf("failed to read from FireStore Doc %s: %w", fireStoreRemoteCfg.docFullPath, err)
@@ -55,7 +55,7 @@ func (fireStoreRemoteCfg FirestoreRemoteConfig) Load(ctx context.Context, data a
 	return nil
 }
 
-func (fireStoreRemoteCfg FirestoreRemoteConfig) GetByKey(ctx context.Context, key string) (any, error) {
+func (fireStoreRemoteCfg *FirestoreConfig) GetByKey(ctx context.Context, key string) (any, error) {
 	snap, err := fireStoreRemoteCfg.client.Doc(fireStoreRemoteCfg.docFullPath).Get(ctx)
 	if err != nil {
 		return nil, fmt.Errorf("failed to read from FireStore Doc %s: %w", fireStoreRemoteCfg.docFullPath, err)
@@ -67,7 +67,7 @@ func (fireStoreRemoteCfg FirestoreRemoteConfig) GetByKey(ctx context.Context, ke
 	return value, nil
 }
 
-func (fireStoreRemoteCfg FirestoreRemoteConfig) SetByKey(ctx context.Context, key string, value any) error {
+func (fireStoreRemoteCfg *FirestoreConfig) SetByKey(ctx context.Context, key string, value any) error {
 	doc := fireStoreRemoteCfg.client.Doc(fireStoreRemoteCfg.docFullPath)
 	if _, err := doc.Update(ctx, []firestore.Update{{Path: key, Value: value}}); err != nil {
 		return fmt.Errorf("failed to update remote config with key %s: %w", key, err)
