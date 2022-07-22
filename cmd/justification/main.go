@@ -82,7 +82,7 @@ func realMain(ctx context.Context) error {
 	}
 	defer cleanup.GracefulClose(logger, firestoreClient)
 
-	remoteCfg := config.NewFirestoreRemoteConfig(firestoreClient, jvsKeyConfigPath)
+	remoteCfg := config.NewFirestoreConfig(firestoreClient, jvsKeyConfigPath)
 	p := justification.NewProcessor(kmsClient, remoteCfg, cfg, authHandler)
 	jvsAgent := justification.NewJVSAgent(p)
 	jvspb.RegisterJVSServiceServer(s, jvsAgent)

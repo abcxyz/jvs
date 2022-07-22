@@ -24,6 +24,7 @@ import (
 	"github.com/spf13/viper"
 )
 
+// FakeRemoteConfig in memory viper implementation of interface `RemoteConfig`
 type FakeRemoteConfig struct {
 	fileName string
 	v        *viper.Viper

@@ -132,7 +132,7 @@ func TestJVS(t *testing.T) {
 		}
 	})
 
-	fireStoreRemoteConfig := config.NewFirestoreRemoteConfig(firestoreClient, justificationConfigFullPath)
+	fireStoreRemoteConfig := config.NewFirestoreConfig(firestoreClient, justificationConfigFullPath)
 	p := justification.NewProcessor(kmsClient, fireStoreRemoteConfig, cfg, authHandler)
 	jvsAgent := justification.NewJVSAgent(p)
 

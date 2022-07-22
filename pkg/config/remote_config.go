@@ -21,6 +21,7 @@ import (
 	"cloud.google.com/go/firestore"
 )
 
+// RemoteConfig for remote support of reading/writing config
 type RemoteConfig interface {
 	// Unmarshal read remote config and store the result in the value pointed to by 'data'
 	Unmarshal(ctx context.Context, data any) error
@@ -32,12 +33,14 @@ type RemoteConfig interface {
 	Set(ctx context.Context, key string, value any) error
 }
 
+// FirestoreConfig for support of reading/writing config in Firestore
 type FirestoreConfig struct {
 	client      *firestore.Client
 	docFullPath string
 }
 
-func NewFirestoreRemoteConfig(client *firestore.Client, docFullPath string) *FirestoreConfig {
+// NewFirestoreConfig allocates and returns a new FirestoreConfig which is used to reading/writing config stored at location pointed by `docFullPath`.
+func NewFirestoreConfig(client *firestore.Client, docFullPath string) *FirestoreConfig {
 	return &FirestoreConfig{
 		client:      client,
 		docFullPath: docFullPath,
