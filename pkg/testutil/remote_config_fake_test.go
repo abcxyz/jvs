@@ -15,13 +15,13 @@ func TestUnmarshal(t *testing.T) {
 
 	keyName := "projects/fake_project/locations/us-west-1/keyRings/test-key-ring/cryptoKeys/test-key"
 	jvsKeyConfig := config.JVSKeyConfig{KeyName: keyName}
-	keyConfig, err := NewFakeRemoteConfig(testYAMLStr(ctx, t, jvsKeyConfig), "unit_test_fake_remote_config_unmarshal.yaml", "yaml")
+	keyRemoteCfg, err := NewFakeRemoteConfig(testYAMLStr(ctx, t, jvsKeyConfig), "unit_test_fake_remote_config_unmarshal.yaml", "yaml")
 	if err != nil {
 		t.Fatalf("failed to create fake remote config: %v", err)
 	}
 
 	var gotJVSKeyConfig config.JVSKeyConfig
-	if err = keyConfig.Unmarshal(ctx, &gotJVSKeyConfig); err != nil {
+	if err = keyRemoteCfg.Unmarshal(ctx, &gotJVSKeyConfig); err != nil {
 		t.Errorf("unexpected error when unmarshaling : %v", err)
 		return
 	}
@@ -36,11 +36,11 @@ func TestGet(t *testing.T) {
 
 	keyName := "projects/fake_project/locations/us-west-1/keyRings/test-key-ring/cryptoKeys/test-key"
 	jvsKeyConfig := config.JVSKeyConfig{KeyName: keyName}
-	keyConfig, err := NewFakeRemoteConfig(testYAMLStr(ctx, t, jvsKeyConfig), "unit_test_fake_remote_config_get.yaml", "yaml")
+	keyRemoteCfg, err := NewFakeRemoteConfig(testYAMLStr(ctx, t, jvsKeyConfig), "unit_test_fake_remote_config_get.yaml", "yaml")
 	if err != nil {
 		t.Fatalf("failed to create fake remote config: %v", err)
 	}
-	gotKeyName, err := keyConfig.Get(ctx, "key_name")
+	gotKeyName, err := keyRemoteCfg.Get(ctx, "key_name")
 	if err != nil {
 		t.Errorf("unexpected error when getting field : %v", err)
 		return
@@ -56,16 +56,16 @@ func TestSet(t *testing.T) {
 
 	keyName := "projects/fake_project/locations/us-west-1/keyRings/test-key-ring/cryptoKeys/test-key"
 	jvsKeyConfig := config.JVSKeyConfig{KeyName: keyName}
-	keyConfig, err := NewFakeRemoteConfig(testYAMLStr(ctx, t, jvsKeyConfig), "unit_test_fake_remote_config_set.yaml", "yaml")
+	keyRemoteCfg, err := NewFakeRemoteConfig(testYAMLStr(ctx, t, jvsKeyConfig), "unit_test_fake_remote_config_set.yaml", "yaml")
 	if err != nil {
 		t.Fatalf("failed to create fake remote config: %v", err)
 	}
 
-	if err = keyConfig.Set(ctx, "key_name", "test-key"); err != nil {
+	if err = keyRemoteCfg.Set(ctx, "key_name", "test-key"); err != nil {
 		t.Errorf("unexpected error when setting field : %v", err)
 		return
 	}
-	gotKeyName, err := keyConfig.Get(ctx, "key_name")
+	gotKeyName, err := keyRemoteCfg.Get(ctx, "key_name")
 	if err != nil {
 		t.Errorf("unexpected error when getting field : %v", err)
 		return
