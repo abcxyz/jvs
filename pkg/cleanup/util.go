@@ -21,7 +21,7 @@ import (
 	"go.uber.org/zap"
 )
 
-// GracefulClose calls Close() and then log the error if there is.
+// GracefulClose calls Close() and logs the error if there is.
 func GracefulClose(logger *zap.SugaredLogger, c io.Closer) {
 	if err := c.Close(); err != nil {
 		logger.Errorf("failed to close: %v", err)
