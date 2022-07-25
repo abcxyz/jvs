@@ -15,7 +15,7 @@ func TestUnmarshal(t *testing.T) {
 
 	keyName := "projects/fake_project/locations/us-west-1/keyRings/test-key-ring/cryptoKeys/test-key"
 	jvsKeyConfig := config.JVSKeyConfig{KeyName: keyName}
-	keyRemoteCfg, err := NewFakeRemoteConfig(testYAMLStr(ctx, t, jvsKeyConfig), "unit_test_fake_remote_config_unmarshal.yaml", "yaml")
+	keyRemoteCfg, err := NewFakeRemoteConfig(testYAMLStr(t, jvsKeyConfig), "unit_test_fake_remote_config_unmarshal.yaml", "yaml")
 	if err != nil {
 		t.Fatalf("failed to create fake remote config: %v", err)
 	}
@@ -36,7 +36,7 @@ func TestGet(t *testing.T) {
 
 	keyName := "projects/fake_project/locations/us-west-1/keyRings/test-key-ring/cryptoKeys/test-key"
 	jvsKeyConfig := config.JVSKeyConfig{KeyName: keyName}
-	keyRemoteCfg, err := NewFakeRemoteConfig(testYAMLStr(ctx, t, jvsKeyConfig), "unit_test_fake_remote_config_get.yaml", "yaml")
+	keyRemoteCfg, err := NewFakeRemoteConfig(testYAMLStr(t, jvsKeyConfig), "unit_test_fake_remote_config_get.yaml", "yaml")
 	if err != nil {
 		t.Fatalf("failed to create fake remote config: %v", err)
 	}
@@ -56,7 +56,7 @@ func TestSet(t *testing.T) {
 
 	keyName := "projects/fake_project/locations/us-west-1/keyRings/test-key-ring/cryptoKeys/test-key"
 	jvsKeyConfig := config.JVSKeyConfig{KeyName: keyName}
-	keyRemoteCfg, err := NewFakeRemoteConfig(testYAMLStr(ctx, t, jvsKeyConfig), "unit_test_fake_remote_config_set.yaml", "yaml")
+	keyRemoteCfg, err := NewFakeRemoteConfig(testYAMLStr(t, jvsKeyConfig), "unit_test_fake_remote_config_set.yaml", "yaml")
 	if err != nil {
 		t.Fatalf("failed to create fake remote config: %v", err)
 	}
@@ -75,7 +75,7 @@ func TestSet(t *testing.T) {
 	}
 }
 
-func testYAMLStr(ctx context.Context, tb testing.TB, in interface{}) string {
+func testYAMLStr(tb testing.TB, in interface{}) string {
 	tb.Helper()
 	inBytes, err := yaml.Marshal(in)
 	if err != nil {
