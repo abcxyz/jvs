@@ -30,13 +30,13 @@ func TestUnmarshal(t *testing.T) {
 	}
 }
 
-func TestGet(t *testing.T) {
+func TestGetAndSet(t *testing.T) {
 	t.Parallel()
 	ctx := context.Background()
 
 	keyName := "projects/fake_project/locations/us-west-1/keyRings/test-key-ring/cryptoKeys/test-key"
 	jvsKeyConfig := config.JVSKeyConfig{KeyName: keyName}
-	keyRemoteCfg, err := NewFakeRemoteConfig(testYAMLStr(t, jvsKeyConfig), "unit_test_fake_remote_config_get.yaml", "yaml")
+	keyRemoteCfg, err := NewFakeRemoteConfig(testYAMLStr(t, jvsKeyConfig), "unit_test_fake_remote_config_set.yaml", "yaml")
 	if err != nil {
 		t.Fatalf("failed to create fake remote config: %v", err)
 	}
@@ -48,29 +48,17 @@ func TestGet(t *testing.T) {
 	if diff := cmp.Diff(gotKeyName, keyName); diff != "" {
 		t.Errorf("Got diff (-want, +got): %v", diff)
 	}
-}
-
-func TestSet(t *testing.T) {
-	t.Parallel()
-	ctx := context.Background()
-
-	keyName := "projects/fake_project/locations/us-west-1/keyRings/test-key-ring/cryptoKeys/test-key"
-	jvsKeyConfig := config.JVSKeyConfig{KeyName: keyName}
-	keyRemoteCfg, err := NewFakeRemoteConfig(testYAMLStr(t, jvsKeyConfig), "unit_test_fake_remote_config_set.yaml", "yaml")
-	if err != nil {
-		t.Fatalf("failed to create fake remote config: %v", err)
-	}
 
 	if err = keyRemoteCfg.Set(ctx, "key_name", "test-key"); err != nil {
 		t.Errorf("unexpected error when setting field : %v", err)
 		return
 	}
-	gotKeyName, err := keyRemoteCfg.Get(ctx, "key_name")
+	gotUpdatedKeyName, err := keyRemoteCfg.Get(ctx, "key_name")
 	if err != nil {
 		t.Errorf("unexpected error when getting field : %v", err)
 		return
 	}
-	if diff := cmp.Diff(gotKeyName, "test-key"); diff != "" {
+	if diff := cmp.Diff(gotUpdatedKeyName, "test-key"); diff != "" {
 		t.Errorf("Got diff (-want, +got): %v", diff)
 	}
 }
