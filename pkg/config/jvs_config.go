@@ -99,5 +99,6 @@ func loadJustificationConfigFromLookuper(ctx context.Context, b []byte, lookuper
 // JVSKeyConfig is the config used for KMS Key storing in jvs.
 type JVSKeyConfig struct {
 	// KeyName format: `[projects/*/locations/*/keyRings/*/cryptoKeys/*]`
-	KeyName string `yaml:"key_name,omitempty" json:"key_name,omitempty" firestore:"key_name,omitempty"`
+	// mapstructure tag is used for fake remote config with viper
+	KeyName string `yaml:"key_name,omitempty" mapstructure:"key_name" firestore:"key_name,omitempty"`
 }

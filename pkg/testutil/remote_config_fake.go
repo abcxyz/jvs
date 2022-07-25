@@ -31,16 +31,16 @@ type FakeRemoteConfig struct {
 }
 
 // NewFakeRemoteConfig allocates and returns a new FakeRemoteConfig which is used to reading/writing config stored at location pointed by `fileName`.
-func NewFakeRemoteConfig(jsonStr, fileName string) (*FakeRemoteConfig, error) {
+func NewFakeRemoteConfig(str, fileName, configType string) (*FakeRemoteConfig, error) {
 	v := viper.New()
 	fs := afero.NewMemMapFs()
 	v.SetFs(fs)
 	v.SetConfigName(fileName)
-	v.SetConfigType("json")
-	if err := v.ReadConfig(bytes.NewBuffer([]byte(jsonStr))); err != nil {
+	v.SetConfigType(configType)
+	if err := v.ReadConfig(bytes.NewBuffer([]byte(str))); err != nil {
 		return nil, err
 	}
-	if err := v.WriteConfigAs(fileName + ".json"); err != nil {
+	if err := v.WriteConfigAs(fileName); err != nil {
 		return nil, err
 	}
 	return &FakeRemoteConfig{fileName: fileName, v: v}, nil

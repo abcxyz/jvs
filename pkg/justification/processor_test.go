@@ -20,7 +20,6 @@ import (
 	"crypto/elliptic"
 	"crypto/rand"
 	"crypto/x509"
-	"encoding/json"
 	"encoding/pem"
 	"net"
 	"testing"
@@ -43,6 +42,7 @@ import (
 	"google.golang.org/grpc/metadata"
 	"google.golang.org/protobuf/proto"
 	"google.golang.org/protobuf/types/known/durationpb"
+	"gopkg.in/yaml.v2"
 )
 
 type MockJWTAuthHandler struct {
@@ -135,11 +135,11 @@ func TestCreateToken(t *testing.T) {
 		t.Fatal(err)
 	}
 	jvsKeyConfig := config.JVSKeyConfig{KeyName: key}
-	configBytes, err := json.Marshal(jvsKeyConfig)
+	configBytes, err := yaml.Marshal(jvsKeyConfig)
 	if err != nil {
 		t.Fatal(err)
 	}
-	keyConfig, err := testutil.NewFakeRemoteConfig(string(configBytes), "processor_test_mock_remote_config.json")
+	keyConfig, err := testutil.NewFakeRemoteConfig(string(configBytes), "processor_test_fake_remote_config.yaml", "yaml")
 	if err != nil {
 		t.Fatalf("failed to create mock remote config: %v", err)
 	}

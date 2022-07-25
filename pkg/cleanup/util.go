@@ -12,6 +12,7 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
+// Package cleanup provides files and methods related to clean up
 package cleanup
 
 import (
@@ -20,6 +21,7 @@ import (
 	"go.uber.org/zap"
 )
 
+// GracefulClose calls Close() and then log the error if there is.
 func GracefulClose(logger *zap.SugaredLogger, c io.Closer) {
 	if err := c.Close(); err != nil {
 		logger.Errorf("failed to close: %v", err)
