@@ -25,6 +25,10 @@ import (
 	"gopkg.in/yaml.v2"
 )
 
+const (
+	JVSKeyNameField = "key_name"
+)
+
 // JustificationConfigVersions is the list of allowed versions for the
 // JustificationConfig.
 var JustificationConfigVersions = NewVersionList("1")
@@ -37,9 +41,8 @@ type JustificationConfig struct {
 	// Service configuration.
 	Port string `yaml:"port,omitempty" env:"PORT,overwrite,default=8080"`
 
-	// KeyName format: `projects/*/locations/*/keyRings/*/cryptoKeys/*`
-	// https://pkg.go.dev/google.golang.org/genproto/googleapis/cloud/kms/v1#CryptoKey
-	KeyName string `yaml:"key,omitempty" env:"KEY,overwrite"`
+	// FirestoreProjectID is the ID of GCP project where the Firestore documents with the KMS key locates
+	FirestoreProjectID string `yaml:"firestore_project_id,omitempty" env:"FIRESTORE_PROJECT_ID,overwrite"`
 
 	// SignerCacheTimeout is the duration that keys stay in cache before being revoked.
 	SignerCacheTimeout time.Duration `yaml:"signer_cache_timeout" env:"SIGNER_CACHE_TIMEOUT,overwrite,default=5m"`
@@ -60,6 +63,10 @@ func (cfg *JustificationConfig) Validate() error {
 	if cfg.SignerCacheTimeout <= 0 {
 		err = multierror.Append(err, fmt.Errorf("cache timeout must be a positive duration, got %s",
 			cfg.SignerCacheTimeout))
+	}
+
+	if cfg.FirestoreProjectID == "" {
+		err = multierror.Append(err, fmt.Errorf("firestore project id can't be empty"))
 	}
 	return err.ErrorOrNil()
 }
@@ -87,4 +94,11 @@ func loadJustificationConfigFromLookuper(ctx context.Context, b []byte, lookuper
 	}
 
 	return cfg, nil
+}
+
+// JVSKeyConfig is the config used for KMS Key storing in jvs.
+type JVSKeyConfig struct {
+	// KeyName format: `[projects/*/locations/*/keyRings/*/cryptoKeys/*]`
+	// mapstructure tag is used for fake remote config with viper
+	KeyName string `yaml:"key_name,omitempty" mapstructure:"key_name" firestore:"key_name,omitempty"`
 }
