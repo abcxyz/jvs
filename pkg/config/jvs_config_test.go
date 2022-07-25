@@ -51,6 +51,7 @@ func TestLoadJustificationConfig(t *testing.T) {
 	t.Parallel()
 	ctx := context.Background()
 
+	fakeFirestoreProjectID := "fakeProject"
 	tests := []struct {
 		name       string
 		cfg        string
@@ -63,22 +64,27 @@ func TestLoadJustificationConfig(t *testing.T) {
 			cfg: `
 port: 123
 version: 1
+firestore_project_id: fakeProject
 signer_cache_timeout: 1m
 issuer: jvs
 `,
 			wantConfig: &JustificationConfig{
 				Port:               "123",
 				Version:            "1",
+				FirestoreProjectID: fakeFirestoreProjectID,
 				SignerCacheTimeout: 1 * time.Minute,
 				Issuer:             "jvs",
 			},
 		},
 		{
 			name: "test_default",
-			cfg:  ``,
+			cfg: `
+firestore_project_id: fakeProject
+`,
 			wantConfig: &JustificationConfig{
 				Port:               "8080",
 				Version:            "1",
+				FirestoreProjectID: fakeFirestoreProjectID,
 				SignerCacheTimeout: 5 * time.Minute,
 				Issuer:             "jvs.abcxyz.dev",
 			},
@@ -87,6 +93,7 @@ issuer: jvs
 			name: "test_wrong_version",
 			cfg: `
 version: 255
+firestore_project_id: fakeProject
 `,
 			wantConfig: nil,
 			wantErr:    `version "255" is invalid, valid versions are:`,
@@ -95,27 +102,42 @@ version: 255
 			name: "test_invalid_signer_cache_timeout",
 			cfg: `
 signer_cache_timeout: -1m
+firestore_project_id: fakeProject
 `,
 			wantConfig: nil,
 			wantErr:    `cache timeout must be a positive duration, got -1m0s`,
+		},
+		{
+			name: "test_blank_project_id",
+			cfg: `
+port: 123
+version: 1
+signer_cache_timeout: 1m
+issuer: jvs
+`,
+			wantConfig: nil,
+			wantErr:    "firestore project id can't be empty",
 		},
 		{
 			name: "all_values_specified_env_override",
 			cfg: `
 version: 1
 port: 8080
+firestore_project_id: fakeProject
 signer_cache_timeout: 1m
 issuer: jvs
 `,
 			envs: map[string]string{
 				"JVS_VERSION":              "1",
 				"JVS_PORT":                 "tcp",
+				"JVS_FIRESTORE_PROJECT_ID": "fakeProject1",
 				"JVS_SIGNER_CACHE_TIMEOUT": "2m",
 				"JVS_ISSUER":               "other",
 			},
 			wantConfig: &JustificationConfig{
 				Version:            "1",
 				Port:               "tcp",
+				FirestoreProjectID: "fakeProject1",
 				SignerCacheTimeout: 2 * time.Minute,
 				Issuer:             "other",
 			},

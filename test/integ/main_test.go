@@ -31,6 +31,7 @@ import (
 	"testing"
 	"time"
 
+	"cloud.google.com/go/firestore"
 	kms "cloud.google.com/go/kms/apiv1"
 	jvspb "github.com/abcxyz/jvs/apis/v0"
 	"github.com/abcxyz/jvs/pkg/config"
@@ -63,6 +64,12 @@ func TestJVS(t *testing.T) {
 	if keyRing == "" {
 		t.Fatal("Key ring must be provided using TEST_JVS_KMS_KEY_RING env variable.")
 	}
+	fireStoreProjectID := os.Getenv("TEST_JVS_FIRESTORE_PROJECT_ID")
+	if keyRing == "" {
+		t.Fatal("Firestore project id must be provided using TEST_JVS_FIRESTORE_PROJECT_ID env variable.")
+	}
+	// TODO(#94): Use unique firestore path to avoid conflicts in integ tests.
+	justificationConfigFullPath := "jvs/key_config"
 
 	kmsClient, err := kms.NewKeyManagementClient(ctx)
 	if err != nil {
@@ -80,7 +87,7 @@ func TestJVS(t *testing.T) {
 
 	cfg := &config.JustificationConfig{
 		Version:            "1",
-		KeyName:            keyName,
+		FirestoreProjectID: fireStoreProjectID,
 		Issuer:             "ci-test",
 		SignerCacheTimeout: 1 * time.Nanosecond, // no caching
 	}
@@ -113,7 +120,21 @@ func TestJVS(t *testing.T) {
 		"authorization": "Bearer " + validJWT,
 	}))
 
-	p := justification.NewProcessor(kmsClient, cfg, authHandler)
+	firestoreClient, err := firestore.NewClient(ctx, cfg.FirestoreProjectID)
+	if err != nil {
+		t.Fatalf("failed to create Firestore client: %v", err)
+	}
+
+	testCreateRemoteConfig(ctx, t, firestoreClient, justificationConfigFullPath, config.JVSKeyConfig{KeyName: keyName})
+	t.Cleanup(func() {
+		testCleanUpRemoteConfig(ctx, t, firestoreClient, justificationConfigFullPath)
+		if err := firestoreClient.Close(); err != nil {
+			t.Errorf("clean up of firestore client failed: %v", err)
+		}
+	})
+
+	fireStoreRemoteConfig := config.NewFirestoreConfig(firestoreClient, justificationConfigFullPath)
+	p := justification.NewProcessor(kmsClient, fireStoreRemoteConfig, cfg, authHandler)
 	jvsAgent := justification.NewJVSAgent(p)
 
 	tests := []struct {
@@ -898,5 +919,19 @@ func testValidatePublicKeys(ctx context.Context, tb testing.TB, ks *jvscrypto.Ke
 
 	if diff := cmp.Diff(expectedPublicKeys, got); diff != "" {
 		tb.Errorf("GotPublicKeys diff (-want, +got): %v", diff)
+	}
+}
+
+func testCreateRemoteConfig(ctx context.Context, tb testing.TB, firestoreClient *firestore.Client, docFullPath string, data interface{}) {
+	tb.Helper()
+	if _, err := firestoreClient.Doc(docFullPath).Create(ctx, data); err != nil {
+		tb.Fatalf("failed to create remote config at path %v with error %v", docFullPath, err)
+	}
+}
+
+func testCleanUpRemoteConfig(ctx context.Context, tb testing.TB, firestoreClient *firestore.Client, docFullPath string) {
+	tb.Helper()
+	if _, err := firestoreClient.Doc(docFullPath).Delete(ctx); err != nil {
+		tb.Errorf("failed to cleanup remote config at path %v with error %v", docFullPath, err)
 	}
 }
