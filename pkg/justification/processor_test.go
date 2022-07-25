@@ -139,7 +139,7 @@ func TestCreateToken(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	keyConfig, err := testutil.NewFakeRemoteConfig(string(configBytes), "processor_test_fake_remote_config.yaml", "yaml")
+	keyConfig, err := testutil.NewFakeRemoteConfig(string(configBytes), "yaml")
 	if err != nil {
 		t.Fatalf("failed to create mock remote config: %v", err)
 	}

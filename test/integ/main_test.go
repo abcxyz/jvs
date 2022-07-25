@@ -68,6 +68,7 @@ func TestJVS(t *testing.T) {
 	if keyRing == "" {
 		t.Fatal("Firestore project id must be provided using TEST_JVS_FIRESTORE_PROJECT_ID env variable.")
 	}
+	// TODO: since in integration tests we need to create/delete the config doc in firestore, public-key/jvs/cert-rotation api need to create/delete the config doc via different paths to avoid conflicts when running tests in parallel. But in production, they need to read from firestore with the same doc path.
 	justificationConfigFullPath := "jvs/key_config"
 
 	kmsClient, err := kms.NewKeyManagementClient(ctx)
