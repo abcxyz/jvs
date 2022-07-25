@@ -40,7 +40,7 @@ func TestGetAndSet(t *testing.T) {
 	if err != nil {
 		t.Fatalf("failed to create fake remote config: %v", err)
 	}
-	gotKeyName, err := keyRemoteCfg.Get(ctx, "key_name")
+	gotKeyName, err := keyRemoteCfg.Get(ctx, config.JVSKeyNameField)
 	if err != nil {
 		t.Errorf("unexpected error when getting field : %v", err)
 		return
@@ -49,16 +49,17 @@ func TestGetAndSet(t *testing.T) {
 		t.Errorf("Got diff (-want, +got): %v", diff)
 	}
 
-	if err = keyRemoteCfg.Set(ctx, "key_name", "test-key"); err != nil {
+	updatedFakeKeyName := "test-key"
+	if err = keyRemoteCfg.Set(ctx, config.JVSKeyNameField, updatedFakeKeyName); err != nil {
 		t.Errorf("unexpected error when setting field : %v", err)
 		return
 	}
-	gotUpdatedKeyName, err := keyRemoteCfg.Get(ctx, "key_name")
+	gotUpdatedKeyName, err := keyRemoteCfg.Get(ctx, config.JVSKeyNameField)
 	if err != nil {
 		t.Errorf("unexpected error when getting field : %v", err)
 		return
 	}
-	if diff := cmp.Diff(gotUpdatedKeyName, "test-key"); diff != "" {
+	if diff := cmp.Diff(gotUpdatedKeyName, updatedFakeKeyName); diff != "" {
 		t.Errorf("Got diff (-want, +got): %v", diff)
 	}
 }
