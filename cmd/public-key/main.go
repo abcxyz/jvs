@@ -24,8 +24,6 @@ import (
 	"syscall"
 	"time"
 
-	"github.com/abcxyz/jvs/pkg/cleanup"
-
 	kms "cloud.google.com/go/kms/apiv1"
 	"github.com/abcxyz/jvs/pkg/config"
 	"github.com/abcxyz/jvs/pkg/jvscrypto"
@@ -57,7 +55,7 @@ func realMain(ctx context.Context) error {
 	if err != nil {
 		return fmt.Errorf("failed to setup kms client: %w", err)
 	}
-	defer cleanup.GracefulClose(logger, kmsClient)
+	defer kmsClient.Close()
 
 	config, err := config.LoadPublicKeyConfig(ctx, []byte{})
 	if err != nil {

@@ -21,10 +21,8 @@ import (
 	"os/signal"
 	"syscall"
 
-	"cloud.google.com/go/firestore"
 	kms "cloud.google.com/go/kms/apiv1"
 	jvspb "github.com/abcxyz/jvs/apis/v0"
-	"github.com/abcxyz/jvs/pkg/cleanup"
 	"github.com/abcxyz/jvs/pkg/config"
 	"github.com/abcxyz/jvs/pkg/justification"
 	"github.com/abcxyz/pkg/grpcutil"
@@ -34,10 +32,6 @@ import (
 	"golang.org/x/sync/errgroup"
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/reflection"
-)
-
-const (
-	jvsKeyConfigPath = "jvs/key_config"
 )
 
 func main() {
@@ -69,21 +63,13 @@ func realMain(ctx context.Context) error {
 	if err != nil {
 		return fmt.Errorf("failed to setup kms client: %w", err)
 	}
-	defer cleanup.GracefulClose(logger, kmsClient)
 
 	authHandler, err := grpcutil.NewJWTAuthenticationHandler(ctx, grpcutil.NoJWTAuthValidation())
 	if err != nil {
 		return fmt.Errorf("failed to setup grpc auth handler: %w", err)
 	}
 
-	firestoreClient, err := firestore.NewClient(ctx, cfg.FirestoreProjectID)
-	if err != nil {
-		return fmt.Errorf("failed to create Firestore client: %w", err)
-	}
-	defer cleanup.GracefulClose(logger, firestoreClient)
-
-	keyCfg := config.NewFirestoreConfig(firestoreClient, jvsKeyConfigPath)
-	p := justification.NewProcessor(kmsClient, keyCfg, cfg, authHandler)
+	p := justification.NewProcessor(kmsClient, cfg, authHandler)
 	jvsAgent := justification.NewJVSAgent(p)
 	jvspb.RegisterJVSServiceServer(s, jvsAgent)
 	reflection.Register(s)
