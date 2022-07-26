@@ -24,8 +24,11 @@ import (
 	"syscall"
 	"time"
 
+	"cloud.google.com/go/firestore"
+
+	"github.com/abcxyz/jvs/pkg/util"
+
 	kms "cloud.google.com/go/kms/apiv1"
-	"github.com/abcxyz/jvs/pkg/cleanup"
 	"github.com/abcxyz/jvs/pkg/config"
 	"github.com/abcxyz/jvs/pkg/jvscrypto"
 	"github.com/abcxyz/pkg/logging"
@@ -39,12 +42,19 @@ type server struct {
 
 // ServeHTTP rotates a single key's versions.
 func (s *server) ServeHTTP(w http.ResponseWriter, r *http.Request) {
-	logger := logging.FromContext(r.Context())
+	ctx := r.Context()
+	logger := logging.FromContext(ctx)
 	logger.Info("received request", zap.Any("url", r.URL))
 
 	var errs error
-	// TODO: load keys from DB instead. https://github.com/abcxyz/jvs/issues/17
-	for _, key := range s.handler.CryptoConfig.KeyNames {
+
+	kmsKeyNames, err := util.GetKeyNames(ctx, s.handler.KeyCfg)
+	if err != nil {
+		logger.Error("failed to get keys from key config", err)
+		http.Error(w, "error while getting keys from key config", http.StatusInternalServerError)
+		return
+	}
+	for _, key := range kmsKeyNames {
 		if err := s.handler.RotateKey(r.Context(), key); err != nil {
 			errs = multierror.Append(errs, fmt.Errorf("error while rotating key %s: %w", key, err))
 			continue
@@ -82,16 +92,29 @@ func realMain(ctx context.Context) error {
 	if err != nil {
 		return fmt.Errorf("failed to setup kms client: %w", err)
 	}
-	defer cleanup.GracefulClose(logger, kmsClient)
+	defer util.GracefulClose(logger, kmsClient)
 
-	config, err := config.LoadCryptoConfig(ctx, []byte{})
+	cryptoCfg, err := config.LoadCryptoConfig(ctx, []byte{})
 	if err != nil {
 		return fmt.Errorf("failed to load config: %w", err)
 	}
 
+	firestoreDoc, err := util.ParseFirestoreDocResource(cryptoCfg.FirestoreDocResourceName)
+	if err != nil {
+		return err
+	}
+
+	firestoreClient, err := firestore.NewClient(ctx, firestoreDoc.ProjectID)
+	if err != nil {
+		return fmt.Errorf("failed to create Firestore client: %w", err)
+	}
+	defer util.GracefulClose(logger, firestoreClient)
+
+	keyCfg := config.NewFirestoreConfig(firestoreClient, firestoreDoc.DocPath)
 	handler := &jvscrypto.RotationHandler{
+		KeyCfg:       keyCfg,
 		KMSClient:    kmsClient,
-		CryptoConfig: config,
+		CryptoConfig: cryptoCfg,
 	}
 
 	mux := http.NewServeMux()

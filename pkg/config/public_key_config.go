@@ -25,13 +25,12 @@ import (
 
 // PublicKeyConfig is the config used for public key hosting.
 type PublicKeyConfig struct {
-	// TODO: This is intended to be temporary, and will eventually be retrieved from a persistent external datastore
-	// https://github.com/abcxyz/jvs/issues/17
-	// KeyName format: `projects/*/locations/*/keyRings/*/cryptoKeys/*`
-	// https://pkg.go.dev/google.golang.org/genproto/googleapis/cloud/kms/v1#PublicKeyKey
-	KeyNames     []string      `yaml:"key_names,omitempty" env:"KEY_NAMES,overwrite"`
-	CacheTimeout time.Duration `yaml:"cache_timeout" env:"CACHE_TIMEOUT"`
-	Port         string        `env:"PORT,default=8080"`
+	// FirestoreDocName is the resource name of the Firestore Document which stores the KMS key names
+	// Format: projects/{project_id}/databases/{databaseId}/documents/{document_path}
+	// Example: "projects/test-project/databases/(default)/documents/jvs/key_config"
+	FirestoreDocResourceName string        `yaml:"firestore_doc_resource_name,omitempty" env:"FIRESTORE_DOC_RESOURCE_NAME,overwrite"`
+	CacheTimeout             time.Duration `yaml:"cache_timeout" env:"CACHE_TIMEOUT"`
+	Port                     string        `env:"PORT,default=8080"`
 }
 
 // LoadConfig calls the necessary methods to load in config using the OsLookuper which finds env variables specified on the host.

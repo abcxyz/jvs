@@ -23,6 +23,7 @@ import (
 	"crypto/x509"
 	"encoding/pem"
 	"errors"
+	"fmt"
 	"net/http"
 	"net/http/httptest"
 	"os"
@@ -65,11 +66,9 @@ func TestJVS(t *testing.T) {
 		t.Fatal("Key ring must be provided using TEST_JVS_KMS_KEY_RING env variable.")
 	}
 	fireStoreProjectID := os.Getenv("TEST_JVS_FIRESTORE_PROJECT_ID")
-	if keyRing == "" {
+	if fireStoreProjectID == "" {
 		t.Fatal("Firestore project id must be provided using TEST_JVS_FIRESTORE_PROJECT_ID env variable.")
 	}
-	// TODO(#94): Use unique firestore path to avoid conflicts in integ tests.
-	justificationConfigFullPath := "jvs/key_config"
 
 	kmsClient, err := kms.NewKeyManagementClient(ctx)
 	if err != nil {
@@ -120,21 +119,10 @@ func TestJVS(t *testing.T) {
 		"authorization": "Bearer " + validJWT,
 	}))
 
-	firestoreClient, err := firestore.NewClient(ctx, cfg.FirestoreProjectID)
-	if err != nil {
-		t.Fatalf("failed to create Firestore client: %v", err)
-	}
+	keyCfgFullPath := "jvs/key_config"
+	keyCfg := testSetUpKeyConfig(ctx, t, fireStoreProjectID, keyCfgFullPath, keyName)
 
-	testCreateRemoteConfig(ctx, t, firestoreClient, justificationConfigFullPath, config.JVSKeyConfig{KeyName: keyName})
-	t.Cleanup(func() {
-		testCleanUpRemoteConfig(ctx, t, firestoreClient, justificationConfigFullPath)
-		if err := firestoreClient.Close(); err != nil {
-			t.Errorf("clean up of firestore client failed: %v", err)
-		}
-	})
-
-	fireStoreRemoteConfig := config.NewFirestoreConfig(firestoreClient, justificationConfigFullPath)
-	p := justification.NewProcessor(kmsClient, fireStoreRemoteConfig, cfg, authHandler)
+	p := justification.NewProcessor(kmsClient, keyCfg, cfg, authHandler)
 	jvsAgent := justification.NewJVSAgent(p)
 
 	tests := []struct {
@@ -276,18 +264,26 @@ func TestRotator(t *testing.T) {
 
 	kmsClient, keyName := testSetupRotator(ctx, t)
 
+	fireStoreProjectID := os.Getenv("TEST_JVS_FIRESTORE_PROJECT_ID")
+	if fireStoreProjectID == "" {
+		t.Fatal("Firestore project id must be provided using TEST_JVS_FIRESTORE_PROJECT_ID env variable.")
+	}
+	keyCfgFullPath := "jvs/key_config_for_rotator_test"
+	keyCfg := testSetUpKeyConfig(ctx, t, fireStoreProjectID, keyCfgFullPath, keyName)
+
 	cfg := &config.CryptoConfig{
-		Version:          "1",
-		KeyTTL:           7 * time.Second,
-		GracePeriod:      2 * time.Second, // rotate after 5 seconds
-		PropagationDelay: time.Second,
-		DisabledPeriod:   time.Second,
-		KeyNames:         []string{keyName},
+		Version:                  "1",
+		KeyTTL:                   7 * time.Second,
+		GracePeriod:              2 * time.Second, // rotate after 5 seconds
+		PropagationDelay:         time.Second,
+		DisabledPeriod:           time.Second,
+		FirestoreDocResourceName: fmt.Sprintf("projects/%s/databases/(default)/documents/jvs/%s", fireStoreProjectID, keyCfgFullPath),
 	}
 	if err := cfg.Validate(); err != nil {
 		t.Fatal(err)
 	}
 	r := &jvscrypto.RotationHandler{
+		KeyCfg:       keyCfg,
 		KMSClient:    kmsClient,
 		CryptoConfig: cfg,
 	}
@@ -369,18 +365,26 @@ func TestRotator_EdgeCases(t *testing.T) {
 
 	kmsClient, keyName := testSetupRotator(ctx, t)
 
+	fireStoreProjectID := os.Getenv("TEST_JVS_FIRESTORE_PROJECT_ID")
+	if fireStoreProjectID == "" {
+		t.Fatal("Firestore project id must be provided using TEST_JVS_FIRESTORE_PROJECT_ID env variable.")
+	}
+	keyCfgFullPath := "jvs/key_config_for_rotator_edge_cases_test"
+	keyCfg := testSetUpKeyConfig(ctx, t, fireStoreProjectID, keyCfgFullPath, keyName)
+
 	cfg := &config.CryptoConfig{
-		Version:          "1",
-		KeyTTL:           99 * time.Hour,
-		GracePeriod:      time.Second,
-		PropagationDelay: time.Second,
-		DisabledPeriod:   time.Second,
-		KeyNames:         []string{keyName},
+		Version:                  "1",
+		KeyTTL:                   99 * time.Hour,
+		GracePeriod:              time.Second,
+		PropagationDelay:         time.Second,
+		DisabledPeriod:           time.Second,
+		FirestoreDocResourceName: fmt.Sprintf("projects/%s/databases/(default)/documents/jvs/%s", fireStoreProjectID, keyCfgFullPath),
 	}
 	if err := cfg.Validate(); err != nil {
 		t.Fatal(err)
 	}
 	r := &jvscrypto.RotationHandler{
+		KeyCfg:       keyCfg,
 		KMSClient:    kmsClient,
 		CryptoConfig: cfg,
 	}
@@ -441,15 +445,23 @@ func TestPublicKeys(t *testing.T) {
 	keyRing = strings.Trim(keyRing, "\"")
 	keyName := testCreateKey(ctx, t, kmsClient, keyRing)
 
+	fireStoreProjectID := os.Getenv("TEST_JVS_FIRESTORE_PROJECT_ID")
+	if fireStoreProjectID == "" {
+		t.Fatal("Firestore project id must be provided using TEST_JVS_FIRESTORE_PROJECT_ID env variable.")
+	}
+	keyCfgFullPath := "jvs/key_config_for_public_keys_test"
 	publicKeyConfig := &config.PublicKeyConfig{
-		KeyNames:     []string{keyName},
-		CacheTimeout: 10 * time.Second,
+		FirestoreDocResourceName: fmt.Sprintf("projects/%s/databases/(default)/documents/jvs/%s", fireStoreProjectID, keyCfgFullPath),
+		CacheTimeout:             10 * time.Second,
 	}
 
 	cache := cache.New[string](publicKeyConfig.CacheTimeout)
 
+	keyCfg := testSetUpKeyConfig(ctx, t, fireStoreProjectID, keyCfgFullPath, keyName)
+
 	ks := &jvscrypto.KeyServer{
 		KMSClient:       kmsClient,
+		KeyCfg:          keyCfg,
 		PublicKeyConfig: publicKeyConfig,
 		Cache:           cache,
 	}
@@ -493,18 +505,26 @@ func TestCertActions(t *testing.T) {
 
 	kmsClient, keyName := testSetupRotator(ctx, t)
 
+	fireStoreProjectID := os.Getenv("TEST_JVS_FIRESTORE_PROJECT_ID")
+	if fireStoreProjectID == "" {
+		t.Fatal("Firestore project id must be provided using TEST_JVS_FIRESTORE_PROJECT_ID env variable.")
+	}
+	keyCfgFullPath := "jvs/key_config_for_cert_actions_test"
+	keyCfg := testSetUpKeyConfig(ctx, t, fireStoreProjectID, keyCfgFullPath, keyName)
+
 	cfg := &config.CryptoConfig{
-		Version:          "1",
-		KeyTTL:           7 * time.Second,
-		GracePeriod:      2 * time.Second, // rotate after 5 seconds
-		PropagationDelay: time.Second,
-		DisabledPeriod:   time.Second,
-		KeyNames:         []string{keyName},
+		Version:                  "1",
+		KeyTTL:                   7 * time.Second,
+		GracePeriod:              2 * time.Second, // rotate after 5 seconds
+		PropagationDelay:         time.Second,
+		DisabledPeriod:           time.Second,
+		FirestoreDocResourceName: fmt.Sprintf("projects/%s/databases/(default)/documents/jvs/%s", fireStoreProjectID, keyCfgFullPath),
 	}
 	if err := cfg.Validate(); err != nil {
 		t.Fatal(err)
 	}
 	r := &jvscrypto.RotationHandler{
+		KeyCfg:       keyCfg,
 		KMSClient:    kmsClient,
 		CryptoConfig: cfg,
 	}
@@ -934,4 +954,21 @@ func testCleanUpRemoteConfig(ctx context.Context, tb testing.TB, firestoreClient
 	if _, err := firestoreClient.Doc(docFullPath).Delete(ctx); err != nil {
 		tb.Errorf("failed to cleanup remote config at path %v with error %v", docFullPath, err)
 	}
+}
+
+func testSetUpKeyConfig(ctx context.Context, tb testing.TB, firestoreProjectID, keyCfgFullPath, keyName string) config.RemoteConfig {
+	firestoreClient, err := firestore.NewClient(ctx, firestoreProjectID)
+	if err != nil {
+		tb.Fatalf("failed to create Firestore client: %v", err)
+	}
+
+	testCreateRemoteConfig(ctx, tb, firestoreClient, keyCfgFullPath, config.JVSKeyConfig{KeyName: keyName})
+	tb.Cleanup(func() {
+		testCleanUpRemoteConfig(ctx, tb, firestoreClient, keyCfgFullPath)
+		if err := firestoreClient.Close(); err != nil {
+			tb.Errorf("clean up of firestore client failed: %v", err)
+		}
+	})
+
+	return config.NewFirestoreConfig(firestoreClient, keyCfgFullPath)
 }

@@ -48,6 +48,7 @@ func TestLoadCryptoConfig(t *testing.T) {
 	t.Parallel()
 	ctx := context.Background()
 
+	firestoreDocResourceNmae := "projects/test-project/databases/(default)/documents/jvs/key_config"
 	tests := []struct {
 		name       string
 		cfg        string
@@ -63,13 +64,15 @@ key_ttl: 720h # 30 days
 grace_period: 2h
 disabled_period: 720h # 30 days
 propagation_delay: 1h
+firestore_doc_resource_name: projects/test-project/databases/(default)/documents/jvs/key_config
 `,
 			wantConfig: &CryptoConfig{
-				Version:          "1",
-				KeyTTL:           720 * time.Hour, // 30 days
-				GracePeriod:      2 * time.Hour,   // 2 hours
-				DisabledPeriod:   720 * time.Hour, // 30 days
-				PropagationDelay: time.Hour,       // 1 hour
+				Version:                  "1",
+				KeyTTL:                   720 * time.Hour, // 30 days
+				GracePeriod:              2 * time.Hour,   // 2 hours
+				DisabledPeriod:           720 * time.Hour, // 30 days
+				PropagationDelay:         time.Hour,       // 1 hour
+				FirestoreDocResourceName: firestoreDocResourceNmae,
 			},
 		},
 		{
@@ -80,44 +83,47 @@ propagation_time: 30m
 grace_period: 2h
 disabled_period: 720h # 30 days
 propagation_delay: 1h
+firestore_doc_resource_name: projects/test-project/databases/(default)/documents/jvs/key_config
 `,
 			wantConfig: &CryptoConfig{
-				Version:          "1",
-				KeyTTL:           720 * time.Hour, // 30 days
-				GracePeriod:      2 * time.Hour,   // 2 hours
-				DisabledPeriod:   720 * time.Hour, // 30 days
-				PropagationDelay: time.Hour,       // 1 hour
+				Version:                  "1",
+				KeyTTL:                   720 * time.Hour, // 30 days
+				GracePeriod:              2 * time.Hour,   // 2 hours
+				DisabledPeriod:           720 * time.Hour, // 30 days
+				PropagationDelay:         time.Hour,       // 1 hour
+				FirestoreDocResourceName: firestoreDocResourceNmae,
 			},
 		},
 		{
 			name: "test_wrong_version",
 			cfg: `
 version: 255
+firestore_doc_resource_name: projects/test-project/databases/(default)/documents/jvs/key_config
 `,
 			wantConfig: nil,
 			wantErr:    `version "255" is invalid, valid versions are:`,
 		},
 		{
 			name:       "test_empty_key_ttl",
-			cfg:        ``,
+			cfg:        `firestore_doc_resource_name: projects/test-project/databases/(default)/documents/jvs/key_config`,
 			wantConfig: nil,
 			wantErr:    `key ttl must be a positive duration, got "0s"`,
 		},
 		{
 			name:       "test_empty_grace_period",
-			cfg:        ``,
+			cfg:        `firestore_doc_resource_name: projects/test-project/databases/(default)/documents/jvs/key_config`,
 			wantConfig: nil,
 			wantErr:    `grace period must be a positive duration, got "0s"`,
 		},
 		{
 			name:       "test_empty_disabled_period",
-			cfg:        ``,
+			cfg:        `firestore_doc_resource_name: projects/test-project/databases/(default)/documents/jvs/key_config`,
 			wantConfig: nil,
 			wantErr:    `disabled period must be a positive duration, got "0s"`,
 		},
 		{
 			name:       "test_empty_propagation_delay",
-			cfg:        ``,
+			cfg:        `firestore_doc_resource_name: projects/test-project/databases/(default)/documents/jvs/key_config`,
 			wantConfig: nil,
 			wantErr:    `propagation delay must be a positive duration, got "0s"`,
 		},
@@ -126,6 +132,7 @@ version: 255
 			name: "test_negative_key_ttl",
 			cfg: `
 key_ttl: -720h
+firestore_doc_resource_name: projects/test-project/databases/(default)/documents/jvs/key_config
 `,
 			wantConfig: nil,
 			wantErr:    `key ttl must be a positive duration, got "-720h0m0s"`,
@@ -134,6 +141,7 @@ key_ttl: -720h
 			name: "test_negative_grace_period",
 			cfg: `
 grace_period: -2h
+firestore_doc_resource_name: projects/test-project/databases/(default)/documents/jvs/key_config
 `,
 			wantConfig: nil,
 			wantErr:    `grace period must be a positive duration, got "-2h0m0s"`,
@@ -142,6 +150,7 @@ grace_period: -2h
 			name: "test_negative_disabled_period",
 			cfg: `
 disabled_period: -720h
+firestore_doc_resource_name: projects/test-project/databases/(default)/documents/jvs/key_config
 `,
 			wantConfig: nil,
 			wantErr:    `disabled period must be a positive duration, got "-720h0m0s"`,
@@ -150,6 +159,7 @@ disabled_period: -720h
 			name: "test_negative_propagation_delay",
 			cfg: `
 propagation_delay: -1h
+firestore_doc_resource_name: projects/test-project/databases/(default)/documents/jvs/key_config
 `,
 			wantConfig: nil,
 			wantErr:    `propagation delay must be a positive duration, got "-1h0m0s"`,
@@ -159,9 +169,22 @@ propagation_delay: -1h
 			cfg: `
 grace_period: 1h
 propagation_delay: 2h
+firestore_doc_resource_name: projects/test-project/databases/(default)/documents/jvs/key_config
 `,
 			wantConfig: nil,
 			wantErr:    `propagation delay "2h0m0s" must be less than grace period "1h0m0s"`,
+		},
+		{
+			name: "test_empty_firestore_doc_resource_name",
+			cfg: `
+version: 1
+key_ttl: 720h # 30 days
+grace_period: 2h
+disabled_period: 720h # 30 days
+propagation_delay: 1h
+`,
+			wantConfig: nil,
+			wantErr:    `firestore doc resource name must be non-empty`,
 		},
 		{
 			name: "all_values_specified_env_override",
@@ -171,34 +194,39 @@ key_ttl: 720h # 30 days
 grace_period: 2h
 disabled_period: 720h # 30 days
 propagation_delay: 1h
+firestore_doc_resource_name: projects/test-project/databases/(default)/documents/jvs/key_config
 `,
 			envs: map[string]string{
-				"JVS_KEY_TTL":      "1080h", // 45 days
-				"JVS_GRACE_PERIOD": "4h",
+				"JVS_KEY_TTL":                     "1080h", // 45 days
+				"JVS_GRACE_PERIOD":                "4h",
+				"JVS_FIRESTORE_DOC_RESOURCE_NAME": "projects/test-project/databases/(default)/documents/jvs/test-key_config",
 			},
 			wantConfig: &CryptoConfig{
-				Version:          "1",
-				KeyTTL:           1080 * time.Hour, // 45 days
-				GracePeriod:      4 * time.Hour,    // 4 hours
-				DisabledPeriod:   720 * time.Hour,  // 30 days
-				PropagationDelay: time.Hour,        // 1 hour
+				Version:                  "1",
+				KeyTTL:                   1080 * time.Hour, // 45 days
+				GracePeriod:              4 * time.Hour,    // 4 hours
+				DisabledPeriod:           720 * time.Hour,  // 30 days
+				PropagationDelay:         time.Hour,        // 1 hour
+				FirestoreDocResourceName: "projects/test-project/databases/(default)/documents/jvs/test-key_config",
 			},
 		},
 		{
 			name: "non_default_values_specified_in_envs",
 			cfg:  ``,
 			envs: map[string]string{
-				"JVS_KEY_TTL":           "1080h", // 45 days
-				"JVS_GRACE_PERIOD":      "4h",
-				"JVS_DISABLED_PERIOD":   "1080h", // 45 days
-				"JVS_PROPAGATION_DELAY": "1h",
+				"JVS_KEY_TTL":                     "1080h", // 45 days
+				"JVS_GRACE_PERIOD":                "4h",
+				"JVS_DISABLED_PERIOD":             "1080h", // 45 days
+				"JVS_PROPAGATION_DELAY":           "1h",
+				"JVS_FIRESTORE_DOC_RESOURCE_NAME": "projects/test-project/databases/(default)/documents/jvs/test-key_config",
 			},
 			wantConfig: &CryptoConfig{
-				Version:          "1",
-				KeyTTL:           1080 * time.Hour, // 45 days
-				GracePeriod:      4 * time.Hour,    // 4 hours
-				DisabledPeriod:   1080 * time.Hour, // 45 days
-				PropagationDelay: time.Hour,        // 1 hour
+				Version:                  "1",
+				KeyTTL:                   1080 * time.Hour, // 45 days
+				GracePeriod:              4 * time.Hour,    // 4 hours
+				DisabledPeriod:           1080 * time.Hour, // 45 days
+				PropagationDelay:         time.Hour,        // 1 hour
+				FirestoreDocResourceName: "projects/test-project/databases/(default)/documents/jvs/test-key_config",
 			},
 		},
 	}

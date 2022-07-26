@@ -115,9 +115,16 @@ func TestGenerateJWKString(t *testing.T) {
 				t.Fatal(err)
 			}
 
+			keyCfg, err := testutil.NewFakeRemoteConfig(
+				fmt.Sprintf("key_name: %s", key),
+				"YAML")
+			if err != nil {
+				t.Fatalf("failed to create key config %v", err)
+			}
 			ks := &KeyServer{
 				KMSClient:       kms,
-				PublicKeyConfig: &config.PublicKeyConfig{KeyNames: []string{key}},
+				KeyCfg:          keyCfg,
+				PublicKeyConfig: &config.PublicKeyConfig{FirestoreDocResourceName: "projects/test-project/databases/(default)/documents/jvs/key_config"},
 				Cache:           cache,
 			}
 

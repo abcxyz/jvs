@@ -31,7 +31,7 @@ func TestLoadPublicKeyConfig(t *testing.T) {
 	envs := make(map[string]string)
 	envs["PORT"] = "123"
 	envs["CACHE_TIMEOUT"] = "5m"
-	envs["KEY_NAMES"] = "key1,key2"
+	envs["FIRESTORE_DOC_RESOURCE_NAME"] = "projects/test-project/databases/(default)/documents/jvs/key_config"
 
 	lookuper := envconfig.MapLookuper(envs)
 	content := bytes.NewBufferString("").Bytes()
@@ -41,9 +41,9 @@ func TestLoadPublicKeyConfig(t *testing.T) {
 	}
 
 	wantConfig := &PublicKeyConfig{
-		KeyNames:     []string{"key1", "key2"},
-		CacheTimeout: 5 * time.Minute,
-		Port:         "123",
+		FirestoreDocResourceName: "projects/test-project/databases/(default)/documents/jvs/key_config",
+		CacheTimeout:             5 * time.Minute,
+		Port:                     "123",
 	}
 	if diff := cmp.Diff(wantConfig, gotConfig); diff != "" {
 		t.Errorf("Config unexpected diff (-want,+got):\n%s", diff)
@@ -55,7 +55,7 @@ func TestLoadPublicKeyConfig_Default(t *testing.T) {
 	ctx := context.Background()
 
 	envs := make(map[string]string)
-	envs["KEY_NAMES"] = "key1,key2"
+	envs["FIRESTORE_DOC_RESOURCE_NAME"] = "projects/test-project/databases/(default)/documents/jvs/key_config"
 	envs["CACHE_TIMEOUT"] = "5m"
 
 	lookuper := envconfig.MapLookuper(envs)
@@ -66,9 +66,9 @@ func TestLoadPublicKeyConfig_Default(t *testing.T) {
 	}
 
 	wantConfig := &PublicKeyConfig{
-		KeyNames:     []string{"key1", "key2"},
-		CacheTimeout: 5 * time.Minute,
-		Port:         "8080",
+		FirestoreDocResourceName: "projects/test-project/databases/(default)/documents/jvs/key_config",
+		CacheTimeout:             5 * time.Minute,
+		Port:                     "8080",
 	}
 	if diff := cmp.Diff(wantConfig, gotConfig); diff != "" {
 		t.Errorf("Config unexpected diff (-want,+got):\n%s", diff)

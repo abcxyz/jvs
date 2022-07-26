@@ -24,11 +24,12 @@ import (
 	"syscall"
 	"time"
 
-	"github.com/abcxyz/jvs/pkg/cleanup"
+	"cloud.google.com/go/firestore"
 
 	kms "cloud.google.com/go/kms/apiv1"
 	"github.com/abcxyz/jvs/pkg/config"
 	"github.com/abcxyz/jvs/pkg/jvscrypto"
+	"github.com/abcxyz/jvs/pkg/util"
 	"github.com/abcxyz/pkg/cache"
 	"github.com/abcxyz/pkg/logging"
 	"go.uber.org/zap"
@@ -57,18 +58,32 @@ func realMain(ctx context.Context) error {
 	if err != nil {
 		return fmt.Errorf("failed to setup kms client: %w", err)
 	}
-	defer cleanup.GracefulClose(logger, kmsClient)
+	defer util.GracefulClose(logger, kmsClient)
 
-	config, err := config.LoadPublicKeyConfig(ctx, []byte{})
+	publicKeyCfg, err := config.LoadPublicKeyConfig(ctx, []byte{})
 	if err != nil {
 		return fmt.Errorf("failed to load config: %w", err)
 	}
 
-	cache := cache.New[string](config.CacheTimeout)
+	cache := cache.New[string](publicKeyCfg.CacheTimeout)
+
+	firestoreDoc, err := util.ParseFirestoreDocResource(publicKeyCfg.FirestoreDocResourceName)
+	if err != nil {
+		return err
+	}
+
+	firestoreClient, err := firestore.NewClient(ctx, firestoreDoc.ProjectID)
+	if err != nil {
+		return fmt.Errorf("failed to create Firestore client: %w", err)
+	}
+	defer util.GracefulClose(logger, firestoreClient)
+
+	keyCfg := config.NewFirestoreConfig(firestoreClient, firestoreDoc.DocPath)
 
 	ks := &jvscrypto.KeyServer{
 		KMSClient:       kmsClient,
-		PublicKeyConfig: config,
+		KeyCfg:          keyCfg,
+		PublicKeyConfig: publicKeyCfg,
 		Cache:           cache,
 	}
 
@@ -76,9 +91,9 @@ func realMain(ctx context.Context) error {
 	mux.Handle("/.well-known/jwks", ks)
 
 	// Create the server and listen in a goroutine.
-	logger.Debug("starting server on port", zap.String("port", config.Port))
+	logger.Debug("starting server on port", zap.String("port", publicKeyCfg.Port))
 	server := &http.Server{
-		Addr:              ":" + config.Port,
+		Addr:              ":" + publicKeyCfg.Port,
 		Handler:           mux,
 		ReadHeaderTimeout: 2 * time.Second,
 	}

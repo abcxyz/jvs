@@ -21,10 +21,11 @@ import (
 	"os/signal"
 	"syscall"
 
+	"github.com/abcxyz/jvs/pkg/util"
+
 	"cloud.google.com/go/firestore"
 	kms "cloud.google.com/go/kms/apiv1"
 	jvspb "github.com/abcxyz/jvs/apis/v0"
-	"github.com/abcxyz/jvs/pkg/cleanup"
 	"github.com/abcxyz/jvs/pkg/config"
 	"github.com/abcxyz/jvs/pkg/justification"
 	"github.com/abcxyz/pkg/grpcutil"
@@ -69,7 +70,7 @@ func realMain(ctx context.Context) error {
 	if err != nil {
 		return fmt.Errorf("failed to setup kms client: %w", err)
 	}
-	defer cleanup.GracefulClose(logger, kmsClient)
+	defer util.GracefulClose(logger, kmsClient)
 
 	authHandler, err := grpcutil.NewJWTAuthenticationHandler(ctx, grpcutil.NoJWTAuthValidation())
 	if err != nil {
@@ -80,7 +81,7 @@ func realMain(ctx context.Context) error {
 	if err != nil {
 		return fmt.Errorf("failed to create Firestore client: %w", err)
 	}
-	defer cleanup.GracefulClose(logger, firestoreClient)
+	defer util.GracefulClose(logger, firestoreClient)
 
 	keyCfg := config.NewFirestoreConfig(firestoreClient, jvsKeyConfigPath)
 	p := justification.NewProcessor(kmsClient, keyCfg, cfg, authHandler)

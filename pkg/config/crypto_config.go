@@ -43,11 +43,10 @@ type CryptoConfig struct {
 	// DisabledPeriod is a time between when the key is disabled, and when we delete the key.
 	DisabledPeriod time.Duration `yaml:"disabled_period,omitempty" env:"DISABLED_PERIOD,overwrite"`
 
-	// TODO: This is intended to be temporary, and will eventually be retrieved from a persistent external datastore
-	// https://github.com/abcxyz/jvs/issues/17
-	// KeyName format: `projects/*/locations/*/keyRings/*/cryptoKeys/*`
-	// https://pkg.go.dev/google.golang.org/genproto/googleapis/cloud/kms/v1#CryptoKey
-	KeyNames []string `yaml:"key_names,omitempty" env:"KEY_NAMES,overwrite"`
+	// FirestoreDocName is the resource name of the Firestore Document which stores the KMS key names
+	// Format: projects/{project_id}/databases/{databaseId}/documents/{document_path}
+	// Example: "projects/test-project/databases/(default)/documents/jvs/key_config"
+	FirestoreDocResourceName string `yaml:"firestore_doc_resource_name,omitempty" env:"FIRESTORE_DOC_RESOURCE_NAME,overwrite"`
 }
 
 // Validate checks if the config is valid.
@@ -78,6 +77,10 @@ func (cfg *CryptoConfig) Validate() error {
 	if cfg.PropagationDelay > cfg.GracePeriod {
 		err = multierror.Append(err, fmt.Errorf("propagation delay %q must be less than grace period %q",
 			cfg.PropagationDelay, cfg.GracePeriod))
+	}
+
+	if cfg.FirestoreDocResourceName == "" {
+		err = multierror.Append(err, fmt.Errorf("firestore doc resource name must be non-empty"))
 	}
 
 	return err.ErrorOrNil()

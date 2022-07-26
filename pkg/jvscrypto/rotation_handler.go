@@ -35,6 +35,7 @@ import (
 // RotationHandler handles all necessary rotation actions for asymmetric keys based off a provided
 // configuration.
 type RotationHandler struct {
+	KeyCfg       config.RemoteConfig
 	KMSClient    *kms.KeyManagementClient
 	CryptoConfig *config.CryptoConfig
 }
