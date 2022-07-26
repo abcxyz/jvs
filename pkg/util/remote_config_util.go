@@ -23,9 +23,14 @@ import (
 	"github.com/abcxyz/jvs/pkg/config"
 )
 
+const (
+	keyNameField = "key_name"
+)
+
+// GetKeyNames fetch key names from Key Config.
 func GetKeyNames(ctx context.Context, keyCfg config.RemoteConfig) ([]string, error) {
 	kmsKeyNames := make([]string, 0)
-	v, err := keyCfg.Get(ctx, "key_name")
+	v, err := keyCfg.Get(ctx, keyNameField)
 	if err != nil {
 		return kmsKeyNames, fmt.Errorf("failed when getting key name from key config %w", err)
 	}
