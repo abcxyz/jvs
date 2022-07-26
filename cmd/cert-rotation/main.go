@@ -25,12 +25,10 @@ import (
 	"time"
 
 	"cloud.google.com/go/firestore"
-
-	"github.com/abcxyz/jvs/pkg/util"
-
 	kms "cloud.google.com/go/kms/apiv1"
 	"github.com/abcxyz/jvs/pkg/config"
 	"github.com/abcxyz/jvs/pkg/jvscrypto"
+	"github.com/abcxyz/jvs/pkg/util"
 	"github.com/abcxyz/pkg/logging"
 	"github.com/hashicorp/go-multierror"
 	"go.uber.org/zap"

@@ -21,13 +21,13 @@ import (
 	"strings"
 )
 
-// FirestoreDoc represents a Firestore document, used to set up FirestoreConfig
+// FirestoreDoc represents a Firestore document, used to set up FirestoreConfig.
 type FirestoreDoc struct {
 	ProjectID string
 	DocPath   string
 }
 
-// ParseFirestoreDocResource construct FirestoreDoc struct based on resource path of Firestore document
+// ParseFirestoreDocResource construct FirestoreDoc struct based on resource path of Firestore document.
 func ParseFirestoreDocResource(resourceName string) (*FirestoreDoc, error) {
 	parsedStrs := strings.SplitN(resourceName, "/", 6)
 	if parsedStrs[0] != "projects" || parsedStrs[2] != "databases" || parsedStrs[4] != "documents" || len(parsedStrs) != 6 {

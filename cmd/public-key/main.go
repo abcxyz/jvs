@@ -25,7 +25,6 @@ import (
 	"time"
 
 	"cloud.google.com/go/firestore"
-
 	kms "cloud.google.com/go/kms/apiv1"
 	"github.com/abcxyz/jvs/pkg/config"
 	"github.com/abcxyz/jvs/pkg/jvscrypto"

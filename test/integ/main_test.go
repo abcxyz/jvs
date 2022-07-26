@@ -957,6 +957,7 @@ func testCleanUpRemoteConfig(ctx context.Context, tb testing.TB, firestoreClient
 }
 
 func testSetUpKeyConfig(ctx context.Context, tb testing.TB, firestoreProjectID, keyCfgFullPath, keyName string) config.RemoteConfig {
+	tb.Helper()
 	firestoreClient, err := firestore.NewClient(ctx, firestoreProjectID)
 	if err != nil {
 		tb.Fatalf("failed to create Firestore client: %v", err)

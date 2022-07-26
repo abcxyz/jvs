@@ -2,7 +2,6 @@ package testutil
 
 import (
 	"context"
-	"fmt"
 	"testing"
 
 	"github.com/abcxyz/jvs/pkg/config"
@@ -71,6 +70,5 @@ func testYAMLStr(tb testing.TB, in interface{}) string {
 	if err != nil {
 		tb.Fatalf("failed to marshal: %v", err)
 	}
-	fmt.Println(string(inBytes))
 	return string(inBytes)
 }
