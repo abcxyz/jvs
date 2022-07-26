@@ -32,7 +32,7 @@ public class JvsClientBuilderTest {
 
     JvsConfiguration expectedConfig = new JvsConfiguration();
     expectedConfig.setVersion("1");
-    expectedConfig.setJvsEndpoint("example.com");
+    expectedConfig.setJvsEndpoint("http://example.com:8080");
     expectedConfig.setCacheTimeout(Duration.parse("PT5M"));
 
     JvsConfiguration loadedConfig = builder.getConfiguration();
@@ -123,7 +123,7 @@ public class JvsClientBuilderTest {
 
     JvsConfiguration expectedConfig = new JvsConfiguration();
     expectedConfig.setVersion("1");
-    expectedConfig.setJvsEndpoint("example.com");
+    expectedConfig.setJvsEndpoint("http://example.com:8080");
     expectedConfig.setCacheTimeout(Duration.parse("PT5M"));
 
     JvsConfiguration loadedConfig = builder.getConfiguration();
