@@ -24,6 +24,8 @@ import com.fasterxml.jackson.datatype.jsr310.JavaTimeModule;
 import com.google.common.base.Strings;
 import java.io.IOException;
 import java.io.InputStream;
+import java.net.MalformedURLException;
+import java.net.URL;
 import java.time.Duration;
 import java.time.format.DateTimeParseException;
 import lombok.AccessLevel;
@@ -101,8 +103,18 @@ public class JVSClientBuilder {
     updateConfigFromEnvironmentVars();
     configuration.validate();
 
+    URL url;
+    try {
+      // We have to convert endpoint to URL, as the JwkProviderBuilder
+      // appends its own path on the end if you simply pass the string.
+      url = new URL(configuration.getJvsEndpoint());
+    } catch (MalformedURLException e) {
+      throw new IllegalArgumentException(
+          String.format("endpoint was invalid %s", configuration.getJvsEndpoint()));
+    }
+
     JwkProvider provider =
-        new JwkProviderBuilder(configuration.getJvsEndpoint())
+        new JwkProviderBuilder(url)
             .cached(CACHE_SIZE, configuration.getCacheTimeout())
             // TODO: by default, the rate limiter allows 10 reqs per minute.
             // https://github.com/auth0/jwks-rsa-java/blob/master/src/main/java/com/auth0/jwk/JwkProviderBuilder.java#L43
