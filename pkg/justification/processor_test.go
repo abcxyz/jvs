@@ -42,7 +42,6 @@ import (
 	"google.golang.org/grpc/metadata"
 	"google.golang.org/protobuf/proto"
 	"google.golang.org/protobuf/types/known/durationpb"
-	"gopkg.in/yaml.v2"
 )
 
 type MockJWTAuthHandler struct {
@@ -134,19 +133,10 @@ func TestCreateToken(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	jvsKeyConfig := config.JVSKeyConfig{KeyName: key}
-	configBytes, err := yaml.Marshal(jvsKeyConfig)
-	if err != nil {
-		t.Fatal(err)
-	}
-	keyConfig, err := testutil.NewFakeRemoteConfig(string(configBytes), "yaml")
-	if err != nil {
-		t.Fatalf("failed to create mock remote config: %v", err)
-	}
 
-	processor := NewProcessor(c, keyConfig, &config.JustificationConfig{
-		FirestoreProjectID: "fakeProject",
+	processor := NewProcessor(c, &config.JustificationConfig{
 		Version:            "1",
+		KeyName:            key,
 		SignerCacheTimeout: 5 * time.Minute,
 		Issuer:             "test-iss",
 	}, authHandler)

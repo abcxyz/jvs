@@ -40,7 +40,6 @@ import (
 type Processor struct {
 	jvspb.UnimplementedJVSServiceServer
 	kms         *kms.KeyManagementClient
-	keyConfig   config.RemoteConfig
 	config      *config.JustificationConfig
 	cache       *cache.Cache[*signerWithID]
 	authHandler *grpcutil.JWTAuthenticationHandler
@@ -52,12 +51,10 @@ type signerWithID struct {
 }
 
 // NewProcessor creates a processor with the signer cache initialized.
-func NewProcessor(kms *kms.KeyManagementClient, keyConfig config.RemoteConfig, config *config.JustificationConfig, authHandler *grpcutil.JWTAuthenticationHandler) *Processor {
+func NewProcessor(kms *kms.KeyManagementClient, config *config.JustificationConfig, authHandler *grpcutil.JWTAuthenticationHandler) *Processor {
 	cache := cache.New[*signerWithID](config.SignerCacheTimeout)
-
 	return &Processor{
 		kms:         kms,
-		keyConfig:   keyConfig,
 		config:      config,
 		cache:       cache,
 		authHandler: authHandler,
@@ -101,11 +98,7 @@ func (p *Processor) CreateToken(ctx context.Context, request *jvspb.CreateJustif
 }
 
 func (p *Processor) getLatestSigner(ctx context.Context) (*signerWithID, error) {
-	keyName, err := p.keyConfig.Get(ctx, config.JVSKeyNameField)
-	if err != nil {
-		return nil, fmt.Errorf("failed to get remoteConfig: %w", err)
-	}
-	ver, err := jvscrypto.GetLatestKeyVersion(ctx, p.kms, keyName.(string))
+	ver, err := jvscrypto.GetLatestKeyVersion(ctx, p.kms, p.config.KeyName)
 	if err != nil {
 		return nil, fmt.Errorf("failed to get key version, %w", err)
 	}

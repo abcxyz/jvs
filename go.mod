@@ -3,7 +3,6 @@ module github.com/abcxyz/jvs
 go 1.18
 
 require (
-	cloud.google.com/go/firestore v1.6.1
 	cloud.google.com/go/kms v1.4.0
 	github.com/abcxyz/pkg v0.0.0-20220719233420-62c7b76c10e9
 	github.com/golang-jwt/jwt v3.2.2+incompatible
@@ -14,7 +13,6 @@ require (
 	github.com/sethvargo/go-envconfig v0.8.0
 	github.com/sethvargo/go-gcpkms v0.1.0
 	github.com/sethvargo/go-retry v0.2.3
-	github.com/spf13/afero v1.8.2
 	github.com/spf13/cobra v1.4.0
 	github.com/spf13/viper v1.12.0
 	go.opentelemetry.io/contrib/instrumentation/google.golang.org/grpc/otelgrpc v0.32.0
@@ -52,6 +50,7 @@ require (
 	github.com/mitchellh/mapstructure v1.5.0 // indirect
 	github.com/pelletier/go-toml v1.9.5 // indirect
 	github.com/pelletier/go-toml/v2 v2.0.1 // indirect
+	github.com/spf13/afero v1.8.2 // indirect
 	github.com/spf13/cast v1.5.0 // indirect
 	github.com/spf13/jwalterweatherman v1.1.0 // indirect
 	github.com/spf13/pflag v1.0.5 // indirect
@@ -65,7 +64,6 @@ require (
 	golang.org/x/net v0.0.0-20220531201128-c960675eff93 // indirect
 	golang.org/x/sys v0.0.0-20220520151302-bc2c85ada10a // indirect
 	golang.org/x/text v0.3.7 // indirect
-	golang.org/x/xerrors v0.0.0-20220517211312-f3a8303e98df // indirect
 	google.golang.org/appengine v1.6.7 // indirect
 	gopkg.in/ini.v1 v1.66.4 // indirect
 	gopkg.in/yaml.v3 v3.0.1 // indirect
