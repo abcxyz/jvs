@@ -20,7 +20,6 @@ printf "Argument keyring_id is %s\n" "${KEYRING_ID}"
 
 export TEST_JVS_KMS_KEY_RING="projects/${PROJECT_ID}/locations/global/keyRings/${KEYRING_ID}"
 export TEST_JVS_INTEGRATION=true
-export TEST_JVS_FIRESTORE_PROJECT_ID=${PROJECT_ID}
 
 cd ${ROOT}
-go clean -testcache && go test ./test/integ/...
+go test ./test/integ/...
