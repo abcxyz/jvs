@@ -98,6 +98,11 @@ public class JVSClientBuilder {
     return this;
   }
 
+  public JVSClientBuilder withAllowBreakglass(boolean allowBreakglass) {
+    configuration.setBreakglassAllowed(allowBreakglass);
+    return this;
+  }
+
   public JvsClient build() {
     // Load env vars and validate config
     updateConfigFromEnvironmentVars();
@@ -122,6 +127,6 @@ public class JVSClientBuilder {
             .rateLimited(true)
             .build();
 
-    return new JvsClient(provider);
+    return new JvsClient(provider, configuration.isBreakglassAllowed());
   }
 }

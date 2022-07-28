@@ -31,6 +31,7 @@ import java.security.KeyPairGenerator;
 import java.security.SecureRandom;
 import java.util.Date;
 import java.util.HashMap;
+import java.util.List;
 import java.util.Map;
 import org.junit.jupiter.api.Assertions;
 import org.junit.jupiter.api.BeforeAll;
@@ -75,7 +76,7 @@ public class JvsClientTest {
     Jwk jwk = mock(Jwk.class);
     when(jwk.getPublicKey()).thenReturn(key1.getPublic());
     when(provider.get(keyId)).thenReturn(jwk);
-    JvsClient client = new JvsClient(provider);
+    JvsClient client = new JvsClient(provider, false);
     DecodedJWT returnVal = client.validateJWT(token);
     Assertions.assertEquals(claims.get("id"), returnVal.getClaims().get("id").asString());
     Assertions.assertEquals(claims.get("role"), returnVal.getClaims().get("role").asString());
@@ -101,9 +102,85 @@ public class JvsClientTest {
 
     when(provider.get(keyId))
         .thenThrow(new SigningKeyNotFoundException("", new RuntimeException()));
-    JvsClient client = new JvsClient(provider);
+    JvsClient client = new JvsClient(provider, false);
     JwkException thrown =
         Assertions.assertThrows(JwkException.class, () -> client.validateJWT(token));
     Assertions.assertTrue(thrown.getMessage().contains("Public key not found"));
+  }
+
+  @Test
+  public void testValidateJWT_Unsigned() throws Exception {
+    String keyId = "key2";
+
+    Map<String, Object> claims = new HashMap<>();
+    claims.put("id", "jwt-id");
+    claims.put("role", "user");
+    claims.put("created", new Date());
+
+    Map<String, String> justification = new HashMap<>();
+    justification.put("category", "breakglass");
+    justification.put("value", "issues/12345");
+    claims.put("justs", List.of(justification));
+
+    String token =
+        Jwts.builder().setClaims(claims).setHeaderParam("kid", keyId).compact()
+            + "NOT_SIGNED"; // dot is already added by the builder
+
+    JvsClient client = new JvsClient(provider, false);
+    JwkException thrown =
+        Assertions.assertThrows(JwkException.class, () -> client.validateJWT(token));
+    Assertions.assertTrue(
+        thrown.getMessage().contains("Token unsigned and could not be validated"));
+  }
+
+  @Test
+  public void testValidateJWT_UnsignedAllowed() throws Exception {
+    String keyId = "key2";
+
+    Map<String, Object> claims = new HashMap<>();
+    claims.put("id", "jwt-id");
+    claims.put("role", "user");
+    claims.put("created", new Date());
+
+    Map<String, String> justification = new HashMap<>();
+    justification.put("category", "breakglass");
+    justification.put("value", "issues/12345");
+    claims.put("justs", List.of(justification));
+
+    String token =
+        Jwts.builder().setClaims(claims).setHeaderParam("kid", keyId).compact()
+            + "NOT_SIGNED"; // dot is already added by the builder
+
+    JvsClient client = new JvsClient(provider, true);
+    DecodedJWT returnVal = client.validateJWT(token);
+    Assertions.assertEquals(claims.get("id"), returnVal.getClaims().get("id").asString());
+    Assertions.assertEquals(claims.get("role"), returnVal.getClaims().get("role").asString());
+    Assertions.assertEquals(
+        claims.get("created"), new Date(returnVal.getClaims().get("created").asLong()));
+    Assertions.assertEquals(claims.get("justs"), List.of(justification));
+  }
+
+  @Test
+  public void testValidateJWT_UnsignedAllowed_Invalid() throws Exception {
+    String keyId = "key2";
+
+    Map<String, Object> claims = new HashMap<>();
+    claims.put("id", "jwt-id");
+    claims.put("role", "user");
+    claims.put("created", new Date());
+
+    Map<String, String> justification = new HashMap<>();
+    justification.put("category", "something_else");
+    claims.put("justs", List.of(justification));
+
+    String token =
+        Jwts.builder().setClaims(claims).setHeaderParam("kid", keyId).compact()
+            + "NOT_SIGNED"; // dot is already added by the builder
+
+    JvsClient client = new JvsClient(provider, true);
+    JwkException thrown =
+        Assertions.assertThrows(JwkException.class, () -> client.validateJWT(token));
+    Assertions.assertTrue(
+        thrown.getMessage().contains("Token unsigned and could not be validated"));
   }
 }
