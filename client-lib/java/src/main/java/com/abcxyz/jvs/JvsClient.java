@@ -24,6 +24,8 @@ import com.auth0.jwt.JWT;
 import com.auth0.jwt.algorithms.Algorithm;
 import com.auth0.jwt.interfaces.DecodedJWT;
 import java.security.interfaces.ECPublicKey;
+import java.util.List;
+import java.util.Map;
 import lombok.AccessLevel;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
@@ -32,20 +34,52 @@ import lombok.extern.slf4j.Slf4j;
 @RequiredArgsConstructor(access = AccessLevel.PACKAGE)
 @Slf4j
 public class JvsClient {
+  // This postfix is added by the cli tool when creating breakglass tokens.
+  private static final String UNSIGNED_POSTFIX = ".NOT_SIGNED";
+
+  // this category is added by the cli tool when creating breakglass tokens.
+  private static final String BREAKGLASS_CATEGORY = "breakglass";
 
   private final JwkProvider provider;
+  private final boolean allowBreakglass;
 
   public DecodedJWT validateJWT(String jwtString) throws JwkException {
     DecodedJWT jwt = JWT.decode(jwtString);
-    Jwk jwk;
+
+    // Handle Break-glass tokens.
+    if (jwtString.endsWith(UNSIGNED_POSTFIX)) {
+      if (unsignedTokenValidAndAllowed(jwt)) {
+        return jwt;
+      } else {
+        throw new JwkException("Token unsigned and could not be validated.");
+      }
+    }
+
     try {
-      jwk = provider.get(jwt.getKeyId());
+      Jwk jwk = provider.get(jwt.getKeyId());
+      Algorithm algorithm = Algorithm.ECDSA256((ECPublicKey) jwk.getPublicKey(), null);
+      algorithm.verify(jwt);
     } catch (SigningKeyNotFoundException e) {
       log.info("No public key found with id: {}", jwt.getKeyId());
       throw new JwkException("Public key not found", e);
     }
-    Algorithm algorithm = Algorithm.ECDSA256((ECPublicKey) jwk.getPublicKey(), null);
-    algorithm.verify(jwt);
+
     return jwt;
+  }
+
+  // Check that the break-glass token is valid and that we allow break-glass tokens.
+  boolean unsignedTokenValidAndAllowed(DecodedJWT jwt) {
+    if (!allowBreakglass) {
+      log.info("break glass tokens not allowed, denying.");
+      return false;
+    }
+    List<Map> justifications = jwt.getClaim("justs").asList(Map.class);
+    for (Map<String, String> justification : justifications) {
+      if (justification.getOrDefault("category", "").equals(BREAKGLASS_CATEGORY)) {
+        return true;
+      }
+    }
+    log.info("unable to find correct break-glass category, denying.");
+    return false;
   }
 }
