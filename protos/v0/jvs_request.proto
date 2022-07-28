@@ -16,18 +16,20 @@ syntax = "proto3";
 
 import "google/protobuf/duration.proto";
 
-package jvs;
+package abcxyz.jvs;
 
 option go_package = "github.com/abcxyz/jvs/apis/v0";
 
-// CreateJustificationRequest provides a justification to the server in order to receive a token.
+// CreateJustificationRequest provides a justification to the server in order to
+// receive a token.
 message CreateJustificationRequest {
   repeated Justification justifications = 1;
   google.protobuf.Duration ttl = 2;
 }
 
-// Justification is intended to be used to provide reasons that data access is required.
+// Justification is intended to be used to provide reasons that data access is
+// required.
 message Justification {
-  string category = 1; // In MVP, the only supported category is "explanation".
+  string category = 1;  // In MVP, the only supported category is "explanation".
   string value = 2;
 }
