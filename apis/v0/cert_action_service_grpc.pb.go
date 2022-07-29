@@ -31,7 +31,7 @@ func NewCertificateActionServiceClient(cc grpc.ClientConnInterface) CertificateA
 
 func (c *certificateActionServiceClient) CertificateAction(ctx context.Context, in *CertificateActionRequest, opts ...grpc.CallOption) (*CertificateActionResponse, error) {
 	out := new(CertificateActionResponse)
-	err := c.cc.Invoke(ctx, "/jvs.CertificateActionService/CertificateAction", in, out, opts...)
+	err := c.cc.Invoke(ctx, "/abcxyz.jvs.CertificateActionService/CertificateAction", in, out, opts...)
 	if err != nil {
 		return nil, err
 	}
@@ -77,7 +77,7 @@ func _CertificateActionService_CertificateAction_Handler(srv interface{}, ctx co
 	}
 	info := &grpc.UnaryServerInfo{
 		Server:     srv,
-		FullMethod: "/jvs.CertificateActionService/CertificateAction",
+		FullMethod: "/abcxyz.jvs.CertificateActionService/CertificateAction",
 	}
 	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
 		return srv.(CertificateActionServiceServer).CertificateAction(ctx, req.(*CertificateActionRequest))
@@ -89,7 +89,7 @@ func _CertificateActionService_CertificateAction_Handler(srv interface{}, ctx co
 // It's only intended for direct use with grpc.RegisterService,
 // and not to be introspected or modified (even as a copy)
 var CertificateActionService_ServiceDesc = grpc.ServiceDesc{
-	ServiceName: "jvs.CertificateActionService",
+	ServiceName: "abcxyz.jvs.CertificateActionService",
 	HandlerType: (*CertificateActionServiceServer)(nil),
 	Methods: []grpc.MethodDesc{
 		{

@@ -14,17 +14,18 @@
 
 syntax = "proto3";
 
-package jvs;
+package abcxyz.jvs;
 
 import "protos/v0/cert_action_request.proto";
 
 option go_package = "github.com/abcxyz/jvs/apis/v0";
 
-// CertificateActionService performs actions on JVS certificates based on the request.
+// CertificateActionService performs actions on JVS certificates based on the
+// request.
 service CertificateActionService {
-  rpc CertificateAction(CertificateActionRequest) returns (CertificateActionResponse);
+  rpc CertificateAction(CertificateActionRequest)
+      returns (CertificateActionResponse);
 }
 
 // CertificateActionResponse is a blank response.
-message CertificateActionResponse {
-}
+message CertificateActionResponse {}
