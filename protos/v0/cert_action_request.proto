@@ -14,7 +14,7 @@
 
 syntax = "proto3";
 
-package jvs;
+package abcxyz.jvs;
 
 option go_package = "github.com/abcxyz/jvs/apis/v0";
 
@@ -27,16 +27,21 @@ message CertificateActionRequest {
 message Action {
   string version = 1;
   enum ACTION {
-    // This rotates the specified key gracefully. it will make a new primary and promote that new key to primary,
-    // but will not immediately disable the version specified (so it can still be used for JWT validation).
+    // This rotates the specified key gracefully. it will make a new primary and
+    // promote that new key to primary, but will not immediately disable the
+    // version specified (so it can still be used for JWT validation).
     ROTATE = 0;
-    // This will immediately disable the version specified. If the version is primary, it will make a new primary and
-    // promote that new key to primary. This is intended to make it invalid for use in JWT validation as soon as possible.
-    // However, until client caches are updated, JWTs could still be validated using the version.
+    // This will immediately disable the version specified. If the version is
+    // primary, it will make a new primary and promote that new key to primary.
+    // This is intended to make it invalid for use in JWT validation as soon as
+    // possible. However, until client caches are updated, JWTs could still be
+    // validated using the version.
     FORCE_DISABLE = 1;
-    // This will immediately destroy the version specified. If the version is primary, it will make a new primary and
-    // promote that new key to primary. This is intended to make it invalid for use in JWT validation as soon as possible.
-    // However, until client caches are updated, JWTs could still be validated using the version.
+    // This will immediately destroy the version specified. If the version is
+    // primary, it will make a new primary and promote that new key to primary.
+    // This is intended to make it invalid for use in JWT validation as soon as
+    // possible. However, until client caches are updated, JWTs could still be
+    // validated using the version.
     FORCE_DESTROY = 2;
   }
   ACTION action = 2;

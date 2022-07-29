@@ -31,7 +31,7 @@ func NewJVSServiceClient(cc grpc.ClientConnInterface) JVSServiceClient {
 
 func (c *jVSServiceClient) CreateJustification(ctx context.Context, in *CreateJustificationRequest, opts ...grpc.CallOption) (*CreateJustificationResponse, error) {
 	out := new(CreateJustificationResponse)
-	err := c.cc.Invoke(ctx, "/jvs.JVSService/CreateJustification", in, out, opts...)
+	err := c.cc.Invoke(ctx, "/abcxyz.jvs.JVSService/CreateJustification", in, out, opts...)
 	if err != nil {
 		return nil, err
 	}
@@ -76,7 +76,7 @@ func _JVSService_CreateJustification_Handler(srv interface{}, ctx context.Contex
 	}
 	info := &grpc.UnaryServerInfo{
 		Server:     srv,
-		FullMethod: "/jvs.JVSService/CreateJustification",
+		FullMethod: "/abcxyz.jvs.JVSService/CreateJustification",
 	}
 	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
 		return srv.(JVSServiceServer).CreateJustification(ctx, req.(*CreateJustificationRequest))
@@ -88,7 +88,7 @@ func _JVSService_CreateJustification_Handler(srv interface{}, ctx context.Contex
 // It's only intended for direct use with grpc.RegisterService,
 // and not to be introspected or modified (even as a copy)
 var JVSService_ServiceDesc = grpc.ServiceDesc{
-	ServiceName: "jvs.JVSService",
+	ServiceName: "abcxyz.jvs.JVSService",
 	HandlerType: (*JVSServiceServer)(nil),
 	Methods: []grpc.MethodDesc{
 		{
