@@ -320,7 +320,7 @@ func TestPerformActions(t *testing.T) {
 					},
 				},
 			},
-			expectedPrimary: "ver_" + versionSuffix + "-new",
+			expectedPrimary: PrimaryLabelPrefix + versionSuffix + "-new",
 		},
 		{
 			name: "destroy",
@@ -352,8 +352,8 @@ func TestPerformActions(t *testing.T) {
 					},
 				},
 			},
-			priorPrimary:    "ver_" + versionSuffix,
-			expectedPrimary: "ver_" + versionSuffix,
+			priorPrimary:    PrimaryLabelPrefix + versionSuffix,
+			expectedPrimary: PrimaryLabelPrefix + versionSuffix,
 			wantErr:         "",
 			expectedRequests: []proto.Message{
 				&kmspb.CreateCryptoKeyVersionRequest{

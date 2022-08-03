@@ -63,7 +63,7 @@ func TestGenerateJWKString(t *testing.T) {
 	}{
 		{
 			name:    "happy-path",
-			primary: "ver_" + versionSuffix,
+			primary: PrimaryLabelPrefix + versionSuffix,
 			numKeys: 1,
 			wantOutput: fmt.Sprintf(`{"keys":[{"crv":"P-256","kid":"%s","kty":"EC","x":"%s","y":"%s"}]}`,
 				key+"/cryptoKeyVersions/[VERSION]-0",
@@ -72,7 +72,7 @@ func TestGenerateJWKString(t *testing.T) {
 		},
 		{
 			name:    "multi-key",
-			primary: "ver_" + versionSuffix,
+			primary: PrimaryLabelPrefix + versionSuffix,
 			numKeys: 2,
 			wantOutput: fmt.Sprintf(`{"keys":[{"crv":"P-256","kid":"%s","kty":"EC","x":"%s","y":"%s"},{"crv":"P-256","kid":"%s","kty":"EC","x":"%s","y":"%s"}]}`,
 				key+"/cryptoKeyVersions/[VERSION]-0",

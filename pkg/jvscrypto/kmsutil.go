@@ -43,8 +43,8 @@ import (
 )
 
 const (
-	primaryKey  = "primary"
-	valuePrefix = "ver_"
+	PrimaryKey         = "primary"
+	PrimaryLabelPrefix = "ver_"
 )
 
 // JWKS represents a JWK Set, used to convert to json representation.
@@ -186,8 +186,8 @@ func GetPrimary(ctx context.Context, kms *kms.KeyManagementClient, key string) (
 	if err != nil {
 		return "", fmt.Errorf("issue while getting key from KMS: %w", err)
 	}
-	if primary, ok := response.Labels[primaryKey]; ok {
-		primary = strings.TrimPrefix(primary, valuePrefix)
+	if primary, ok := response.Labels[PrimaryKey]; ok {
+		primary = strings.TrimPrefix(primary, PrimaryLabelPrefix)
 		return fmt.Sprintf("%s/cryptoKeyVersions/%s", key, primary), nil
 	}
 	// no primary found
@@ -195,6 +195,8 @@ func GetPrimary(ctx context.Context, kms *kms.KeyManagementClient, key string) (
 }
 
 // SetPrimary sets the key version name as primary in the key labels.
+// 'Primary' field will be omitted for keys with purpose other than ENCRYPT_DECRYPT(https://cloud.google.com/kms/docs/reference/rest/v1/projects.locations.keyRings.cryptoKeys).
+// Therefore, use `Labels` filed to set the primary key version name.
 func SetPrimary(ctx context.Context, kms *kms.KeyManagementClient, key, versionName string) error {
 	response, err := kms.GetCryptoKey(ctx, &kmspb.GetCryptoKeyRequest{Name: key})
 	if err != nil {
@@ -210,7 +212,7 @@ func SetPrimary(ctx context.Context, kms *kms.KeyManagementClient, key, versionN
 	if labels == nil {
 		labels = make(map[string]string)
 	}
-	labels[primaryKey] = value
+	labels[PrimaryKey] = value
 	response.Labels = labels
 
 	var messageType *kmspb.CryptoKey
@@ -232,7 +234,7 @@ func getLabelValue(versionName string) (string, error) {
 	if len(split) != 10 {
 		return "", fmt.Errorf("input had unexpected format: \"%s\"", versionName)
 	}
-	versionValue := valuePrefix + split[len(split)-1]
+	versionValue := PrimaryLabelPrefix + split[len(split)-1]
 	return versionValue, nil
 }
 

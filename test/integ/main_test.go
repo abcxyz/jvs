@@ -245,7 +245,9 @@ func TestJVS(t *testing.T) {
 	}
 }
 
-//nolint:tparallel // subtests need to run in sequence.
+//nolint:tparallel
+// Subtests must be run in sequence, and they have waits in between. Therefore, they cannot
+// be parallelized, and aren't a good fit for table testing.
 func TestRotator(t *testing.T) {
 	t.Parallel()
 	ctx := context.Background()
@@ -278,9 +280,6 @@ func TestRotator(t *testing.T) {
 		map[int]kmspb.CryptoKeyVersion_CryptoKeyVersionState{
 			1: kmspb.CryptoKeyVersion_ENABLED,
 		})
-
-	// These tests must be run in sequence, and they have waits in between. Therefore, they cannot
-	// be parallelized, and aren't a good fit for table testing.
 
 	t.Run("new_key_creation", func(t *testing.T) {
 		time.Sleep(5001 * time.Millisecond) // Wait past the next rotation event
@@ -339,7 +338,8 @@ func TestRotator(t *testing.T) {
 	})
 }
 
-//nolint:tparallel // subtests need to run in sequence.
+//nolint:tparallel
+// Subtests need to run in sequence. To parallelize this, but we'd need separate keys from the above (more cruft)
 func TestRotator_EdgeCases(t *testing.T) {
 	t.Parallel()
 	ctx := context.Background()
@@ -385,7 +385,6 @@ func TestRotator_EdgeCases(t *testing.T) {
 			})
 	})
 
-	// we could parallelize this, but we'd need separate keys from the above (more cruft)
 	t.Run("emergent_disable", func(t *testing.T) {
 		// Emergently disable our primary.
 		testEmergentDisable(ctx, t, kmsClient, keyName, keyName+"/cryptoKeyVersions/1")
@@ -465,7 +464,9 @@ func TestPublicKeys(t *testing.T) {
 	})
 }
 
-//nolint:tparallel // subtests need to run in sequence.
+//nolint:tparallel
+// These tests must be run in sequence, and they have waits in between. Therefore, they cannot
+// be parallelized, and aren't a good fit for table testing.
 func TestCertActions(t *testing.T) {
 	t.Parallel()
 	ctx := context.Background()
@@ -503,9 +504,6 @@ func TestCertActions(t *testing.T) {
 		map[int]kmspb.CryptoKeyVersion_CryptoKeyVersionState{
 			1: kmspb.CryptoKeyVersion_ENABLED,
 		})
-
-	// These tests must be run in sequence, and they have waits in between. Therefore, they cannot
-	// be parallelized, and aren't a good fit for table testing.
 
 	if pass := t.Run("graceful_rotation", func(t *testing.T) {
 		actions := []*jvspb.Action{
@@ -717,9 +715,9 @@ func testValidateKeyVersionState(ctx context.Context, tb testing.TB, kmsClient *
 	if err != nil {
 		tb.Fatalf("err while calling kms: %s", err)
 	}
-	primaryName := resp.Labels["primary"]
+	primaryName := resp.Labels[jvscrypto.PrimaryKey]
 	primaryLabel := primaryName[strings.LastIndex(primaryName, "/")+1:]
-	primaryNumber, err := strconv.Atoi(strings.TrimPrefix(primaryLabel, "ver_"))
+	primaryNumber, err := strconv.Atoi(strings.TrimPrefix(primaryLabel, jvscrypto.PrimaryLabelPrefix))
 	if err != nil {
 		tb.Fatalf("couldn't convert version %s to number: %s", primaryName, err)
 	}
@@ -748,8 +746,9 @@ func testCreateKey(ctx context.Context, tb testing.TB, kmsClient *kms.KeyManagem
 	if err != nil {
 		tb.Fatalf("failed to create uuid : %s", err)
 	}
-	labels := make(map[string]string)
-	labels["primary"] = "ver_" + primaryKeyVersion
+	// 'Primary' field will be omitted for keys with purpose other than ENCRYPT_DECRYPT(https://cloud.google.com/kms/docs/reference/rest/v1/projects.locations.keyRings.cryptoKeys).
+	// Therefore, use `Labels` filed to set the primary key version name.
+	labels := map[string]string{jvscrypto.PrimaryKey: jvscrypto.PrimaryLabelPrefix + primaryKeyVersion}
 	ck, err := kmsClient.CreateCryptoKey(ctx, &kmspb.CreateCryptoKeyRequest{
 		Parent:      keyRing,
 		CryptoKeyId: u.String(),

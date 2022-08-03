@@ -158,7 +158,7 @@ func TestCreateToken(t *testing.T) {
 			}
 
 			mockKeyManagement.VersionName = version
-			mockKeyManagement.Labels["primary"] = "ver_" + "[VERSION]" + "-0"
+			mockKeyManagement.Labels[jvscrypto.PrimaryKey] = jvscrypto.PrimaryLabelPrefix + "[VERSION]" + "-0"
 
 			authKey, err := ecdsa.GenerateKey(elliptic.P256(), rand.Reader)
 			if err != nil {
