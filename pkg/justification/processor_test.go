@@ -60,9 +60,6 @@ func TestCreateToken(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	key := "projects/[PROJECT]/locations/[LOCATION]/keyRings/[KEY_RING]/cryptoKeys/[CRYPTO_KEY]"
-	version := key + "/cryptoKeyVersions/[VERSION]"
-	keyID := key + "/cryptoKeyVersions/[VERSION]-0"
 
 	tests := []struct {
 		name      string
@@ -108,6 +105,9 @@ func TestCreateToken(t *testing.T) {
 		t.Run(tc.name, func(t *testing.T) {
 			t.Parallel()
 			var clientOpt option.ClientOption
+			key := "projects/[PROJECT]/locations/[LOCATION]/keyRings/[KEY_RING]/cryptoKeys/[CRYPTO_KEY]"
+			version := key + "/cryptoKeyVersions/[VERSION]"
+			keyID := key + "/cryptoKeyVersions/[VERSION]-0"
 			mockKeyManagement := &testutil.MockKeyManagementServer{
 				UnimplementedKeyManagementServiceServer: kmspb.UnimplementedKeyManagementServiceServer{},
 				Reqs:                                    make([]proto.Message, 1),
