@@ -70,7 +70,9 @@ func TestJVS(t *testing.T) {
 	}
 
 	keyRing = strings.Trim(keyRing, "\"")
-	keyName := testCreateKey(ctx, t, kmsClient, keyRing)
+	primaryKeyVersion := "1"
+
+	keyName := testCreateKey(ctx, t, kmsClient, keyRing, primaryKeyVersion)
 	t.Cleanup(func() {
 		testCleanUpKey(ctx, t, kmsClient, keyName)
 		if err := kmsClient.Close(); err != nil {
@@ -101,8 +103,7 @@ func TestJVS(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	key := "projects/[PROJECT]/locations/[LOCATION]/keyRings/[KEY_RING]/cryptoKeys/[CRYPTO_KEY]"
-	keyID := key + "/cryptoKeyVersions/[VERSION]-0"
+	keyID := keyName + "/cryptoKeyVersions/" + primaryKeyVersion
 	if err := ecdsaKey.Set(jwk.KeyIDKey, keyID); err != nil {
 		t.Fatal(err)
 	}
@@ -244,6 +245,9 @@ func TestJVS(t *testing.T) {
 	}
 }
 
+//nolint:tparallel
+// Subtests must be run in sequence, and they have waits in between. Therefore, they cannot
+// be parallelized, and aren't a good fit for table testing.
 func TestRotator(t *testing.T) {
 	t.Parallel()
 	ctx := context.Background()
@@ -276,9 +280,6 @@ func TestRotator(t *testing.T) {
 		map[int]kmspb.CryptoKeyVersion_CryptoKeyVersionState{
 			1: kmspb.CryptoKeyVersion_ENABLED,
 		})
-
-	// These tests must be run in sequence, and they have waits in between. Therefore, they cannot
-	// be parallelized, and aren't a good fit for table testing.
 
 	t.Run("new_key_creation", func(t *testing.T) {
 		time.Sleep(5001 * time.Millisecond) // Wait past the next rotation event
@@ -337,6 +338,8 @@ func TestRotator(t *testing.T) {
 	})
 }
 
+//nolint:tparallel
+// Subtests need to run in sequence. To parallelize this, but we'd need separate keys from the above (more cruft).
 func TestRotator_EdgeCases(t *testing.T) {
 	t.Parallel()
 	ctx := context.Background()
@@ -382,7 +385,6 @@ func TestRotator_EdgeCases(t *testing.T) {
 			})
 	})
 
-	// we could parallelize this, but we'd need separate keys from the above (more cruft)
 	t.Run("emergent_disable", func(t *testing.T) {
 		// Emergently disable our primary.
 		testEmergentDisable(ctx, t, kmsClient, keyName, keyName+"/cryptoKeyVersions/1")
@@ -418,7 +420,8 @@ func TestPublicKeys(t *testing.T) {
 		t.Fatal("Key ring must be provided using TEST_JVS_KMS_KEY_RING env variable.")
 	}
 	keyRing = strings.Trim(keyRing, "\"")
-	keyName := testCreateKey(ctx, t, kmsClient, keyRing)
+	primaryKeyVersion := "1"
+	keyName := testCreateKey(ctx, t, kmsClient, keyRing, primaryKeyVersion)
 
 	publicKeyConfig := &config.PublicKeyConfig{
 		KeyNames:     []string{keyName},
@@ -461,6 +464,9 @@ func TestPublicKeys(t *testing.T) {
 	})
 }
 
+//nolint:tparallel
+// These tests must be run in sequence, and they have waits in between. Therefore, they cannot
+// be parallelized, and aren't a good fit for table testing.
 func TestCertActions(t *testing.T) {
 	t.Parallel()
 	ctx := context.Background()
@@ -498,9 +504,6 @@ func TestCertActions(t *testing.T) {
 		map[int]kmspb.CryptoKeyVersion_CryptoKeyVersionState{
 			1: kmspb.CryptoKeyVersion_ENABLED,
 		})
-
-	// These tests must be run in sequence, and they have waits in between. Therefore, they cannot
-	// be parallelized, and aren't a good fit for table testing.
 
 	if pass := t.Run("graceful_rotation", func(t *testing.T) {
 		actions := []*jvspb.Action{
@@ -615,7 +618,8 @@ func testSetupRotator(ctx context.Context, tb testing.TB) (*kms.KeyManagementCli
 	}
 
 	keyRing = strings.Trim(keyRing, "\"")
-	keyName := testCreateKey(ctx, tb, kmsClient, keyRing)
+	primaryKeyVersion := "1"
+	keyName := testCreateKey(ctx, tb, kmsClient, keyRing, primaryKeyVersion)
 	tb.Cleanup(func() {
 		testCleanUpKey(ctx, tb, kmsClient, keyName)
 		if err := kmsClient.Close(); err != nil {
@@ -711,9 +715,9 @@ func testValidateKeyVersionState(ctx context.Context, tb testing.TB, kmsClient *
 	if err != nil {
 		tb.Fatalf("err while calling kms: %s", err)
 	}
-	primaryName := resp.Labels["primary"]
+	primaryName := resp.Labels[jvscrypto.PrimaryKey]
 	primaryLabel := primaryName[strings.LastIndex(primaryName, "/")+1:]
-	primaryNumber, err := strconv.Atoi(strings.TrimPrefix(primaryLabel, "ver_"))
+	primaryNumber, err := strconv.Atoi(strings.TrimPrefix(primaryLabel, jvscrypto.PrimaryLabelPrefix))
 	if err != nil {
 		tb.Fatalf("couldn't convert version %s to number: %s", primaryName, err)
 	}
@@ -736,12 +740,15 @@ func testIsIntegration(tb testing.TB) bool {
 }
 
 // Create an asymmetric signing key for use with integration tests.
-func testCreateKey(ctx context.Context, tb testing.TB, kmsClient *kms.KeyManagementClient, keyRing string) string {
+func testCreateKey(ctx context.Context, tb testing.TB, kmsClient *kms.KeyManagementClient, keyRing, primaryKeyVersion string) string {
 	tb.Helper()
 	u, err := uuid.NewUUID()
 	if err != nil {
 		tb.Fatalf("failed to create uuid : %s", err)
 	}
+	// 'Primary' field will be omitted for keys with purpose other than ENCRYPT_DECRYPT(https://cloud.google.com/kms/docs/reference/rest/v1/projects.locations.keyRings.cryptoKeys).
+	// Therefore, use `Labels` filed to set the primary key version name.
+	labels := map[string]string{jvscrypto.PrimaryKey: jvscrypto.PrimaryLabelPrefix + primaryKeyVersion}
 	ck, err := kmsClient.CreateCryptoKey(ctx, &kmspb.CreateCryptoKeyRequest{
 		Parent:      keyRing,
 		CryptoKeyId: u.String(),
@@ -750,6 +757,7 @@ func testCreateKey(ctx context.Context, tb testing.TB, kmsClient *kms.KeyManagem
 			VersionTemplate: &kmspb.CryptoKeyVersionTemplate{
 				Algorithm: kmspb.CryptoKeyVersion_EC_SIGN_P256_SHA256,
 			},
+			Labels: labels,
 		},
 	})
 	if err != nil {
@@ -760,7 +768,7 @@ func testCreateKey(ctx context.Context, tb testing.TB, kmsClient *kms.KeyManagem
 	r := retry.NewExponential(100 * time.Millisecond)
 	if err := retry.Do(ctx, retry.WithMaxRetries(10, r), func(ctx context.Context) error {
 		ckv, err := kmsClient.GetCryptoKeyVersion(ctx, &kmspb.GetCryptoKeyVersionRequest{
-			Name: ck.Name + "/cryptoKeyVersions/1",
+			Name: ck.Name + "/cryptoKeyVersions/" + primaryKeyVersion,
 		})
 		if err != nil {
 			return err
@@ -883,7 +891,7 @@ func testValidatePublicKeys(ctx context.Context, tb testing.TB, ks *jvscrypto.Ke
 ) {
 	tb.Helper()
 
-	req, err := http.NewRequest("GET", "/.well-known/jwks", nil)
+	req, err := http.NewRequestWithContext(ctx, "GET", "/.well-known/jwks", nil)
 	if err != nil {
 		tb.Fatalf("http.NewRequest(): got %v, want no error", err)
 	}

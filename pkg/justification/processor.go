@@ -80,7 +80,7 @@ func (p *Processor) CreateToken(ctx context.Context, request *jvspb.CreateJustif
 	}
 
 	signer, err := p.cache.WriteThruLookup(cacheKey, func() (*signerWithID, error) {
-		return p.getLatestSigner(ctx)
+		return p.getPrimarySigner(ctx)
 	})
 	if err != nil {
 		logger.Error("Couldn't update keys from kms", zap.Error(err))
@@ -97,18 +97,21 @@ func (p *Processor) CreateToken(ctx context.Context, request *jvspb.CreateJustif
 	return signedToken, nil
 }
 
-func (p *Processor) getLatestSigner(ctx context.Context) (*signerWithID, error) {
-	ver, err := jvscrypto.GetLatestKeyVersion(ctx, p.kms, p.config.KeyName)
+func (p *Processor) getPrimarySigner(ctx context.Context) (*signerWithID, error) {
+	primaryVer, err := jvscrypto.GetPrimary(ctx, p.kms, p.config.KeyName)
 	if err != nil {
-		return nil, fmt.Errorf("failed to get key version, %w", err)
+		return nil, fmt.Errorf("unable to determine primary, %w", err)
 	}
-	sig, err := gcpkms.NewSigner(ctx, p.kms, ver.Name)
+	if primaryVer == "" {
+		return nil, fmt.Errorf("no primary version found")
+	}
+	sig, err := gcpkms.NewSigner(ctx, p.kms, primaryVer)
 	if err != nil {
 		return nil, fmt.Errorf("failed to create signer, %w", err)
 	}
 	return &signerWithID{
 		Signer: sig,
-		id:     ver.Name,
+		id:     primaryVer,
 	}, nil
 }
 
