@@ -92,6 +92,7 @@ func TestGenerateJWKString(t *testing.T) {
 	for _, tc := range tests {
 		tc := tc
 		t.Run(tc.name, func(t *testing.T) {
+			t.Parallel()
 			mockKMSServer := testutil.NewMockKeyManagementServer(key, key+"/cryptoKeyVersions/"+versionSuffix, tc.primary)
 			mockKMSServer.PrivateKey = privateKey
 			mockKMSServer.PublicKey = string(pemEncodedPub)

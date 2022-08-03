@@ -889,7 +889,7 @@ func testValidatePublicKeys(ctx context.Context, tb testing.TB, ks *jvscrypto.Ke
 ) {
 	tb.Helper()
 
-	req, err := http.NewRequest("GET", "/.well-known/jwks", nil)
+	req, err := http.NewRequestWithContext(ctx, "GET", "/.well-known/jwks", nil)
 	if err != nil {
 		tb.Fatalf("http.NewRequest(): got %v, want no error", err)
 	}

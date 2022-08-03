@@ -273,6 +273,7 @@ func TestCertificateAction(t *testing.T) {
 	for _, tc := range tests {
 		tc := tc
 		t.Run(tc.name, func(t *testing.T) {
+			t.Parallel()
 			mockKMS := testutil.NewMockKeyManagementServer(parent, versionName, tc.priorPrimary)
 			mockKMS.Err = tc.serverErr
 
