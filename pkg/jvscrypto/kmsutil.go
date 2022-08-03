@@ -196,7 +196,8 @@ func GetPrimary(ctx context.Context, kms *kms.KeyManagementClient, key string) (
 
 // SetPrimary sets the key version name as primary in the key labels.
 // 'Primary' field will be omitted for keys with purpose other than ENCRYPT_DECRYPT(https://cloud.google.com/kms/docs/reference/rest/v1/projects.locations.keyRings.cryptoKeys).
-// Therefore, use `Labels` filed to set the primary key version name.
+// Therefore, use `Labels` filed to set the primary key version name with format `ver_[CRYPTO_KEY_Version_ID]`.
+// For example, "ver_1".
 func SetPrimary(ctx context.Context, kms *kms.KeyManagementClient, key, versionName string) error {
 	response, err := kms.GetCryptoKey(ctx, &kmspb.GetCryptoKeyRequest{Name: key})
 	if err != nil {

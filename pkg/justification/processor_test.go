@@ -21,7 +21,6 @@ import (
 	"crypto/rand"
 	"crypto/x509"
 	"encoding/pem"
-	"net"
 	"testing"
 	"time"
 
@@ -38,9 +37,7 @@ import (
 	"google.golang.org/api/option"
 	kmspb "google.golang.org/genproto/googleapis/cloud/kms/v1"
 	"google.golang.org/grpc"
-	"google.golang.org/grpc/credentials/insecure"
 	"google.golang.org/grpc/metadata"
-	"google.golang.org/protobuf/proto"
 	"google.golang.org/protobuf/types/known/durationpb"
 )
 
@@ -108,14 +105,9 @@ func TestCreateToken(t *testing.T) {
 			key := "projects/[PROJECT]/locations/[LOCATION]/keyRings/[KEY_RING]/cryptoKeys/[CRYPTO_KEY]"
 			version := key + "/cryptoKeyVersions/[VERSION]"
 			keyID := key + "/cryptoKeyVersions/[VERSION]-0"
-			mockKeyManagement := &testutil.MockKeyManagementServer{
-				UnimplementedKeyManagementServiceServer: kmspb.UnimplementedKeyManagementServiceServer{},
-				Reqs:                                    make([]proto.Message, 1),
-				Err:                                     nil,
-				Resps:                                   make([]proto.Message, 1),
-				NumVersions:                             1,
-				Labels:                                  make(map[string]string),
-			}
+
+			mockKeyManagement := testutil.NewMockKeyManagementServer(key, version, jvscrypto.PrimaryLabelPrefix+"[VERSION]"+"-0")
+			mockKeyManagement.NumVersions = 1
 
 			privateKey, err := ecdsa.GenerateKey(elliptic.P256(), rand.Reader)
 			if err != nil {
@@ -132,21 +124,10 @@ func TestCreateToken(t *testing.T) {
 			serv := grpc.NewServer()
 			kmspb.RegisterKeyManagementServiceServer(serv, mockKeyManagement)
 
-			lis, err := net.Listen("tcp", "localhost:0")
-			if err != nil {
-				t.Fatal(err)
-			}
-			// not checked, but makes linter happy
-			errs := make(chan error, 1)
-			go func() {
-				errs <- serv.Serve(lis)
-				close(errs)
-			}()
+			_, conn := pkgtestutil.FakeGRPCServer(t, func(s *grpc.Server) {
+				kmspb.RegisterKeyManagementServiceServer(s, mockKeyManagement)
+			})
 
-			conn, err := grpc.Dial(lis.Addr().String(), grpc.WithTransportCredentials(insecure.NewCredentials()))
-			if err != nil {
-				t.Fatal(err)
-			}
 			clientOpt = option.WithGRPCConn(conn)
 			t.Cleanup(func() {
 				conn.Close()
@@ -156,9 +137,6 @@ func TestCreateToken(t *testing.T) {
 			if err != nil {
 				t.Fatal(err)
 			}
-
-			mockKeyManagement.VersionName = version
-			mockKeyManagement.Labels[jvscrypto.PrimaryKey] = jvscrypto.PrimaryLabelPrefix + "[VERSION]" + "-0"
 
 			authKey, err := ecdsa.GenerateKey(elliptic.P256(), rand.Reader)
 			if err != nil {
