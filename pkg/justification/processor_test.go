@@ -56,98 +56,10 @@ func TestCreateToken(t *testing.T) {
 	t.Parallel()
 	ctx := context.Background()
 
-	var clientOpt option.ClientOption
-	mockKeyManagement := &testutil.MockKeyManagementServer{
-		UnimplementedKeyManagementServiceServer: kmspb.UnimplementedKeyManagementServiceServer{},
-		Reqs:                                    make([]proto.Message, 1),
-		Err:                                     nil,
-		Resps:                                   make([]proto.Message, 1),
-		NumVersions:                             1,
-		Labels:                                  make(map[string]string),
-	}
-
-	privateKey, err := ecdsa.GenerateKey(elliptic.P256(), rand.Reader)
-	if err != nil {
-		t.Fatal(err)
-	}
-	mockKeyManagement.PrivateKey = privateKey
-	x509EncodedPub, err := x509.MarshalPKIXPublicKey(privateKey.Public())
-	if err != nil {
-		t.Fatal(err)
-	}
-	pemEncodedPub := pem.EncodeToMemory(&pem.Block{Type: "PUBLIC KEY", Bytes: x509EncodedPub})
-	mockKeyManagement.PublicKey = string(pemEncodedPub)
-
-	serv := grpc.NewServer()
-	kmspb.RegisterKeyManagementServiceServer(serv, mockKeyManagement)
-
-	lis, err := net.Listen("tcp", "localhost:0")
-	if err != nil {
-		t.Fatal(err)
-	}
-	// not checked, but makes linter happy
-	errs := make(chan error, 1)
-	go func() {
-		errs <- serv.Serve(lis)
-		close(errs)
-	}()
-
-	conn, err := grpc.Dial(lis.Addr().String(), grpc.WithTransportCredentials(insecure.NewCredentials()))
-	if err != nil {
-		t.Fatal(err)
-	}
-	clientOpt = option.WithGRPCConn(conn)
-	t.Cleanup(func() {
-		conn.Close()
-	})
-
-	c, err := kms.NewKeyManagementClient(ctx, clientOpt)
-	if err != nil {
-		t.Fatal(err)
-	}
-
-	key := "projects/[PROJECT]/locations/[LOCATION]/keyRings/[KEY_RING]/cryptoKeys/[CRYPTO_KEY]"
-	version := key + "/cryptoKeyVersions/[VERSION]"
-	mockKeyManagement.VersionName = version
-	mockKeyManagement.Labels["primary"] = "ver_" + "[VERSION]" + "-0"
-
-	authKey, err := ecdsa.GenerateKey(elliptic.P256(), rand.Reader)
-	if err != nil {
-		t.Fatal(err)
-	}
-	ecdsaKey, err := jwk.FromRaw(authKey.PublicKey)
-	if err != nil {
-		t.Fatal(err)
-	}
-	keyID := key + "/cryptoKeyVersions/[VERSION]-0"
-	if err := ecdsaKey.Set(jwk.KeyIDKey, keyID); err != nil {
-		t.Fatal(err)
-	}
-
-	tok := pkgtestutil.CreateJWT(t, "test_id", "user@example.com")
-	validJWT := pkgtestutil.SignToken(t, tok, authKey, keyID)
-
-	ctx = metadata.NewIncomingContext(ctx, metadata.New(map[string]string{
-		"authorization": "Bearer " + validJWT,
-	}))
-
-	authHandler, err := grpcutil.NewJWTAuthenticationHandler(ctx, grpcutil.NoJWTAuthValidation())
-	if err != nil {
-		t.Fatal(err)
-	}
-
-	processor := NewProcessor(c, &config.JustificationConfig{
-		Version:            "1",
-		KeyName:            key,
-		SignerCacheTimeout: 5 * time.Minute,
-		Issuer:             "test-iss",
-	}, authHandler)
-
 	hour, err := time.ParseDuration("3600s")
 	if err != nil {
 		t.Fatal(err)
 	}
-
 	tests := []struct {
 		name      string
 		request   *jvspb.CreateJustificationRequest
@@ -191,6 +103,93 @@ func TestCreateToken(t *testing.T) {
 		tc := tc
 		t.Run(tc.name, func(t *testing.T) {
 			t.Parallel()
+			var clientOpt option.ClientOption
+			mockKeyManagement := &testutil.MockKeyManagementServer{
+				UnimplementedKeyManagementServiceServer: kmspb.UnimplementedKeyManagementServiceServer{},
+				Reqs:                                    make([]proto.Message, 1),
+				Err:                                     nil,
+				Resps:                                   make([]proto.Message, 1),
+				NumVersions:                             1,
+				Labels:                                  make(map[string]string),
+			}
+
+			privateKey, err := ecdsa.GenerateKey(elliptic.P256(), rand.Reader)
+			if err != nil {
+				t.Fatal(err)
+			}
+			mockKeyManagement.PrivateKey = privateKey
+			x509EncodedPub, err := x509.MarshalPKIXPublicKey(privateKey.Public())
+			if err != nil {
+				t.Fatal(err)
+			}
+			pemEncodedPub := pem.EncodeToMemory(&pem.Block{Type: "PUBLIC KEY", Bytes: x509EncodedPub})
+			mockKeyManagement.PublicKey = string(pemEncodedPub)
+
+			serv := grpc.NewServer()
+			kmspb.RegisterKeyManagementServiceServer(serv, mockKeyManagement)
+
+			lis, err := net.Listen("tcp", "localhost:0")
+			if err != nil {
+				t.Fatal(err)
+			}
+			// not checked, but makes linter happy
+			errs := make(chan error, 1)
+			go func() {
+				errs <- serv.Serve(lis)
+				close(errs)
+			}()
+
+			conn, err := grpc.Dial(lis.Addr().String(), grpc.WithTransportCredentials(insecure.NewCredentials()))
+			if err != nil {
+				t.Fatal(err)
+			}
+			clientOpt = option.WithGRPCConn(conn)
+			t.Cleanup(func() {
+				conn.Close()
+			})
+
+			c, err := kms.NewKeyManagementClient(ctx, clientOpt)
+			if err != nil {
+				t.Fatal(err)
+			}
+
+			key := "projects/[PROJECT]/locations/[LOCATION]/keyRings/[KEY_RING]/cryptoKeys/[CRYPTO_KEY]"
+			version := key + "/cryptoKeyVersions/[VERSION]"
+			mockKeyManagement.VersionName = version
+			mockKeyManagement.Labels["primary"] = "ver_" + "[VERSION]" + "-0"
+
+			authKey, err := ecdsa.GenerateKey(elliptic.P256(), rand.Reader)
+			if err != nil {
+				t.Fatal(err)
+			}
+			ecdsaKey, err := jwk.FromRaw(authKey.PublicKey)
+			if err != nil {
+				t.Fatal(err)
+			}
+			keyID := key + "/cryptoKeyVersions/[VERSION]-0"
+			if err := ecdsaKey.Set(jwk.KeyIDKey, keyID); err != nil {
+				t.Fatal(err)
+			}
+
+			tok := pkgtestutil.CreateJWT(t, "test_id", "user@example.com")
+			validJWT := pkgtestutil.SignToken(t, tok, authKey, keyID)
+
+			ctx = metadata.NewIncomingContext(ctx, metadata.New(map[string]string{
+				"authorization": "Bearer " + validJWT,
+			}))
+
+			authHandler, err := grpcutil.NewJWTAuthenticationHandler(ctx, grpcutil.NoJWTAuthValidation())
+			if err != nil {
+				t.Fatal(err)
+			}
+
+			processor := NewProcessor(c, &config.JustificationConfig{
+				Version:            "1",
+				KeyName:            key,
+				SignerCacheTimeout: 5 * time.Minute,
+				Issuer:             "test-iss",
+			}, authHandler)
+
 			mockKeyManagement.Reqs = nil
 			mockKeyManagement.Err = tc.serverErr
 

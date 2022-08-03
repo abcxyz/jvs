@@ -245,6 +245,7 @@ func TestJVS(t *testing.T) {
 	}
 }
 
+//nolint:tparallel // subtests need to run in sequence.
 func TestRotator(t *testing.T) {
 	t.Parallel()
 	ctx := context.Background()
@@ -338,6 +339,7 @@ func TestRotator(t *testing.T) {
 	})
 }
 
+//nolint:tparallel // subtests need to run in sequence.
 func TestRotator_EdgeCases(t *testing.T) {
 	t.Parallel()
 	ctx := context.Background()
@@ -463,6 +465,7 @@ func TestPublicKeys(t *testing.T) {
 	})
 }
 
+//nolint:tparallel // subtests need to run in sequence.
 func TestCertActions(t *testing.T) {
 	t.Parallel()
 	ctx := context.Background()
