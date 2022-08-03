@@ -39,7 +39,6 @@ import (
 
 func TestGenerateJWKString(t *testing.T) {
 	t.Parallel()
-	ctx := context.Background()
 
 	privateKey, err := ecdsa.GenerateKey(elliptic.P256(), rand.Reader)
 	if err != nil {
@@ -63,7 +62,7 @@ func TestGenerateJWKString(t *testing.T) {
 	}{
 		{
 			name:    "happy-path",
-			primary: "ver_" + versionSuffix,
+			primary: PrimaryLabelPrefix + versionSuffix,
 			numKeys: 1,
 			wantOutput: fmt.Sprintf(`{"keys":[{"crv":"P-256","kid":"%s","kty":"EC","x":"%s","y":"%s"}]}`,
 				key+"/cryptoKeyVersions/[VERSION]-0",
@@ -72,7 +71,7 @@ func TestGenerateJWKString(t *testing.T) {
 		},
 		{
 			name:    "multi-key",
-			primary: "ver_" + versionSuffix,
+			primary: PrimaryLabelPrefix + versionSuffix,
 			numKeys: 2,
 			wantOutput: fmt.Sprintf(`{"keys":[{"crv":"P-256","kid":"%s","kty":"EC","x":"%s","y":"%s"},{"crv":"P-256","kid":"%s","kty":"EC","x":"%s","y":"%s"}]}`,
 				key+"/cryptoKeyVersions/[VERSION]-0",
@@ -92,6 +91,8 @@ func TestGenerateJWKString(t *testing.T) {
 	for _, tc := range tests {
 		tc := tc
 		t.Run(tc.name, func(t *testing.T) {
+			t.Parallel()
+			ctx := context.Background()
 			mockKMSServer := testutil.NewMockKeyManagementServer(key, key+"/cryptoKeyVersions/"+versionSuffix, tc.primary)
 			mockKMSServer.PrivateKey = privateKey
 			mockKMSServer.PublicKey = string(pemEncodedPub)

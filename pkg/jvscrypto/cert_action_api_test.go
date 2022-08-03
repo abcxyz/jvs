@@ -34,7 +34,6 @@ import (
 
 func TestCertificateAction(t *testing.T) {
 	t.Parallel()
-	ctx := context.Background()
 
 	parent := fmt.Sprintf("projects/%s/locations/%s/keyRings/%s/cryptoKeys/%s", "[PROJECT]", "[LOCATION]", "[KEY_RING]", "[CRYPTO_KEY]")
 	versionSuffix := "[VERSION]"
@@ -59,7 +58,7 @@ func TestCertificateAction(t *testing.T) {
 					},
 				},
 			},
-			priorPrimary: "ver_" + versionSuffix,
+			priorPrimary: PrimaryLabelPrefix + versionSuffix,
 			expectedRequests: []proto.Message{
 				&kmspb.CreateCryptoKeyVersionRequest{
 					Parent:           parent,
@@ -76,7 +75,7 @@ func TestCertificateAction(t *testing.T) {
 				},
 				&kmspb.UpdateCryptoKeyRequest{
 					CryptoKey: &kmspb.CryptoKey{
-						Labels: map[string]string{"primary": "ver_" + versionSuffix + "-new"},
+						Labels: map[string]string{PrimaryKey: PrimaryLabelPrefix + versionSuffix + "-new"},
 						Name:   parent,
 					},
 					UpdateMask: &fieldmaskpb.FieldMask{
@@ -84,7 +83,7 @@ func TestCertificateAction(t *testing.T) {
 					},
 				},
 			},
-			expectedPrimary: "ver_" + versionSuffix + "-new",
+			expectedPrimary: PrimaryLabelPrefix + versionSuffix + "-new",
 			wantErr:         "",
 			serverErr:       nil,
 		},
@@ -98,7 +97,7 @@ func TestCertificateAction(t *testing.T) {
 					},
 				},
 			},
-			priorPrimary: "ver_" + versionSuffix,
+			priorPrimary: PrimaryLabelPrefix + versionSuffix,
 			expectedRequests: []proto.Message{
 				&kmspb.CreateCryptoKeyVersionRequest{
 					Parent:           parent,
@@ -115,7 +114,7 @@ func TestCertificateAction(t *testing.T) {
 				},
 				&kmspb.UpdateCryptoKeyRequest{
 					CryptoKey: &kmspb.CryptoKey{
-						Labels: map[string]string{"primary": "ver_" + versionSuffix + "-new"},
+						Labels: map[string]string{PrimaryKey: PrimaryLabelPrefix + versionSuffix + "-new"},
 						Name:   parent,
 					},
 					UpdateMask: &fieldmaskpb.FieldMask{
@@ -132,7 +131,7 @@ func TestCertificateAction(t *testing.T) {
 					},
 				},
 			},
-			expectedPrimary: "ver_" + versionSuffix + "-new",
+			expectedPrimary: PrimaryLabelPrefix + versionSuffix + "-new",
 			wantErr:         "",
 			serverErr:       nil,
 		},
@@ -146,7 +145,7 @@ func TestCertificateAction(t *testing.T) {
 					},
 				},
 			},
-			priorPrimary: "ver_" + versionSuffix,
+			priorPrimary: PrimaryLabelPrefix + versionSuffix,
 			expectedRequests: []proto.Message{
 				&kmspb.GetCryptoKeyRequest{
 					Name: parent,
@@ -164,7 +163,7 @@ func TestCertificateAction(t *testing.T) {
 					},
 				},
 			},
-			expectedPrimary: "ver_" + versionSuffix,
+			expectedPrimary: PrimaryLabelPrefix + versionSuffix,
 			wantErr:         "",
 			serverErr:       nil,
 		},
@@ -178,7 +177,7 @@ func TestCertificateAction(t *testing.T) {
 					},
 				},
 			},
-			priorPrimary: "ver_" + versionSuffix,
+			priorPrimary: PrimaryLabelPrefix + versionSuffix,
 			expectedRequests: []proto.Message{
 				&kmspb.CreateCryptoKeyVersionRequest{
 					Parent:           parent,
@@ -195,7 +194,7 @@ func TestCertificateAction(t *testing.T) {
 				},
 				&kmspb.UpdateCryptoKeyRequest{
 					CryptoKey: &kmspb.CryptoKey{
-						Labels: map[string]string{"primary": "ver_" + versionSuffix + "-new"},
+						Labels: map[string]string{PrimaryKey: PrimaryLabelPrefix + versionSuffix + "-new"},
 						Name:   parent,
 					},
 					UpdateMask: &fieldmaskpb.FieldMask{
@@ -206,7 +205,7 @@ func TestCertificateAction(t *testing.T) {
 					Name: versionName,
 				},
 			},
-			expectedPrimary: "ver_" + versionSuffix + "-new",
+			expectedPrimary: PrimaryLabelPrefix + versionSuffix + "-new",
 			wantErr:         "",
 			serverErr:       nil,
 		},
@@ -224,7 +223,7 @@ func TestCertificateAction(t *testing.T) {
 					},
 				},
 			},
-			priorPrimary: "ver_" + versionSuffix,
+			priorPrimary: PrimaryLabelPrefix + versionSuffix,
 			expectedRequests: []proto.Message{
 				&kmspb.GetCryptoKeyRequest{
 					Name: parent,
@@ -256,7 +255,7 @@ func TestCertificateAction(t *testing.T) {
 				},
 				&kmspb.UpdateCryptoKeyRequest{
 					CryptoKey: &kmspb.CryptoKey{
-						Labels: map[string]string{"primary": "ver_" + versionSuffix + "-new"},
+						Labels: map[string]string{PrimaryKey: PrimaryLabelPrefix + versionSuffix + "-new"},
 						Name:   parent,
 					},
 					UpdateMask: &fieldmaskpb.FieldMask{
@@ -264,7 +263,7 @@ func TestCertificateAction(t *testing.T) {
 					},
 				},
 			},
-			expectedPrimary: "ver_" + versionSuffix + "-new",
+			expectedPrimary: PrimaryLabelPrefix + versionSuffix + "-new",
 			wantErr:         "",
 			serverErr:       nil,
 		},
@@ -273,6 +272,8 @@ func TestCertificateAction(t *testing.T) {
 	for _, tc := range tests {
 		tc := tc
 		t.Run(tc.name, func(t *testing.T) {
+			t.Parallel()
+			ctx := context.Background()
 			mockKMS := testutil.NewMockKeyManagementServer(parent, versionName, tc.priorPrimary)
 			mockKMS.Err = tc.serverErr
 

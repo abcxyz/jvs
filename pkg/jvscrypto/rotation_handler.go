@@ -64,7 +64,7 @@ func (h *RotationHandler) RotateKey(ctx context.Context, key string) error {
 	}
 
 	// Get any relevant Key Version information from the StateStore
-	primaryName, err := getPrimary(ctx, h.KMSClient, key)
+	primaryName, err := GetPrimary(ctx, h.KMSClient, key)
 	if err != nil {
 		return fmt.Errorf("unable to determine primary: %w", err)
 	}
