@@ -51,7 +51,6 @@ func (j *MockJWTAuthHandler) RequestPrincipal(ctx context.Context) string {
 
 func TestCreateToken(t *testing.T) {
 	t.Parallel()
-	ctx := context.Background()
 
 	tests := []struct {
 		name      string
@@ -96,6 +95,7 @@ func TestCreateToken(t *testing.T) {
 		tc := tc
 		t.Run(tc.name, func(t *testing.T) {
 			t.Parallel()
+			ctx := context.Background()
 			var clientOpt option.ClientOption
 			key := "projects/[PROJECT]/locations/[LOCATION]/keyRings/[KEY_RING]/cryptoKeys/[CRYPTO_KEY]"
 			version := key + "/cryptoKeyVersions/[VERSION]"
