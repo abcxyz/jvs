@@ -70,7 +70,9 @@ func TestJVS(t *testing.T) {
 	}
 
 	keyRing = strings.Trim(keyRing, "\"")
-	keyName := testCreateKey(ctx, t, kmsClient, keyRing)
+	primaryKeyVersion := "1"
+
+	keyName := testCreateKey(ctx, t, kmsClient, keyRing, primaryKeyVersion)
 	t.Cleanup(func() {
 		testCleanUpKey(ctx, t, kmsClient, keyName)
 		if err := kmsClient.Close(); err != nil {
@@ -101,8 +103,7 @@ func TestJVS(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	key := "projects/[PROJECT]/locations/[LOCATION]/keyRings/[KEY_RING]/cryptoKeys/[CRYPTO_KEY]"
-	keyID := key + "/cryptoKeyVersions/[VERSION]-0"
+	keyID := keyName + "/cryptoKeyVersions/" + primaryKeyVersion
 	if err := ecdsaKey.Set(jwk.KeyIDKey, keyID); err != nil {
 		t.Fatal(err)
 	}
@@ -418,7 +419,8 @@ func TestPublicKeys(t *testing.T) {
 		t.Fatal("Key ring must be provided using TEST_JVS_KMS_KEY_RING env variable.")
 	}
 	keyRing = strings.Trim(keyRing, "\"")
-	keyName := testCreateKey(ctx, t, kmsClient, keyRing)
+	primaryKeyVersion := "1"
+	keyName := testCreateKey(ctx, t, kmsClient, keyRing, primaryKeyVersion)
 
 	publicKeyConfig := &config.PublicKeyConfig{
 		KeyNames:     []string{keyName},
@@ -615,7 +617,8 @@ func testSetupRotator(ctx context.Context, tb testing.TB) (*kms.KeyManagementCli
 	}
 
 	keyRing = strings.Trim(keyRing, "\"")
-	keyName := testCreateKey(ctx, tb, kmsClient, keyRing)
+	primaryKeyVersion := "1"
+	keyName := testCreateKey(ctx, tb, kmsClient, keyRing, primaryKeyVersion)
 	tb.Cleanup(func() {
 		testCleanUpKey(ctx, tb, kmsClient, keyName)
 		if err := kmsClient.Close(); err != nil {
@@ -736,12 +739,14 @@ func testIsIntegration(tb testing.TB) bool {
 }
 
 // Create an asymmetric signing key for use with integration tests.
-func testCreateKey(ctx context.Context, tb testing.TB, kmsClient *kms.KeyManagementClient, keyRing string) string {
+func testCreateKey(ctx context.Context, tb testing.TB, kmsClient *kms.KeyManagementClient, keyRing, primaryKeyVersion string) string {
 	tb.Helper()
 	u, err := uuid.NewUUID()
 	if err != nil {
 		tb.Fatalf("failed to create uuid : %s", err)
 	}
+	labels := make(map[string]string)
+	labels["primary"] = "ver_" + primaryKeyVersion
 	ck, err := kmsClient.CreateCryptoKey(ctx, &kmspb.CreateCryptoKeyRequest{
 		Parent:      keyRing,
 		CryptoKeyId: u.String(),
@@ -750,6 +755,7 @@ func testCreateKey(ctx context.Context, tb testing.TB, kmsClient *kms.KeyManagem
 			VersionTemplate: &kmspb.CryptoKeyVersionTemplate{
 				Algorithm: kmspb.CryptoKeyVersion_EC_SIGN_P256_SHA256,
 			},
+			Labels: labels,
 		},
 	})
 	if err != nil {
@@ -760,7 +766,7 @@ func testCreateKey(ctx context.Context, tb testing.TB, kmsClient *kms.KeyManagem
 	r := retry.NewExponential(100 * time.Millisecond)
 	if err := retry.Do(ctx, retry.WithMaxRetries(10, r), func(ctx context.Context) error {
 		ckv, err := kmsClient.GetCryptoKeyVersion(ctx, &kmspb.GetCryptoKeyVersionRequest{
-			Name: ck.Name + "/cryptoKeyVersions/1",
+			Name: ck.Name + "/cryptoKeyVersions/" + primaryKeyVersion,
 		})
 		if err != nil {
 			return err

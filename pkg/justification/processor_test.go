@@ -63,6 +63,7 @@ func TestCreateToken(t *testing.T) {
 		Err:                                     nil,
 		Resps:                                   make([]proto.Message, 1),
 		NumVersions:                             1,
+		Labels:                                  make(map[string]string),
 	}
 
 	privateKey, err := ecdsa.GenerateKey(elliptic.P256(), rand.Reader)
@@ -106,8 +107,9 @@ func TestCreateToken(t *testing.T) {
 	}
 
 	key := "projects/[PROJECT]/locations/[LOCATION]/keyRings/[KEY_RING]/cryptoKeys/[CRYPTO_KEY]"
-	version := key + "[VERSION]"
+	version := key + "/cryptoKeyVersions/[VERSION]"
 	mockKeyManagement.VersionName = version
+	mockKeyManagement.Labels["primary"] = "ver_" + "[VERSION]" + "-0"
 
 	authKey, err := ecdsa.GenerateKey(elliptic.P256(), rand.Reader)
 	if err != nil {
