@@ -60,6 +60,10 @@ func TestCreateToken(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
+	key := "projects/[PROJECT]/locations/[LOCATION]/keyRings/[KEY_RING]/cryptoKeys/[CRYPTO_KEY]"
+	version := key + "/cryptoKeyVersions/[VERSION]"
+	keyID := key + "/cryptoKeyVersions/[VERSION]-0"
+
 	tests := []struct {
 		name      string
 		request   *jvspb.CreateJustificationRequest
@@ -153,8 +157,6 @@ func TestCreateToken(t *testing.T) {
 				t.Fatal(err)
 			}
 
-			key := "projects/[PROJECT]/locations/[LOCATION]/keyRings/[KEY_RING]/cryptoKeys/[CRYPTO_KEY]"
-			version := key + "/cryptoKeyVersions/[VERSION]"
 			mockKeyManagement.VersionName = version
 			mockKeyManagement.Labels["primary"] = "ver_" + "[VERSION]" + "-0"
 
@@ -166,7 +168,7 @@ func TestCreateToken(t *testing.T) {
 			if err != nil {
 				t.Fatal(err)
 			}
-			keyID := key + "/cryptoKeyVersions/[VERSION]-0"
+
 			if err := ecdsaKey.Set(jwk.KeyIDKey, keyID); err != nil {
 				t.Fatal(err)
 			}
