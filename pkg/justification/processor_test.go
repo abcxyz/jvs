@@ -53,11 +53,6 @@ func TestCreateToken(t *testing.T) {
 	t.Parallel()
 	ctx := context.Background()
 
-	hour, err := time.ParseDuration("3600s")
-	if err != nil {
-		t.Fatal(err)
-	}
-
 	tests := []struct {
 		name      string
 		request   *jvspb.CreateJustificationRequest
@@ -73,13 +68,13 @@ func TestCreateToken(t *testing.T) {
 						Value:    "test",
 					},
 				},
-				Ttl: durationpb.New(hour),
+				Ttl: durationpb.New(3600 * time.Second),
 			},
 		},
 		{
 			name: "no_justification",
 			request: &jvspb.CreateJustificationRequest{
-				Ttl: durationpb.New(hour),
+				Ttl: durationpb.New(3600 * time.Second),
 			},
 			wantErr: "couldn't validate request",
 		},
