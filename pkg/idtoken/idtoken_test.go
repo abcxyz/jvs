@@ -81,6 +81,7 @@ func TestIDTokenFromDefaultTokenSource(t *testing.T) {
 	for _, tc := range tests {
 		tc := tc
 		t.Run(tc.name, func(t *testing.T) {
+			t.Parallel()
 			ts := &tokenSource{tokenSource: tc.ts}
 			gotToken, err := ts.Token()
 			if diff := testutil.DiffErrString(err, tc.wantErr); diff != "" {
