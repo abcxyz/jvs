@@ -34,7 +34,6 @@ import (
 
 func TestCertificateAction(t *testing.T) {
 	t.Parallel()
-	ctx := context.Background()
 
 	parent := fmt.Sprintf("projects/%s/locations/%s/keyRings/%s/cryptoKeys/%s", "[PROJECT]", "[LOCATION]", "[KEY_RING]", "[CRYPTO_KEY]")
 	versionSuffix := "[VERSION]"
@@ -274,6 +273,7 @@ func TestCertificateAction(t *testing.T) {
 		tc := tc
 		t.Run(tc.name, func(t *testing.T) {
 			t.Parallel()
+			ctx := context.Background()
 			mockKMS := testutil.NewMockKeyManagementServer(parent, versionName, tc.priorPrimary)
 			mockKMS.Err = tc.serverErr
 

@@ -91,7 +91,6 @@ func TestGetKeyNameFromVersion(t *testing.T) {
 }
 
 func TestDetermineActions(t *testing.T) {
-	ctx := context.Background()
 	t.Parallel()
 
 	keyTTL, err := time.ParseDuration("240h") // 10 days
@@ -228,6 +227,7 @@ func TestDetermineActions(t *testing.T) {
 		tc := tc
 		t.Run(tc.name, func(t *testing.T) {
 			t.Parallel()
+			ctx := context.Background()
 			output, err := handler.determineActions(ctx, tc.versions, tc.primary, curTime)
 
 			if diff := cmp.Diff(tc.wantActions, output, protocmp.Transform()); diff != "" {
@@ -251,7 +251,6 @@ func TestDetermineActions(t *testing.T) {
 
 func TestPerformActions(t *testing.T) {
 	t.Parallel()
-	ctx := context.Background()
 
 	parent := fmt.Sprintf("projects/%s/locations/%s/keyRings/%s/cryptoKeys/%s", "[PROJECT]", "[LOCATION]", "[KEY_RING]", "[CRYPTO_KEY]")
 	versionSuffix := "[VERSION]"
@@ -390,6 +389,7 @@ func TestPerformActions(t *testing.T) {
 		tc := tc
 		t.Run(tc.name, func(t *testing.T) {
 			t.Parallel()
+			ctx := context.Background()
 			mockKeyManagement := testutil.NewMockKeyManagementServer(parent, versionName, tc.priorPrimary)
 			mockKeyManagement.Err = tc.serverErr
 			mockKeyManagement.Resps = append(mockKeyManagement.Resps[:0], &kmspb.CryptoKeyVersion{Name: versionName + "-new"})

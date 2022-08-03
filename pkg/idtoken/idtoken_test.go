@@ -52,8 +52,6 @@ func (ts *fakeDefaultTokenSource) Token() (*oauth2.Token, error) {
 func TestIDTokenFromDefaultTokenSource(t *testing.T) {
 	t.Parallel()
 
-	now := time.Now()
-
 	tests := []struct {
 		name      string
 		ts        *fakeDefaultTokenSource
@@ -62,17 +60,17 @@ func TestIDTokenFromDefaultTokenSource(t *testing.T) {
 	}{{
 		name: "success",
 		ts: &fakeDefaultTokenSource{
-			expiry:  now,
+			expiry:  time.Now(),
 			idToken: "id-token",
 		},
 		wantToken: &oauth2.Token{
 			AccessToken: "id-token",
-			Expiry:      now,
+			Expiry:      time.Now(),
 		},
 	}, {
 		name: "error",
 		ts: &fakeDefaultTokenSource{
-			expiry:    now,
+			expiry:    time.Now(),
 			returnErr: fmt.Errorf("token err"),
 		},
 		wantErr: "token err",
