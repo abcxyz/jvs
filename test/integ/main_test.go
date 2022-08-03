@@ -339,7 +339,7 @@ func TestRotator(t *testing.T) {
 }
 
 //nolint:tparallel
-// Subtests need to run in sequence. To parallelize this, but we'd need separate keys from the above (more cruft)
+// Subtests need to run in sequence. To parallelize this, but we'd need separate keys from the above (more cruft).
 func TestRotator_EdgeCases(t *testing.T) {
 	t.Parallel()
 	ctx := context.Background()
