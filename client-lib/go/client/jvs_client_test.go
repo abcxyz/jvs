@@ -90,12 +90,11 @@ func TestValidateJWT(t *testing.T) {
 	})
 
 	tok := testCreateToken(t, "test_id")
-
 	tok2 := testCreateToken(t, "test_id_2")
-	validJWT2 := testSignToken(t, tok2, privateKey2, keyID2)
 	breakglassTok := testCreateBreakglassToken(t, "test_id_3")
+	validJWT2 := testSignToken(t, tok2, privateKey2, keyID2)
 	split := strings.Split(validJWT2, ".")
-	sig := split[len(split)-1]
+	sig2 := split[len(split)-1]
 
 	tests := []struct {
 		name             string
@@ -132,7 +131,7 @@ func TestValidateJWT(t *testing.T) {
 		},
 		{
 			name:    "invalid",
-			jwt:     testCreateSignedJWT(t, tok, sig), // Signature from a different JWT,
+			jwt:     testCreateSignedJWT(t, tok, sig2), // Signature from a different JWT,
 			wantErr: "failed to verify jwt",
 		},
 	}
