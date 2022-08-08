@@ -178,19 +178,23 @@ func TestValidateJWT(t *testing.T) {
 	}
 }
 
-func testCreateUnsignedJWT(t *testing.T, tok jwt.Token) string {
+func testCreateUnsignedJWT(tb *testing.T, tok jwt.Token) string {
+	tb.Helper()
+
 	unsig, err := jwt.NewSerializer().Serialize(tok)
 	if err != nil {
-		t.Fatalf("Couldn't get token string for token %v with error %v.", tok, err)
+		tb.Fatalf("Couldn't get token string for token %v with error %v.", tok, err)
 	}
 	unsignedJWT := string(unsig) + ".NOT_SIGNED"
 	return unsignedJWT
 }
 
-func testCreateSignedJWT(t *testing.T, tok jwt.Token, sigature string) string {
+func testCreateSignedJWT(tb *testing.T, tok jwt.Token, sigature string) string {
+	tb.Helper()
+
 	sig, err := jwt.NewSerializer().Serialize(tok)
 	if err != nil {
-		t.Fatalf("Couldn't get token string for token %v with error %v.", tok, err)
+		tb.Fatalf("Couldn't get token string for token %v with error %v.", tok, err)
 	}
 	signedJWT := string(sig) + sigature
 	return signedJWT
