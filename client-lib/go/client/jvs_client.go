@@ -17,18 +17,28 @@ package client
 
 import (
 	"context"
+	"encoding/json"
 	"fmt"
+	"strings"
 
+	jvspb "github.com/abcxyz/jvs/apis/v0"
 	"github.com/abcxyz/jvs/pkg/jvscrypto"
+
 	"github.com/lestrrat-go/jwx/v2/jwk"
 	"github.com/lestrrat-go/jwx/v2/jwt"
+)
+
+const (
+	UnsignedPostfix    = ".NOT_SIGNED"
+	BreakglassCategory = "breakglass"
 )
 
 // JVSClient allows for getting JWK keys from the JVS and validating JWTs with
 // those keys.
 type JVSClient struct {
-	config *JVSConfig
-	keys   jwk.Set
+	config           *JVSConfig
+	keys             jwk.Set
+	forbidBreakglass bool
 }
 
 // NewJVSClient returns a JVSClient with the cache initialized.
@@ -50,12 +60,52 @@ func NewJVSClient(ctx context.Context, config *JVSConfig) (*JVSClient, error) {
 	}
 
 	return &JVSClient{
-		config: config,
-		keys:   cached,
+		config:           config,
+		keys:             cached,
+		forbidBreakglass: config.ForbidBreakglass,
 	}, nil
 }
 
 // ValidateJWT takes a jwt string, converts it to a JWT, and validates the signature.
 func (j *JVSClient) ValidateJWT(jwtStr string) (*jwt.Token, error) {
+	token, err := jwt.Parse([]byte(jwtStr), jwt.WithVerify(false))
+	if err != nil {
+		return nil, fmt.Errorf("failed to verify jwt %s: %w", jwtStr, err)
+	}
+
+	// Handle Break-glass tokens.
+	if strings.HasSuffix(jwtStr, UnsignedPostfix) {
+		valid, err := j.unsignedTokenValidAndAllowed(token)
+		if valid {
+			return &token, nil
+		} else {
+			return nil, fmt.Errorf("token unsigned and could not be validated: %w", err)
+		}
+	}
 	return jvscrypto.ValidateJWT(j.keys, jwtStr)
+}
+
+func (j *JVSClient) unsignedTokenValidAndAllowed(token jwt.Token) (bool, error) {
+	if j.forbidBreakglass {
+		return false, fmt.Errorf("break glass tokens is forbidden, denying")
+	}
+	justs, ok := token.Get("justs")
+	if !ok {
+		return false, fmt.Errorf("can't find 'justs' in claims, denying")
+	}
+	justsBytes, err := json.Marshal(justs)
+	if err != nil {
+		return false, fmt.Errorf("failed to marshal 'justs', denying")
+	}
+	var justifications []*jvspb.Justification
+	err = json.Unmarshal(justsBytes, &justifications)
+	if err != nil {
+		return false, fmt.Errorf("failed to unmarshal 'justs', denying")
+	}
+	for _, justification := range justifications {
+		if justification.GetCategory() == BreakglassCategory {
+			return true, nil
+		}
+	}
+	return false, fmt.Errorf("unable to find correct break-glass category, denying")
 }

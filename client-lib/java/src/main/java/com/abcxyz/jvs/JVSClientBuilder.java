@@ -98,8 +98,8 @@ public class JVSClientBuilder {
     return this;
   }
 
-  public JVSClientBuilder withAllowBreakglass(boolean allowBreakglass) {
-    configuration.setBreakglassAllowed(allowBreakglass);
+  public JVSClientBuilder withForbidBreakglass(boolean forbidBreakglass) {
+    configuration.setForbidBreakglass(forbidBreakglass);
     return this;
   }
 
@@ -127,6 +127,6 @@ public class JVSClientBuilder {
             .rateLimited(true)
             .build();
 
-    return new JvsClient(provider, configuration.isBreakglassAllowed());
+    return new JvsClient(provider, configuration.isForbidBreakglass());
   }
 }

@@ -38,8 +38,8 @@ type JVSConfig struct {
 	// CacheTimeout is the duration that keys stay in cache before being revoked.
 	CacheTimeout time.Duration `yaml:"cache_timeout" env:"CACHE_TIMEOUT,overwrite,default=5m"`
 
-	// AllowBreakglass represents whether the jvs client supports breakglass.
-	AllowBreakglass bool `yaml:"allow_breakglass" env:"ALLOW_BREAKGLASS,overwrite,default=true"`
+	// ForbidBreakglass represents whether the jvs client forbids breakglass.
+	ForbidBreakglass bool `yaml:"forbid_breakglass" env:"FORBID_BREAKGLASS,overwrite,default=false"`
 }
 
 // Validate checks if the config is valid.
