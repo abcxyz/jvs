@@ -71,8 +71,7 @@ func (j *JVSClient) ValidateJWT(jwtStr string) (*jwt.Token, error) {
 		if err != nil {
 			return nil, fmt.Errorf("failed to parse jwt %s: %w", jwtStr, err)
 		}
-		err = j.unsignedTokenValidAndAllowed(token)
-		if err != nil {
+		if err := j.unsignedTokenValidAndAllowed(token); err != nil {
 			return nil, fmt.Errorf("token unsigned and could not be validated: %w", err)
 		}
 		return &token, nil
@@ -94,7 +93,7 @@ func (j *JVSClient) unsignedTokenValidAndAllowed(token jwt.Token) error {
 		return fmt.Errorf("failed to marshal 'justs', denying")
 	}
 	var justifications []*jvsapis.Justification
-	if err = json.Unmarshal(justsBytes, &justifications); err != nil {
+	if err := json.Unmarshal(justsBytes, &justifications); err != nil {
 		return fmt.Errorf("failed to unmarshal 'justs', denying")
 	}
 
