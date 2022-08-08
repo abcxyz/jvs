@@ -97,7 +97,7 @@ func (j *JVSClient) unsignedTokenValidAndAllowed(token jwt.Token) error {
 	if err = json.Unmarshal(justsBytes, &justifications); err != nil {
 		return fmt.Errorf("failed to unmarshal 'justs', denying")
 	}
-	
+
 	for _, justification := range justifications {
 		if justification.GetCategory() == BreakglassCategory {
 			return nil
