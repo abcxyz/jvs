@@ -71,8 +71,8 @@ func (j *JVSClient) ValidateJWT(jwtStr string) (*jwt.Token, error) {
 		if err != nil {
 			return nil, fmt.Errorf("failed to parse jwt %s: %w", jwtStr, err)
 		}
-		valid, err := j.unsignedTokenValidAndAllowed(token)
-		if !valid {
+		err = j.unsignedTokenValidAndAllowed(token)
+		if err != nil {
 			return nil, fmt.Errorf("token unsigned and could not be validated: %w", err)
 		}
 		return &token, nil
@@ -80,27 +80,27 @@ func (j *JVSClient) ValidateJWT(jwtStr string) (*jwt.Token, error) {
 	return jvscrypto.ValidateJWT(j.keys, jwtStr)
 }
 
-func (j *JVSClient) unsignedTokenValidAndAllowed(token jwt.Token) (bool, error) {
+func (j *JVSClient) unsignedTokenValidAndAllowed(token jwt.Token) error {
 	if j.config.ForbidBreakglass {
-		return false, fmt.Errorf("breakglass is forbidden, denying")
+		return fmt.Errorf("breakglass is forbidden, denying")
 	}
 	justs, ok := token.Get("justs")
 	if !ok {
-		return false, fmt.Errorf("can't find 'justs' in claims, denying")
+		return fmt.Errorf("can't find 'justs' in claims, denying")
 	}
 	justsBytes, err := json.Marshal(justs)
 	if err != nil {
-		return false, fmt.Errorf("failed to marshal 'justs', denying")
+		return fmt.Errorf("failed to marshal 'justs', denying")
 	}
 	var justifications []*jvsapis.Justification
 	err = json.Unmarshal(justsBytes, &justifications)
 	if err != nil {
-		return false, fmt.Errorf("failed to unmarshal 'justs', denying")
+		return fmt.Errorf("failed to unmarshal 'justs', denying")
 	}
 	for _, justification := range justifications {
 		if justification.GetCategory() == BreakglassCategory {
-			return true, nil
+			return nil
 		}
 	}
-	return false, fmt.Errorf("justification category is not breakglass, denying")
+	return fmt.Errorf("justification category is not breakglass, denying")
 }

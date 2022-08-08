@@ -76,21 +76,26 @@ func TestValidateJWT(t *testing.T) {
 	if err != nil {
 		t.Fatal("couldn't create jwks json")
 	}
+	path := "/.well-known/jwks"
+	mux := http.NewServeMux()
+	mux.HandleFunc(path, func(w http.ResponseWriter, r *http.Request) {
+		w.WriteHeader(http.StatusOK)
+		fmt.Fprintf(w, "%s", j)
+	})
+
+	svr := httptest.NewServer(mux)
+
+	t.Cleanup(func() {
+		svr.Close()
+	})
+
 	tok := testCreateToken(t, "test_id")
-	validJWT := testSignToken(t, tok, privateKey, keyID)
 
 	tok2 := testCreateToken(t, "test_id_2")
 	validJWT2 := testSignToken(t, tok2, privateKey2, keyID2)
-
-	unsignedJWT := testCreateUnsignedJWT(t, tok)
-
+	breakglassTok := testCreateBreakglassToken(t, "test_id_3")
 	split := strings.Split(validJWT2, ".")
 	sig := split[len(split)-1]
-
-	invalidSignatureJWT := testCreateSignedJWT(t, tok, sig) // Signatire from a different JWT
-
-	breakglassTok := testCreateBreakglassToken(t, "test_id_3")
-	breakglassJWT := testCreateUnsignedJWT(t, breakglassTok)
 
 	tests := []struct {
 		name             string
@@ -101,33 +106,33 @@ func TestValidateJWT(t *testing.T) {
 	}{
 		{
 			name:      "happy_path",
-			jwt:       validJWT,
+			jwt:       testSignToken(t, tok, privateKey, keyID),
 			wantToken: tok,
 		},
 		{
 			name:      "other_key",
-			jwt:       validJWT2,
+			jwt:       testSignToken(t, tok2, privateKey2, keyID2),
 			wantToken: tok2,
 		},
 		{
 			name:    "unsigned",
-			jwt:     unsignedJWT,
+			jwt:     testCreateUnsignedJWT(t, tok),
 			wantErr: "justification category is not breakglass, denying",
 		},
 		{
 			name:      "breakglass",
-			jwt:       breakglassJWT,
+			jwt:       testCreateUnsignedJWT(t, breakglassTok),
 			wantToken: breakglassTok,
 		},
 		{
 			name:             "forbid_breakglass",
-			jwt:              breakglassJWT,
+			jwt:              testCreateUnsignedJWT(t, breakglassTok),
 			forbidBreakglass: true,
 			wantErr:          "breakglass is forbidden, denying",
 		},
 		{
 			name:    "invalid",
-			jwt:     invalidSignatureJWT,
+			jwt:     testCreateSignedJWT(t, tok, sig), // Signature from a different JWT,
 			wantErr: "failed to verify jwt",
 		},
 	}
@@ -135,18 +140,7 @@ func TestValidateJWT(t *testing.T) {
 		tc := tc
 		t.Run(tc.name, func(t *testing.T) {
 			t.Parallel()
-			path := "/.well-known/jwks"
-			mux := http.NewServeMux()
-			mux.HandleFunc(path, func(w http.ResponseWriter, r *http.Request) {
-				w.WriteHeader(http.StatusOK)
-				fmt.Fprintf(w, "%s", j)
-			})
 
-			svr := httptest.NewServer(mux)
-
-			t.Cleanup(func() {
-				svr.Close()
-			})
 			client, err := NewJVSClient(ctx, &JVSConfig{
 				Version:          "1",
 				JVSEndpoint:      svr.URL + path,
