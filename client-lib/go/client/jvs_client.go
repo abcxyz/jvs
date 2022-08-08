@@ -23,7 +23,6 @@ import (
 
 	jvspb "github.com/abcxyz/jvs/apis/v0"
 	"github.com/abcxyz/jvs/pkg/jvscrypto"
-
 	"github.com/lestrrat-go/jwx/v2/jwk"
 	"github.com/lestrrat-go/jwx/v2/jwt"
 )
@@ -68,19 +67,17 @@ func NewJVSClient(ctx context.Context, config *JVSConfig) (*JVSClient, error) {
 
 // ValidateJWT takes a jwt string, converts it to a JWT, and validates the signature.
 func (j *JVSClient) ValidateJWT(jwtStr string) (*jwt.Token, error) {
-	token, err := jwt.Parse([]byte(jwtStr), jwt.WithVerify(false))
-	if err != nil {
-		return nil, fmt.Errorf("failed to verify jwt %s: %w", jwtStr, err)
-	}
-
 	// Handle Break-glass tokens.
 	if strings.HasSuffix(jwtStr, UnsignedPostfix) {
+		token, err := jwt.Parse([]byte(jwtStr), jwt.WithVerify(false))
+		if err != nil {
+			return nil, fmt.Errorf("failed to parse jwt %s: %w", jwtStr, err)
+		}
 		valid, err := j.unsignedTokenValidAndAllowed(token)
-		if valid {
-			return &token, nil
-		} else {
+		if !valid {
 			return nil, fmt.Errorf("token unsigned and could not be validated: %w", err)
 		}
+		return &token, nil
 	}
 	return jvscrypto.ValidateJWT(j.keys, jwtStr)
 }
