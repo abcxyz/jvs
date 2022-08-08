@@ -178,7 +178,7 @@ func TestValidateJWT(t *testing.T) {
 	}
 }
 
-func testCreateUnsignedJWT(tb *testing.T, tok jwt.Token) string {
+func testCreateUnsignedJWT(tb testing.TB, tok jwt.Token) string {
 	tb.Helper()
 
 	unsig, err := jwt.NewSerializer().Serialize(tok)
@@ -189,7 +189,7 @@ func testCreateUnsignedJWT(tb *testing.T, tok jwt.Token) string {
 	return unsignedJWT
 }
 
-func testCreateSignedJWT(tb *testing.T, tok jwt.Token, sigature string) string {
+func testCreateSignedJWT(tb testing.TB, tok jwt.Token, sigature string) string {
 	tb.Helper()
 
 	sig, err := jwt.NewSerializer().Serialize(tok)
