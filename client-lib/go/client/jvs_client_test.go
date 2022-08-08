@@ -76,29 +76,21 @@ func TestValidateJWT(t *testing.T) {
 	if err != nil {
 		t.Fatal("couldn't create jwks json")
 	}
-	tok := createToken(t, "test_id")
-	validJWT := signToken(t, tok, privateKey, keyID)
+	tok := testCreateToken(t, "test_id")
+	validJWT := testSignToken(t, tok, privateKey, keyID)
 
-	tok2 := createToken(t, "test_id_2")
-	validJWT2 := signToken(t, tok2, privateKey2, keyID2)
+	tok2 := testCreateToken(t, "test_id_2")
+	validJWT2 := testSignToken(t, tok2, privateKey2, keyID2)
 
-	unsig, err := jwt.NewSerializer().Serialize(tok)
-	if err != nil {
-		t.Fatal("Couldn't get signing string.")
-	}
-	unsignedJWT := string(unsig) + ".NOT_SIGNED"
+	unsignedJWT := testCreateUnsignedJWT(t, tok)
 
 	split := strings.Split(validJWT2, ".")
 	sig := split[len(split)-1]
 
-	invalidSignatureJWT := string(unsig) + sig // signature from a different JWT
+	invalidSignatureJWT := testCreateSignedJWT(t, tok, sig) // Signatire from a different JWT
 
-	breakglassTok := createBreakglassToken(t, "test_id_3")
-	breakglassTokStr, err := jwt.NewSerializer().Serialize(breakglassTok)
-	if err != nil {
-		t.Fatal("Couldn't get breakglass token string.")
-	}
-	breakglassJWT := string(breakglassTokStr) + ".NOT_SIGNED"
+	breakglassTok := testCreateBreakglassToken(t, "test_id_3")
+	breakglassJWT := testCreateUnsignedJWT(t, breakglassTok)
 
 	tests := []struct {
 		name             string
@@ -120,7 +112,7 @@ func TestValidateJWT(t *testing.T) {
 		{
 			name:    "unsigned",
 			jwt:     unsignedJWT,
-			wantErr: "unable to find correct break-glass category, denying",
+			wantErr: "justification category is not breakglass, denying",
 		},
 		{
 			name:      "breakglass",
@@ -131,7 +123,7 @@ func TestValidateJWT(t *testing.T) {
 			name:             "forbid_breakglass",
 			jwt:              breakglassJWT,
 			forbidBreakglass: true,
-			wantErr:          "break glass tokens is forbidden, denying",
+			wantErr:          "breakglass is forbidden, denying",
 		},
 		{
 			name:    "invalid",
@@ -186,7 +178,25 @@ func TestValidateJWT(t *testing.T) {
 	}
 }
 
-func createToken(tb testing.TB, id string) jwt.Token {
+func testCreateUnsignedJWT(t *testing.T, tok jwt.Token) string {
+	unsig, err := jwt.NewSerializer().Serialize(tok)
+	if err != nil {
+		t.Fatalf("Couldn't get token string for token %v with error %v.", tok, err)
+	}
+	unsignedJWT := string(unsig) + ".NOT_SIGNED"
+	return unsignedJWT
+}
+
+func testCreateSignedJWT(t *testing.T, tok jwt.Token, sigature string) string {
+	sig, err := jwt.NewSerializer().Serialize(tok)
+	if err != nil {
+		t.Fatalf("Couldn't get token string for token %v with error %v.", tok, err)
+	}
+	signedJWT := string(sig) + sigature
+	return signedJWT
+}
+
+func testCreateToken(tb testing.TB, id string) jwt.Token {
 	tb.Helper()
 
 	tok, err := jwt.NewBuilder().
@@ -212,7 +222,7 @@ func createToken(tb testing.TB, id string) jwt.Token {
 	return tok
 }
 
-func createBreakglassToken(tb testing.TB, id string) jwt.Token {
+func testCreateBreakglassToken(tb testing.TB, id string) jwt.Token {
 	tb.Helper()
 
 	tok, err := jwt.NewBuilder().
@@ -238,7 +248,7 @@ func createBreakglassToken(tb testing.TB, id string) jwt.Token {
 	return tok
 }
 
-func signToken(tb testing.TB, tok jwt.Token, privateKey *ecdsa.PrivateKey, keyID string) string {
+func testSignToken(tb testing.TB, tok jwt.Token, privateKey *ecdsa.PrivateKey, keyID string) string {
 	tb.Helper()
 
 	hdrs := jws.NewHeaders()

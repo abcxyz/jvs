@@ -21,7 +21,7 @@ import (
 	"fmt"
 	"strings"
 
-	jvspb "github.com/abcxyz/jvs/apis/v0"
+	jvsapis "github.com/abcxyz/jvs/apis/v0"
 	"github.com/abcxyz/jvs/pkg/jvscrypto"
 	"github.com/lestrrat-go/jwx/v2/jwk"
 	"github.com/lestrrat-go/jwx/v2/jwt"
@@ -35,9 +35,8 @@ const (
 // JVSClient allows for getting JWK keys from the JVS and validating JWTs with
 // those keys.
 type JVSClient struct {
-	config           *JVSConfig
-	keys             jwk.Set
-	forbidBreakglass bool
+	config *JVSConfig
+	keys   jwk.Set
 }
 
 // NewJVSClient returns a JVSClient with the cache initialized.
@@ -59,15 +58,14 @@ func NewJVSClient(ctx context.Context, config *JVSConfig) (*JVSClient, error) {
 	}
 
 	return &JVSClient{
-		config:           config,
-		keys:             cached,
-		forbidBreakglass: config.ForbidBreakglass,
+		config: config,
+		keys:   cached,
 	}, nil
 }
 
 // ValidateJWT takes a jwt string, converts it to a JWT, and validates the signature.
 func (j *JVSClient) ValidateJWT(jwtStr string) (*jwt.Token, error) {
-	// Handle Break-glass tokens.
+	// Handle unsigned tokens.
 	if strings.HasSuffix(jwtStr, UnsignedPostfix) {
 		token, err := jwt.Parse([]byte(jwtStr), jwt.WithVerify(false))
 		if err != nil {
@@ -83,8 +81,8 @@ func (j *JVSClient) ValidateJWT(jwtStr string) (*jwt.Token, error) {
 }
 
 func (j *JVSClient) unsignedTokenValidAndAllowed(token jwt.Token) (bool, error) {
-	if j.forbidBreakglass {
-		return false, fmt.Errorf("break glass tokens is forbidden, denying")
+	if j.config.ForbidBreakglass {
+		return false, fmt.Errorf("breakglass is forbidden, denying")
 	}
 	justs, ok := token.Get("justs")
 	if !ok {
@@ -94,7 +92,7 @@ func (j *JVSClient) unsignedTokenValidAndAllowed(token jwt.Token) (bool, error) 
 	if err != nil {
 		return false, fmt.Errorf("failed to marshal 'justs', denying")
 	}
-	var justifications []*jvspb.Justification
+	var justifications []*jvsapis.Justification
 	err = json.Unmarshal(justsBytes, &justifications)
 	if err != nil {
 		return false, fmt.Errorf("failed to unmarshal 'justs', denying")
@@ -104,5 +102,5 @@ func (j *JVSClient) unsignedTokenValidAndAllowed(token jwt.Token) (bool, error) 
 			return true, nil
 		}
 	}
-	return false, fmt.Errorf("unable to find correct break-glass category, denying")
+	return false, fmt.Errorf("justification category is not breakglass, denying")
 }
