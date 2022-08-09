@@ -17,11 +17,19 @@ package client
 
 import (
 	"context"
+	"encoding/json"
 	"fmt"
+	"strings"
 
+	jvsapis "github.com/abcxyz/jvs/apis/v0"
 	"github.com/abcxyz/jvs/pkg/jvscrypto"
 	"github.com/lestrrat-go/jwx/v2/jwk"
 	"github.com/lestrrat-go/jwx/v2/jwt"
+)
+
+const (
+	UnsignedPostfix    = ".NOT_SIGNED"
+	BreakglassCategory = "breakglass"
 )
 
 // JVSClient allows for getting JWK keys from the JVS and validating JWTs with
@@ -57,5 +65,42 @@ func NewJVSClient(ctx context.Context, config *JVSConfig) (*JVSClient, error) {
 
 // ValidateJWT takes a jwt string, converts it to a JWT, and validates the signature.
 func (j *JVSClient) ValidateJWT(jwtStr string) (*jwt.Token, error) {
+	// Handle unsigned tokens.
+	if strings.HasSuffix(jwtStr, UnsignedPostfix) {
+		token, err := jwt.Parse([]byte(jwtStr), jwt.WithVerify(false))
+		if err != nil {
+			return nil, fmt.Errorf("failed to parse jwt %s: %w", jwtStr, err)
+		}
+		if err := j.unsignedTokenValidAndAllowed(token); err != nil {
+			return nil, fmt.Errorf("token unsigned and could not be validated: %w", err)
+		}
+		return &token, nil
+	}
 	return jvscrypto.ValidateJWT(j.keys, jwtStr)
+}
+
+func (j *JVSClient) unsignedTokenValidAndAllowed(token jwt.Token) error {
+	if !j.config.AllowBreakglass {
+		return fmt.Errorf("breakglass is forbidden, denying")
+	}
+
+	justs, ok := token.Get("justs")
+	if !ok {
+		return fmt.Errorf("can't find 'justs' in claims, denying")
+	}
+	justsBytes, err := json.Marshal(justs)
+	if err != nil {
+		return fmt.Errorf("failed to marshal 'justs', denying")
+	}
+	var justifications []*jvsapis.Justification
+	if err := json.Unmarshal(justsBytes, &justifications); err != nil {
+		return fmt.Errorf("failed to unmarshal 'justs', denying")
+	}
+
+	for _, justification := range justifications {
+		if justification.GetCategory() == BreakglassCategory {
+			return nil
+		}
+	}
+	return fmt.Errorf("justification category is not breakglass, denying")
 }

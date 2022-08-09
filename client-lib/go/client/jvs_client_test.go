@@ -76,7 +76,6 @@ func TestValidateJWT(t *testing.T) {
 	if err != nil {
 		t.Fatal("couldn't create jwks json")
 	}
-
 	path := "/.well-known/jwks"
 	mux := http.NewServeMux()
 	mux.HandleFunc(path, func(w http.ResponseWriter, r *http.Request) {
@@ -90,53 +89,50 @@ func TestValidateJWT(t *testing.T) {
 		svr.Close()
 	})
 
-	client, err := NewJVSClient(ctx, &JVSConfig{
-		Version:      "1",
-		JVSEndpoint:  svr.URL + path,
-		CacheTimeout: 5 * time.Minute,
-	})
-	if err != nil {
-		t.Fatalf("failed to create JVS client: %v", err)
-	}
-
-	tok := createToken(t, "test_id")
-	validJWT := signToken(t, tok, privateKey, keyID)
-
-	tok2 := createToken(t, "test_id_2")
-	validJWT2 := signToken(t, tok2, privateKey2, keyID2)
-
-	unsig, err := jwt.NewSerializer().Serialize(tok)
-	if err != nil {
-		t.Fatal("Couldn't get signing string.")
-	}
-	unsignedJWT := string(unsig)
-
+	tok := testCreateToken(t, "test_id")
+	tok2 := testCreateToken(t, "test_id_2")
+	breakglassTok := testCreateBreakglassToken(t, "test_id_3")
+	validJWT2 := testSignToken(t, tok2, privateKey2, keyID2)
 	split := strings.Split(validJWT2, ".")
-	sig := split[len(split)-1]
-
-	invalidSignatureJWT := unsignedJWT + sig // signature from a different JWT
+	sig2 := split[len(split)-1]
 
 	tests := []struct {
-		name      string
-		jwt       string
-		wantErr   string
-		wantToken jwt.Token
+		name            string
+		jwt             string
+		allowBreakglass bool
+		wantErr         string
+		wantToken       jwt.Token
 	}{
 		{
-			name:      "happy-path",
-			jwt:       validJWT,
+			name:      "happy_path",
+			jwt:       testSignToken(t, tok, privateKey, keyID),
 			wantToken: tok,
-		}, {
-			name:      "other-key",
-			jwt:       validJWT2,
+		},
+		{
+			name:      "other_key",
+			jwt:       testSignToken(t, tok2, privateKey2, keyID2),
 			wantToken: tok2,
-		}, {
-			name:    "unsigned",
-			jwt:     unsignedJWT,
-			wantErr: "required field \"signatures\" not present",
-		}, {
+		},
+		{
+			name:            "unsigned",
+			jwt:             testCreateUnsignedJWT(t, tok),
+			allowBreakglass: true,
+			wantErr:         "justification category is not breakglass, denying",
+		},
+		{
+			name:            "breakglass",
+			jwt:             testCreateUnsignedJWT(t, breakglassTok),
+			allowBreakglass: true,
+			wantToken:       breakglassTok,
+		},
+		{
+			name:    "forbid_breakglass",
+			jwt:     testCreateUnsignedJWT(t, breakglassTok),
+			wantErr: "breakglass is forbidden, denying",
+		},
+		{
 			name:    "invalid",
-			jwt:     invalidSignatureJWT,
+			jwt:     testCreateSignedJWT(t, tok, sig2), // Signature from a different JWT,
 			wantErr: "failed to verify jwt",
 		},
 	}
@@ -144,6 +140,16 @@ func TestValidateJWT(t *testing.T) {
 		tc := tc
 		t.Run(tc.name, func(t *testing.T) {
 			t.Parallel()
+
+			client, err := NewJVSClient(ctx, &JVSConfig{
+				Version:         "1",
+				JVSEndpoint:     svr.URL + path,
+				CacheTimeout:    5 * time.Minute,
+				AllowBreakglass: tc.allowBreakglass,
+			})
+			if err != nil {
+				t.Fatalf("failed to create JVS client: %v", err)
+			}
 			res, err := client.ValidateJWT(tc.jwt)
 			if diff := testutil.DiffErrString(err, tc.wantErr); diff != "" {
 				t.Errorf("Unexpected err: %s", diff)
@@ -166,7 +172,29 @@ func TestValidateJWT(t *testing.T) {
 	}
 }
 
-func createToken(tb testing.TB, id string) jwt.Token {
+func testCreateUnsignedJWT(tb testing.TB, tok jwt.Token) string {
+	tb.Helper()
+
+	unsig, err := jwt.NewSerializer().Serialize(tok)
+	if err != nil {
+		tb.Fatalf("Couldn't get token string for token %v with error %v.", tok, err)
+	}
+	unsignedJWT := string(unsig) + ".NOT_SIGNED"
+	return unsignedJWT
+}
+
+func testCreateSignedJWT(tb testing.TB, tok jwt.Token, sigature string) string {
+	tb.Helper()
+
+	sig, err := jwt.NewSerializer().Serialize(tok)
+	if err != nil {
+		tb.Fatalf("Couldn't get token string for token %v with error %v.", tok, err)
+	}
+	signedJWT := string(sig) + sigature
+	return signedJWT
+}
+
+func testCreateToken(tb testing.TB, id string) jwt.Token {
 	tb.Helper()
 
 	tok, err := jwt.NewBuilder().
@@ -192,7 +220,33 @@ func createToken(tb testing.TB, id string) jwt.Token {
 	return tok
 }
 
-func signToken(tb testing.TB, tok jwt.Token, privateKey *ecdsa.PrivateKey, keyID string) string {
+func testCreateBreakglassToken(tb testing.TB, id string) jwt.Token {
+	tb.Helper()
+
+	tok, err := jwt.NewBuilder().
+		Audience([]string{"test_aud"}).
+		Expiration(time.Now().UTC().Add(5 * time.Minute)).
+		JwtID(id).
+		IssuedAt(time.Now().UTC()).
+		Issuer(`test_iss`).
+		NotBefore(time.Now().UTC()).
+		Subject("test_sub").
+		Build()
+	if err != nil {
+		tb.Fatalf("failed to build token: %s\n", err)
+	}
+	if err := tok.Set("justs", []*v0.Justification{
+		{
+			Category: "breakglass",
+			Value:    "this is a breakglass token",
+		},
+	}); err != nil {
+		tb.Fatal(err)
+	}
+	return tok
+}
+
+func testSignToken(tb testing.TB, tok jwt.Token, privateKey *ecdsa.PrivateKey, keyID string) string {
 	tb.Helper()
 
 	hdrs := jws.NewHeaders()

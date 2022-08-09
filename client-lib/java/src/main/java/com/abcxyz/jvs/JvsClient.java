@@ -46,7 +46,7 @@ public class JvsClient {
   public DecodedJWT validateJWT(String jwtString) throws JwkException {
     DecodedJWT jwt = JWT.decode(jwtString);
 
-    // Handle Break-glass tokens.
+    // Handle unsigned tokens.
     if (jwtString.endsWith(UNSIGNED_POSTFIX)) {
       if (unsignedTokenValidAndAllowed(jwt)) {
         return jwt;
@@ -67,10 +67,10 @@ public class JvsClient {
     return jwt;
   }
 
-  // Check that the break-glass token is valid and that we allow break-glass tokens.
+  // Check that the unsigned token is valid and that we allow break-glass tokens.
   boolean unsignedTokenValidAndAllowed(DecodedJWT jwt) {
     if (!allowBreakglass) {
-      log.info("break glass tokens not allowed, denying.");
+      log.info("breakglass is forbidden, denying");
       return false;
     }
     List<Map> justifications = jwt.getClaim("justs").asList(Map.class);
@@ -79,7 +79,7 @@ public class JvsClient {
         return true;
       }
     }
-    log.info("unable to find correct break-glass category, denying.");
+    log.info("justification category is not breakglass, denying.");
     return false;
   }
 }

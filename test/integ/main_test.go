@@ -245,9 +245,10 @@ func TestJVS(t *testing.T) {
 	}
 }
 
+// Subtests must be run in sequence, and they have waits in between.
+// Therefore, they cannot be parallelized, and aren't a good fit for table testing.
+//
 //nolint:tparallel
-// Subtests must be run in sequence, and they have waits in between. Therefore, they cannot
-// be parallelized, and aren't a good fit for table testing.
 func TestRotator(t *testing.T) {
 	t.Parallel()
 	ctx := context.Background()
@@ -338,8 +339,7 @@ func TestRotator(t *testing.T) {
 	})
 }
 
-//nolint:tparallel
-// Subtests need to run in sequence. To parallelize this, but we'd need separate keys from the above (more cruft).
+//nolint:tparallel // Subtests need to run in sequence. To parallelize this, but we'd need separate keys from the above (more cruft).
 func TestRotator_EdgeCases(t *testing.T) {
 	t.Parallel()
 	ctx := context.Background()
@@ -464,9 +464,10 @@ func TestPublicKeys(t *testing.T) {
 	})
 }
 
-//nolint:tparallel
 // These tests must be run in sequence, and they have waits in between. Therefore, they cannot
 // be parallelized, and aren't a good fit for table testing.
+//
+//nolint:tparallel
 func TestCertActions(t *testing.T) {
 	t.Parallel()
 	ctx := context.Background()
