@@ -42,13 +42,13 @@ func TestLoadJVSConfig(t *testing.T) {
 version: 1
 endpoint: example.com:8080
 cache_timeout: 1m
-forbid_breakglass: true
+allow_breakglass: true
 `,
 			wantConfig: &JVSConfig{
-				Version:          "1",
-				JVSEndpoint:      "example.com:8080",
-				CacheTimeout:     time.Minute,
-				ForbidBreakglass: true,
+				Version:         "1",
+				JVSEndpoint:     "example.com:8080",
+				CacheTimeout:    time.Minute,
+				AllowBreakglass: true,
 			},
 		},
 		{
@@ -57,10 +57,10 @@ forbid_breakglass: true
 endpoint: example.com:8080
 `,
 			wantConfig: &JVSConfig{
-				Version:          "1",
-				JVSEndpoint:      "example.com:8080",
-				CacheTimeout:     5 * time.Minute,
-				ForbidBreakglass: false,
+				Version:         "1",
+				JVSEndpoint:     "example.com:8080",
+				CacheTimeout:    5 * time.Minute,
+				AllowBreakglass: false,
 			},
 		},
 		{
@@ -69,6 +69,7 @@ endpoint: example.com:8080
 version: 255
 endpoint: example.com:8080
 cache_timeout: 1m
+allow_breakglass: true
 `,
 			wantConfig: nil,
 			wantErr:    `version "255" is invalid, valid versions are:`,
@@ -79,6 +80,7 @@ cache_timeout: 1m
 version: 1
 endpoint: example.com:8080
 cache_timeout: -1m
+allow_breakglass: true
 `,
 			wantConfig: nil,
 			wantErr:    `cache timeout must be a positive duration, got "-1m0s"`,
@@ -89,18 +91,19 @@ cache_timeout: -1m
 version: 1
 endpoint: example.com:8080
 cache_timeout: 1m
+allow_breakglass: false
 `,
 			envs: map[string]string{
-				"JVS_VERSION":           "1",
-				"JVS_ENDPOINT":          "other.net:443",
-				"JVS_CACHE_TIMEOUT":     "2m",
-				"JVS_FORBID_BREAKGLASS": "true",
+				"JVS_VERSION":          "1",
+				"JVS_ENDPOINT":         "other.net:443",
+				"JVS_CACHE_TIMEOUT":    "2m",
+				"JVS_ALLOW_BREAKGLASS": "true",
 			},
 			wantConfig: &JVSConfig{
-				Version:          "1",
-				JVSEndpoint:      "other.net:443",
-				CacheTimeout:     2 * time.Minute,
-				ForbidBreakglass: true,
+				Version:         "1",
+				JVSEndpoint:     "other.net:443",
+				CacheTimeout:    2 * time.Minute,
+				AllowBreakglass: true,
 			},
 		},
 	}

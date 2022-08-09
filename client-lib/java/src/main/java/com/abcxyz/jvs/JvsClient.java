@@ -41,7 +41,7 @@ public class JvsClient {
   private static final String BREAKGLASS_CATEGORY = "breakglass";
 
   private final JwkProvider provider;
-  private final boolean forbidBreakglass;
+  private final boolean allowBreakglass;
 
   public DecodedJWT validateJWT(String jwtString) throws JwkException {
     DecodedJWT jwt = JWT.decode(jwtString);
@@ -69,8 +69,8 @@ public class JvsClient {
 
   // Check that the unsigned token is valid and that we allow break-glass tokens.
   boolean unsignedTokenValidAndAllowed(DecodedJWT jwt) {
-    if (forbidBreakglass) {
-      log.info("break glass tokens is forbidden, denying.");
+    if (!allowBreakglass) {
+      log.info(""breakglass is forbidden, denying"");
       return false;
     }
     List<Map> justifications = jwt.getClaim("justs").asList(Map.class);

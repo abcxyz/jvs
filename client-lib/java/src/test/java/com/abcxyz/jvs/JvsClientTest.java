@@ -76,7 +76,7 @@ public class JvsClientTest {
     Jwk jwk = mock(Jwk.class);
     when(jwk.getPublicKey()).thenReturn(key1.getPublic());
     when(provider.get(keyId)).thenReturn(jwk);
-    JvsClient client = new JvsClient(provider, true);
+    JvsClient client = new JvsClient(provider, false);
     DecodedJWT returnVal = client.validateJWT(token);
     Assertions.assertEquals(claims.get("id"), returnVal.getClaims().get("id").asString());
     Assertions.assertEquals(claims.get("role"), returnVal.getClaims().get("role").asString());
@@ -102,7 +102,7 @@ public class JvsClientTest {
 
     when(provider.get(keyId))
         .thenThrow(new SigningKeyNotFoundException("", new RuntimeException()));
-    JvsClient client = new JvsClient(provider, true);
+    JvsClient client = new JvsClient(provider, false);
     JwkException thrown =
         Assertions.assertThrows(JwkException.class, () -> client.validateJWT(token));
     Assertions.assertTrue(thrown.getMessage().contains("Public key not found"));
@@ -126,7 +126,7 @@ public class JvsClientTest {
         Jwts.builder().setClaims(claims).setHeaderParam("kid", keyId).compact()
             + "NOT_SIGNED"; // dot is already added by the builder
 
-    JvsClient client = new JvsClient(provider, true);
+    JvsClient client = new JvsClient(provider, false);
     JwkException thrown =
         Assertions.assertThrows(JwkException.class, () -> client.validateJWT(token));
     Assertions.assertTrue(
@@ -151,7 +151,7 @@ public class JvsClientTest {
         Jwts.builder().setClaims(claims).setHeaderParam("kid", keyId).compact()
             + "NOT_SIGNED"; // dot is already added by the builder
 
-    JvsClient client = new JvsClient(provider, false);
+    JvsClient client = new JvsClient(provider, true);
     DecodedJWT returnVal = client.validateJWT(token);
     Assertions.assertEquals(claims.get("id"), returnVal.getClaims().get("id").asString());
     Assertions.assertEquals(claims.get("role"), returnVal.getClaims().get("role").asString());
@@ -177,7 +177,7 @@ public class JvsClientTest {
         Jwts.builder().setClaims(claims).setHeaderParam("kid", keyId).compact()
             + "NOT_SIGNED"; // dot is already added by the builder
 
-    JvsClient client = new JvsClient(provider, false);
+    JvsClient client = new JvsClient(provider, true);
     JwkException thrown =
         Assertions.assertThrows(JwkException.class, () -> client.validateJWT(token));
     Assertions.assertTrue(

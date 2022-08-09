@@ -80,7 +80,7 @@ func (j *JVSClient) ValidateJWT(jwtStr string) (*jwt.Token, error) {
 }
 
 func (j *JVSClient) unsignedTokenValidAndAllowed(token jwt.Token) error {
-	if j.config.ForbidBreakglass {
+	if !j.config.AllowBreakglass {
 		return fmt.Errorf("breakglass is forbidden, denying")
 	}
 

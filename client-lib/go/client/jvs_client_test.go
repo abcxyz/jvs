@@ -97,11 +97,11 @@ func TestValidateJWT(t *testing.T) {
 	sig2 := split[len(split)-1]
 
 	tests := []struct {
-		name             string
-		jwt              string
-		forbidBreakglass bool
-		wantErr          string
-		wantToken        jwt.Token
+		name            string
+		jwt             string
+		allowBreakglass bool
+		wantErr         string
+		wantToken       jwt.Token
 	}{
 		{
 			name:      "happy_path",
@@ -114,20 +114,21 @@ func TestValidateJWT(t *testing.T) {
 			wantToken: tok2,
 		},
 		{
-			name:    "unsigned",
-			jwt:     testCreateUnsignedJWT(t, tok),
-			wantErr: "justification category is not breakglass, denying",
+			name:            "unsigned",
+			jwt:             testCreateUnsignedJWT(t, tok),
+			allowBreakglass: true,
+			wantErr:         "justification category is not breakglass, denying",
 		},
 		{
-			name:      "breakglass",
-			jwt:       testCreateUnsignedJWT(t, breakglassTok),
-			wantToken: breakglassTok,
+			name:            "breakglass",
+			jwt:             testCreateUnsignedJWT(t, breakglassTok),
+			allowBreakglass: true,
+			wantToken:       breakglassTok,
 		},
 		{
-			name:             "forbid_breakglass",
-			jwt:              testCreateUnsignedJWT(t, breakglassTok),
-			forbidBreakglass: true,
-			wantErr:          "breakglass is forbidden, denying",
+			name:    "forbid_breakglass",
+			jwt:     testCreateUnsignedJWT(t, breakglassTok),
+			wantErr: "breakglass is forbidden, denying",
 		},
 		{
 			name:    "invalid",
@@ -141,10 +142,10 @@ func TestValidateJWT(t *testing.T) {
 			t.Parallel()
 
 			client, err := NewJVSClient(ctx, &JVSConfig{
-				Version:          "1",
-				JVSEndpoint:      svr.URL + path,
-				CacheTimeout:     5 * time.Minute,
-				ForbidBreakglass: tc.forbidBreakglass,
+				Version:         "1",
+				JVSEndpoint:     svr.URL + path,
+				CacheTimeout:    5 * time.Minute,
+				AllowBreakglass: tc.allowBreakglass,
 			})
 			if err != nil {
 				t.Fatalf("failed to create JVS client: %v", err)

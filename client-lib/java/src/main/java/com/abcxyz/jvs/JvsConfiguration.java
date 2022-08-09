@@ -40,8 +40,8 @@ public class JvsConfiguration {
   @JsonProperty("cache_timeout")
   private Duration cacheTimeout = Duration.ofMinutes(5);
 
-  @JsonProperty("forbid_breakglass")
-  private boolean forbidBreakglass = false;
+  @JsonProperty("allow_breakglass")
+  private boolean breakglassAllowed = false;
 
   public void validate() throws IllegalArgumentException {
     if (!version.equals(EXPECTED_VERSION)) {
