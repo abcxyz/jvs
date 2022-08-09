@@ -70,7 +70,7 @@ public class JvsClient {
   // Check that the unsigned token is valid and that we allow break-glass tokens.
   boolean unsignedTokenValidAndAllowed(DecodedJWT jwt) {
     if (!allowBreakglass) {
-      log.info(""breakglass is forbidden, denying"");
+      log.info("breakglass is forbidden, denying");
       return false;
     }
     List<Map> justifications = jwt.getClaim("justs").asList(Map.class);
