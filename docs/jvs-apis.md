@@ -13,7 +13,6 @@ you must have:
    ```
 3. Install [grpcurl](https://github.com/fullstorydev/grpcurl)
 
-For all the operations below, make sure you are logged in with gcloud.
 ## Set Up
 
 1. Change directory to where terraform code lives

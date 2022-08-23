@@ -14,11 +14,11 @@ to provide justifications when accessing data.
 
 JVS consists of the following components:
 
-*   JVS APIs
-  *   [Justification API](./cmd/justification)
-  *   [Cert Rotator API](./cmd/cert-rotation)
-  *   [Public Key API](./cmd/public-key)
-*   [CLI Tool](./cmd/jvsctl)
+* JVS APIs
+  * [Justification API](./cmd/justification)
+  * [Cert Rotator API](./cmd/cert-rotation)
+  * [Public Key API](./cmd/public-key)
+* [CLI Tool](./cmd/jvsctl)
 
 See manuals for [JVS APIs usage](./docs/jvs-apis.md) and
-[JVS CLI Toll Usage](./docs/cli-tool.md)
+[JVS CLI Tool Usage](./docs/cli-tool.md)
