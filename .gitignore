@@ -36,6 +36,9 @@ tmp/
 # Local .terraform directories
 **/.terraform/*
 
+# Local terraform env directories
+terraform/my-env/*
+
 # .tfstate files
 *.tfstate
 *.tfstate.*

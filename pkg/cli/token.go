@@ -44,7 +44,7 @@ var (
 var tokenCmd = &cobra.Command{
 	Use:     "token",
 	Short:   "To generate a justification token",
-	Example: `token --explanation "issues/12345" -ttl 30m`,
+	Example: `token --explanation "issues/12345" --ttl 30m`,
 	RunE:    runTokenCmd,
 }
 
