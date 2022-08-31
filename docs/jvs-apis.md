@@ -38,13 +38,16 @@ for details of supported config env variables.
 
 ### API Spec
 
-Cert Rotation API will do the following based on multiple conditions, 
-see [RotateKey](https://github.com/abcxyz/jvs/blob/main/pkg/jvscrypto/rotation_handler.go#L42-L80) for details:
-* Create new key versions
-* Set the new primary key version
-* Disable or delete old key versions
+Cert Rotation API will do the following based on multiple conditions, see
+[RotateKey](https://github.com/abcxyz/jvs/blob/main/pkg/jvscrypto/rotation_handler.go#L42-L80)
+for details:
 
-The service is meant to be triggered by [Cloud Scheduler](https://cloud.google.com/scheduler) job.
+*   Create new key versions
+*   Set the new primary key version
+*   Disable or delete old key versions
+
+The service is meant to be triggered by
+[Cloud Scheduler](https://cloud.google.com/scheduler) job.
 
 ### Setup Knobs
 

@@ -10,14 +10,15 @@ you must have:
 *   A billing account you can use in the cloud org
 *   A project you can use in the cloud org
 
-1. Install [gcloud](https://cloud.google.com/sdk/docs/install)
-2. make sure you are logged in with gcloud.
+1.  Install [gcloud](https://cloud.google.com/sdk/docs/install)
+2.  make sure you are logged in with gcloud.
 
     ```shell
     gcloud auth login --update-adc
     ```
 
-3. Install [jvsctl](cli-tool.md/##install)
+3.  Install [jvsctl](cli-tool.md/##install)
+
 ## Set Up
 
 1.  Change directory to where terraform code lives
@@ -71,8 +72,8 @@ will also get created.
 
 ### Justification API
 
-1.  Export the domain part of the `jvs_server_url` from Terraform outputs like
-    `jvs-e2e-xxxx-uc.a.run.app`
+1.  Export the jvs server with the domain part of the `jvs_server_url` from
+    Terraform outputs like `jvs-e2e-xxxx-uc.a.run.app`
 
     ```shell
     export JVS_SERVER=<jvs_server_domain>:443
@@ -84,7 +85,8 @@ will also get created.
     jvsctl token --explanation "issues/12345" --ttl 30m --server ${JVS_SERVER}
     ```
 
-**TODO(#112):** O nce we have the "validate token" command, we can even validate it.
+**TODO(#112):** O nce we have the "validate token" command, we can even validate
+it.
 
 ### Public Key API
 
