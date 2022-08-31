@@ -85,7 +85,7 @@ will also get created.
     jvsctl token --explanation "issues/12345" --ttl 30m --server ${JVS_SERVER}
     ```
 
-**TODO(#112):** O nce we have the "validate token" command, we can even validate
+**TODO(#112):** Once we have the "validate token" command, we can even validate
 it.
 
 ### Public Key API
