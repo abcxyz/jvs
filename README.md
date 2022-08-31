@@ -17,15 +17,13 @@ in combination with [abcxyz/lumberjack](https://github.com/abcxyz/lumberjack) th
 JVS consists of the following components:
 
 * JVS APIs
-  * [Justification API](./cmd/justification) <br />
-    run verifications and provide a justification token. Each token will be valid for a short time.
-  * [Cert Rotator API](./cmd/cert-rotation) <br />
-    rotates keys' key versions. <br />
-    `key`: A grouping of key versions. This stays stable through key rotations, and is how we can refer to keys over time.<br />
-    `key version`: This is an actual asymmetric key pair.
-  * [Public Key API](./cmd/public-key) <br />
-    provide the public keys for use in validating the token's authenticity.
+  - [Justification API](./cmd/justification): verify justifications and mint short-lived justification tokens.*
+  - [Cert Rotator API](./cmd/cert-rotation): rotate signing [keys](https://cloud.google.com/kms/docs/key-rotation).
+  - [Public Key API](./cmd/public-key): [JWKs](https://auth0.com/docs/secure/tokens/json-web-tokens/json-web-key-sets)
 * [CLI Tool](./cmd/jvsctl)
 
 See manuals for [JVS APIs usage](./docs/jvs-apis.md) and
 [JVS CLI Tool Usage](./docs/cli-tool.md)
+
+
+**TODO(#115):** add a simple diagram to describe the user experience flow of enabling JVS in Lumberjack.

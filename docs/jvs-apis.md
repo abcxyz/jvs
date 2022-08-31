@@ -2,64 +2,33 @@
 
 **JVS is not an official Google product.**
 
-## Try JVS APIs
-Refer to [JVS Setup](./jvs-setup.md) for a quick JVS APIs setup.
+## Justification API
 
-### Justification API
-1. Export the domain part of the `public_key_server_url` from Terraform outputs like `jvs-e2e-xxxx-uc.a.run.app`
-```shell
-export JVS_SERVER_DOMAIN=<jvs_server_domain> 
-```
-2. Create Justification Token via command:
-```shell
-grpcurl -import-path ../.. -proto protos/v0/jvs_service.proto \
--H "Authorization: Bearer $(gcloud auth print-identity-token )" \
--d '{"justifications": [{"category": "explanation", "value": "this is a test"}], "ttl": "3600s"}' \
--max-msg-sz 9999999999 \
-${JVS_SERVER_DOMAIN}:443 \
-abcxyz.jvs.JVSService/CreateJustification
-```
-You should see output similar to follows
-```shell
-{
-  "token": "eyJhbGciOiJFUzI1NiIsImtpZCI6InByb2plY3RzL3hpeXVlLWp2cy1kb2MtdGVzdC0xL2xvY2F0aW9ucy9nbG
-  9iYWwva2V5UmluZ3MvY2kta2V5cmluZy9jcnlwdG9LZXlzL2p2cy1rZXkvY3J5cHRvS2V5VmVyc2lvbnMvNyIsInR5cCI6Ik
-  pXVCJ9.eyJhdWQiOiJUT0RPICMyMiIsImV4cCI6MTY2MDg2Mjg3OCwianRpIjoiNGJkODY1ZDItOWNkOS00M2NhLWJhMTQtY
-  TA1Y2VlNzlmMmI0IiwiaWF0IjoxNjYwODU5Mjc4LCJpc3MiOiJqdnMuYWJjeHl6LmRldiIsIm5iZiI6MTY2MDg1OTI3OCwic3
-  ViIjoieGl5dWVAZ29vZ2xlLmNvbSIsImp1c3RzIjpbeyJjYXRlZ29yeSI6ImV4cGxhbmF0aW9uIiwidmFsdWUiOiJ0aGlzIGl
-  zIGEgdGVzdCJ9XX0.6BaM4HHM7lqAIuo-NW4oRt67mYD2jPojtrIK7Nxv2ARL6NIpcx5v1y86tGF1jETTV7nhfXxal0DOe4GFk
-  _Xq5Q"
-}
-```
-### Public Key API
-1. Export the `public_key_server_url` from Terraform outputs
-```shell
-export PUBLIC_KEY_SERVER_URL=<public_key_server_url>
-```
-2. Fetch public keys via command:
-```shell
-curl -H "Authorization: Bearer $(gcloud auth print-identity-token )" \
-"${PUBLIC_KEY_SERVER_URL}/.well-known/jwks"  
-```
-You should see output similar to follows
-```shell
-{"keys":[{"crv":"P-256","kid":"projects/test-project/locations/global/keyRings/ci-keyring/cryptoKeys/jvs-key/cryptoKeyVersions/1",
-"kty":"EC","x":"u4SVWCYAZtD8J9r4bc150doTctTviIltS215qKkw8bF","y":"E3zbf_rvi7jTQykxcyUZqerXo_ssS6auvwR6mLchLll"},
-{"crv":"P-256","kid":"projects/test-project/locations/global/keyRings/ci-keyring/cryptoKeys/jvs-key/cryptoKeyVersions/2",
-"kty":"EC","x":"L4tcY2n2qKngEsLzatLXE_iTK39hUg18bE27H-r_p_M","y":"S0TrLBOPhyw7guoEIR2LSU6tLhelHLE3pZ4XaEJnzLN"}]}
-```
+### API Spec
+Currently, Justification API uses [gRPC](https://grpc.io/) and only supports the core functionality `Create Token` which creates a justification and generates a token.
+Justification API processes [CreateJustificationRequests](https://github.com/abcxyz/jvs/blob/main/protos/v0/jvs_request.proto#L23-L28)
+and provides signed tokens. See [JVSService](https://github.com/abcxyz/jvs/blame/e718d4664467b880991b8e2a400070c2aa93a0b9/blob/main/protos/v0/jvs_service.proto) for details.
 
-### Cert Rotation API
-1. Export the `cert_rotator_server_url` from Terraform outputs
-```shell
-export CERT_ROTATOR_SERVER_URL=<cert_rotator_server_url>
-```
-2. Rotate keys via command:
-```shell
-curl -H "Authorization: Bearer $(gcloud auth print-identity-token )" \
-"${CERT_ROTATOR_SERVER_URL}"  
-```
-You should see output similar to follows
-```shell
-finished with all keys successfully.
-```
+### Setup Knobs
+Currently, Justification API loads in the config with the env variables specified on the host.
+See [JustificationConfig](https://github.com/abcxyz/jvs/blob/main/pkg/config/justification_config.go#L32-L49) for details of supported config env variables.
+
+## Public Key API
+
+### API Spec
+Public Key API exposes a JWKS endpoint which is found at `${PUBLIC_KEY_SERVER_URL}/.well-known/jwks`.
+This endpoint will contain the JWK used to verify all Auth0-issued JWTs.
+Refer to  [JWKs](https://auth0.com/docs/secure/tokens/json-web-tokens/json-web-key-sets).
+
+### Setup Knobs
+Currently, Public Key API loads in the config with the env variables specified on the host.
+See [PublicKeyConfig](https://github.com/abcxyz/jvs/blob/main/pkg/config/public_key_config.go#L26-L35) for details of supported config env variables.
+
+## Cert Rotation API
+### API Spec
+Cert Rotation API should be triggerd by cron job e.g. [Cloud Scheduler](https://cloud.google.com/scheduler).
+To support key rotation, Cert Rotation API needs to generate a new Key Version, move applications to the new Key Version, and finally disable the old version.
+
+### Setup Knobs
+Currently, Cert Rotation API loads in the config with the env variables specified on the host.
+See [CryptoConfig](https://github.com/abcxyz/jvs/blob/main/pkg/config/crypto_config.go#L31-L51) for details of supported config env variables.

@@ -6,45 +6,30 @@
 by abcxyz/jvs
 
 ## Install
-1. Change directory to where jvsctl code lives
+1 Install jvsctl
    ```shell
-   cd cmd/jvsctl
-   ```
-
-2. Install jvsctl
-   ```shell
-   go install
+   go install github.com/abcxyz/jvs/cmd/jvsctl
    ```
 
 ## Usage
 
 jvsctl [command]
 
-### Global Flags:
-
-Run `jvsctl -h` for details
+Run `jvsctl -h` for details of available flags.
 
 ### Config
 `jvsctl` reads config from a yaml file (default path: `$HOME/.jvsctl/config.yaml`). 
-Basic config fields can be provided (or overwritten) by global flags above like `--server` and ` --insecure`.
 
-1. Version - the version of the config
-```yaml
-version: 1
-```
-
-2. Server - the JVS server address
+Minimally we need a JVS server address in the config to mint justification tokens.
 ```yaml
 server: example.com
 ```
-
-3. Authentication - the authentication config
-
+By default, we will connect to the JVS server securely. When it's not applicable (e.g. locally run JVS server for testing), use insecure connection by adding the following block in the config:
 ```yaml
 authentication:
-   # insecure indiates whether to use insecured connection to the JVS server.
-   insecure: true
+  insecure: true
 ```
+Alternatively, both of these values could be provided via CLI flags `--server` and `--insecure`.
 
 ## Command
 ### jvsctl token [flags]
@@ -65,5 +50,5 @@ and such token provide reasons that data access is required for "issues/12345"
 ```shell
 jvsctl token --breakglass true --explanation "jvs is down" --ttl 30m
 ```
-The example above generates an unsigned justification token with 30m time-to-live duration
-and such token provide reasons that break-glass data access is required because "jvs is down"
+In certain cases, we might need to bypass JVS for minting signed JVS tokens. 
+E.g. JVS couldn't verify a justification because the ticket system is down. In such cases, we can mint break-glass token instead.
