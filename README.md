@@ -20,11 +20,11 @@ JVS consists of the following components:
 
 *   JVS APIs
     *   [Justification API](./cmd/justification): verify justifications and mint
-        short-lived justification tokens.*
+        short-lived justification tokens.
     *   [Cert Rotator API](./cmd/cert-rotation): rotate signing
         [keys](https://cloud.google.com/kms/docs/key-rotation).
     *   [Public Key API](./cmd/public-key):
-        [JWKs](https://auth0.com/docs/secure/tokens/json-web-tokens/json-web-key-sets)
+        [JWKs](https://auth0.com/docs/secure/tokens/json-web-tokens/json-web-key-sets).
 *   [CLI Tool](./cmd/jvsctl)
 
 See manuals for [JVS APIs usage](./docs/jvs-apis.md) and

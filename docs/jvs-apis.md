@@ -6,18 +6,15 @@
 
 ### API Spec
 
-Currently, Justification API uses [gRPC](https://grpc.io/) and only supports the
-core functionality `Create Token` which creates a justification and generates a
-token. Justification API processes
+Justification API is a [gRPC](https://grpc.io/) service. It accepts
 [CreateJustificationRequests](https://github.com/abcxyz/jvs/blob/main/protos/v0/jvs_request.proto#L23-L28)
-and provides signed tokens. See
+and responses with signed justification tokens as JWTs. See
 [JVSService](https://github.com/abcxyz/jvs/blame/e718d4664467b880991b8e2a400070c2aa93a0b9/blob/main/protos/v0/jvs_service.proto)
 for details.
 
 ### Setup Knobs
 
-Currently, Justification API loads in the config with the env variables
-specified on the host. See
+Justification API loads configs from environment variables. See
 [JustificationConfig](https://github.com/abcxyz/jvs/blob/main/pkg/config/justification_config.go#L32-L49)
 for details of supported config env variables.
 
@@ -41,10 +38,13 @@ for details of supported config env variables.
 
 ### API Spec
 
-Cert Rotation API should be triggerd by cron job e.g.
-[Cloud Scheduler](https://cloud.google.com/scheduler). To support key rotation,
-Cert Rotation API needs to generate a new Key Version, move applications to the
-new Key Version, and finally disable the old version.
+Cert Rotation API will do the following based on multiple conditions, 
+see [RotateKey](https://github.com/abcxyz/jvs/blob/main/pkg/jvscrypto/rotation_handler.go#L42-L80) for details:
+* Create new key versions
+* Set the new primary key version
+* Disable or delete old key versions
+
+The service is meant to be triggered by [Cloud Scheduler](https://cloud.google.com/scheduler) job.
 
 ### Setup Knobs
 

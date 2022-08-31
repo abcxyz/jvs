@@ -10,15 +10,14 @@ you must have:
 *   A billing account you can use in the cloud org
 *   A project you can use in the cloud org
 
-1.  Install [gcloud](https://cloud.google.com/sdk/docs/install)
-2.  make sure you are logged in with gcloud.
+1. Install [gcloud](https://cloud.google.com/sdk/docs/install)
+2. make sure you are logged in with gcloud.
 
     ```shell
     gcloud auth login --update-adc
     ```
 
-3.  Install [grpcurl](https://github.com/fullstorydev/grpcurl)
-
+3. Install [jvsctl](cli-tool.md/##install)
 ## Set Up
 
 1.  Change directory to where terraform code lives
@@ -30,7 +29,7 @@ you must have:
 2.  Copy an existing environment (e.g. quick-setup)
 
     ```shell
-    cp -r quick-setup my-env && cd my-env && rm .terraform.lock.hcl
+    cp -r quick-setup my-env && cd my-env
     ```
 
 3.  When you create a new configuration or check out an existing configuration
@@ -76,31 +75,16 @@ will also get created.
     `jvs-e2e-xxxx-uc.a.run.app`
 
     ```shell
-    export JVS_SERVER_DOMAIN=<jvs_server_domain>
+    export JVS_SERVER=<jvs_server_domain>:443
     ```
 
-2.  Create Justification Token via command:
+2.  Create Justification Token via [jvsctl](cli-tool.md):
 
     ```shell
-    grpcurl -import-path ../.. -proto protos/v0/jvs_service.proto\
-    -H "Authorization: Bearer $(gcloud auth print-identity-token )"\
-    -d'{"justifications": [{"category": "explanation", "value": "this is a test"}], "ttl": "3600s"}'\
-    -max-msg-sz 9999999999\
-    ${JVS_SERVER_DOMAIN}:443\
-    abcxyz.jvs.JVSService/CreateJustification
+    jvsctl token --explanation "issues/12345" --ttl 30m --server ${JVS_SERVER}
     ```
 
-    You should see output similar to follows
-
-    ```shell
-    "eyJhbGciOiJFUzI1NiIsImtpZCI6InByb2plY3RzL3hpeXVlLWp2cy1kb2MtdGVzdC0xL2xvY2F0aW9ucy9nbG
-    9iYWwva2V5UmluZ3MvY2kta2V5cmluZy9jcnlwdG9LZXlzL2p2cy1rZXkvY3J5cHRvS2V5VmVyc2lvbnMvNyIsInR5cCI6Ik
-    pXVCJ9.eyJhdWQiOiJUT0RPICMyMiIsImV4cCI6MTY2MDg2Mjg3OCwianRpIjoiNGJkODY1ZDItOWNkOS00M2NhLWJhMTQtY
-    TA1Y2VlNzlmMmI0IiwiaWF0IjoxNjYwODU5Mjc4LCJpc3MiOiJqdnMuYWJjeHl6LmRldiIsIm5iZiI6MTY2MDg1OTI3OCwic3
-    ViIjoieGl5dWVAZ29vZ2xlLmNvbSIsImp1c3RzIjpbeyJjYXRlZ29yeSI6ImV4cGxhbmF0aW9uIiwidmFsdWUiOiJ0aGlzIGl
-    zIGEgdGVzdCJ9XX0.6BaM4HHM7lqAIuo-NW4oRt67mYD2jPojtrIK7Nxv2ARL6NIpcx5v1y86tGF1jETTV7nhfXxal0DOe4GFk
-    _Xq5Q" }
-    ```
+**TODO(#112):** O nce we have the "validate token" command, we can even validate it.
 
 ### Public Key API
 
