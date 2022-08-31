@@ -17,7 +17,7 @@ you must have:
     gcloud auth login --update-adc
     ```
 
-3.  Install [jvsctl](cli-tool.md/##install)
+3.  Install [jvsctl](cli-tool.md/#install)
 
 ## Set Up
 
