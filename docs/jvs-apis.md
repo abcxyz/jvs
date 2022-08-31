@@ -29,8 +29,7 @@ used to verify all Auth0-issued JWTs. Refer to
 
 ### Setup Knobs
 
-Currently, Public Key API loads in the config with the env variables specified
-on the host. See
+Public Key API loads configs from environment variables. See
 [PublicKeyConfig](https://github.com/abcxyz/jvs/blob/main/pkg/config/public_key_config.go#L26-L35)
 for details of supported config env variables.
 
@@ -51,7 +50,6 @@ The service is meant to be triggered by
 
 ### Setup Knobs
 
-Currently, Cert Rotation API loads in the config with the env variables
-specified on the host. See
+Cert Rotation API loads configs from environment variables. See
 [CryptoConfig](https://github.com/abcxyz/jvs/blob/main/pkg/config/crypto_config.go#L31-L51)
 for details of supported config env variables.
