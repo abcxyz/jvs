@@ -224,7 +224,7 @@ func TestJVS(t *testing.T) {
 				return
 			}
 
-			tokenMap, err := (*token).AsMap(ctx)
+			tokenMap, err := token.AsMap(ctx)
 			if err != nil {
 				t.Errorf("Couldn't convert token to map: %v", err)
 				return
