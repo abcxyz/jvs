@@ -240,13 +240,13 @@ func getLabelValue(versionName string) (string, error) {
 }
 
 // ValidateJWT takes a jwt string, converts it to a JWT, and validates the signature.
-func ValidateJWT(keySet jwk.Set, jwtStr string) (*jwt2.Token, error) {
+func ValidateJWT(keySet jwk.Set, jwtStr string) (jwt2.Token, error) {
 	verifiedToken, err := jwt2.Parse([]byte(jwtStr), jwt2.WithKeySet(keySet, jws.WithInferAlgorithmFromKey(true)))
 	if err != nil {
 		return nil, fmt.Errorf("failed to verify jwt %s: %w", jwtStr, err)
 	}
 
-	return &verifiedToken, nil
+	return verifiedToken, nil
 }
 
 // JWKList creates a list of public keys in JWK format.
