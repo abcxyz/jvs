@@ -64,7 +64,7 @@ func NewJVSClient(ctx context.Context, config *JVSConfig) (*JVSClient, error) {
 }
 
 // ValidateJWT takes a jwt string, converts it to a JWT, and validates the signature.
-func (j *JVSClient) ValidateJWT(jwtStr string) (*jwt.Token, error) {
+func (j *JVSClient) ValidateJWT(jwtStr string) (jwt.Token, error) {
 	// Handle unsigned tokens.
 	if strings.HasSuffix(jwtStr, UnsignedPostfix) {
 		token, err := jwt.Parse([]byte(jwtStr), jwt.WithVerify(false))
@@ -74,7 +74,7 @@ func (j *JVSClient) ValidateJWT(jwtStr string) (*jwt.Token, error) {
 		if err := j.unsignedTokenValidAndAllowed(token); err != nil {
 			return nil, fmt.Errorf("token unsigned and could not be validated: %w", err)
 		}
-		return &token, nil
+		return token, nil
 	}
 	return jvscrypto.ValidateJWT(j.keys, jwtStr)
 }
