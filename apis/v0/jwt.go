@@ -18,6 +18,7 @@ import (
 	"fmt"
 
 	"github.com/lestrrat-go/jwx/v2/jwt"
+	"github.com/mitchellh/mapstructure"
 )
 
 const (
@@ -31,15 +32,22 @@ const (
 
 // WithTypedJustifications is an option for parsing JWTs that will convert
 // decode the [Justification] claims into the correct Go structure. If this is
-// not supplied, the claims will be "any" and future type assertions will fail.
+// not supplied, the claims will be "any" and future type assertions may fail.
 func WithTypedJustifications() jwt.ParseOption {
 	return jwt.WithTypedClaim(jwtJustificationsKey, []*Justification{})
 }
 
 // GetJustifications retrieves a copy of the justifications on the token. If the
 // token does not have any justifications, it returns an empty slice of
-// justifications. Modifying the slice does not modify the underlying token -
-// you must call SetJustifications to update the data on the token.
+// justifications.
+//
+// This function is incredibly defensive against a poorly-parsed jwt. It handles
+// situations where the JWT was not properly decoded (i.e. the caller did not
+// use [WithTypedJustifications]), and when the token uses a single
+// justification instead of a slice.
+//
+// Modifying the slice does not modify the underlying token - you must call
+// [SetJustifications] to update the data on the token.
 func GetJustifications(t jwt.Token) ([]*Justification, error) {
 	if t == nil {
 		return nil, fmt.Errorf("token cannot be nil")
@@ -50,15 +58,26 @@ func GetJustifications(t jwt.Token) ([]*Justification, error) {
 		return []*Justification{}, nil
 	}
 
-	typ, ok := raw.([]*Justification)
-	if !ok {
-		return nil, fmt.Errorf("found justifications, but was %T (expected %T)",
-			raw, []*Justification{})
+	var claims []*Justification
+	switch list := raw.(type) {
+	case []*Justification:
+		// Token was decoded with typed claims.
+		claims = list
+	case *Justification:
+		// Token did not provide a list.
+		claims = []*Justification{list}
+	case []any:
+		// Token was a proto but wasn't decoded.
+		if err := mapstructure.Decode(list, &claims); err != nil {
+			return nil, fmt.Errorf("found justifications, but could not decode map data: %w", err)
+		}
+	default:
+		return nil, fmt.Errorf("found justifications, but was of unknown type %T", raw)
 	}
 
 	// Make a copy of the slice so we don't modify the underlying data structure.
-	cp := make([]*Justification, 0, len(typ))
-	cp = append(cp, typ...)
+	cp := make([]*Justification, 0, len(claims))
+	cp = append(cp, claims...)
 	return cp, nil
 }
 

@@ -21,6 +21,7 @@ import (
 	"github.com/abcxyz/pkg/testutil"
 	"github.com/google/go-cmp/cmp"
 	"github.com/google/go-cmp/cmp/cmpopts"
+	"github.com/lestrrat-go/jwx/v2/jwa"
 	"github.com/lestrrat-go/jwx/v2/jwt"
 )
 
@@ -48,7 +49,60 @@ func TestGetJustifications(t *testing.T) {
 			token: testTokenBuilder(t, jwt.
 				NewBuilder().
 				Claim(jwtJustificationsKey, "not_valid")),
-			expErr: "found justifications, but was string",
+			expErr: "unknown type",
+		},
+		{
+			// This test checks that we still properly decode justifications even if
+			// the caller did not specify decoding the custom type claims. To drop all
+			// type information, we serialize the token and then parse it without type
+			// information.
+			name: "not_decoded_claims",
+			token: func() jwt.Token {
+				token, err := jwt.NewBuilder().
+					Claim(jwtJustificationsKey, []*Justification{
+						{
+							Category: "category",
+							Value:    "value",
+						},
+					}).
+					Build()
+				if err != nil {
+					t.Fatal(err)
+				}
+
+				b, err := jwt.Sign(token, jwt.WithKey(jwa.HS256, []byte("KEY")))
+				if err != nil {
+					t.Fatal(err)
+				}
+
+				parsed, err := jwt.Parse(b, jwt.WithVerify(false))
+				if err != nil {
+					t.Fatal(err)
+				}
+				return parsed
+			}(),
+			exp: []*Justification{
+				{
+					Category: "category",
+					Value:    "value",
+				},
+			},
+		},
+		{
+			name: "single_justification",
+			token: testTokenBuilder(t, jwt.
+				NewBuilder().
+				Claim(jwtJustificationsKey, &Justification{
+					Category: "category",
+					Value:    "value",
+				}),
+			),
+			exp: []*Justification{
+				{
+					Category: "category",
+					Value:    "value",
+				},
+			},
 		},
 		{
 			name: "returns_justifications",
