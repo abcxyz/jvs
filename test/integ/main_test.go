@@ -17,10 +17,12 @@ package integ
 
 import (
 	"context"
+	"crypto"
 	"crypto/ecdsa"
 	"crypto/elliptic"
 	"crypto/rand"
 	"crypto/x509"
+	"encoding/json"
 	"encoding/pem"
 	"errors"
 	"net/http"
@@ -923,21 +925,27 @@ func testCreateKeyVersion(ctx context.Context, tb testing.TB, kmsClient *kms.Key
 }
 
 // Build public keys list and public keys list converted to string(including public keys).
-func testPublicKeysFromKMS(ctx context.Context, tb testing.TB, kmsClient *kms.KeyManagementClient, keyName string) ([]*jvscrypto.ECDSAKey, string) {
+func testPublicKeysFromKMS(ctx context.Context, tb testing.TB, kmsClient *kms.KeyManagementClient, keyName string) (map[string]crypto.PublicKey, string) {
 	tb.Helper()
-	jwks, err := jvscrypto.JWKList(ctx, kmsClient, keyName)
+
+	publicKeys, err := jvscrypto.PublicKeysFor(ctx, kmsClient, keyName)
 	if err != nil {
-		tb.Fatalf("err while determining public keys %v", err)
+		tb.Fatal(err)
 	}
-	json, err := jvscrypto.FormatJWKString(jwks)
+
+	jwks, err := jvscrypto.JWKSFromPublicKeys(publicKeys)
 	if err != nil {
-		tb.Fatalf("err while formatting public keys, %v", err)
+		tb.Fatal(err)
 	}
-	return jwks, json
+
+	b, err := json.Marshal(jwks)
+	if err != nil {
+		tb.Fatal(err)
+	}
+	return publicKeys, string(b)
 }
 
-func testValidatePublicKeys(ctx context.Context, tb testing.TB, ks *jvscrypto.KeyServer, expectedPublicKeys string,
-) {
+func testValidatePublicKeys(ctx context.Context, tb testing.TB, ks *jvscrypto.KeyServer, expectedPublicKeys string) {
 	tb.Helper()
 
 	req, err := http.NewRequestWithContext(ctx, "GET", "/.well-known/jwks", nil)
