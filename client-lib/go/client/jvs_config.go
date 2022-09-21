@@ -32,8 +32,9 @@ type JVSConfig struct {
 	// Version is the version of the config.
 	Version string `yaml:"version,omitempty" env:"VERSION,overwrite,default=1"`
 
-	// JVS Endpoint. Expected to be fully qualified, including port. ex. http://127.0.0.1:8080
-	JVSEndpoint string `yaml:"endpoint,omitempty" env:"ENDPOINT,overwrite"`
+	// JWKSEndpoint is the full path (including protocol and port) to the JWKS
+	// endpoint on a JVS server (e.g. https://jvs.corp:8080/.well-known/jwks).
+	JWKSEndpoint string `yaml:"endpoint,omitempty" env:"ENDPOINT,overwrite"`
 
 	// CacheTimeout is the duration that keys stay in cache before being revoked.
 	CacheTimeout time.Duration `yaml:"cache_timeout" env:"CACHE_TIMEOUT,overwrite,default=5m"`
@@ -49,7 +50,7 @@ func (cfg *JVSConfig) Validate() error {
 		err = multierror.Append(err, fmt.Errorf("version %q is invalid, valid versions are: %q",
 			cfg.Version, versions.List()))
 	}
-	if cfg.JVSEndpoint == "" {
+	if cfg.JWKSEndpoint == "" {
 		err = multierror.Append(err, fmt.Errorf("endpoint must be set"))
 	}
 	if cfg.CacheTimeout <= 0 {
