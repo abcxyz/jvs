@@ -35,7 +35,7 @@ public class JvsConfiguration {
   private String version = EXPECTED_VERSION;
 
   @JsonProperty("endpoint")
-  private String jvsEndpoint = "localhost:8080";
+  private String jwksEndpoint = "http://localhost:8080/.well-known/jwks";
 
   @JsonProperty("cache_timeout")
   private Duration cacheTimeout = Duration.ofMinutes(5);
@@ -49,8 +49,8 @@ public class JvsConfiguration {
           String.format("Wrong version. Got %s, but wanted %s", version, EXPECTED_VERSION));
     }
 
-    if (Strings.isNullOrEmpty(jvsEndpoint)) {
-      throw new IllegalArgumentException("JVS endpoint was not specified.");
+    if (Strings.isNullOrEmpty(jwksEndpoint)) {
+      throw new IllegalArgumentException("JWKs endpoint was not specified.");
     }
 
     if (cacheTimeout == null || cacheTimeout.isNegative() || cacheTimeout.isZero()) {
