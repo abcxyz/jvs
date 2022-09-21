@@ -28,66 +28,39 @@ func TestGetJustifications(t *testing.T) {
 	t.Parallel()
 
 	cases := []struct {
-		name      string
-		tokenFunc func(tb testing.TB) jwt.Token
-		exp       []*Justification
-		expErr    string
+		name   string
+		token  jwt.Token
+		exp    []*Justification
+		expErr string
 	}{
 		{
-			name: "nil_token",
-			tokenFunc: func(tb testing.TB) jwt.Token {
-				tb.Helper()
-
-				return nil
-			},
+			name:   "nil_token",
+			token:  nil,
 			expErr: "token cannot be nil",
 		},
 		{
-			name: "no_justs",
-			tokenFunc: func(tb testing.TB) jwt.Token {
-				tb.Helper()
-
-				token, err := jwt.NewBuilder().Build()
-				if err != nil {
-					tb.Fatal(err)
-				}
-				return token
-			},
-			exp: []*Justification{},
+			name:  "no_justs",
+			token: testTokenBuilder(t, jwt.NewBuilder()),
+			exp:   []*Justification{},
 		},
 		{
 			name: "wrong_type",
-			tokenFunc: func(tb testing.TB) jwt.Token {
-				tb.Helper()
-
-				token, err := jwt.NewBuilder().
-					Claim(jwtJustificationsKey, "not_valid").
-					Build()
-				if err != nil {
-					tb.Fatal(err)
-				}
-				return token
-			},
+			token: testTokenBuilder(t, jwt.
+				NewBuilder().
+				Claim(jwtJustificationsKey, "not_valid")),
 			expErr: "found justifications, but was string",
 		},
 		{
 			name: "returns_justifications",
-			tokenFunc: func(tb testing.TB) jwt.Token {
-				tb.Helper()
-
-				token, err := jwt.NewBuilder().
-					Claim(jwtJustificationsKey, []*Justification{
-						{
-							Category: "category",
-							Value:    "value",
-						},
-					}).
-					Build()
-				if err != nil {
-					tb.Fatal(err)
-				}
-				return token
-			},
+			token: testTokenBuilder(t, jwt.
+				NewBuilder().
+				Claim(jwtJustificationsKey, []*Justification{
+					{
+						Category: "category",
+						Value:    "value",
+					},
+				}),
+			),
 			exp: []*Justification{
 				{
 					Category: "category",
@@ -103,8 +76,7 @@ func TestGetJustifications(t *testing.T) {
 		t.Run(tc.name, func(t *testing.T) {
 			t.Parallel()
 
-			token := tc.tokenFunc(t)
-			justs, err := GetJustifications(token)
+			justs, err := GetJustifications(tc.token)
 			if diff := testutil.DiffErrString(err, tc.expErr); diff != "" {
 				t.Fatal(diff)
 			}
@@ -130,51 +102,32 @@ func TestSetJustifications(t *testing.T) {
 	}
 
 	cases := []struct {
-		name      string
-		tokenFunc func(tb testing.TB) jwt.Token
-		exp       []*Justification
-		expErr    string
+		name   string
+		token  jwt.Token
+		exp    []*Justification
+		expErr string
 	}{
 		{
-			name: "nil_token",
-			tokenFunc: func(tb testing.TB) jwt.Token {
-				tb.Helper()
-
-				return nil
-			},
+			name:   "nil_token",
+			token:  nil,
 			expErr: "token cannot be nil",
 		},
 		{
-			name: "sets",
-			tokenFunc: func(tb testing.TB) jwt.Token {
-				tb.Helper()
-
-				token, err := jwt.NewBuilder().Build()
-				if err != nil {
-					tb.Fatal(err)
-				}
-				return token
-			},
-			exp: justs,
+			name:  "sets",
+			token: testTokenBuilder(t, jwt.NewBuilder()),
+			exp:   justs,
 		},
 		{
 			name: "overwrites",
-			tokenFunc: func(tb testing.TB) jwt.Token {
-				tb.Helper()
-
-				token, err := jwt.NewBuilder().
-					Claim(jwtJustificationsKey, []*Justification{
-						{
-							Category: "category",
-							Value:    "value",
-						},
-					}).
-					Build()
-				if err != nil {
-					tb.Fatal(err)
-				}
-				return token
-			},
+			token: testTokenBuilder(t, jwt.
+				NewBuilder().
+				Claim(jwtJustificationsKey, []*Justification{
+					{
+						Category: "old",
+						Value:    "value",
+					},
+				}),
+			),
 			exp: justs,
 		},
 	}
@@ -185,8 +138,7 @@ func TestSetJustifications(t *testing.T) {
 		t.Run(tc.name, func(t *testing.T) {
 			t.Parallel()
 
-			token := tc.tokenFunc(t)
-			err := SetJustifications(token, justs)
+			err := SetJustifications(tc.token, justs)
 			if diff := testutil.DiffErrString(err, tc.expErr); diff != "" {
 				t.Fatal(diff)
 			}
@@ -205,75 +157,37 @@ func TestSetJustifications(t *testing.T) {
 	}
 }
 
-func TestAppendJustification(t *testing.T) {
+func TestClearJustifications(t *testing.T) {
 	t.Parallel()
 
-	just := &Justification{
-		Category: "category2",
-		Value:    "value2",
-	}
-
 	cases := []struct {
-		name      string
-		tokenFunc func(tb testing.TB) jwt.Token
-		exp       []*Justification
-		expErr    string
+		name   string
+		token  jwt.Token
+		exp    []*Justification
+		expErr string
 	}{
 		{
-			name: "nil_token",
-			tokenFunc: func(tb testing.TB) jwt.Token {
-				tb.Helper()
-
-				return nil
-			},
+			name:   "nil_token",
+			token:  nil,
 			expErr: "token cannot be nil",
 		},
 		{
-			name: "appends_empty",
-			tokenFunc: func(tb testing.TB) jwt.Token {
-				tb.Helper()
-
-				token, err := jwt.NewBuilder().Build()
-				if err != nil {
-					tb.Fatal(err)
-				}
-				return token
-			},
-			exp: []*Justification{
-				{
-					Category: "category2",
-					Value:    "value2",
-				},
-			},
+			name:  "sets",
+			token: testTokenBuilder(t, jwt.NewBuilder()),
+			exp:   []*Justification{},
 		},
 		{
-			name: "appends_existing",
-			tokenFunc: func(tb testing.TB) jwt.Token {
-				tb.Helper()
-
-				token, err := jwt.NewBuilder().
-					Claim(jwtJustificationsKey, []*Justification{
-						{
-							Category: "category",
-							Value:    "value",
-						},
-					}).
-					Build()
-				if err != nil {
-					tb.Fatal(err)
-				}
-				return token
-			},
-			exp: []*Justification{
-				{
-					Category: "category",
-					Value:    "value",
-				},
-				{
-					Category: "category2",
-					Value:    "value2",
-				},
-			},
+			name: "overwrites",
+			token: testTokenBuilder(t, jwt.
+				NewBuilder().
+				Claim(jwtJustificationsKey, []*Justification{
+					{
+						Category: "category",
+						Value:    "value",
+					},
+				}),
+			),
+			exp: []*Justification{},
 		},
 	}
 
@@ -283,8 +197,7 @@ func TestAppendJustification(t *testing.T) {
 		t.Run(tc.name, func(t *testing.T) {
 			t.Parallel()
 
-			token := tc.tokenFunc(t)
-			err := AppendJustification(token, just)
+			err := ClearJustifications(tc.token)
 			if diff := testutil.DiffErrString(err, tc.expErr); diff != "" {
 				t.Fatal(diff)
 			}
@@ -292,7 +205,7 @@ func TestAppendJustification(t *testing.T) {
 				return
 			}
 
-			justs, err := GetJustifications(token)
+			justs, err := GetJustifications(tc.token)
 			if err != nil {
 				t.Fatal(err)
 			}
@@ -304,82 +217,16 @@ func TestAppendJustification(t *testing.T) {
 	}
 }
 
-func TestClearJustifications(t *testing.T) {
-	t.Parallel()
+func testTokenBuilder(tb testing.TB, b *jwt.Builder) jwt.Token {
+	tb.Helper()
 
-	cases := []struct {
-		name      string
-		tokenFunc func(tb testing.TB) jwt.Token
-		exp       []*Justification
-		expErr    string
-	}{
-		{
-			name: "nil_token",
-			tokenFunc: func(tb testing.TB) jwt.Token {
-				tb.Helper()
-
-				return nil
-			},
-			expErr: "token cannot be nil",
-		},
-		{
-			name: "sets",
-			tokenFunc: func(tb testing.TB) jwt.Token {
-				tb.Helper()
-
-				token, err := jwt.NewBuilder().Build()
-				if err != nil {
-					tb.Fatal(err)
-				}
-				return token
-			},
-			exp: []*Justification{},
-		},
-		{
-			name: "overwrites",
-			tokenFunc: func(tb testing.TB) jwt.Token {
-				tb.Helper()
-
-				token, err := jwt.NewBuilder().
-					Claim(jwtJustificationsKey, []*Justification{
-						{
-							Category: "category",
-							Value:    "value",
-						},
-					}).
-					Build()
-				if err != nil {
-					tb.Fatal(err)
-				}
-				return token
-			},
-			exp: []*Justification{},
-		},
+	if b == nil {
+		return nil
 	}
 
-	for _, tc := range cases {
-		tc := tc
-
-		t.Run(tc.name, func(t *testing.T) {
-			t.Parallel()
-
-			token := tc.tokenFunc(t)
-			err := ClearJustifications(token)
-			if diff := testutil.DiffErrString(err, tc.expErr); diff != "" {
-				t.Fatal(diff)
-			}
-			if err != nil {
-				return
-			}
-
-			justs, err := GetJustifications(token)
-			if err != nil {
-				t.Fatal(err)
-			}
-
-			if diff := cmp.Diff(tc.exp, justs, cmpopts.IgnoreUnexported(Justification{})); diff != "" {
-				t.Errorf("justs: diff (-want, +got):\n%s", diff)
-			}
-		})
+	token, err := b.Build()
+	if err != nil {
+		tb.Fatal(err)
 	}
+	return token
 }

@@ -74,28 +74,6 @@ func SetJustifications(t jwt.Token, justifications []*Justification) error {
 	return t.Set(jwtJustificationsKey, cp)
 }
 
-// AppendJustification appends the given justification to the end of the current
-// justifications list. It does not check for duplication and does not lock the
-// token. There is a possible race between when the claims are read and when the
-// claims are set back on the token. Callers should use [SetJustifications]
-// directly to avoid this race.
-func AppendJustification(t jwt.Token, justification *Justification) error {
-	if t == nil {
-		return fmt.Errorf("token cannot be nil")
-	}
-
-	justifications, err := GetJustifications(t)
-	if err != nil {
-		return fmt.Errorf("failed to get justifications: %w", err)
-	}
-
-	justifications = append(justifications, justification)
-	if err := SetJustifications(t, justifications); err != nil {
-		return fmt.Errorf("failed to set justifications: %w", err)
-	}
-	return nil
-}
-
 // ClearJustifications removes the justifications from the token by deleting the
 // entire key.
 func ClearJustifications(t jwt.Token) error {
