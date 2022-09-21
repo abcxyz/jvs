@@ -19,10 +19,12 @@ import (
 	"crypto/tls"
 	"crypto/x509"
 	"fmt"
+	"strings"
 	"time"
 
-	"github.com/golang-jwt/jwt"
 	"github.com/google/uuid"
+	"github.com/lestrrat-go/jwx/v2/jwa"
+	"github.com/lestrrat-go/jwx/v2/jwt"
 	"github.com/spf13/cobra"
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/credentials"
@@ -30,15 +32,20 @@ import (
 	"google.golang.org/grpc/credentials/oauth"
 	"google.golang.org/protobuf/types/known/durationpb"
 
-	jvsapis "github.com/abcxyz/jvs/apis/v0"
+	jvspb "github.com/abcxyz/jvs/apis/v0"
 	"github.com/abcxyz/jvs/pkg/idtoken"
 )
 
+const (
+	Issuer  = "jvsctl"
+	Subject = "jvsctl"
+)
+
 var (
-	tokenExplanation string
-	breakglass       bool
-	ttl              time.Duration
-	issTimeUnix      int64
+	flagTokenExplanation string
+	flagBreakglass       bool
+	flagTTL              time.Duration
+	issTimeUnix          int64
 )
 
 var tokenCmd = &cobra.Command{
@@ -51,8 +58,8 @@ var tokenCmd = &cobra.Command{
 func runTokenCmd(cmd *cobra.Command, args []string) error {
 	ctx := context.Background()
 
-	// Breakglass won't require JVS server. Handle that first.
-	if breakglass {
+	// flagBreakglass won't require JVS server. Handle that first.
+	if flagBreakglass {
 		fmt.Fprintln(cmd.ErrOrStderr(), "WARNING: In breakglass mode, the justification token is not signed.")
 		tok, err := breakglassToken(ctx, issTimeUnix)
 		if err != nil {
@@ -74,14 +81,14 @@ func runTokenCmd(cmd *cobra.Command, args []string) error {
 	if err != nil {
 		return fmt.Errorf("failed to connect to JVS service: %w", err)
 	}
-	jvsclient := jvsapis.NewJVSServiceClient(conn)
+	jvsclient := jvspb.NewJVSServiceClient(conn)
 
-	req := &jvsapis.CreateJustificationRequest{
-		Justifications: []*jvsapis.Justification{{
+	req := &jvspb.CreateJustificationRequest{
+		Justifications: []*jvspb.Justification{{
 			Category: "explanation",
-			Value:    tokenExplanation,
+			Value:    flagTokenExplanation,
 		}},
-		Ttl: durationpb.New(ttl),
+		Ttl: durationpb.New(flagTTL),
 	}
 	resp, err := jvsclient.CreateJustification(ctx, req, callOpts...)
 	if err != nil {
@@ -97,10 +104,10 @@ func printToken(cmd *cobra.Command, tok string) (err error) {
 }
 
 func init() {
-	tokenCmd.Flags().StringVarP(&tokenExplanation, "explanation", "e", "", "The explanation for the action")
+	tokenCmd.Flags().StringVarP(&flagTokenExplanation, "explanation", "e", "", "The explanation for the action")
 	tokenCmd.MarkFlagRequired("explanation") //nolint // not expect err
-	tokenCmd.Flags().BoolVar(&breakglass, "breakglass", false, "Whether it will be a breakglass action")
-	tokenCmd.Flags().DurationVar(&ttl, "ttl", time.Hour, "The token time-to-live duration")
+	tokenCmd.Flags().BoolVar(&flagBreakglass, "breakglass", false, "Whether it will be a breakglass action")
+	tokenCmd.Flags().DurationVar(&flagTTL, "ttl", time.Hour, "The token time-to-live duration")
 	tokenCmd.Flags().Int64Var(&issTimeUnix, "iat", time.Now().Unix(), "A hidden flag to specify token issue time")
 	tokenCmd.Flags().MarkHidden("iat") //nolint // not expect err
 }
@@ -139,30 +146,46 @@ func callOpts(ctx context.Context) ([]grpc.CallOption, error) {
 	return []grpc.CallOption{grpc.PerRPCCredentials(oauth.NewOauthAccess(token))}, nil
 }
 
+// breakglassToken creates a new breakglass token. The token is unsigned.
+//
+// TODO(sethvargo): should this be .NOT_SIGNED or should we sign the token with
+// HMAC using a shared secret exposed via the client.
 func breakglassToken(ctx context.Context, nowUnix int64) (string, error) {
 	now := time.Unix(nowUnix, 0)
-	claims := &jvsapis.JVSClaims{
-		StandardClaims: &jwt.StandardClaims{
-			Audience:  "TODO #22",
-			ExpiresAt: now.Add(ttl).Unix(),
-			Id:        uuid.New().String(),
-			IssuedAt:  now.Unix(),
-			NotBefore: now.Unix(),
-			Issuer:    "jvsctl",
-			Subject:   "jvsctl",
-		},
-		Justifications: []*jvsapis.Justification{{
+	id := uuid.New().String()
+	exp := now.Add(flagTTL)
+	justs := []*jvspb.Justification{
+		{
 			Category: "breakglass",
-			Value:    tokenExplanation,
-		}},
+			Value:    flagTokenExplanation,
+		},
 	}
 
-	// Signing method doesn't really matter because we won't sign
-	// breakglass token.
-	tok, err := jwt.NewWithClaims(jwt.SigningMethodES256, claims).SigningString()
+	token, err := jwt.NewBuilder().
+		Audience([]string{"TODO #22"}).
+		Expiration(exp).
+		IssuedAt(now).
+		Issuer(Issuer).
+		JwtID(id).
+		NotBefore(now).
+		Subject(Subject).
+		Build()
 	if err != nil {
-		return "", err
+		return "", fmt.Errorf("failed to build jwt: %w", err)
 	}
 
-	return tok + ".NOT_SIGNED", nil
+	if err := jvspb.SetJustifications(token, justs); err != nil {
+		return "", fmt.Errorf("failed to set justifications on jwt: %w", err)
+	}
+
+	// TODO(sethvargo): the jwt library doesn't actually provide an API for
+	// exposing the raw signing string, so the easiest way to get it is to use the
+	// HMAC signer. We should seriously consider just using an HMAC signer with a
+	// shared secret instead of the hardcoded string.
+	b, err := jwt.Sign(token, jwt.WithKey(jwa.HS256, []byte("KEY")))
+	if err != nil {
+		return "", fmt.Errorf("failed to sign breakglass: %w", err)
+	}
+	str := strings.Join(strings.SplitN(string(b), ".", 3)[0:2], ".")
+	return str + ".NOT_SIGNED", nil
 }

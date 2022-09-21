@@ -17,13 +17,12 @@ package client
 
 import (
 	"context"
-	"encoding/json"
 	"fmt"
 	"strings"
 
-	jvsapis "github.com/abcxyz/jvs/apis/v0"
-	"github.com/abcxyz/jvs/pkg/jvscrypto"
+	jvspb "github.com/abcxyz/jvs/apis/v0"
 	"github.com/lestrrat-go/jwx/v2/jwk"
+	"github.com/lestrrat-go/jwx/v2/jws"
 	"github.com/lestrrat-go/jwx/v2/jwt"
 )
 
@@ -42,16 +41,16 @@ type JVSClient struct {
 // NewJVSClient returns a JVSClient with the cache initialized.
 func NewJVSClient(ctx context.Context, config *JVSConfig) (*JVSClient, error) {
 	c := jwk.NewCache(ctx)
-	if err := c.Register(config.JVSEndpoint, jwk.WithMinRefreshInterval(config.CacheTimeout)); err != nil {
+	if err := c.Register(config.JWKSEndpoint, jwk.WithMinRefreshInterval(config.CacheTimeout)); err != nil {
 		return nil, fmt.Errorf("failed to register: %w", err)
 	}
 
 	// check that cache is correctly set up and certs are available
-	if _, err := c.Refresh(ctx, config.JVSEndpoint); err != nil {
+	if _, err := c.Refresh(ctx, config.JWKSEndpoint); err != nil {
 		return nil, fmt.Errorf("failed to retrieve JVS public keys: %w", err)
 	}
 
-	cached := jwk.NewCachedSet(c, config.JVSEndpoint)
+	cached := jwk.NewCachedSet(c, config.JWKSEndpoint)
 
 	if err := config.Validate(); err != nil {
 		return nil, fmt.Errorf("failed to validate configuration: %w", err)
@@ -63,11 +62,14 @@ func NewJVSClient(ctx context.Context, config *JVSConfig) (*JVSClient, error) {
 	}, nil
 }
 
-// ValidateJWT takes a jwt string, converts it to a JWT, and validates the signature.
+// ValidateJWT takes a jwt string, converts it to a JWT, and validates the
+// signature against the keys in the JWKs endpoint.
 func (j *JVSClient) ValidateJWT(jwtStr string) (jwt.Token, error) {
 	// Handle unsigned tokens.
 	if strings.HasSuffix(jwtStr, UnsignedPostfix) {
-		token, err := jwt.Parse([]byte(jwtStr), jwt.WithVerify(false))
+		token, err := jwt.Parse([]byte(jwtStr),
+			jvspb.WithTypedJustifications(),
+			jwt.WithVerify(false))
 		if err != nil {
 			return nil, fmt.Errorf("failed to parse jwt %s: %w", jwtStr, err)
 		}
@@ -76,7 +78,15 @@ func (j *JVSClient) ValidateJWT(jwtStr string) (jwt.Token, error) {
 		}
 		return token, nil
 	}
-	return jvscrypto.ValidateJWT(j.keys, jwtStr)
+
+	token, err := jwt.ParseString(jwtStr,
+		jvspb.WithTypedJustifications(),
+		jwt.WithKeySet(j.keys, jws.WithInferAlgorithmFromKey(true)),
+	)
+	if err != nil {
+		return nil, fmt.Errorf("failed to verify jwt: %w", err)
+	}
+	return token, nil
 }
 
 func (j *JVSClient) unsignedTokenValidAndAllowed(token jwt.Token) error {
@@ -84,17 +94,9 @@ func (j *JVSClient) unsignedTokenValidAndAllowed(token jwt.Token) error {
 		return fmt.Errorf("breakglass is forbidden, denying")
 	}
 
-	justs, ok := token.Get("justs")
-	if !ok {
-		return fmt.Errorf("can't find 'justs' in claims, denying")
-	}
-	justsBytes, err := json.Marshal(justs)
+	justifications, err := jvspb.GetJustifications(token)
 	if err != nil {
-		return fmt.Errorf("failed to marshal 'justs', denying")
-	}
-	var justifications []*jvsapis.Justification
-	if err := json.Unmarshal(justsBytes, &justifications); err != nil {
-		return fmt.Errorf("failed to unmarshal 'justs', denying")
+		return err
 	}
 
 	for _, justification := range justifications {
