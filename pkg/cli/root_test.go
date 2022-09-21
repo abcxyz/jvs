@@ -27,8 +27,9 @@ import (
 func TestInitCfg(t *testing.T) {
 	cfgFile = filepath.Join(t.TempDir(), ".jvsctl.yaml")
 
-	if err := os.WriteFile(cfgFile, []byte(`server: https://example.com
-`), fs.ModePerm); err != nil {
+	if err := os.WriteFile(cfgFile, []byte(
+		`server: https://example.com
+jwks_endpoint: https://jvs.corp:8080/.well-known/jwks`), fs.ModePerm); err != nil {
 		t.Fatalf("failed to prepare test config file: %v", err)
 	}
 	t.Cleanup(func() {
@@ -43,6 +44,7 @@ func TestInitCfg(t *testing.T) {
 		Version:        "1",
 		Server:         "https://example.com",
 		Authentication: &config.CLIAuthentication{},
+		JWKSEndpoint:   "https://jvs.corp:8080/.well-known/jwks",
 	}
 	if diff := cmp.Diff(wantCfg, cfg); diff != "" {
 		t.Errorf("CLI config loaded (-want,+got):\n%s", diff)

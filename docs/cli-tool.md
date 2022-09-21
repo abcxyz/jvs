@@ -67,3 +67,13 @@ jvsctl token --breakglass true --explanation "jvs is down" --ttl 30m
 In certain cases, we might need to bypass JVS for minting signed JVS tokens.
 E.g. JVS couldn't verify a justification because the ticket system is down. In
 such cases, we can mint break-glass token instead.
+
+We are also able to validate the token for both normal and breakglass cases, examples provided as below.
+
+```shell
+jvsctl validate --token "example token"
+```
+
+```shell
+jvsctl validate --token "breakglass token" --allow_breakglass true
+```

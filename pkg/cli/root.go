@@ -48,10 +48,13 @@ func init() {
 	rootCmd.PersistentFlags().StringVar(&cfgFile, "config", "", "config file (default is $HOME/.jvsctl/config.yaml)")
 	rootCmd.PersistentFlags().String("server", "", "overwrite the JVS server address")
 	rootCmd.PersistentFlags().Bool("insecure", false, "use insecure connection to JVS server")
+	rootCmd.PersistentFlags().String("jwks_endpoint", "", "overwrite the JWKS endpoint")
 	viper.BindPFlag("server", rootCmd.PersistentFlags().Lookup("server"))     //nolint // not expect err
 	viper.BindPFlag("insecure", rootCmd.PersistentFlags().Lookup("insecure")) //nolint // not expect err
+	viper.BindPFlag("jwks_endpoint", rootCmd.PersistentFlags().Lookup("jwks_endpoint"))     //nolint // not expect err
 
 	rootCmd.AddCommand(tokenCmd)
+	rootCmd.AddCommand(validateCmd)
 }
 
 func initCfg() {

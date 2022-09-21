@@ -32,6 +32,10 @@ type CLIConfig struct {
 
 	// Authentication is the authentication config.
 	Authentication *CLIAuthentication `yaml:"authentication,omitempty"`
+
+	// JWKSEndpoint is the full path (including protocol and port) to the JWKS
+	// endpoint on a JVS server (e.g. https://jvs.corp:8080/.well-known/jwks).
+	JWKSEndpoint string `yaml:"jwks_endpoint,omitempty" mapstructure:"jwks_endpoint"`
 }
 
 // CLIAuthentication is the CLI authentication config.
@@ -55,6 +59,9 @@ func (cfg *CLIConfig) Validate() error {
 		err = multierror.Append(err, fmt.Errorf("missing JVS server address"))
 	}
 
+	if cfg.JWKSEndpoint == "" {
+		err = multierror.Append(err, fmt.Errorf("missing JWKS endpoint"))
+	}
 	return err.ErrorOrNil()
 }
 
