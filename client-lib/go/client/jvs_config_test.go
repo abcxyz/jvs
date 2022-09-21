@@ -40,13 +40,13 @@ func TestLoadJVSConfig(t *testing.T) {
 			name: "all_values_specified",
 			cfg: `
 version: 1
-endpoint: example.com:8080
+endpoint: https://jvs.corp:8080/.well-known/jwks
 cache_timeout: 1m
 allow_breakglass: true
 `,
 			wantConfig: &JVSConfig{
 				Version:         "1",
-				JVSEndpoint:     "example.com:8080",
+				JWKSEndpoint:    "https://jvs.corp:8080/.well-known/jwks",
 				CacheTimeout:    time.Minute,
 				AllowBreakglass: true,
 			},
@@ -54,11 +54,11 @@ allow_breakglass: true
 		{
 			name: "test_default",
 			cfg: `
-endpoint: example.com:8080
+endpoint: https://jvs.corp:8080/.well-known/jwks
 `,
 			wantConfig: &JVSConfig{
 				Version:         "1",
-				JVSEndpoint:     "example.com:8080",
+				JWKSEndpoint:    "https://jvs.corp:8080/.well-known/jwks",
 				CacheTimeout:    5 * time.Minute,
 				AllowBreakglass: false,
 			},
@@ -67,7 +67,7 @@ endpoint: example.com:8080
 			name: "test_wrong_version",
 			cfg: `
 version: 255
-endpoint: example.com:8080
+endpoint: https://jvs.corp:8080/.well-known/jwks
 cache_timeout: 1m
 allow_breakglass: true
 `,
@@ -78,7 +78,7 @@ allow_breakglass: true
 			name: "test_invalid_timeout",
 			cfg: `
 version: 1
-endpoint: example.com:8080
+endpoint: https://jvs.corp:8080/.well-known/jwks
 cache_timeout: -1m
 allow_breakglass: true
 `,
@@ -89,7 +89,7 @@ allow_breakglass: true
 			name: "all_values_specified_env_override",
 			cfg: `
 version: 1
-endpoint: example.com:8080
+endpoint: https://jvs.corp:8080/.well-known/jwks
 cache_timeout: 1m
 allow_breakglass: false
 `,
@@ -101,7 +101,7 @@ allow_breakglass: false
 			},
 			wantConfig: &JVSConfig{
 				Version:         "1",
-				JVSEndpoint:     "other.net:443",
+				JWKSEndpoint:    "other.net:443",
 				CacheTimeout:    2 * time.Minute,
 				AllowBreakglass: true,
 			},

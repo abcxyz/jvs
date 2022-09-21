@@ -39,6 +39,6 @@ func (j *JVSAgent) CreateJustification(ctx context.Context, req *jvspb.CreateJus
 	}
 
 	return &jvspb.CreateJustificationResponse{
-		Token: token,
+		Token: string(token),
 	}, nil
 }
