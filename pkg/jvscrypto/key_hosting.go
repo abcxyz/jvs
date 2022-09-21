@@ -16,6 +16,8 @@ package jvscrypto
 
 import (
 	"context"
+	"crypto"
+	"encoding/json"
 	"fmt"
 	"net/http"
 
@@ -50,17 +52,26 @@ func (k *KeyServer) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 }
 
 func (k *KeyServer) generateJWKString(ctx context.Context) (string, error) {
-	jwks := make([]*ECDSAKey, 0)
-	for _, key := range k.PublicKeyConfig.KeyNames {
-		list, err := JWKList(ctx, k.KMSClient, key)
+	// Compile a list of all public keys into a single structure.
+	allPublicKeys := make(map[string]crypto.PublicKey)
+	for _, parentKey := range k.PublicKeyConfig.KeyNames {
+		publicKeys, err := PublicKeysFor(ctx, k.KMSClient, parentKey)
 		if err != nil {
-			return "", fmt.Errorf("err while determining public keys %w", err)
+			return "", fmt.Errorf("failed to get public keys for %s: %w", parentKey, err)
 		}
-		jwks = append(jwks, list...)
+		for k, v := range publicKeys {
+			allPublicKeys[k] = v
+		}
 	}
-	json, err := FormatJWKString(jwks)
+
+	jwks, err := JWKSFromPublicKeys(allPublicKeys)
 	if err != nil {
-		return "", fmt.Errorf("err while formatting public keys, %w", err)
+		return "", fmt.Errorf("failed to create jwks: %w", err)
 	}
-	return json, nil
+
+	b, err := json.Marshal(jwks)
+	if err != nil {
+		return "", fmt.Errorf("failed to marshal jwks as json: %w", err)
+	}
+	return string(b), nil
 }
