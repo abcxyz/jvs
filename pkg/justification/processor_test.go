@@ -21,6 +21,7 @@ import (
 	"crypto/rand"
 	"crypto/x509"
 	"encoding/pem"
+	"reflect"
 	"testing"
 	"time"
 
@@ -31,9 +32,12 @@ import (
 	"github.com/abcxyz/jvs/pkg/testutil"
 	"github.com/abcxyz/pkg/grpcutil"
 	pkgtestutil "github.com/abcxyz/pkg/testutil"
-	"github.com/golang-jwt/jwt"
 	"github.com/google/go-cmp/cmp"
+	"github.com/google/go-cmp/cmp/cmpopts"
+	"github.com/lestrrat-go/jwx/v2/jwa"
 	"github.com/lestrrat-go/jwx/v2/jwk"
+	"github.com/lestrrat-go/jwx/v2/jws"
+	"github.com/lestrrat-go/jwx/v2/jwt"
 	"google.golang.org/api/option"
 	kmspb "google.golang.org/genproto/googleapis/cloud/kms/v1"
 	"google.golang.org/grpc"
@@ -75,7 +79,7 @@ func TestCreateToken(t *testing.T) {
 			request: &jvspb.CreateJustificationRequest{
 				Ttl: durationpb.New(3600 * time.Second),
 			},
-			wantErr: "couldn't validate request",
+			wantErr: "failed to validate request",
 		},
 		{
 			name: "no_ttl",
@@ -87,15 +91,19 @@ func TestCreateToken(t *testing.T) {
 					},
 				},
 			},
-			wantErr: "couldn't validate request",
+			wantErr: "failed to validate request",
 		},
 	}
 
 	for _, tc := range tests {
 		tc := tc
+
 		t.Run(tc.name, func(t *testing.T) {
 			t.Parallel()
+
 			ctx := context.Background()
+			now := time.Now().UTC()
+
 			var clientOpt option.ClientOption
 			key := "projects/[PROJECT]/locations/[LOCATION]/keyRings/[KEY_RING]/cryptoKeys/[CRYPTO_KEY]"
 			version := key + "/cryptoKeyVersions/[VERSION]"
@@ -174,59 +182,71 @@ func TestCreateToken(t *testing.T) {
 			if diff := pkgtestutil.DiffErrString(gotErr, tc.wantErr); diff != "" {
 				t.Errorf("Unexpected err: %s", diff)
 			}
-
 			if gotErr != nil {
 				return
 			}
-			if err := jvscrypto.VerifyJWTString(ctx, c, "keyName", response); err != nil {
-				t.Errorf("Unable to verify signed jwt. %v", err)
+
+			// Validate message headers - we have to parse the full envelope for this.
+			message, err := jws.Parse(response)
+			if err != nil {
+				t.Fatal(err)
+			}
+			sigs := message.Signatures()
+			if got, want := len(sigs), 1; got != want {
+				t.Errorf("expected length %d to be %d: %#v", got, want, sigs)
+			} else {
+				headers := sigs[0].ProtectedHeaders()
+				if got, want := headers.Type(), "JWT"; got != want {
+					t.Errorf("typ: expected %q to be %q", got, want)
+				}
+				if got, want := string(headers.Algorithm()), "ES256"; got != want {
+					t.Errorf("alg: expected %q to be %q", got, want)
+				}
+				if got, want := headers.KeyID(), keyID; got != want {
+					t.Errorf("expected %q to be %q", got, want)
+				}
 			}
 
-			claims := &jvspb.JVSClaims{}
-			token, err := jwt.ParseWithClaims(response, claims, func(token *jwt.Token) (interface{}, error) {
-				return privateKey.Public(), nil
-			})
+			// Parse as a JWT.
+			token, err := jwt.Parse(response,
+				jwt.WithKey(jwa.ES256, privateKey.Public()),
+				jvspb.WithTypedJustifications())
 			if err != nil {
-				t.Errorf("Unable to parse created jwt string. %v", err)
+				t.Fatal(err)
 			}
-			validateClaims(t, claims, tc.request.Justifications)
-			got := token.Header["kid"]
-			want := version + "-0"
-			if diff := cmp.Diff(want, got); diff != "" {
-				t.Errorf("Got diff (-want, +got): %v", diff)
+
+			// Validate standard claims.
+			if got, want := token.Audience(), []string{"TODO #22"}; !reflect.DeepEqual(got, want) {
+				t.Errorf("aud: expected %q to be %q", got, want)
+			}
+			if got := token.Expiration(); !got.After(now) {
+				t.Errorf("exp: expected %q to be after %q (%q)", got, now, got.Sub(now))
+			}
+			if got := token.IssuedAt(); got.IsZero() {
+				t.Errorf("iat: expected %q to be", got)
+			}
+			if got, want := token.Issuer(), "test-iss"; got != want {
+				t.Errorf("iss: expected %q to be %q", got, want)
+			}
+			if got, want := len(token.JwtID()), 36; got != want {
+				t.Errorf("jti: expected length %d to be %d: %#v", got, want, token.JwtID())
+			}
+			if got := token.NotBefore(); !got.Before(now) {
+				t.Errorf("nbf: expected %q to be after %q (%q)", got, now, got.Sub(now))
+			}
+			if got, want := token.Subject(), "user@example.com"; got != want {
+				t.Errorf("sub: expected %q to be %q", got, want)
+			}
+
+			// Validate custom claims.
+			gotJustifications, err := jvspb.GetJustifications(token)
+			if err != nil {
+				t.Fatal(err)
+			}
+			expectedJustifications := tc.request.Justifications
+			if diff := cmp.Diff(expectedJustifications, gotJustifications, cmpopts.IgnoreUnexported(jvspb.Justification{})); diff != "" {
+				t.Errorf("justs: diff (-want, +got):\n%s", diff)
 			}
 		})
-	}
-}
-
-func validateClaims(tb testing.TB, provided *jvspb.JVSClaims, expectedJustifications []*jvspb.Justification) {
-	tb.Helper()
-
-	// test the standard claims filled by processor
-	if got, want := provided.Issuer, "test-iss"; got != want {
-		tb.Errorf("audience value %s incorrect, expected %s", got, want)
-	}
-	if got, want := provided.Subject, "user@example.com"; got != want {
-		tb.Errorf("subject value %s incorrect, expected %s", got, want)
-	}
-	// TODO: as we add more standard claims, add more validations.
-
-	if len(provided.Justifications) != len(expectedJustifications) {
-		tb.Errorf("Number of justifications was incorrect.\n got: %v\n want: %v", provided.Justifications, expectedJustifications)
-	}
-
-	for _, j := range provided.Justifications {
-		found := false
-		for i, expectedJ := range expectedJustifications {
-			if j.Value == expectedJ.Value && j.Category == expectedJ.Category {
-				expectedJustifications = append(expectedJustifications[:i], expectedJustifications[i+1:]...)
-				found = true
-				break
-			}
-		}
-		if !found {
-			tb.Errorf("Justifications didn't match.\n got: %v\n want: %v", provided.Justifications, expectedJustifications)
-			return
-		}
 	}
 }

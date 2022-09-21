@@ -15,8 +15,10 @@
 package cli
 
 import (
+	"bytes"
 	"context"
 	"fmt"
+	"reflect"
 	"strconv"
 	"strings"
 	"testing"
@@ -24,20 +26,22 @@ import (
 
 	"google.golang.org/grpc"
 
-	jvsapis "github.com/abcxyz/jvs/apis/v0"
+	jvspb "github.com/abcxyz/jvs/apis/v0"
 	"github.com/abcxyz/jvs/pkg/config"
 	"github.com/abcxyz/pkg/testutil"
-	"github.com/golang-jwt/jwt"
 	"github.com/google/go-cmp/cmp"
+	"github.com/google/go-cmp/cmp/cmpopts"
+	"github.com/lestrrat-go/jwx/v2/jws"
+	"github.com/lestrrat-go/jwx/v2/jwt"
 	"github.com/spf13/cobra"
 )
 
 type fakeJVS struct {
-	jvsapis.UnimplementedJVSServiceServer
+	jvspb.UnimplementedJVSServiceServer
 	returnErr error
 }
 
-func (j *fakeJVS) CreateJustification(_ context.Context, req *jvsapis.CreateJustificationRequest) (*jvsapis.CreateJustificationResponse, error) {
+func (j *fakeJVS) CreateJustification(_ context.Context, req *jvspb.CreateJustificationRequest) (*jvspb.CreateJustificationResponse, error) {
 	if j.returnErr != nil {
 		return nil, j.returnErr
 	}
@@ -46,7 +50,7 @@ func (j *fakeJVS) CreateJustification(_ context.Context, req *jvsapis.CreateJust
 		return nil, fmt.Errorf("unexpected category: %q", req.Justifications[0].Category)
 	}
 
-	return &jvsapis.CreateJustificationResponse{
+	return &jvspb.CreateJustificationResponse{
 		Token: fmt.Sprintf("tokenized(%s);ttl=%v", req.Justifications[0].Value, req.Ttl.AsDuration()),
 	}, nil
 }
@@ -74,7 +78,7 @@ func TestRunTokenCmd_WithJVSServer(t *testing.T) {
 	for _, tc := range tests {
 		// Cannot parallel because the global CLI config.
 		t.Run(tc.name, func(t *testing.T) {
-			server, _ := testutil.FakeGRPCServer(t, func(s *grpc.Server) { jvsapis.RegisterJVSServiceServer(s, tc.jvs) })
+			server, _ := testutil.FakeGRPCServer(t, func(s *grpc.Server) { jvspb.RegisterJVSServiceServer(s, tc.jvs) })
 
 			// These are global flags.
 			cfg = &config.CLIConfig{
@@ -83,8 +87,8 @@ func TestRunTokenCmd_WithJVSServer(t *testing.T) {
 					Insecure: true,
 				},
 			}
-			tokenExplanation = tc.explanation
-			ttl = time.Minute
+			flagTokenExplanation = tc.explanation
+			flagTTL = time.Minute
 			t.Cleanup(testRunTokenCmdCleanup)
 
 			buf := &strings.Builder{}
@@ -112,58 +116,88 @@ func TestRunTokenCmd_Breakglass(t *testing.T) {
 			Insecure: true,
 		},
 	}
-	breakglass = true
-	tokenExplanation = "i-have-reason"
-	ttl = time.Minute
+	flagBreakglass = true
+	flagTokenExplanation = "i-have-reason"
+	flagTTL = time.Minute
 
 	// Override timeFunc to have fixed time for test.
-	now := time.Now().Unix()
+	now := time.Now().UTC()
 	t.Cleanup(testRunTokenCmdCleanup)
 
-	buf := &strings.Builder{}
+	var buf bytes.Buffer
 	cmd := &cobra.Command{}
-	cmd.SetArgs([]string{"--iat", strconv.FormatInt(now, 10)})
-	cmd.SetOut(buf)
+	cmd.SetArgs([]string{"--iat", strconv.FormatInt(now.Unix(), 10)})
+	cmd.SetOut(&buf)
 
 	if err := runTokenCmd(cmd, nil); err != nil {
-		t.Errorf("unexpected error: %v", err)
+		t.Fatal(err)
 	}
 
-	p := &jwt.Parser{}
-	gotClaims := jwt.MapClaims{}
-	if _, _, err := p.ParseUnverified(buf.String(), gotClaims); err != nil {
-		t.Errorf("unable to parse token got: %v", err)
+	// Validate message headers - we have to parse the full envelope for this.
+	message, err := jws.Parse(buf.Bytes())
+	if err != nil {
+		t.Fatal(err)
+	}
+	if sigs, want := message.Signatures(), 1; len(sigs) != want {
+		t.Errorf("expected length %d to be %d: %#v", len(sigs), want, sigs)
+	} else {
+		headers := sigs[0].ProtectedHeaders()
+		if got, want := headers.Type(), "JWT"; got != want {
+			t.Errorf("typ: expected %q to be %q", got, want)
+		}
+		if got, want := string(headers.Algorithm()), "HS256"; got != want {
+			t.Errorf("alg: expected %q to be %q", got, want)
+		}
 	}
 
-	if gotClaims["jti"] == "" {
-		t.Errorf("breakglass token claim 'jti' not set")
-	}
-	delete(gotClaims, "jti")
-
-	wantClaims := jwt.MapClaims{
-		"aud": "TODO #22",
-		"iss": "jvsctl",
-		// sub should be the caller principal but since it's breakglass
-		// we cannot effectively verify the caller identity in the CLI;
-		// use a fixed string instead.
-		"sub": "jvsctl",
-		"iat": float64(now),
-		"exp": float64(time.Unix(now, 0).Add(ttl).Unix()),
-		"nbf": float64(now),
-		"justs": []interface{}{map[string]interface{}{
-			"category": "breakglass",
-			"value":    "i-have-reason",
-		}},
+	// Parse as a JWT.
+	token, err := jwt.ParseInsecure(buf.Bytes(), jvspb.WithTypedJustifications())
+	if err != nil {
+		t.Fatal(err)
 	}
 
-	if diff := cmp.Diff(wantClaims, gotClaims); diff != "" {
-		t.Errorf("breakglass token claims (-want,+got):\n%s", diff)
+	// Validate standard claims.
+	if got, want := token.Audience(), []string{"TODO #22"}; !reflect.DeepEqual(got, want) {
+		t.Errorf("aud: expected %q to be %q", got, want)
+	}
+	if got := token.Expiration(); !got.After(now) {
+		t.Errorf("exp: expected %q to be after %q (%q)", got, now, got.Sub(now))
+	}
+	if got := token.IssuedAt(); got.IsZero() {
+		t.Errorf("iat: expected %q to be", got)
+	}
+	if got, want := token.Issuer(), "jvsctl"; got != want {
+		t.Errorf("iss: expected %q to be %q", got, want)
+	}
+	if got, want := len(token.JwtID()), 36; got != want {
+		t.Errorf("jti: expected length %d to be %d: %#v", got, want, token.JwtID())
+	}
+	if got := token.NotBefore(); !got.Before(now) {
+		t.Errorf("nbf: expected %q to be after %q (%q)", got, now, got.Sub(now))
+	}
+	if got, want := token.Subject(), "jvsctl"; got != want {
+		t.Errorf("sub: expected %q to be %q", got, want)
+	}
+
+	// Validate custom claims.
+	gotJustifications, err := jvspb.GetJustifications(token)
+	if err != nil {
+		t.Fatal(err)
+	}
+	expectedJustifications := []*jvspb.Justification{
+		{
+			Category: "breakglass",
+			Value:    "i-have-reason",
+		},
+	}
+	if diff := cmp.Diff(expectedJustifications, gotJustifications, cmpopts.IgnoreUnexported(jvspb.Justification{})); diff != "" {
+		t.Errorf("justs: diff (-want, +got):\n%s", diff)
 	}
 }
 
 func testRunTokenCmdCleanup() {
-	tokenExplanation = ""
-	ttl = time.Hour
-	breakglass = false
+	flagTokenExplanation = ""
+	flagTTL = time.Hour
+	flagBreakglass = false
 	cfg = nil
 }

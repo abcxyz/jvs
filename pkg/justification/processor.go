@@ -26,11 +26,12 @@ import (
 	"github.com/abcxyz/pkg/cache"
 	"github.com/abcxyz/pkg/grpcutil"
 	"github.com/abcxyz/pkg/logging"
-	"github.com/golang-jwt/jwt"
 	"github.com/google/uuid"
 	"github.com/hashicorp/go-multierror"
+	"github.com/lestrrat-go/jwx/v2/jwa"
+	"github.com/lestrrat-go/jwx/v2/jws"
+	"github.com/lestrrat-go/jwx/v2/jwt"
 	"github.com/sethvargo/go-gcpkms/pkg/gcpkms"
-	"go.uber.org/zap"
 	"google.golang.org/grpc/codes"
 	"google.golang.org/grpc/status"
 )
@@ -67,34 +68,45 @@ const (
 
 // CreateToken implements the create token API which creates and signs a JWT
 // token if the provided justifications are valid.
-func (p *Processor) CreateToken(ctx context.Context, request *jvspb.CreateJustificationRequest) (string, error) {
+func (p *Processor) CreateToken(ctx context.Context, req *jvspb.CreateJustificationRequest) ([]byte, error) {
+	now := time.Now().UTC()
+
 	logger := logging.FromContext(ctx)
-	if err := p.runValidations(request); err != nil {
-		logger.Error("Couldn't validate request", zap.Error(err))
-		return "", status.Error(codes.InvalidArgument, "couldn't validate request")
+
+	if err := p.runValidations(req); err != nil {
+		logger.Errorw("failed to validate request", "error", err)
+		return nil, status.Error(codes.InvalidArgument, "failed to validate request")
 	}
-	token, err := p.createToken(ctx, request)
+
+	token, err := p.createToken(ctx, now, req)
 	if err != nil {
-		logger.Error("Couldn't create token", zap.Error(err))
-		return "", status.Error(codes.Internal, "couldn't create token")
+		logger.Errorw("failed to create token", "error", err)
+		return nil, status.Error(codes.Internal, "failed to create token")
 	}
 
 	signer, err := p.cache.WriteThruLookup(cacheKey, func() (*signerWithID, error) {
 		return p.getPrimarySigner(ctx)
 	})
 	if err != nil {
-		logger.Error("Couldn't update keys from kms", zap.Error(err))
-		return "", status.Error(codes.Internal, "couldn't update keys")
-	}
-	token.Header["kid"] = signer.id // set key id
-	sig := signer.WithContext(ctx)  // add ctx to kms signer
-	signedToken, err := jvscrypto.SignToken(token, sig)
-	if err != nil {
-		logger.Error("Ran into error while signing", zap.Error(err))
-		return "", status.Error(codes.Internal, "ran into error while minting token")
+		logger.Errorw("failed to get signer", "error", err)
+		return nil, status.Error(codes.Internal, "failed to get token signer")
 	}
 
-	return signedToken, nil
+	// Build custom headers and set the "kid" as the signer ID.
+	headers := jws.NewHeaders()
+	if err := headers.Set(jws.KeyIDKey, signer.id); err != nil {
+		logger.Errorw("failed to set kid header", "error", err)
+		return nil, status.Error(codes.Internal, "failed to set token headers")
+	}
+
+	// Sign the token.
+	b, err := jwt.Sign(token, jwt.WithKey(jwa.ES256, signer, jws.WithProtectedHeaders(headers)))
+	if err != nil {
+		logger.Errorw("failed to sign token", "error", err)
+		return nil, status.Error(codes.Internal, "failed to sign token")
+	}
+
+	return b, nil
 }
 
 func (p *Processor) getPrimarySigner(ctx context.Context) (*signerWithID, error) {
@@ -139,26 +151,34 @@ func (p *Processor) runValidations(request *jvspb.CreateJustificationRequest) er
 	return err.ErrorOrNil()
 }
 
-// createToken creates a key with the correct claims and sign it using KMS key.
-func (p *Processor) createToken(ctx context.Context, request *jvspb.CreateJustificationRequest) (*jwt.Token, error) {
-	now := time.Now().UTC()
+// createToken is an internal helper for testing that builds an unsigned jwt
+// token from the request.
+func (p *Processor) createToken(ctx context.Context, now time.Time, req *jvspb.CreateJustificationRequest) (jwt.Token, error) {
 	email, err := p.authHandler.RequestPrincipal(ctx)
 	if err != nil {
 		return nil, fmt.Errorf("unable to get email of requestor: %w", err)
 	}
 
-	claims := &jvspb.JVSClaims{
-		StandardClaims: &jwt.StandardClaims{
-			Audience:  "TODO #22",
-			ExpiresAt: now.Add(request.Ttl.AsDuration()).Unix(),
-			Id:        uuid.New().String(),
-			IssuedAt:  now.Unix(),
-			Issuer:    p.config.Issuer,
-			NotBefore: now.Unix(),
-			Subject:   email,
-		},
-		Justifications: request.Justifications,
+	id := uuid.New().String()
+	exp := now.Add(req.Ttl.AsDuration())
+	justs := req.Justifications
+
+	token, err := jwt.NewBuilder().
+		Audience([]string{"TODO #22"}).
+		Expiration(exp).
+		IssuedAt(now).
+		Issuer(p.config.Issuer).
+		JwtID(id).
+		NotBefore(now).
+		Subject(email).
+		Build()
+	if err != nil {
+		return nil, fmt.Errorf("failed to build jwt: %w", err)
 	}
 
-	return jwt.NewWithClaims(jwt.SigningMethodES256, claims), nil
+	if err := jvspb.SetJustifications(token, justs); err != nil {
+		return nil, fmt.Errorf("failed to set justifications on jwt: %w", err)
+	}
+
+	return token, nil
 }

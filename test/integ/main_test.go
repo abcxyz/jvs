@@ -26,6 +26,7 @@ import (
 	"net/http"
 	"net/http/httptest"
 	"os"
+	"reflect"
 	"strconv"
 	"strings"
 	"testing"
@@ -43,6 +44,8 @@ import (
 	"github.com/google/go-cmp/cmp/cmpopts"
 	"github.com/google/uuid"
 	"github.com/lestrrat-go/jwx/v2/jwk"
+	"github.com/lestrrat-go/jwx/v2/jws"
+	"github.com/lestrrat-go/jwx/v2/jwt"
 	"github.com/sethvargo/go-retry"
 	"google.golang.org/api/iterator"
 	kmspb "google.golang.org/genproto/googleapis/cloud/kms/v1"
@@ -53,12 +56,15 @@ import (
 
 func TestJVS(t *testing.T) {
 	t.Parallel()
-	ctx := context.Background()
+
 	if !testIsIntegration(t) {
 		// Not an integ test, don't run anything.
 		t.Skip("Not an integration test, skipping...")
 		return
 	}
+
+	ctx := context.Background()
+
 	keyRing := os.Getenv("TEST_JVS_KMS_KEY_RING")
 	if keyRing == "" {
 		t.Fatal("Key ring must be provided using TEST_JVS_KMS_KEY_RING env variable.")
@@ -107,6 +113,8 @@ func TestJVS(t *testing.T) {
 	if err := ecdsaKey.Set(jwk.KeyIDKey, keyID); err != nil {
 		t.Fatal(err)
 	}
+
+	keySet := testKeySetFromKMS(ctx, t, kmsClient, keyName)
 
 	tok := testutil.CreateJWT(t, "test_id", "user@example.com")
 	validJWT := testutil.SignToken(t, tok, authKey, keyID)
@@ -158,7 +166,7 @@ func TestJVS(t *testing.T) {
 					Seconds: 3600,
 				},
 			},
-			wantErr: "couldn't validate request",
+			wantErr: "failed to validate request",
 		},
 		{
 			name: "blank_justification",
@@ -173,7 +181,7 @@ func TestJVS(t *testing.T) {
 					Seconds: 3600,
 				},
 			},
-			wantErr: "couldn't validate request",
+			wantErr: "failed to validate request",
 		},
 		{
 			name: "no_ttl",
@@ -185,7 +193,7 @@ func TestJVS(t *testing.T) {
 					},
 				},
 			},
-			wantErr: "couldn't validate request",
+			wantErr: "failed to validate request",
 		},
 		{
 			name: "no_justification",
@@ -195,19 +203,22 @@ func TestJVS(t *testing.T) {
 					Seconds: 3600,
 				},
 			},
-			wantErr: "couldn't validate request",
+			wantErr: "failed to validate request",
 		},
 		{
 			name:    "empty_request",
 			request: &jvspb.CreateJustificationRequest{},
-			wantErr: "couldn't validate request",
+			wantErr: "failed to validate request",
 		},
 	}
 
 	for _, tc := range tests {
 		tc := tc
+
 		t.Run(tc.name, func(t *testing.T) {
 			t.Parallel()
+
+			now := time.Now().UTC()
 
 			resp, gotErr := jvsAgent.CreateJustification(ctx, tc.request)
 			if diff := testutil.DiffErrString(gotErr, tc.wantErr); diff != "" {
@@ -217,29 +228,66 @@ func TestJVS(t *testing.T) {
 				return
 			}
 
-			keySet := testKeySetFromKMS(ctx, t, kmsClient, keyName)
-			token, err := jvscrypto.ValidateJWT(keySet, resp.Token)
+			// Validate message headers - we have to parse the full envelope for this.
+			message, err := jws.ParseString(resp.Token)
 			if err != nil {
-				t.Errorf("Couldn't validate signed token: %v", err)
-				return
+				t.Fatal(err)
+			}
+			sigs := message.Signatures()
+			if got, want := len(sigs), 1; got != want {
+				t.Errorf("expected length %d to be %d: %#v", got, want, sigs)
+			} else {
+				headers := sigs[0].ProtectedHeaders()
+				if got, want := headers.Type(), "JWT"; got != want {
+					t.Errorf("typ: expected %q to be %q", got, want)
+				}
+				if got, want := string(headers.Algorithm()), "ES256"; got != want {
+					t.Errorf("alg: expected %q to be %q", got, want)
+				}
+				if got, want := headers.KeyID(), keyID; got != want {
+					t.Errorf("expected %q to be %q", got, want)
+				}
 			}
 
-			tokenMap, err := token.AsMap(ctx)
+			// Parse as a JWT.
+			token, err := jwt.ParseString(resp.Token,
+				jwt.WithKeySet(keySet, jws.WithInferAlgorithmFromKey(true)),
+				jvspb.WithTypedJustifications())
 			if err != nil {
-				t.Errorf("Couldn't convert token to map: %v", err)
-				return
+				t.Fatal(err)
 			}
 
-			// These fields are set based on time, and we cannot know what they will be set to.
-			ignoreFields := map[string]interface{}{
-				"exp": nil,
-				"iat": nil,
-				"jti": nil,
-				"nbf": nil,
+			// Validate standard claims.
+			if got, want := token.Audience(), []string{"TODO #22"}; !reflect.DeepEqual(got, want) {
+				t.Errorf("aud: expected %q to be %q", got, want)
 			}
-			ignoreOpt := cmpopts.IgnoreMapEntries(func(k string, v interface{}) bool { _, ok := ignoreFields[k]; return ok })
-			if diff := cmp.Diff(tc.wantResp, tokenMap, ignoreOpt); diff != "" {
-				t.Errorf("Got diff (-want, +got): %v", diff)
+			if got := token.Expiration(); !got.After(now) {
+				t.Errorf("exp: expected %q to be after %q (%q)", got, now, got.Sub(now))
+			}
+			if got := token.IssuedAt(); got.IsZero() {
+				t.Errorf("iat: expected %q to be", got)
+			}
+			if got, want := token.Issuer(), "ci-test"; got != want {
+				t.Errorf("iss: expected %q to be %q", got, want)
+			}
+			if got, want := len(token.JwtID()), 36; got != want {
+				t.Errorf("jti: expected length %d to be %d: %#v", got, want, token.JwtID())
+			}
+			if got := token.NotBefore(); !got.Before(now) {
+				t.Errorf("nbf: expected %q to be after %q (%q)", got, now, got.Sub(now))
+			}
+			if got, want := token.Subject(), "user@example.com"; got != want {
+				t.Errorf("sub: expected %q to be %q", got, want)
+			}
+
+			// Validate custom claims.
+			gotJustifications, err := jvspb.GetJustifications(token)
+			if err != nil {
+				t.Fatal(err)
+			}
+			expectedJustifications := tc.request.Justifications
+			if diff := cmp.Diff(expectedJustifications, gotJustifications, cmpopts.IgnoreUnexported(jvspb.Justification{})); diff != "" {
+				t.Errorf("justs: diff (-want, +got):\n%s", diff)
 			}
 		})
 	}
