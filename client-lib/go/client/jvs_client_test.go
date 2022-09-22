@@ -23,7 +23,6 @@ import (
 	"fmt"
 	"net/http"
 	"net/http/httptest"
-	"strings"
 	"testing"
 	"time"
 
@@ -97,7 +96,7 @@ func TestValidateJWT(t *testing.T) {
 
 	tok := testCreateToken(t, "test_id")
 	tok2 := testCreateToken(t, "test_id_2")
-	breakglassTok := testCreateBreakglassToken(t, "test_id_3")
+	breakglassToken := testCreateBreakglassToken(t)
 
 	tests := []struct {
 		name            string
@@ -117,21 +116,16 @@ func TestValidateJWT(t *testing.T) {
 			wantToken: tok2,
 		},
 		{
-			name:            "unsigned",
-			jwt:             testUnsignToken(t, testSignToken(t, tok, privateKey, keyID)),
-			allowBreakglass: true,
-			wantErr:         "justification category is not breakglass, denying",
-		},
-		{
 			name:            "breakglass",
-			jwt:             testUnsignToken(t, testSignToken(t, breakglassTok, privateKey, keyID)),
+			jwt:             testSignBreakglassToken(t, breakglassToken),
 			allowBreakglass: true,
-			wantToken:       breakglassTok,
+			wantToken:       breakglassToken,
 		},
 		{
-			name:    "forbid_breakglass",
-			jwt:     testUnsignToken(t, testSignToken(t, breakglassTok, privateKey, keyID)),
-			wantErr: "breakglass is forbidden, denying",
+			name:            "forbid_breakglass",
+			jwt:             testSignBreakglassToken(t, breakglassToken),
+			allowBreakglass: false,
+			wantErr:         "breakglass is forbidden, denying",
 		},
 		{
 			name:    "invalid",
@@ -203,21 +197,10 @@ func testCreateToken(tb testing.TB, id string) jwt.Token {
 	return tok
 }
 
-func testCreateBreakglassToken(tb testing.TB, id string) jwt.Token {
+func testCreateBreakglassToken(tb testing.TB) jwt.Token {
 	tb.Helper()
 
-	tok, err := jwt.NewBuilder().
-		Audience([]string{"test_aud"}).
-		Expiration(time.Now().UTC().Add(5 * time.Minute)).
-		JwtID(id).
-		IssuedAt(time.Now().UTC()).
-		Issuer(`test_iss`).
-		NotBefore(time.Now().UTC()).
-		Subject("test_sub").
-		Build()
-	if err != nil {
-		tb.Fatalf("failed to build token: %s\n", err)
-	}
+	tok := testCreateToken(tb, "breakglass")
 
 	if err := jvspb.SetJustifications(tok, []*jvspb.Justification{
 		{
@@ -245,12 +228,12 @@ func testSignToken(tb testing.TB, tok jwt.Token, privateKey *ecdsa.PrivateKey, k
 	return string(valid)
 }
 
-func testUnsignToken(tb testing.TB, str string) string {
+func testSignBreakglassToken(tb testing.TB, token jwt.Token) string {
 	tb.Helper()
 
-	parts := strings.Split(str, ".")
-	if len(parts) < 3 {
-		tb.Fatalf("invalid jwt (not 3 parts): %s", str)
+	str, err := jvspb.CreateBreakglassToken(token, "testing")
+	if err != nil {
+		tb.Fatal(err)
 	}
-	return parts[0] + "." + parts[1] + ".NOT_SIGNED"
+	return str
 }
