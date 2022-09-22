@@ -70,7 +70,7 @@ public class JVSClientBuilder {
 
     String endpointEnv = getFromEnvironmentVars(ENDPOINT_ENV_KEY);
     if (!Strings.isNullOrEmpty(endpointEnv)) {
-      configuration.setJvsEndpoint(endpointEnv);
+      configuration.setJwksEndpoint(endpointEnv);
     }
 
     String versionEnv = getFromEnvironmentVars(VERSION_ENV_KEY);
@@ -89,7 +89,7 @@ public class JVSClientBuilder {
   }
 
   public JVSClientBuilder withJvsEndpoint(String jvsEndpoint) {
-    configuration.setJvsEndpoint(jvsEndpoint);
+    configuration.setJwksEndpoint(jvsEndpoint);
     return this;
   }
 
@@ -109,13 +109,13 @@ public class JVSClientBuilder {
     configuration.validate();
 
     URL url;
+    String jwksEndpoint = configuration.getJwksEndpoint();
     try {
       // We have to convert endpoint to URL, as the JwkProviderBuilder
       // appends its own path on the end if you simply pass the string.
-      url = new URL(configuration.getJvsEndpoint());
+      url = new URL(jwksEndpoint);
     } catch (MalformedURLException e) {
-      throw new IllegalArgumentException(
-          String.format("endpoint was invalid %s", configuration.getJvsEndpoint()));
+      throw new IllegalArgumentException(String.format("endpoint was invalid %s", jwksEndpoint));
     }
 
     JwkProvider provider =

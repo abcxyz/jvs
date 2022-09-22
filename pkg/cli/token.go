@@ -19,11 +19,9 @@ import (
 	"crypto/tls"
 	"crypto/x509"
 	"fmt"
-	"strings"
 	"time"
 
 	"github.com/google/uuid"
-	"github.com/lestrrat-go/jwx/v2/jwa"
 	"github.com/lestrrat-go/jwx/v2/jwt"
 	"github.com/spf13/cobra"
 	"google.golang.org/grpc"
@@ -146,20 +144,12 @@ func callOpts(ctx context.Context) ([]grpc.CallOption, error) {
 	return []grpc.CallOption{grpc.PerRPCCredentials(oauth.NewOauthAccess(token))}, nil
 }
 
-// breakglassToken creates a new breakglass token. The token is unsigned.
-//
-// TODO(sethvargo): should this be .NOT_SIGNED or should we sign the token with
-// HMAC using a shared secret exposed via the client.
+// breakglassToken creates a new breakglass token from the CLI flags. See
+// [jvspb.CreateBreakglassToken] for more information.
 func breakglassToken(ctx context.Context, nowUnix int64) (string, error) {
 	now := time.Unix(nowUnix, 0)
 	id := uuid.New().String()
 	exp := now.Add(flagTTL)
-	justs := []*jvspb.Justification{
-		{
-			Category: "breakglass",
-			Value:    flagTokenExplanation,
-		},
-	}
 
 	token, err := jwt.NewBuilder().
 		Audience([]string{"TODO #22"}).
@@ -171,21 +161,12 @@ func breakglassToken(ctx context.Context, nowUnix int64) (string, error) {
 		Subject(Subject).
 		Build()
 	if err != nil {
-		return "", fmt.Errorf("failed to build jwt: %w", err)
+		return "", fmt.Errorf("failed to build breakglass token: %w", err)
 	}
 
-	if err := jvspb.SetJustifications(token, justs); err != nil {
-		return "", fmt.Errorf("failed to set justifications on jwt: %w", err)
-	}
-
-	// TODO(sethvargo): the jwt library doesn't actually provide an API for
-	// exposing the raw signing string, so the easiest way to get it is to use the
-	// HMAC signer. We should seriously consider just using an HMAC signer with a
-	// shared secret instead of the hardcoded string.
-	b, err := jwt.Sign(token, jwt.WithKey(jwa.HS256, []byte("KEY")))
+	str, err := jvspb.CreateBreakglassToken(token, flagTokenExplanation)
 	if err != nil {
-		return "", fmt.Errorf("failed to sign breakglass: %w", err)
+		return "", fmt.Errorf("failed to create breakglass token: %w", err)
 	}
-	str := strings.Join(strings.SplitN(string(b), ".", 3)[0:2], ".")
-	return str + ".NOT_SIGNED", nil
+	return str, nil
 }

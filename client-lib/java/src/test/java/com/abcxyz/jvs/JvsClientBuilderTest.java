@@ -32,7 +32,7 @@ public class JvsClientBuilderTest {
 
     JvsConfiguration expectedConfig = new JvsConfiguration();
     expectedConfig.setVersion("1");
-    expectedConfig.setJvsEndpoint("http://example.com:8080");
+    expectedConfig.setJwksEndpoint("https://example.com:8080/.well-known/jwks");
     expectedConfig.setCacheTimeout(Duration.parse("PT5M"));
 
     JvsConfiguration loadedConfig = builder.getConfiguration();
@@ -47,7 +47,7 @@ public class JvsClientBuilderTest {
 
     JvsConfiguration expectedConfig = new JvsConfiguration();
     expectedConfig.setVersion("1");
-    expectedConfig.setJvsEndpoint("example.com");
+    expectedConfig.setJwksEndpoint("https://example.com/.well-known/jwks");
     expectedConfig.setCacheTimeout(Duration.parse("PT-5M"));
 
     JvsConfiguration loadedConfig = builder.getConfiguration();
@@ -71,15 +71,15 @@ public class JvsClientBuilderTest {
 
     JvsConfiguration expectedConfig = new JvsConfiguration();
     expectedConfig.setVersion("1");
-    expectedConfig.setJvsEndpoint("localhost:8080");
+    expectedConfig.setJwksEndpoint("http://localhost:8080/.well-known/jwks");
     expectedConfig.setCacheTimeout(Duration.parse("PT5M"));
 
     JvsConfiguration loadedConfig = builder.getConfiguration();
     Assertions.assertEquals(expectedConfig, loadedConfig);
 
     when(builder.getFromEnvironmentVars(JVSClientBuilder.ENDPOINT_ENV_KEY))
-        .thenReturn("google.com");
-    expectedConfig.setJvsEndpoint("google.com");
+        .thenReturn("https://google.com/.well-known/jwks");
+    expectedConfig.setJwksEndpoint("https://google.com/.well-known/jwks");
     when(builder.getFromEnvironmentVars(JVSClientBuilder.CACHE_TIMEOUT_ENV_KEY))
         .thenReturn("PT10M");
     expectedConfig.setCacheTimeout(Duration.parse("PT10M"));
@@ -101,8 +101,8 @@ public class JvsClientBuilderTest {
     when(builder.getFromEnvironmentVars(JVSClientBuilder.VERSION_ENV_KEY)).thenReturn("1");
     expectedConfig.setVersion("1");
     when(builder.getFromEnvironmentVars(JVSClientBuilder.ENDPOINT_ENV_KEY))
-        .thenReturn("google.com");
-    expectedConfig.setJvsEndpoint("google.com");
+        .thenReturn("https://google.com/.well-known/jwks");
+    expectedConfig.setJwksEndpoint("https://google.com/.well-known/jwks");
     when(builder.getFromEnvironmentVars(JVSClientBuilder.CACHE_TIMEOUT_ENV_KEY))
         .thenReturn("PT10M");
     expectedConfig.setCacheTimeout(Duration.parse("PT10M"));
@@ -123,7 +123,7 @@ public class JvsClientBuilderTest {
 
     JvsConfiguration expectedConfig = new JvsConfiguration();
     expectedConfig.setVersion("1");
-    expectedConfig.setJvsEndpoint("http://example.com:8080");
+    expectedConfig.setJwksEndpoint("https://example.com:8080/.well-known/jwks");
     expectedConfig.setCacheTimeout(Duration.parse("PT5M"));
 
     JvsConfiguration loadedConfig = builder.getConfiguration();
@@ -131,8 +131,8 @@ public class JvsClientBuilderTest {
     Assertions.assertDoesNotThrow(() -> loadedConfig.validate());
 
     when(builder.getFromEnvironmentVars(JVSClientBuilder.ENDPOINT_ENV_KEY))
-        .thenReturn("google.com");
-    expectedConfig.setJvsEndpoint("google.com");
+        .thenReturn("https://google.com/.well-known/jwks");
+    expectedConfig.setJwksEndpoint("https://google.com/.well-known/jwks");
     when(builder.getFromEnvironmentVars(JVSClientBuilder.CACHE_TIMEOUT_ENV_KEY))
         .thenReturn("PT10M");
     expectedConfig.setCacheTimeout(Duration.parse("PT10M"));
@@ -159,7 +159,7 @@ public class JvsClientBuilderTest {
 
     JvsConfiguration expectedConfig = new JvsConfiguration();
     expectedConfig.setVersion("1");
-    expectedConfig.setJvsEndpoint("localhost:8080");
+    expectedConfig.setJwksEndpoint("http://localhost:8080/.well-known/jwks");
     expectedConfig.setCacheTimeout(Duration.parse("PT5M"));
 
     JvsConfiguration loadedConfig = builder.getConfiguration();

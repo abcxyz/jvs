@@ -18,17 +18,11 @@ package client
 import (
 	"context"
 	"fmt"
-	"strings"
 
 	jvspb "github.com/abcxyz/jvs/apis/v0"
 	"github.com/lestrrat-go/jwx/v2/jwk"
 	"github.com/lestrrat-go/jwx/v2/jws"
 	"github.com/lestrrat-go/jwx/v2/jwt"
-)
-
-const (
-	UnsignedPostfix    = ".NOT_SIGNED"
-	BreakglassCategory = "breakglass"
 )
 
 // JVSClient allows for getting JWK keys from the JVS and validating JWTs with
@@ -65,21 +59,20 @@ func NewJVSClient(ctx context.Context, config *JVSConfig) (*JVSClient, error) {
 // ValidateJWT takes a jwt string, converts it to a JWT, and validates the
 // signature against the keys in the JWKs endpoint.
 func (j *JVSClient) ValidateJWT(jwtStr string) (jwt.Token, error) {
-	// Handle unsigned tokens.
-	if strings.HasSuffix(jwtStr, UnsignedPostfix) {
-		token, err := jwt.Parse([]byte(jwtStr),
-			jvspb.WithTypedJustifications(),
-			jwt.WithVerify(false))
-		if err != nil {
-			return nil, fmt.Errorf("failed to parse jwt %s: %w", jwtStr, err)
-		}
-		if err := j.unsignedTokenValidAndAllowed(token); err != nil {
-			return nil, fmt.Errorf("token unsigned and could not be validated: %w", err)
+	// Handle breakglass tokens
+	token, err := jvspb.ParseBreakglassToken(jwtStr)
+	if err != nil {
+		return nil, fmt.Errorf("failed to parse breakglass token: %w", err)
+	}
+	if token != nil {
+		if !j.config.AllowBreakglass {
+			return nil, fmt.Errorf("breakglass is forbidden, denying")
 		}
 		return token, nil
 	}
 
-	token, err := jwt.ParseString(jwtStr,
+	// If we got this far, the token was not breakglass, so parse as normal.
+	token, err = jwt.ParseString(jwtStr,
 		jvspb.WithTypedJustifications(),
 		jwt.WithKeySet(j.keys, jws.WithInferAlgorithmFromKey(true)),
 	)
@@ -87,22 +80,4 @@ func (j *JVSClient) ValidateJWT(jwtStr string) (jwt.Token, error) {
 		return nil, fmt.Errorf("failed to verify jwt: %w", err)
 	}
 	return token, nil
-}
-
-func (j *JVSClient) unsignedTokenValidAndAllowed(token jwt.Token) error {
-	if !j.config.AllowBreakglass {
-		return fmt.Errorf("breakglass is forbidden, denying")
-	}
-
-	justifications, err := jvspb.GetJustifications(token)
-	if err != nil {
-		return err
-	}
-
-	for _, justification := range justifications {
-		if justification.GetCategory() == BreakglassCategory {
-			return nil
-		}
-	}
-	return fmt.Errorf("justification category is not breakglass, denying")
 }
