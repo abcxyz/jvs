@@ -49,19 +49,11 @@ public class JvsClient {
   private final boolean allowBreakglass;
 
   /**
-   * This parses the given token as a breakglass token. If the token is not a JWT, not HS256, or
-   * missing breakglass justifications, it returns null. If the token fails to verify, it throws an
-   * exception.
+   * This parses the given token as a breakglass token. If the token's signature is invalid, it
+   * throws an exception. If the token does not contain the breakglass justification an exception is
+   * thrown.
    */
-  private DecodedJWT parseBreakglassToken(String tokenStr) throws JwkException {
-    DecodedJWT token = JWT.decode(tokenStr);
-
-    if (!Header.JWT_TYPE.equals(token.getType())
-        || !SignatureAlgorithm.HS256.getValue().equals(token.getAlgorithm())) {
-      log.debug("token is not breakglass");
-      return null;
-    }
-
+  private void validateBreakglassToken(DecodedJWT token) throws JwkException {
     try {
       Algorithm alg = Algorithm.HMAC256(BREAKGLASS_HMAC_SECRET);
       alg.verify(token);
@@ -73,12 +65,11 @@ public class JvsClient {
     List<Justification> justifications = token.getClaim("justs").asList(Justification.class);
     for (Justification justification : justifications) {
       if (BREAKGLASS_JUSTIFICATION_CATEGORY.equals(justification.getCategory())) {
-        return token;
+        return;
       }
     }
 
-    log.error("token is breakglass, but is missing breakglass justification");
-    return null;
+    throw new JwkException("token is breakglass, but is missing breakglass justification");
   }
 
   /**
@@ -86,30 +77,32 @@ public class JvsClient {
    * endpoint. It also handles breakglass, if breakglass is enabled.
    */
   public DecodedJWT validateJWT(String tokenStr) throws JwkException {
+    DecodedJWT token = JWT.decode(tokenStr);
+
     // Handle breakglass tokens
-    DecodedJWT breakglassToken = parseBreakglassToken(tokenStr);
-    if (breakglassToken != null) {
-      if (allowBreakglass) {
-        return breakglassToken;
+    if (Header.JWT_TYPE.equals(token.getType())
+        && SignatureAlgorithm.HS256.getValue().equals(token.getAlgorithm())) {
+      log.debug("token is breakglass");
+      if (!allowBreakglass) {
+        throw new JwkException("breakglass is forbidden, denying");
       }
-      throw new JwkException("breakglass is forbidden, denying");
+      validateBreakglassToken(token);
+      return token;
     }
 
-    // If we got this far, the token was not breakglass, so parse against the jwks.
-    DecodedJWT jwt = JWT.decode(tokenStr);
-
+    // Handle regular token processing.
     try {
-      Jwk jwk = provider.get(jwt.getKeyId());
+      Jwk jwk = provider.get(token.getKeyId());
       if (jwk == null) {
         throw new SigningKeyNotFoundException("daf", null);
       }
       Algorithm algorithm = Algorithm.ECDSA256((ECPublicKey) jwk.getPublicKey(), null);
-      algorithm.verify(jwt);
+      algorithm.verify(token);
     } catch (SigningKeyNotFoundException e) {
-      log.error("failed to find public key {}", jwt.getKeyId());
+      log.error("failed to find public key {}", token.getKeyId());
       throw new JwkException("failed to verify token", e);
     }
 
-    return jwt;
+    return token;
   }
 }

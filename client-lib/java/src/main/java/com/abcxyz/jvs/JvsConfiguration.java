@@ -34,7 +34,7 @@ public class JvsConfiguration {
   @JsonProperty(value = "version")
   private String version = EXPECTED_VERSION;
 
-  @JsonProperty("endpoint")
+  @JsonProperty("jwks_endpoint")
   private String jwksEndpoint = "http://localhost:8080/.well-known/jwks";
 
   @JsonProperty("cache_timeout")

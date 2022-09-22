@@ -193,6 +193,7 @@ public class JvsClientTest {
     JvsClient client = new JvsClient(provider, true);
     JwkException thrown =
         Assertions.assertThrows(JwkException.class, () -> client.validateJWT(token));
-    assertThat(thrown.getMessage()).contains("failed to verify token");
+    assertThat(thrown.getMessage())
+        .contains("token is breakglass, but is missing breakglass justification");
   }
 }

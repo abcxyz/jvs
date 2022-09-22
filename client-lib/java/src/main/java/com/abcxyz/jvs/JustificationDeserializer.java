@@ -18,6 +18,7 @@ package com.abcxyz.jvs;
 
 import com.fasterxml.jackson.core.JsonParser;
 import com.fasterxml.jackson.core.JsonProcessingException;
+import com.fasterxml.jackson.core.ObjectCodec;
 import com.fasterxml.jackson.databind.DeserializationContext;
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.deser.std.StdDeserializer;
@@ -33,9 +34,15 @@ public class JustificationDeserializer extends StdDeserializer<Justification> {
   }
 
   @Override
-  public Justification deserialize(JsonParser jp, DeserializationContext ctxt)
+  public Justification deserialize(JsonParser jsonParser, DeserializationContext context)
       throws IOException, JsonProcessingException {
-    JsonNode node = jp.getCodec().readTree(jp);
+
+    ObjectCodec codec = jsonParser.getCodec();
+    if (codec == null) {
+      return null;
+    }
+
+    JsonNode node = codec.readTree(jsonParser);
     if (node == null) {
       return null;
     }

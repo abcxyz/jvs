@@ -17,22 +17,14 @@
 package com.abcxyz.jvs;
 
 import com.fasterxml.jackson.databind.annotation.JsonDeserialize;
+import lombok.AccessLevel;
+import lombok.AllArgsConstructor;
+import lombok.Data;
 
+@Data
+@AllArgsConstructor(access = AccessLevel.PUBLIC)
 @JsonDeserialize(using = JustificationDeserializer.class)
 public class Justification {
   private String category;
   private String value;
-
-  public Justification(String category, String value) {
-    this.category = category;
-    this.value = value;
-  }
-
-  public String getCategory() {
-    return this.category;
-  }
-
-  public String getValue() {
-    return this.value;
-  }
 }
