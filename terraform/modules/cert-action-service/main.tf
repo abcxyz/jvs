@@ -71,23 +71,23 @@ resource "google_cloud_run_service" "cert-action" {
           }
         }
         env {
-          name  = "JVS_KEY_NAMES"
+          name  = "KEY_NAMES"
           value = var.key_id
         }
         env {
-          name  = "JVS_KEY_TTL"
+          name  = "KEY_TTL"
           value = var.key_ttl
         }
         env {
-          name  = "JVS_GRACE_PERIOD"
+          name  = "GRACE_PERIOD"
           value = var.key_grace_period
         }
         env {
-          name  = "JVS_DISABLED_PERIOD"
+          name  = "DISABLED_PERIOD"
           value = var.key_disabled_period
         }
         env {
-          name  = "JVS_PROPAGATION_DELAY"
+          name  = "PROPAGATION_DELAY"
           value = var.key_propagation_delay
         }
       }

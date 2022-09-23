@@ -174,8 +174,8 @@ disabled_period: 720h # 30 days
 propagation_delay: 1h
 `,
 			envs: map[string]string{
-				"JVS_KEY_TTL":      "1080h", // 45 days
-				"JVS_GRACE_PERIOD": "4h",
+				"KEY_TTL":      "1080h", // 45 days
+				"GRACE_PERIOD": "4h",
 			},
 			wantConfig: &CryptoConfig{
 				Version:          "1",
@@ -189,10 +189,10 @@ propagation_delay: 1h
 			name: "non_default_values_specified_in_envs",
 			cfg:  ``,
 			envs: map[string]string{
-				"JVS_KEY_TTL":           "1080h", // 45 days
-				"JVS_GRACE_PERIOD":      "4h",
-				"JVS_DISABLED_PERIOD":   "1080h", // 45 days
-				"JVS_PROPAGATION_DELAY": "1h",
+				"KEY_TTL":           "1080h", // 45 days
+				"GRACE_PERIOD":      "4h",
+				"DISABLED_PERIOD":   "1080h", // 45 days
+				"PROPAGATION_DELAY": "1h",
 			},
 			wantConfig: &CryptoConfig{
 				Version:          "1",

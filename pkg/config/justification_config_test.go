@@ -109,10 +109,10 @@ signer_cache_timeout: 1m
 issuer: jvs
 `,
 			envs: map[string]string{
-				"JVS_VERSION":              "1",
-				"JVS_PORT":                 "tcp",
-				"JVS_SIGNER_CACHE_TIMEOUT": "2m",
-				"JVS_ISSUER":               "other",
+				"VERSION":              "1",
+				"PORT":                 "tcp",
+				"SIGNER_CACHE_TIMEOUT": "2m",
+				"ISSUER":               "other",
 			},
 			wantConfig: &JustificationConfig{
 				Version:            "1",
