@@ -63,7 +63,9 @@ func NewProcessor(kms *kms.KeyManagementClient, config *config.JustificationConf
 }
 
 const (
-	cacheKey        = "signer"
+	cacheKey = "signer"
+
+	// DefaultAudience is the default audience used in justification tokens.
 	DefaultAudience = "dev.abcxyz.jvs"
 )
 
