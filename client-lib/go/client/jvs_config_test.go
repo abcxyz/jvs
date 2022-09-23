@@ -94,10 +94,10 @@ cache_timeout: 1m
 allow_breakglass: false
 `,
 			envs: map[string]string{
-				"JVS_VERSION":          "1",
-				"JVS_ENDPOINT":         "other.net:443",
-				"JVS_CACHE_TIMEOUT":    "2m",
-				"JVS_ALLOW_BREAKGLASS": "true",
+				"VERSION":          "1",
+				"ENDPOINT":         "other.net:443",
+				"CACHE_TIMEOUT":    "2m",
+				"ALLOW_BREAKGLASS": "true",
 			},
 			wantConfig: &JVSConfig{
 				Version:         "1",

@@ -71,7 +71,7 @@ resource "google_cloud_run_service" "server" {
           }
         }
         env {
-          name  = "JVS_KEY"
+          name  = "KEY"
           value = var.key_id
         }
       }
