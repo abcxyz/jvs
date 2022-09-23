@@ -58,16 +58,16 @@ func realMain(ctx context.Context) error {
 	}
 	defer kmsClient.Close()
 
-	config := &config.PublicKeyConfig{}
-	if err := cfgloader.Load(ctx, config); err != nil {
+	var cfg config.PublicKeyConfig
+	if err := cfgloader.Load(ctx, &cfg); err != nil {
 		return fmt.Errorf("failed to load config: %w", err)
 	}
 
-	cache := cache.New[string](config.CacheTimeout)
+	cache := cache.New[string](cfg.CacheTimeout)
 
 	ks := &jvscrypto.KeyServer{
 		KMSClient:       kmsClient,
-		PublicKeyConfig: config,
+		PublicKeyConfig: &cfg,
 		Cache:           cache,
 	}
 
@@ -75,9 +75,9 @@ func realMain(ctx context.Context) error {
 	mux.Handle("/.well-known/jwks", ks)
 
 	// Create the server and listen in a goroutine.
-	logger.Debug("starting server on port", zap.String("port", config.Port))
+	logger.Debug("starting server on port", zap.String("port", cfg.Port))
 	server := &http.Server{
-		Addr:              ":" + config.Port,
+		Addr:              ":" + cfg.Port,
 		Handler:           mux,
 		ReadHeaderTimeout: 2 * time.Second,
 	}

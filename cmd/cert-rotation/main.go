@@ -84,15 +84,14 @@ func realMain(ctx context.Context) error {
 	}
 	defer kmsClient.Close()
 
-	// TODO(#124): We shouldn't need JVS_ prefix since it's a JVS service.
-	config := &config.CryptoConfig{}
-	if err := cfgloader.Load(ctx, config, cfgloader.WithEnvPrefix("JVS_")); err != nil {
+	var cfg config.CryptoConfig
+	if err := cfgloader.Load(ctx, cfg); err != nil {
 		return fmt.Errorf("failed to load config: %w", err)
 	}
 
 	handler := &jvscrypto.RotationHandler{
 		KMSClient:    kmsClient,
-		CryptoConfig: config,
+		CryptoConfig: &cfg,
 	}
 
 	mux := http.NewServeMux()

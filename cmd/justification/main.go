@@ -55,9 +55,8 @@ func realMain(ctx context.Context) error {
 		otelgrpc.UnaryServerInterceptor(),
 	))
 
-	// TODO(#124): We shouldn't need JVS_ prefix since it's a JVS service.
-	cfg := &config.JustificationConfig{}
-	if err := cfgloader.Load(ctx, cfg, cfgloader.WithEnvPrefix("JVS_")); err != nil {
+	var cfg config.JustificationConfig
+	if err := cfgloader.Load(ctx, &cfg); err != nil {
 		return fmt.Errorf("failed to load config: %w", err)
 	}
 
@@ -71,7 +70,7 @@ func realMain(ctx context.Context) error {
 		return fmt.Errorf("failed to setup grpc auth handler: %w", err)
 	}
 
-	p := justification.NewProcessor(kmsClient, cfg, authHandler)
+	p := justification.NewProcessor(kmsClient, &cfg, authHandler)
 	jvsAgent := justification.NewJVSAgent(p)
 	jvspb.RegisterJVSServiceServer(s, jvsAgent)
 	reflection.Register(s)

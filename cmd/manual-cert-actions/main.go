@@ -55,8 +55,8 @@ func realMain(ctx context.Context) error {
 		otelgrpc.UnaryServerInterceptor(),
 	))
 
-	cfg := &config.CryptoConfig{}
-	if err := cfgloader.Load(ctx, cfg, cfgloader.WithEnvPrefix("JVS_")); err != nil {
+	var cfg config.CryptoConfig
+	if err := cfgloader.Load(ctx, cfg); err != nil {
 		return fmt.Errorf("failed to load config: %w", err)
 	}
 
@@ -67,7 +67,7 @@ func realMain(ctx context.Context) error {
 
 	handler := &jvscrypto.RotationHandler{
 		KMSClient:    kmsClient,
-		CryptoConfig: cfg,
+		CryptoConfig: &cfg,
 	}
 
 	cas := &jvscrypto.CertificateActionService{
