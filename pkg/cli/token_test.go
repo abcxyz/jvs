@@ -28,6 +28,7 @@ import (
 
 	jvspb "github.com/abcxyz/jvs/apis/v0"
 	"github.com/abcxyz/jvs/pkg/config"
+	"github.com/abcxyz/jvs/pkg/justification"
 	"github.com/abcxyz/pkg/testutil"
 	"github.com/google/go-cmp/cmp"
 	"github.com/google/go-cmp/cmp/cmpopts"
@@ -157,7 +158,7 @@ func TestRunTokenCmd_Breakglass(t *testing.T) {
 	}
 
 	// Validate standard claims.
-	if got, want := token.Audience(), []string{"TODO #22"}; !reflect.DeepEqual(got, want) {
+	if got, want := token.Audience(), []string{justification.DefaultAudience}; !reflect.DeepEqual(got, want) {
 		t.Errorf("aud: expected %q to be %q", got, want)
 	}
 	if got := token.Expiration(); !got.After(now) {
