@@ -128,10 +128,10 @@ func TestJVS(t *testing.T) {
 	jvsAgent := justification.NewJVSAgent(p)
 
 	tests := []struct {
-		name     string
-		request  *jvspb.CreateJustificationRequest
-		wantErr  string
-		wantResp map[string]interface{}
+		name          string
+		request       *jvspb.CreateJustificationRequest
+		wantAudiences []string
+		wantErr       string
 	}{
 		{
 			name: "happy_path",
@@ -146,14 +146,23 @@ func TestJVS(t *testing.T) {
 					Seconds: 3600,
 				},
 			},
-			wantResp: map[string]interface{}{
-				"aud": []string{"TODO #22"},
-				"iss": "ci-test",
-				"justs": []any{
-					map[string]any{"category": "explanation", "value": "This is a test."},
+			wantAudiences: []string{justification.DefaultAudience},
+		},
+		{
+			name: "override_audiences",
+			request: &jvspb.CreateJustificationRequest{
+				Justifications: []*jvspb.Justification{
+					{
+						Category: "explanation",
+						Value:    "This is a test.",
+					},
 				},
-				"sub": "user@example.com",
+				Ttl: &durationpb.Duration{
+					Seconds: 3600,
+				},
+				Audiences: []string{"aud1", "aud2"},
 			},
+			wantAudiences: []string{"aud1", "aud2"},
 		},
 		{
 			name: "unknown_justification",
@@ -260,7 +269,7 @@ func TestJVS(t *testing.T) {
 			}
 
 			// Validate standard claims.
-			if got, want := token.Audience(), []string{"TODO #22"}; !reflect.DeepEqual(got, want) {
+			if got, want := token.Audience(), tc.wantAudiences; !reflect.DeepEqual(got, want) {
 				t.Errorf("aud: expected %q to be %q", got, want)
 			}
 			if got := token.Expiration(); !got.After(now) {
