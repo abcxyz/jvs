@@ -15,12 +15,7 @@
 package config
 
 import (
-	"context"
-	"fmt"
 	"time"
-
-	"github.com/sethvargo/go-envconfig"
-	"gopkg.in/yaml.v2"
 )
 
 // PublicKeyConfig is the config used for public key hosting.
@@ -32,25 +27,4 @@ type PublicKeyConfig struct {
 	KeyNames     []string      `yaml:"key_names,omitempty" env:"KEY_NAMES,overwrite"`
 	CacheTimeout time.Duration `yaml:"cache_timeout" env:"CACHE_TIMEOUT"`
 	Port         string        `env:"PORT,default=8080"`
-}
-
-// LoadConfig calls the necessary methods to load in config using the OsLookuper which finds env variables specified on the host.
-func LoadPublicKeyConfig(ctx context.Context, b []byte) (*PublicKeyConfig, error) {
-	return loadPublicKeyConfigFromLookuper(ctx, b, envconfig.OsLookuper())
-}
-
-// loadConfigFromLooker reads in a yaml file, applies ENV config overrides from the lookuper, and finally validates the config.
-func loadPublicKeyConfigFromLookuper(ctx context.Context, b []byte, lookuper envconfig.Lookuper) (*PublicKeyConfig, error) {
-	cfg := &PublicKeyConfig{}
-	if err := yaml.Unmarshal(b, cfg); err != nil {
-		return nil, fmt.Errorf("failed to unmarshal yaml: %w", err)
-	}
-
-	// Process overrides from env vars.
-	l := envconfig.PrefixLookuper("", lookuper)
-	if err := envconfig.ProcessWith(ctx, cfg, l); err != nil {
-		return nil, fmt.Errorf("failed to process environment: %w", err)
-	}
-
-	return cfg, nil
 }

@@ -20,6 +20,7 @@ import (
 	"testing"
 	"time"
 
+	"github.com/abcxyz/pkg/cfgloader"
 	"github.com/google/go-cmp/cmp"
 	"github.com/sethvargo/go-envconfig"
 )
@@ -35,9 +36,11 @@ func TestLoadPublicKeyConfig(t *testing.T) {
 
 	lookuper := envconfig.MapLookuper(envs)
 	content := bytes.NewBufferString("").Bytes()
-	gotConfig, err := loadPublicKeyConfigFromLookuper(ctx, content, lookuper)
+	gotConfig := &PublicKeyConfig{}
+	err := cfgloader.Load(ctx, gotConfig,
+		cfgloader.WithLookuper(lookuper), cfgloader.WithYAML(content))
 	if err != nil {
-		t.Error(err)
+		t.Fatal(err)
 	}
 
 	wantConfig := &PublicKeyConfig{
@@ -60,9 +63,11 @@ func TestLoadPublicKeyConfig_Default(t *testing.T) {
 
 	lookuper := envconfig.MapLookuper(envs)
 	content := bytes.NewBufferString("").Bytes()
-	gotConfig, err := loadPublicKeyConfigFromLookuper(ctx, content, lookuper)
+	gotConfig := &PublicKeyConfig{}
+	err := cfgloader.Load(ctx, gotConfig,
+		cfgloader.WithLookuper(lookuper), cfgloader.WithYAML(content))
 	if err != nil {
-		t.Error(err)
+		t.Fatal(err)
 	}
 
 	wantConfig := &PublicKeyConfig{
