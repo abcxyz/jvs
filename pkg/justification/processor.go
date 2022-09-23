@@ -64,6 +64,10 @@ func NewProcessor(kms *kms.KeyManagementClient, config *config.JustificationConf
 
 const (
 	cacheKey = "signer"
+
+	// DefaultAudience is the default audience used in justification tokens.
+	// It can be overriden with the audiences in the justification request.
+	DefaultAudience = "dev.abcxyz.jvs"
 )
 
 // CreateToken implements the create token API which creates and signs a JWT
@@ -163,8 +167,14 @@ func (p *Processor) createToken(ctx context.Context, now time.Time, req *jvspb.C
 	exp := now.Add(req.Ttl.AsDuration())
 	justs := req.Justifications
 
+	// Use audiences in the request if provided.
+	aud := req.Audiences
+	if len(aud) == 0 {
+		aud = []string{DefaultAudience}
+	}
+
 	token, err := jwt.NewBuilder().
-		Audience([]string{"TODO #22"}).
+		Audience(aud).
 		Expiration(exp).
 		IssuedAt(now).
 		Issuer(p.config.Issuer).
