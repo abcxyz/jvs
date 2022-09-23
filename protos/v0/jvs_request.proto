@@ -25,6 +25,9 @@ option go_package = "github.com/abcxyz/jvs/apis/v0";
 message CreateJustificationRequest {
   repeated Justification justifications = 1;
   google.protobuf.Duration ttl = 2;
+
+  // Optional audiences for the justifications.
+  repeated string audiences = 3;
 }
 
 // Justification is intended to be used to provide reasons that data access is
