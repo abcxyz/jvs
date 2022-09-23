@@ -77,8 +77,7 @@ func loadJustificationConfigFromLookuper(ctx context.Context, b []byte, lookuper
 	}
 
 	// Process overrides from env vars.
-	l := envconfig.PrefixLookuper("JVS_", lookuper)
-	if err := envconfig.ProcessWith(ctx, cfg, l); err != nil {
+	if err := envconfig.ProcessWith(ctx, cfg, lookuper); err != nil {
 		return nil, err
 	}
 

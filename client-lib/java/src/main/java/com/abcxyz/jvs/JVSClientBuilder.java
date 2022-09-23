@@ -37,18 +37,18 @@ import lombok.Getter;
  * environment variables. Set environment variables are automatically loaded when build() is called.
  * If a yaml and environment variable are both set, the env variable is used.
  *
- * <p>env: JVS_VERSION yaml: version. Specifies the version of the configuration.
+ * <p>env: VERSION yaml: version. Specifies the version of the configuration.
  *
- * <p>env: JVS_CACHE_TIMEOUT yaml: cache_timeout. Specifies how long until cached public keys are
+ * <p>env: CACHE_TIMEOUT yaml: cache_timeout. Specifies how long until cached public keys are
  * invalidated.
  *
- * <p>env: JVS_ENDPOINT yaml: endpoint. Specifies the url for retrieving public keys.
+ * <p>env: ENDPOINT yaml: endpoint. Specifies the url for retrieving public keys.
  */
 public class JVSClientBuilder {
 
-  static final String ENDPOINT_ENV_KEY = "JVS_ENDPOINT";
-  static final String CACHE_TIMEOUT_ENV_KEY = "JVS_CACHE_TIMEOUT";
-  static final String VERSION_ENV_KEY = "JVS_VERSION";
+  static final String ENDPOINT_ENV_KEY = "ENDPOINT";
+  static final String CACHE_TIMEOUT_ENV_KEY = "CACHE_TIMEOUT";
+  static final String VERSION_ENV_KEY = "VERSION";
   private static final int CACHE_SIZE = 10;
 
   @Getter(AccessLevel.PACKAGE)

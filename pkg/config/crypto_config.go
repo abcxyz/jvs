@@ -106,8 +106,7 @@ func loadCryptoConfigFromLookuper(ctx context.Context, b []byte, lookuper envcon
 	}
 
 	// Process overrides from env vars.
-	l := envconfig.PrefixLookuper("JVS_", lookuper)
-	if err := envconfig.ProcessWith(ctx, cfg, l); err != nil {
+	if err := envconfig.ProcessWith(ctx, cfg, lookuper); err != nil {
 		return nil, fmt.Errorf("failed to process environment: %w", err)
 	}
 
