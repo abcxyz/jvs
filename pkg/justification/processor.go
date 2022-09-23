@@ -64,7 +64,7 @@ func NewProcessor(kms *kms.KeyManagementClient, config *config.JustificationConf
 
 const (
 	cacheKey        = "signer"
-	DefaultAudience = "jvs"
+	DefaultAudience = "dev.abcxyz.jvs"
 )
 
 // CreateToken implements the create token API which creates and signs a JWT
@@ -165,9 +165,9 @@ func (p *Processor) createToken(ctx context.Context, now time.Time, req *jvspb.C
 	justs := req.Justifications
 
 	// Use audiences in the request if provided.
-	aud := []string{DefaultAudience}
-	if len(req.Audiences) > 0 {
-		aud = req.Audiences
+	aud := req.Audiences
+	if len(aud) == 0 {
+		aud = []string{DefaultAudience}
 	}
 
 	token, err := jwt.NewBuilder().
