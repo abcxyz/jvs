@@ -214,7 +214,7 @@ propagation_delay: 1h
 			content := bytes.NewBufferString(tc.cfg).Bytes()
 			gotConfig := &CryptoConfig{}
 			err := cfgloader.Load(ctx, gotConfig,
-				cfgloader.WithEnvPrefix("JVS_"), cfgloader.WithLookuper(lookuper), cfgloader.WithYAML(content))
+				cfgloader.WithLookuper(lookuper), cfgloader.WithYAML(content))
 			if diff := testutil.DiffErrString(err, tc.wantErr); diff != "" {
 				t.Errorf("Unexpected err: %s", diff)
 			}
