@@ -27,6 +27,7 @@ import (
 	kms "cloud.google.com/go/kms/apiv1"
 	"github.com/abcxyz/jvs/pkg/config"
 	"github.com/abcxyz/jvs/pkg/jvscrypto"
+	"github.com/abcxyz/pkg/cfgloader"
 	"github.com/abcxyz/pkg/logging"
 	"github.com/hashicorp/go-multierror"
 	"go.uber.org/zap"
@@ -83,14 +84,14 @@ func realMain(ctx context.Context) error {
 	}
 	defer kmsClient.Close()
 
-	config, err := config.LoadCryptoConfig(ctx, []byte{})
-	if err != nil {
+	var cfg config.CryptoConfig
+	if err := cfgloader.Load(ctx, cfg); err != nil {
 		return fmt.Errorf("failed to load config: %w", err)
 	}
 
 	handler := &jvscrypto.RotationHandler{
 		KMSClient:    kmsClient,
-		CryptoConfig: config,
+		CryptoConfig: &cfg,
 	}
 
 	mux := http.NewServeMux()
