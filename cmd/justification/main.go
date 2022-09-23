@@ -25,6 +25,7 @@ import (
 	jvspb "github.com/abcxyz/jvs/apis/v0"
 	"github.com/abcxyz/jvs/pkg/config"
 	"github.com/abcxyz/jvs/pkg/justification"
+	"github.com/abcxyz/pkg/cfgloader"
 	"github.com/abcxyz/pkg/grpcutil"
 	"github.com/abcxyz/pkg/logging"
 	"go.opentelemetry.io/contrib/instrumentation/google.golang.org/grpc/otelgrpc"
@@ -54,9 +55,9 @@ func realMain(ctx context.Context) error {
 		otelgrpc.UnaryServerInterceptor(),
 	))
 
-	cfg, err := config.LoadJustificationConfig(ctx, []byte{})
-	if err != nil {
-		logger.Fatal("failed to load config", zap.Error(err))
+	var cfg config.JustificationConfig
+	if err := cfgloader.Load(ctx, &cfg); err != nil {
+		return fmt.Errorf("failed to load config: %w", err)
 	}
 
 	kmsClient, err := kms.NewKeyManagementClient(ctx)
@@ -69,7 +70,7 @@ func realMain(ctx context.Context) error {
 		return fmt.Errorf("failed to setup grpc auth handler: %w", err)
 	}
 
-	p := justification.NewProcessor(kmsClient, cfg, authHandler)
+	p := justification.NewProcessor(kmsClient, &cfg, authHandler)
 	jvsAgent := justification.NewJVSAgent(p)
 	jvspb.RegisterJVSServiceServer(s, jvsAgent)
 	reflection.Register(s)
