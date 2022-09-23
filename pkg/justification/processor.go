@@ -66,6 +66,7 @@ const (
 	cacheKey = "signer"
 
 	// DefaultAudience is the default audience used in justification tokens.
+	// It can be overriden with the audiences in the justification request.
 	DefaultAudience = "dev.abcxyz.jvs"
 )
 
