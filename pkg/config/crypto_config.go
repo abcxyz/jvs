@@ -16,13 +16,10 @@
 package config
 
 import (
-	"context"
 	"fmt"
 	"time"
 
 	"github.com/hashicorp/go-multierror"
-	"github.com/sethvargo/go-envconfig"
-	"gopkg.in/yaml.v2"
 )
 
 // CryptoConfigVersions is the list of allowed versions for the CryptoConfig.
@@ -91,29 +88,4 @@ func (cfg *CryptoConfig) RotationAge() time.Duration {
 // GetDestroyAge gets the duration after a key has been created when it becomes a candidate to be destroyed.
 func (cfg *CryptoConfig) DestroyAge() time.Duration {
 	return cfg.KeyTTL + cfg.DisabledPeriod
-}
-
-// LoadConfig calls the necessary methods to load in config using the OsLookuper which finds env variables specified on the host.
-func LoadCryptoConfig(ctx context.Context, b []byte) (*CryptoConfig, error) {
-	return loadCryptoConfigFromLookuper(ctx, b, envconfig.OsLookuper())
-}
-
-// loadConfigFromLooker reads in a yaml file, applies ENV config overrides from the lookuper, and finally validates the config.
-func loadCryptoConfigFromLookuper(ctx context.Context, b []byte, lookuper envconfig.Lookuper) (*CryptoConfig, error) {
-	cfg := &CryptoConfig{}
-	if err := yaml.Unmarshal(b, cfg); err != nil {
-		return nil, fmt.Errorf("failed to unmarshal yaml: %w", err)
-	}
-
-	// Process overrides from env vars.
-	l := envconfig.PrefixLookuper("JVS_", lookuper)
-	if err := envconfig.ProcessWith(ctx, cfg, l); err != nil {
-		return nil, fmt.Errorf("failed to process environment: %w", err)
-	}
-
-	if err := cfg.Validate(); err != nil {
-		return nil, fmt.Errorf("failed validating config: %w", err)
-	}
-
-	return cfg, nil
 }

@@ -27,6 +27,7 @@ import (
 	kms "cloud.google.com/go/kms/apiv1"
 	"github.com/abcxyz/jvs/pkg/config"
 	"github.com/abcxyz/jvs/pkg/jvscrypto"
+	"github.com/abcxyz/pkg/cfgloader"
 	"github.com/abcxyz/pkg/logging"
 	"github.com/hashicorp/go-multierror"
 	"go.uber.org/zap"
@@ -83,8 +84,9 @@ func realMain(ctx context.Context) error {
 	}
 	defer kmsClient.Close()
 
-	config, err := config.LoadCryptoConfig(ctx, []byte{})
-	if err != nil {
+	// TODO(#124): We shouldn't need JVS_ prefix since it's a JVS service.
+	config := &config.CryptoConfig{}
+	if err := cfgloader.Load(ctx, config, cfgloader.WithEnvPrefix("JVS_")); err != nil {
 		return fmt.Errorf("failed to load config: %w", err)
 	}
 

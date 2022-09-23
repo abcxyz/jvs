@@ -25,6 +25,7 @@ import (
 	jvspb "github.com/abcxyz/jvs/apis/v0"
 	"github.com/abcxyz/jvs/pkg/config"
 	"github.com/abcxyz/jvs/pkg/justification"
+	"github.com/abcxyz/pkg/cfgloader"
 	"github.com/abcxyz/pkg/grpcutil"
 	"github.com/abcxyz/pkg/logging"
 	"go.opentelemetry.io/contrib/instrumentation/google.golang.org/grpc/otelgrpc"
@@ -54,9 +55,10 @@ func realMain(ctx context.Context) error {
 		otelgrpc.UnaryServerInterceptor(),
 	))
 
-	cfg, err := config.LoadJustificationConfig(ctx, []byte{})
-	if err != nil {
-		logger.Fatal("failed to load config", zap.Error(err))
+	// TODO(#124): We shouldn't need JVS_ prefix since it's a JVS service.
+	cfg := &config.JustificationConfig{}
+	if err := cfgloader.Load(ctx, cfg, cfgloader.WithEnvPrefix("JVS_")); err != nil {
+		return fmt.Errorf("failed to load config: %w", err)
 	}
 
 	kmsClient, err := kms.NewKeyManagementClient(ctx)

@@ -16,13 +16,10 @@
 package config
 
 import (
-	"context"
 	"fmt"
 	"time"
 
 	"github.com/hashicorp/go-multierror"
-	"github.com/sethvargo/go-envconfig"
-	"gopkg.in/yaml.v2"
 )
 
 // JustificationConfigVersions is the list of allowed versions for the
@@ -62,29 +59,4 @@ func (cfg *JustificationConfig) Validate() error {
 			cfg.SignerCacheTimeout))
 	}
 	return err.ErrorOrNil()
-}
-
-// LoadJustificationConfig calls the necessary methods to load in config using the OsLookuper which finds env variables specified on the host.
-func LoadJustificationConfig(ctx context.Context, b []byte) (*JustificationConfig, error) {
-	return loadJustificationConfigFromLookuper(ctx, b, envconfig.OsLookuper())
-}
-
-// loadConfigFromLooker reads in a yaml file, applies ENV config overrides from the lookuper, and finally validates the config.
-func loadJustificationConfigFromLookuper(ctx context.Context, b []byte, lookuper envconfig.Lookuper) (*JustificationConfig, error) {
-	cfg := &JustificationConfig{}
-	if err := yaml.Unmarshal(b, cfg); err != nil {
-		return nil, err
-	}
-
-	// Process overrides from env vars.
-	l := envconfig.PrefixLookuper("JVS_", lookuper)
-	if err := envconfig.ProcessWith(ctx, cfg, l); err != nil {
-		return nil, err
-	}
-
-	if err := cfg.Validate(); err != nil {
-		return nil, fmt.Errorf("failed validating config: %w", err)
-	}
-
-	return cfg, nil
 }

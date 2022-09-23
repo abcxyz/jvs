@@ -28,6 +28,7 @@ import (
 	"github.com/abcxyz/jvs/pkg/config"
 	"github.com/abcxyz/jvs/pkg/jvscrypto"
 	"github.com/abcxyz/pkg/cache"
+	"github.com/abcxyz/pkg/cfgloader"
 	"github.com/abcxyz/pkg/logging"
 	"go.uber.org/zap"
 )
@@ -57,8 +58,8 @@ func realMain(ctx context.Context) error {
 	}
 	defer kmsClient.Close()
 
-	config, err := config.LoadPublicKeyConfig(ctx, []byte{})
-	if err != nil {
+	config := &config.PublicKeyConfig{}
+	if err := cfgloader.Load(ctx, config); err != nil {
 		return fmt.Errorf("failed to load config: %w", err)
 	}
 

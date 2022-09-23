@@ -20,6 +20,7 @@ import (
 	"testing"
 	"time"
 
+	"github.com/abcxyz/pkg/cfgloader"
 	"github.com/abcxyz/pkg/testutil"
 	"github.com/google/go-cmp/cmp"
 	"github.com/sethvargo/go-envconfig"
@@ -130,9 +131,14 @@ issuer: jvs
 
 			lookuper := envconfig.MapLookuper(tc.envs)
 			content := bytes.NewBufferString(tc.cfg).Bytes()
-			gotConfig, err := loadJustificationConfigFromLookuper(ctx, content, lookuper)
+			gotConfig := &JustificationConfig{}
+			err := cfgloader.Load(ctx, gotConfig,
+				cfgloader.WithEnvPrefix("JVS_"), cfgloader.WithLookuper(lookuper), cfgloader.WithYAML(content))
 			if diff := testutil.DiffErrString(err, tc.wantErr); diff != "" {
 				t.Errorf("Unexpected err: %s", diff)
+			}
+			if err != nil {
+				return
 			}
 			if diff := cmp.Diff(tc.wantConfig, gotConfig); diff != "" {
 				t.Errorf("Config unexpected diff (-want,+got):\n%s", diff)

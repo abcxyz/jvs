@@ -26,6 +26,7 @@ import (
 	jvspb "github.com/abcxyz/jvs/apis/v0"
 	"github.com/abcxyz/jvs/pkg/config"
 	"github.com/abcxyz/jvs/pkg/jvscrypto"
+	"github.com/abcxyz/pkg/cfgloader"
 	"github.com/abcxyz/pkg/logging"
 	"go.opentelemetry.io/contrib/instrumentation/google.golang.org/grpc/otelgrpc"
 	"go.uber.org/zap"
@@ -54,8 +55,8 @@ func realMain(ctx context.Context) error {
 		otelgrpc.UnaryServerInterceptor(),
 	))
 
-	cfg, err := config.LoadCryptoConfig(ctx, []byte{})
-	if err != nil {
+	cfg := &config.CryptoConfig{}
+	if err := cfgloader.Load(ctx, cfg, cfgloader.WithEnvPrefix("JVS_")); err != nil {
 		return fmt.Errorf("failed to load config: %w", err)
 	}
 
