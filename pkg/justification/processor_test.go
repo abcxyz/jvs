@@ -57,10 +57,11 @@ func TestCreateToken(t *testing.T) {
 	t.Parallel()
 
 	tests := []struct {
-		name      string
-		request   *jvspb.CreateJustificationRequest
-		wantErr   string
-		serverErr error
+		name          string
+		request       *jvspb.CreateJustificationRequest
+		wantAudiences []string
+		wantErr       string
+		serverErr     error
 	}{
 		{
 			name: "happy_path",
@@ -73,6 +74,21 @@ func TestCreateToken(t *testing.T) {
 				},
 				Ttl: durationpb.New(3600 * time.Second),
 			},
+			wantAudiences: []string{DefaultAudience},
+		},
+		{
+			name: "override_aud",
+			request: &jvspb.CreateJustificationRequest{
+				Justifications: []*jvspb.Justification{
+					{
+						Category: "explanation",
+						Value:    "test",
+					},
+				},
+				Ttl:       durationpb.New(3600 * time.Second),
+				Audiences: []string{"aud1", "aud2"},
+			},
+			wantAudiences: []string{"aud1", "aud2"},
 		},
 		{
 			name: "no_justification",
@@ -216,7 +232,7 @@ func TestCreateToken(t *testing.T) {
 			}
 
 			// Validate standard claims.
-			if got, want := token.Audience(), []string{"TODO #22"}; !reflect.DeepEqual(got, want) {
+			if got, want := token.Audience(), tc.wantAudiences; !reflect.DeepEqual(got, want) {
 				t.Errorf("aud: expected %q to be %q", got, want)
 			}
 			if got := token.Expiration(); !got.After(now) {

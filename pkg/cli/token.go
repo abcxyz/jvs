@@ -32,6 +32,7 @@ import (
 
 	jvspb "github.com/abcxyz/jvs/apis/v0"
 	"github.com/abcxyz/jvs/pkg/idtoken"
+	"github.com/abcxyz/jvs/pkg/justification"
 )
 
 const (
@@ -152,7 +153,7 @@ func breakglassToken(ctx context.Context, nowUnix int64) (string, error) {
 	exp := now.Add(flagTTL)
 
 	token, err := jwt.NewBuilder().
-		Audience([]string{"TODO #22"}).
+		Audience([]string{justification.DefaultAudience}).
 		Expiration(exp).
 		IssuedAt(now).
 		Issuer(Issuer).
