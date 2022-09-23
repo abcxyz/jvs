@@ -76,13 +76,13 @@ will also get created.
     Terraform outputs like `jvs-e2e-xxxx-uc.a.run.app`
 
     ```shell
-    export JVS_SERVER=<jvs_server_domain>:443
+    export SERVER=<jvs_server_domain>:443
     ```
 
 2.  Create Justification Token via [jvsctl](cli-tool.md):
 
     ```shell
-    jvsctl token --explanation "issues/12345" --ttl 30m --server ${JVS_SERVER}
+    jvsctl token --explanation "issues/12345" --ttl 30m --server ${SERVER}
     ```
 
 **TODO(#112):** Once we have the "validate token" command, we can even validate
