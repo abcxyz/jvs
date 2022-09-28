@@ -31,7 +31,7 @@ import (
 
 var (
 	flagToken string
-	stdin = os.Stdin
+	stdin     = os.Stdin
 )
 
 var validateCmd = &cobra.Command{
@@ -109,7 +109,7 @@ func runValidateCmd(cmd *cobra.Command, args []string) error {
 	// Output token claims into a table
 	w := tabwriter.NewWriter(cmd.OutOrStdout(), 0, 0, 1, ' ', 0)
 	for _, k := range claimsKeys {
-		if _, err := fmt.Fprint(w, fmt.Sprintf("%s\t%s", k, claims[k])); err != nil {
+		if _, err := fmt.Fprintf(w, "%s\t%s", k, claims[k]); err != nil {
 			return err
 		}
 		fmt.Fprintln(w)
