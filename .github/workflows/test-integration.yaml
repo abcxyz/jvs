@@ -1,3 +1,4 @@
+# TODO(sethvargo): merge with test (unit) into a single CI job
 name: 'test (integration)'
 
 on:
@@ -16,10 +17,10 @@ concurrency:
 jobs:
   integration:
     env:
-      # project: jvs-ci-test
-      PROJECT_NUMBER: '1096923323432'
       PROJECT_ID: 'jvs-ci-test'
-      KEYRING_ID: 'ci-keyring'
+      PROJECT_NUMBER: '1096923323432'
+      TEST_JVS_INTEGRATION: 'true'
+      TEST_JVS_KMS_KEY_RING: 'projects/${{ env.PROJECT_ID }}/locations/global/keyRings/ci-keyring'
 
     permissions:
       contents: 'read'
@@ -58,4 +59,10 @@ jobs:
 
       - name: 'Run integration tests'
         run: |-
-          ./scripts/integration_build.sh
+          go test \
+            -count=1 \
+            -coverprofile=./coverage.out \
+            -race \
+            -shuffle=on \
+            -timeout='10m' \
+            ./test/integ/...
