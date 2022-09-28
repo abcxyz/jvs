@@ -1,4 +1,3 @@
-# TODO(sethvargo): merge with test (unit) into a single CI job
 name: 'test (integration)'
 
 on:
@@ -19,8 +18,6 @@ jobs:
     env:
       PROJECT_ID: 'jvs-ci-test'
       PROJECT_NUMBER: '1096923323432'
-      TEST_JVS_INTEGRATION: 'true'
-      TEST_JVS_KMS_KEY_RING: 'projects/${{ env.PROJECT_ID }}/locations/global/keyRings/ci-keyring'
 
     permissions:
       contents: 'read'
@@ -54,14 +51,13 @@ jobs:
           workload_identity_provider: 'projects/${{ env.PROJECT_NUMBER }}/locations/global/workloadIdentityPools/github-pool/providers/github-provider'
           service_account: 'gh-access-sa@${{ env.PROJECT_ID }}.iam.gserviceaccount.com'
 
-      - name: 'Install and configure gcloud'
-        uses: 'google-github-actions/setup-gcloud@877d4953d2c70a0ba7ef3290ae968eb24af233bb' # ratchet:google-github-actions/setup-gcloud@v0
-
       - name: 'Run integration tests'
+        env:
+          TEST_JVS_INTEGRATION: 'true'
+          TEST_JVS_KMS_KEY_RING: 'projects/${{ env.PROJECT_ID }}/locations/global/keyRings/ci-keyring'
         run: |-
           go test \
             -count=1 \
-            -coverprofile=./coverage.out \
             -race \
             -shuffle=on \
             -timeout='10m' \
