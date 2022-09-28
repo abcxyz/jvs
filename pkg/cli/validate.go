@@ -15,16 +15,22 @@
 package cli
 
 import (
+	"bufio"
 	"context"
+	"encoding/json"
+	"fmt"
+	"os"
+	"sort"
+	"text/tabwriter"
 	"time"
 
+	jvspb "github.com/abcxyz/jvs/apis/v0"
 	"github.com/abcxyz/jvs/client-lib/go/client"
 	"github.com/spf13/cobra"
 )
 
 var (
-	flagToken           string
-	flagAllowBreakglass bool
+	flagToken string
 )
 
 var validateCmd = &cobra.Command{
@@ -41,23 +47,84 @@ func runValidateCmd(cmd *cobra.Command, args []string) error {
 		Version:         "1",
 		JWKSEndpoint:    cfg.JWKSEndpoint,
 		CacheTimeout:    5 * time.Minute,
-		AllowBreakglass: flagAllowBreakglass,
+		AllowBreakglass: true,
 	})
 	if err != nil {
-		return err
+		return fmt.Errorf("failed to create jvs client: %w", err)
 	}
 
-	_, err = jvsclient.ValidateJWT(flagToken)
+	if flagToken == "-" {
+		stat, _ := os.Stdin.Stat()
+		if (stat.Mode() & os.ModeCharDevice) == 0 {
+			// Read from pipe
+			var buf []byte
+			scanner := bufio.NewScanner(os.Stdin)
+			for scanner.Scan() {
+				buf = append(buf, scanner.Bytes()...)
+			}
+			if err := scanner.Err(); err != nil {
+				return fmt.Errorf("failed to read from pipe: %w", err)
+			}
+			flagToken = string(buf)
+		} else {
+			// User input
+			fmt.Print("Enter token: ")
+			fmt.Scanf("%s", &flagToken)
+		}
+	}
+
+	// Validate token
+	breakglass := false
+	token, err := jvspb.ParseBreakglassToken(flagToken)
 	if err != nil {
-		return err
+		return fmt.Errorf("failed parse breakglass token: %w", err)
+	}
+	if token != nil {
+		breakglass = true
+	} else {
+		token, err = jvsclient.ValidateJWT(flagToken)
+		if err != nil {
+			return fmt.Errorf("failed validate jwt: %w", err)
+		}
 	}
 
-	_, err = cmd.OutOrStdout().Write([]byte("Token is valid"))
-	return err
+	// Convert parsed token to map
+	claimsMap, err := token.AsMap(ctx)
+	if err != nil {
+		return fmt.Errorf("failed convert token into map: %w", err)
+	}
+	claimsMap["breakglass"] = breakglass
+	claimsMap["valid"] = true
+
+	claimsKeys := make([]string, 0, len(claimsMap))
+	claims := make(map[string]string, len(claimsMap))
+	for k, v := range claimsMap {
+		claimsKeys = append(claimsKeys, k)
+		jv, err := json.Marshal(v)
+		if err != nil {
+			claims[k] = fmt.Sprintf("failed to marshal to json: %s", err)
+		} else {
+			claims[k] = string(jv)
+		}
+	}
+	sort.Strings(claimsKeys)
+
+	// Output token claims into a table
+	w := tabwriter.NewWriter(cmd.OutOrStdout(), 0, 0, 1, ' ', 0)
+	for _, k := range claimsKeys {
+		if _, err := fmt.Fprintln(w, fmt.Sprintf("%s\t%s", k, claims[k])); err != nil {
+			return err
+		}
+	}
+	w.Flush()
+	return nil
+}
+
+func toString(v interface{}) {
+	panic("unimplemented")
 }
 
 func init() {
 	validateCmd.Flags().StringVarP(&flagToken, "token", "t", "", "The token that needs validation")
 	validateCmd.MarkFlagRequired("token") //nolint // not expect err
-	validateCmd.Flags().BoolVar(&flagAllowBreakglass, "allow_breakglass", false, "Whether breakglass is allowed")
 }

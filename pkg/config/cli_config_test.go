@@ -33,7 +33,7 @@ func TestCLIConfig_Validate(t *testing.T) {
 			name: "no_error",
 			cfg: &CLIConfig{
 				Server:       "example.com",
-				JWKSEndpoint: "https://jvs.corp:8080/.well-known/jwks",
+				JWKSEndpoint: "https://example.com/.well-known/jwks",
 			},
 		},
 		{
@@ -46,7 +46,7 @@ func TestCLIConfig_Validate(t *testing.T) {
 		{
 			name: "missing_server_error",
 			cfg: &CLIConfig{
-				JWKSEndpoint: "https://jvs.corp:8080/.well-known/jwks",
+				JWKSEndpoint: "https://example.com/.well-known/jwks",
 			},
 			wantErr: "missing JVS server address",
 		},
@@ -55,7 +55,6 @@ func TestCLIConfig_Validate(t *testing.T) {
 			cfg: &CLIConfig{
 				Server: "example.com",
 			},
-			wantErr: "missing JWKS endpoint",
 		},
 	}
 

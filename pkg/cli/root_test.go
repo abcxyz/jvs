@@ -29,7 +29,7 @@ func TestInitCfg(t *testing.T) {
 
 	if err := os.WriteFile(cfgFile, []byte(
 		`server: https://example.com
-jwks_endpoint: https://jvs.corp:8080/.well-known/jwks`), fs.ModePerm); err != nil {
+jwks_endpoint: https://example.com/.well-known/jwks`), fs.ModePerm); err != nil {
 		t.Fatalf("failed to prepare test config file: %v", err)
 	}
 	t.Cleanup(func() {
@@ -44,7 +44,7 @@ jwks_endpoint: https://jvs.corp:8080/.well-known/jwks`), fs.ModePerm); err != ni
 		Version:        "1",
 		Server:         "https://example.com",
 		Authentication: &config.CLIAuthentication{},
-		JWKSEndpoint:   "https://jvs.corp:8080/.well-known/jwks",
+		JWKSEndpoint:   "https://example.com/.well-known/jwks",
 	}
 	if diff := cmp.Diff(wantCfg, cfg); diff != "" {
 		t.Errorf("CLI config loaded (-want,+got):\n%s", diff)

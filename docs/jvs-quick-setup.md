@@ -72,12 +72,14 @@ will also get created.
 
 ### Justification API
 
-1.  Export the jvs server and JWKS endpoint with the domain part of the `jvs_server_url` from
-    Terraform outputs like `jvs-e2e-xxxx-uc.a.run.app`
+1.  Export the jvs server with the domain part of the `jvs_server_url` from
+    Terraform outputs like `jvs-e2e-xxxx-uc.a.run.app`, and export the JWKS
+    endpoint with `public_key_server_url` from Terraform outputs if you want
+    to validate token via CLI.
 
     ```shell
     export SERVER=<jvs_server_domain>:443
-    export JWKS_ENDPOINT=<jvs_server_domain>:8080/.well-known/jwks
+    export JWKS_ENDPOINT=public_key_server_url
     ```
 
 2.  Create Justification Token via [jvsctl](cli-tool.md):
@@ -90,6 +92,10 @@ will also get created.
 
     ```shell
     jvsctl validate --token "example token" --jwks_endpoint ${JWKS_ENDPOINT}
+
+    # or pass token via pipe
+    echo "${JVS_TOKEN}" | jvsctl validate --token -
+    cat /tmp/jvs_token | jvsctl validate --token -
     ```
 
 ### Public Key API

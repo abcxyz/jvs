@@ -33,7 +33,7 @@ type JVSConfig struct {
 	Version string `yaml:"version,omitempty" env:"VERSION,overwrite,default=1"`
 
 	// JWKSEndpoint is the full path (including protocol and port) to the JWKS
-	// endpoint on a JVS server (e.g. https://jvs.corp:8080/.well-known/jwks).
+	// endpoint on a JVS server (e.g. https://example.com/.well-known/jwks).
 	JWKSEndpoint string `yaml:"endpoint,omitempty" env:"ENDPOINT,overwrite"`
 
 	// CacheTimeout is the duration that keys stay in cache before being revoked.

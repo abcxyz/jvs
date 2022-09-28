@@ -20,12 +20,14 @@ import (
 	"crypto/rand"
 	"encoding/json"
 	"fmt"
+	"io/ioutil"
 	"net/http"
 	"net/http/httptest"
+	"os"
 	"strings"
 	"testing"
 
-	v0 "github.com/abcxyz/jvs/apis/v0"
+	jvspb "github.com/abcxyz/jvs/apis/v0"
 	"github.com/abcxyz/jvs/pkg/config"
 	"github.com/abcxyz/pkg/testutil"
 	"github.com/lestrrat-go/jwx/v2/jwa"
@@ -36,6 +38,7 @@ import (
 )
 
 func TestRunValidateCmd(t *testing.T) {
+	// Cannot parallel because of the global CLI config.
 	// setup jwks server
 	privateKey, err := ecdsa.GenerateKey(elliptic.P256(), rand.Reader)
 	if err != nil {
@@ -70,7 +73,7 @@ func TestRunValidateCmd(t *testing.T) {
 		svr.Close()
 	})
 
-	breakglassToken, err := v0.CreateBreakglassToken(testTokenBuilder(t), "testing")
+	breakglassToken, err := jvspb.CreateBreakglassToken(testTokenBuilder(t), "testing")
 	if err != nil {
 		t.Fatalf("failed to build breakglass token: %s", err)
 	}
@@ -80,28 +83,37 @@ func TestRunValidateCmd(t *testing.T) {
 	}
 
 	tests := []struct {
-		name            string
-		token           string
-		wantOut         string
-		wantErr         string
-		allowBreakglass bool
+		name    string
+		token   string
+		pipe    bool
+		wantOut string
+		wantErr string
 	}{
 		{
-			name:    "signed",
-			token:   testSignToken(t, testTokenBuilder(t), privateKey, keyID),
-			wantOut: "Token is valid",
+			name:  "signed",
+			token: testSignToken(t, testTokenBuilder(t), privateKey, keyID),
+			wantOut: `breakglass false
+jti        "test_id"
+valid      true
+`,
 		},
 		{
-			name:            "breakglass",
-			token:           breakglassToken,
-			wantOut:         "Token is valid",
-			allowBreakglass: true,
+			name:  "breakglass",
+			token: breakglassToken,
+			wantOut: `breakglass true
+jti        "test_id"
+justs      [{"category":"breakglass","value":"testing"}]
+valid      true
+`,
 		},
 		{
-			name:            "breakglass_not_allowed",
-			token:           breakglassToken,
-			wantErr:         "breakglass is forbidden, denying",
-			allowBreakglass: false,
+			name:  "signed_from_pipe",
+			token: testSignToken(t, testTokenBuilder(t), privateKey, keyID),
+			pipe:  true,
+			wantOut: `breakglass false
+jti        "test_id"
+valid      true
+`,
 		},
 		{
 			name:    "invalid",
@@ -111,17 +123,47 @@ func TestRunValidateCmd(t *testing.T) {
 	}
 
 	for _, tc := range tests {
+		// Cannot parallel because of the global CLI config.
 		t.Run(tc.name, func(t *testing.T) {
-			flagToken = tc.token
-			flagAllowBreakglass = tc.allowBreakglass
 			t.Cleanup(testRunValidateCmdCleanup)
 
 			buf := &strings.Builder{}
 			cmd := &cobra.Command{}
 			cmd.SetOut(buf)
+			var cmdErr error = nil
 
-			err := runValidateCmd(cmd, nil)
-			if diff := testutil.DiffErrString(err, tc.wantErr); diff != "" {
+			if tc.pipe {
+				// create tempFile with token
+				tempFile, err := ioutil.TempFile("", "validate_test*")
+				if err != nil {
+					t.Errorf("failed to create temp file: %s", err)
+				}
+				// remove tempFile
+				defer os.Remove(tempFile.Name())
+
+				if _, err := tempFile.Write([]byte(tc.token)); err != nil {
+					t.Errorf("failed to write to temp file: %s", err)
+				}
+				if _, err := tempFile.Seek(0, 0); err != nil {
+					t.Errorf("failed to seek to the beginning of the temp file: %s", err)
+				}
+
+				// swap Stdin with tempFile
+				oldStdin := os.Stdin
+				// restore Stdin
+				defer func() { os.Stdin = oldStdin }()
+				os.Stdin = tempFile
+
+				flagToken = "-"
+				cmdErr = runValidateCmd(cmd, nil)
+				if err := tempFile.Close(); err != nil {
+					t.Errorf("failed to close temp file: %s", err)
+				}
+			} else {
+				flagToken = tc.token
+				cmdErr = runValidateCmd(cmd, nil)
+			}
+			if diff := testutil.DiffErrString(cmdErr, tc.wantErr); diff != "" {
 				t.Errorf("unexpected err: %s", diff)
 			}
 			if gotOut := buf.String(); gotOut != tc.wantOut {
@@ -133,13 +175,12 @@ func TestRunValidateCmd(t *testing.T) {
 
 func testRunValidateCmdCleanup() {
 	flagToken = ""
-	flagAllowBreakglass = false
 }
 
 func testTokenBuilder(tb testing.TB) jwt.Token {
 	tb.Helper()
 
-	token, err := jwt.NewBuilder().Build()
+	token, err := jwt.NewBuilder().JwtID("test_id").Build()
 	if err != nil {
 		tb.Fatalf("failed to build unsigned token: %s", err)
 	}
