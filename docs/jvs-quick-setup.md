@@ -79,7 +79,7 @@ will also get created.
 
     ```shell
     export SERVER=<jvs_server_domain>:443
-    export JWKS_ENDPOINT=public_key_server_url
+    export JWKS_ENDPOINT=public_key_server_url/.well-known/jwks
     ```
 
 2.  Create Justification Token via [jvsctl](cli-tool.md):

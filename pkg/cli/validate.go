@@ -15,10 +15,10 @@
 package cli
 
 import (
-	"bufio"
 	"context"
 	"encoding/json"
 	"fmt"
+	"io"
 	"os"
 	"sort"
 	"text/tabwriter"
@@ -31,6 +31,7 @@ import (
 
 var (
 	flagToken string
+	stdin = os.Stdin
 )
 
 var validateCmd = &cobra.Command{
@@ -54,15 +55,11 @@ func runValidateCmd(cmd *cobra.Command, args []string) error {
 	}
 
 	if flagToken == "-" {
-		stat, _ := os.Stdin.Stat()
+		stat, _ := stdin.Stat()
 		if (stat.Mode() & os.ModeCharDevice) == 0 {
 			// Read from pipe
-			var buf []byte
-			scanner := bufio.NewScanner(os.Stdin)
-			for scanner.Scan() {
-				buf = append(buf, scanner.Bytes()...)
-			}
-			if err := scanner.Err(); err != nil {
+			buf, err := io.ReadAll(io.LimitReader(stdin, 64*1_000))
+			if err != nil {
 				return fmt.Errorf("failed to read from pipe: %w", err)
 			}
 			flagToken = string(buf)
@@ -112,16 +109,13 @@ func runValidateCmd(cmd *cobra.Command, args []string) error {
 	// Output token claims into a table
 	w := tabwriter.NewWriter(cmd.OutOrStdout(), 0, 0, 1, ' ', 0)
 	for _, k := range claimsKeys {
-		if _, err := fmt.Fprintln(w, fmt.Sprintf("%s\t%s", k, claims[k])); err != nil {
+		if _, err := fmt.Fprint(w, fmt.Sprintf("%s\t%s", k, claims[k])); err != nil {
 			return err
 		}
+		fmt.Fprintln(w)
 	}
 	w.Flush()
 	return nil
-}
-
-func toString(v interface{}) {
-	panic("unimplemented")
 }
 
 func init() {

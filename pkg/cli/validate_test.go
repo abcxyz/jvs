@@ -20,7 +20,6 @@ import (
 	"crypto/rand"
 	"encoding/json"
 	"fmt"
-	"io/ioutil"
 	"net/http"
 	"net/http/httptest"
 	"os"
@@ -130,11 +129,11 @@ valid      true
 			buf := &strings.Builder{}
 			cmd := &cobra.Command{}
 			cmd.SetOut(buf)
-			var cmdErr error = nil
+			var cmdErr error
 
 			if tc.pipe {
 				// create tempFile with token
-				tempFile, err := ioutil.TempFile("", "validate_test*")
+				tempFile, err := os.CreateTemp("", "validate_test*")
 				if err != nil {
 					t.Errorf("failed to create temp file: %s", err)
 				}
@@ -148,12 +147,7 @@ valid      true
 					t.Errorf("failed to seek to the beginning of the temp file: %s", err)
 				}
 
-				// swap Stdin with tempFile
-				oldStdin := os.Stdin
-				// restore Stdin
-				defer func() { os.Stdin = oldStdin }()
-				os.Stdin = tempFile
-
+				stdin = tempFile
 				flagToken = "-"
 				cmdErr = runValidateCmd(cmd, nil)
 				if err := tempFile.Close(); err != nil {
