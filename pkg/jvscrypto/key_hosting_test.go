@@ -66,8 +66,8 @@ func TestGenerateJWKString(t *testing.T) {
 			numKeys: 1,
 			wantOutput: fmt.Sprintf(`{"keys":[{"crv":"P-256","kid":"%s","kty":"EC","x":"%s","y":"%s"}]}`,
 				key+"/cryptoKeyVersions/[VERSION]-0",
-				base64.RawURLEncoding.EncodeToString(privateKey.PublicKey.X.Bytes()),
-				base64.RawURLEncoding.EncodeToString(privateKey.PublicKey.Y.Bytes())),
+				base64.RawURLEncoding.EncodeToString(privateKey.X.Bytes()),
+				base64.RawURLEncoding.EncodeToString(privateKey.Y.Bytes())),
 		},
 		{
 			name:    "multi-key",
@@ -75,11 +75,11 @@ func TestGenerateJWKString(t *testing.T) {
 			numKeys: 2,
 			wantOutput: fmt.Sprintf(`{"keys":[{"crv":"P-256","kid":"%s","kty":"EC","x":"%s","y":"%s"},{"crv":"P-256","kid":"%s","kty":"EC","x":"%s","y":"%s"}]}`,
 				key+"/cryptoKeyVersions/[VERSION]-0",
-				base64.RawURLEncoding.EncodeToString(privateKey.PublicKey.X.Bytes()),
-				base64.RawURLEncoding.EncodeToString(privateKey.PublicKey.Y.Bytes()),
+				base64.RawURLEncoding.EncodeToString(privateKey.X.Bytes()),
+				base64.RawURLEncoding.EncodeToString(privateKey.Y.Bytes()),
 				key+"/cryptoKeyVersions/[VERSION]-1",
-				base64.RawURLEncoding.EncodeToString(privateKey.PublicKey.X.Bytes()),
-				base64.RawURLEncoding.EncodeToString(privateKey.PublicKey.Y.Bytes())),
+				base64.RawURLEncoding.EncodeToString(privateKey.X.Bytes()),
+				base64.RawURLEncoding.EncodeToString(privateKey.Y.Bytes())),
 		},
 		{
 			name:       "no-primary",
@@ -90,8 +90,10 @@ func TestGenerateJWKString(t *testing.T) {
 
 	for _, tc := range tests {
 		tc := tc
+
 		t.Run(tc.name, func(t *testing.T) {
 			t.Parallel()
+
 			ctx := context.Background()
 			mockKMSServer := testutil.NewMockKeyManagementServer(key, key+"/cryptoKeyVersions/"+versionSuffix, tc.primary)
 			mockKMSServer.PrivateKey = privateKey
@@ -126,12 +128,12 @@ func TestGenerateJWKString(t *testing.T) {
 			if diff := pkgtestutil.DiffErrString(err, tc.wantErr); diff != "" {
 				t.Errorf("Unexpected err: %s", diff)
 			}
-
 			if err != nil {
 				return
 			}
+
 			if diff := cmp.Diff(tc.wantOutput, got); diff != "" {
-				t.Errorf("Got diff (-want, +got): %v", diff)
+				t.Errorf("Got diff (-want, +got): %s", diff)
 			}
 		})
 	}
