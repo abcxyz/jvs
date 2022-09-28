@@ -127,9 +127,18 @@ func PublicKeysFor(ctx context.Context, client *kms.KeyManagementClient, parentK
 	return result, nil
 }
 
+// JWKSet represents a set of JWK keys. The lestrrat-go/jwx/v2/jwk library has a
+// jwk.Set, but it sorts keys by the key material, but we want to maintain our
+// own, deterministic sort order. The jwk.Set is also an interface that is
+// somewhat difficult to work with.
+type JWKSet struct {
+	Keys []jwk.Key `json:"keys"`
+}
+
 // JWKSFromPublicKeys converts the public keys to a JWK set. The keys are
-// inserted in lexographical order.
-func JWKSFromPublicKeys(publicKeys map[string]crypto.PublicKey) (jwk.Set, error) {
+// inserted in lexographical order by the key version name and returned in JSON
+// format.
+func JWKSFromPublicKeys(publicKeys map[string]crypto.PublicKey) (*JWKSet, error) {
 	// Sort the list of key version names. This is largely for testing purposes,
 	// since it creates a deterministic list of jwks.
 	keyVersionNames := make([]string, 0, len(publicKeys))
@@ -139,7 +148,9 @@ func JWKSFromPublicKeys(publicKeys map[string]crypto.PublicKey) (jwk.Set, error)
 	sort.Strings(keyVersionNames)
 
 	// Build the jwks
-	jwkSet := jwk.NewSet()
+	jwkSet := &JWKSet{
+		Keys: make([]jwk.Key, 0, len(keyVersionNames)),
+	}
 	for _, keyVersion := range keyVersionNames {
 		publicKey := publicKeys[keyVersion]
 		key, err := jwk.FromRaw(publicKey)
@@ -151,9 +162,8 @@ func JWKSFromPublicKeys(publicKeys map[string]crypto.PublicKey) (jwk.Set, error)
 			return nil, fmt.Errorf("failed to set kid %s on jwk: %w", keyVersion, err)
 		}
 
-		if err := jwkSet.AddKey(key); err != nil {
-			return nil, fmt.Errorf("failed to add jwk %s to set: %w", keyVersion, err)
-		}
+		jwkSet.Keys = append(jwkSet.Keys, key)
 	}
+
 	return jwkSet, nil
 }
