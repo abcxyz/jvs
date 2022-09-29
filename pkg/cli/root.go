@@ -12,89 +12,83 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-// Package cli implements the commands for the JVS CLI.
 package cli
 
 import (
 	"errors"
 	"fmt"
 	"os"
-	"path/filepath"
-
-	"github.com/spf13/cobra"
-	"github.com/spf13/viper"
 
 	"github.com/abcxyz/jvs/pkg/config"
+	"github.com/spf13/cobra"
+	"github.com/spf13/viper"
 )
 
-var (
-	cfgFile string
-	cfg     *config.CLIConfig
-)
-
-var rootCmd = &cobra.Command{
-	Use:               "jvsctl",
-	Short:             "jvsctl facilitates the justification verification flow provided by abcxyz/jvs",
-	PersistentPreRunE: ensureCfg,
+// rootCmdOptions are used as options to the root command.
+type rootCmdOptions struct {
+	configPath string
 }
 
-// Execute executes the CLI.
-func Execute() error {
-	return rootCmd.Execute()
-}
+// newRootCmd creates a new instance of the root cobra command node.
+func newRootCmd(cfg *config.CLIConfig) *cobra.Command {
+	vpr := viper.New()
 
-func init() {
-	cobra.OnInitialize(initCfg)
-	rootCmd.PersistentFlags().StringVar(&cfgFile, "config", "", "config file (default is $HOME/.jvsctl/config.yaml)")
-	rootCmd.PersistentFlags().String("server", "", "overwrite the JVS server address")
-	rootCmd.PersistentFlags().Bool("insecure", false, "use insecure connection to JVS server")
-	viper.BindPFlag("server", rootCmd.PersistentFlags().Lookup("server"))     //nolint // not expect err
-	viper.BindPFlag("insecure", rootCmd.PersistentFlags().Lookup("insecure")) //nolint // not expect err
+	opts := &rootCmdOptions{}
 
-	rootCmd.AddCommand(tokenCmd)
-}
+	cmd := &cobra.Command{
+		Use:   "jvsctl",
+		Short: "jvsctl facilitates the justification verification flow provided by abcxyz/jvs",
 
-func initCfg() {
-	if cfgFile != "" {
-		// Use config file from the flag.
-		viper.SetConfigFile(cfgFile)
-	} else {
-		// Try use the default config file.
-		home, err := os.UserHomeDir()
-		cobra.CheckErr(err)
-
-		viper.AddConfigPath(filepath.Join(home, ".jvsctl"))
-		viper.SetConfigType("yaml")
-		viper.SetConfigName("config")
+		// Load the configuration before each child command. The actual "compiled"
+		// configuration is passed in to the newChildCmd() function, but this sets
+		// the values of that config.
+		PersistentPreRunE: func(cmd *cobra.Command, args []string) error {
+			return loadConfig(vpr, opts.configPath, cfg)
+		},
 	}
 
-	// Also load from env vars.
-	viper.SetEnvPrefix("JVSCTL")
-	viper.AutomaticEnv()
+	// Flags
+	cmd.PersistentFlags().StringVarP(&opts.configPath, "config", "c", "",
+		"path to a file on disk for the jvs configuration")
+	cmd.PersistentFlags().StringVar(&cfg.Server, "server", "127.0.0.1:8080", "IP or DNS address to the JVS server")
+	cmd.PersistentFlags().BoolVar(&cfg.Insecure, "insecure", false, "allow an insecure connection to the JVS server")
 
-	if err := viper.ReadInConfig(); err != nil {
-		// It's ok if the config file is not found because
-		// the values could be filled by env vars or flags.
-		if !errors.As(err, &viper.ConfigFileNotFoundError{}) {
-			cobra.CheckErr(err)
-			return
+	// Subcommands
+	cmd.AddCommand(newTokenCmd(cfg))
+
+	return cmd
+}
+
+// loadConfig loads the configuration from the given path into the provided
+// configuration struct.
+func loadConfig(vpr *viper.Viper, pth string, cfg *config.CLIConfig) error {
+	if pth == "" {
+		pth = defaultConfigPath
+	}
+
+	vpr.SetConfigType("yaml")
+	vpr.SetEnvPrefix("JVSCTL")
+	vpr.AutomaticEnv()
+	vpr.SetConfigFile(pth)
+
+	if err := vpr.ReadInConfig(); err != nil {
+		// Don't throw an error for failing to find the default config path since
+		// it's not required. However, if the user specified a config path that
+		// doesn't exist, that's an error.
+		if !errors.Is(err, &viper.ConfigFileNotFoundError{}) && !errors.Is(err, os.ErrNotExist) {
+			return fmt.Errorf("failed to read configuration file: %w", err)
+		}
+		if pth != defaultConfigPath {
+			return fmt.Errorf("failed to read configuration file: %w", err)
 		}
 	}
 
-	if err := viper.Unmarshal(&cfg); err != nil {
-		cobra.CheckErr(err)
-		return
+	if err := vpr.Unmarshal(cfg); err != nil {
+		return fmt.Errorf("failed to unmarshal into config: %w", err)
 	}
 
 	if err := cfg.Validate(); err != nil {
-		cobra.CheckErr(fmt.Errorf("invalid config: %w", err))
-		return
-	}
-}
-
-func ensureCfg(_ *cobra.Command, _ []string) error {
-	if cfg == nil {
-		return fmt.Errorf("CLI config missing or invalid")
+		return fmt.Errorf("failed to validate config: %w", err)
 	}
 	return nil
 }

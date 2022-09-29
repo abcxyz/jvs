@@ -15,13 +15,20 @@
 package main
 
 import (
-	"log"
+	"context"
+	"os/signal"
+	"syscall"
 
 	"github.com/abcxyz/jvs/pkg/cli"
+	"github.com/abcxyz/pkg/logging"
 )
 
 func main() {
-	if err := cli.Execute(); err != nil {
-		log.Fatalln(err)
-	}
+	ctx, done := signal.NotifyContext(context.Background(), syscall.SIGINT, syscall.SIGTERM)
+	defer done()
+
+	logger := logging.NewFromEnv("")
+	ctx = logging.WithLogger(ctx, logger)
+
+	cli.Execute(ctx)
 }
