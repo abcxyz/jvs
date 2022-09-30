@@ -290,7 +290,7 @@ func TestPerformActions(t *testing.T) {
 			},
 		},
 		{
-			name: "create",
+			name: "create_new_and_promote",
 			actions: []*actionTuple{
 				{
 					ActionCreateNewAndPromote,
@@ -320,6 +320,28 @@ func TestPerformActions(t *testing.T) {
 				},
 			},
 			expectedPrimary: PrimaryLabelPrefix + versionSuffix + "-new",
+		},
+		{
+			name: "create_new_and_promote_with_failure",
+			actions: []*actionTuple{
+				{
+					ActionCreateNewAndPromote,
+					&kmspb.CryptoKeyVersion{
+						State: kmspb.CryptoKeyVersion_ENABLED,
+						Name:  versionName,
+					},
+				},
+			},
+			serverErr: fmt.Errorf("key creation failed"),
+			wantErr:   "1 error occurred:\n\t* key creation failed: rpc error: code = Unknown desc = key creation failed\n\n",
+			expectedRequests: []proto.Message{
+				&kmspb.CreateCryptoKeyVersionRequest{
+					Parent:           parent,
+					CryptoKeyVersion: &kmspb.CryptoKeyVersion{},
+				},
+			},
+			priorPrimary:    PrimaryLabelPrefix + versionSuffix,
+			expectedPrimary: PrimaryLabelPrefix + versionSuffix,
 		},
 		{
 			name: "destroy",

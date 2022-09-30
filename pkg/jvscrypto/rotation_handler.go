@@ -274,6 +274,7 @@ func (h *RotationHandler) performActions(ctx context.Context, keyName string, ac
 			newVer, err := h.performCreateNew(ctx, keyName)
 			if err != nil {
 				result = multierror.Append(result, err)
+				continue
 			}
 			logger.Info("Promoting immediately.")
 			if err := SetPrimary(ctx, h.KMSClient, keyName, newVer.Name); err != nil {
