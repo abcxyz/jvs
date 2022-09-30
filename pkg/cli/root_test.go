@@ -120,7 +120,7 @@ func testExecuteCommand(tb testing.TB, cmd *cobra.Command, args ...string) (stri
 }
 
 // testExecuteCommandStdin executes the given cobra command with the stdin
-// writer w and returns the stdout, stderr, and any errors that occur during
+// reader w and returns the stdout, stderr, and any errors that occur during
 // execution. It is safe for concurrent use if and only if the cobra command is
 // safe for concurrent use (e.g. does not read or set global state). The
 // convenience function [testExecuteCommand] exists for calling without stdin.

@@ -181,7 +181,7 @@ func (j *fakeJVS) CreateJustification(_ context.Context, req *jvspb.CreateJustif
 
 	b, err := jwt.Sign(token, jwt.WithKey(jwa.HS256, []byte("testing")))
 	if err != nil {
-		return nil, fmt.Errorf("failed to sign breakglass token: %w", err)
+		return nil, fmt.Errorf("failed to sign token: %w", err)
 	}
 
 	return &jvspb.CreateJustificationResponse{
