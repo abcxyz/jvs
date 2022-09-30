@@ -25,7 +25,7 @@ Minimally we need a JVS server address in the config to mint justification
 tokens.
 
 ```yaml
-server: example.com
+server: example.com:4567
 ```
 
 By default, we will connect to the JVS server securely. When it's not applicable
@@ -33,8 +33,7 @@ By default, we will connect to the JVS server securely. When it's not applicable
 following block in the config:
 
 ```yaml
-authentication:
-  insecure: true
+insecure: true
 ```
 
 Alternatively, both of these values could be provided via CLI flags `--server`
@@ -61,7 +60,7 @@ duration and such token provide reasons that data access is required for
 "issues/12345"
 
 ```shell
-jvsctl token --breakglass true --explanation "jvs is down" --ttl 30m
+jvsctl token --breakglass --explanation "jvs is down" --ttl 30m
 ```
 
 In certain cases, we might need to bypass JVS for minting signed JVS tokens.
