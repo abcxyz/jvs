@@ -30,13 +30,8 @@ type CLIConfig struct {
 	// Server is the JVS server address.
 	Server string `yaml:"server,omitempty"`
 
-	// Authentication is the authentication config.
-	Authentication *CLIAuthentication `yaml:"authentication,omitempty"`
-}
-
-// CLIAuthentication is the CLI authentication config.
-type CLIAuthentication struct {
-	// Insecure indiates whether to use insecured connection to the JVS server.
+	// Insecure indicates whether the CLI should allow an insecure connection to
+	// the server.
 	Insecure bool `yaml:"insecure,omitempty"`
 }
 
@@ -51,10 +46,6 @@ func (cfg *CLIConfig) Validate() error {
 			cfg.Version, CLIConfigVersions.List()))
 	}
 
-	if cfg.Server == "" {
-		err = multierror.Append(err, fmt.Errorf("missing JVS server address"))
-	}
-
 	return err.ErrorOrNil()
 }
 
@@ -62,8 +53,5 @@ func (cfg *CLIConfig) Validate() error {
 func (cfg *CLIConfig) SetDefault() {
 	if cfg.Version == "" {
 		cfg.Version = "1"
-	}
-	if cfg.Authentication == nil {
-		cfg.Authentication = &CLIAuthentication{}
 	}
 }
