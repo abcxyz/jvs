@@ -21,7 +21,6 @@ import (
 	"crypto/rand"
 	"crypto/x509"
 	"encoding/pem"
-	"net"
 	"testing"
 
 	kms "cloud.google.com/go/kms/apiv1"
@@ -33,7 +32,6 @@ import (
 	"google.golang.org/api/option"
 	kmspb "google.golang.org/genproto/googleapis/cloud/kms/v1"
 	"google.golang.org/grpc"
-	"google.golang.org/grpc/credentials/insecure"
 	"google.golang.org/protobuf/proto"
 )
 
@@ -65,22 +63,10 @@ func TestVerifyJWTString(t *testing.T) {
 	serv := grpc.NewServer()
 	kmspb.RegisterKeyManagementServiceServer(serv, mockKMS)
 
-	lis, err := net.Listen("tcp", "localhost:0")
-	if err != nil {
-		t.Fatal(err)
-	}
+	_, conn := pkgtestutil.FakeGRPCServer(t, func(s *grpc.Server) {
+		kmspb.RegisterKeyManagementServiceServer(s, mockKMS)
+	})
 
-	// not checked, but makes linter happy
-	errs := make(chan error, 1)
-	go func() {
-		errs <- serv.Serve(lis)
-		close(errs)
-	}()
-
-	conn, err := grpc.Dial(lis.Addr().String(), grpc.WithTransportCredentials(insecure.NewCredentials()))
-	if err != nil {
-		t.Fatal(err)
-	}
 	clientOpt = option.WithGRPCConn(conn)
 	t.Cleanup(func() {
 		conn.Close()
