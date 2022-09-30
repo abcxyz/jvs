@@ -15,10 +15,13 @@
 package v0
 
 import (
+	"context"
+	"encoding/json"
 	"fmt"
 
 	"github.com/lestrrat-go/jwx/v2/jwt"
 	"github.com/mitchellh/mapstructure"
+	"gopkg.in/yaml.v2"
 )
 
 const (
@@ -29,6 +32,9 @@ const (
 	// than 6.
 	jwtJustificationsKey string = "justs"
 )
+
+// marshalFn takes an input and return a byte array representation of the input.
+type marshalFn func(in interface{}) ([]byte, error)
 
 // WithTypedJustifications is an option for parsing JWTs that will convert
 // decode the [Justification] claims into the correct Go structure. If this is
@@ -101,4 +107,46 @@ func ClearJustifications(t jwt.Token) error {
 	}
 
 	return t.Remove(jwtJustificationsKey)
+}
+
+// ToJSON converts the token into json with justification claims seperated from other claims.
+func ToJSON(ctx context.Context, t jwt.Token) ([]byte, error) {
+	return marshal(ctx, t, "\n---", func(in interface{}) ([]byte, error) { return json.MarshalIndent(in, "", "  ") })
+}
+
+// ToYAML converts the token into yaml with justification claims seperated from other claims.
+func ToYAML(ctx context.Context, t jwt.Token) ([]byte, error) {
+	return marshal(ctx, t, "---", func(in interface{}) ([]byte, error) { return yaml.Marshal(in) })
+}
+
+// marshal converts the token into byte array using the given malshal function
+// with justification claims seperated from other claims using the given seperator.
+func marshal(ctx context.Context, t jwt.Token, sep string, fn marshalFn) ([]byte, error) {
+	if t == nil {
+		return nil, fmt.Errorf("token cannot be nil")
+	}
+
+	claimsMap, err := t.AsMap(ctx)
+	if err != nil {
+		return nil, fmt.Errorf("failed to convert token into map: %w", err)
+	}
+	delete(claimsMap, jwtJustificationsKey)
+	claimsOut, err := fn(claimsMap)
+	if err != nil {
+		return nil, fmt.Errorf("failed to marshal token as json: %w", err)
+	}
+
+	justs, err := GetJustifications(t)
+	if err != nil {
+		return nil, fmt.Errorf("failed to extract justifications: %w", err)
+	}
+	justsOut, err := fn(justs)
+	if err != nil {
+		return nil, fmt.Errorf("failed to marshal justifications as json: %w", err)
+	}
+
+	out := append(claimsOut, sep...)
+	out = append(out, "\njustifications:\n"...)
+	out = append(out, justsOut...)
+	return out, nil
 }

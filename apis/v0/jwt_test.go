@@ -15,6 +15,8 @@
 package v0
 
 import (
+	"context"
+	"reflect"
 	"testing"
 	"unsafe"
 
@@ -266,6 +268,138 @@ func TestClearJustifications(t *testing.T) {
 
 			if diff := cmp.Diff(tc.exp, justs, cmpopts.IgnoreUnexported(Justification{})); diff != "" {
 				t.Errorf("justs: diff (-want, +got):\n%s", diff)
+			}
+		})
+	}
+}
+
+func TestToJson(t *testing.T) {
+	t.Parallel()
+
+	cases := []struct {
+		name   string
+		token  jwt.Token
+		exp    []byte
+		expErr string
+	}{
+		{
+			name:   "nil_token",
+			token:  nil,
+			expErr: "token cannot be nil",
+		},
+		{
+			name:  "empty_justs",
+			token: testTokenBuilder(t, jwt.NewBuilder().JwtID("test_id")),
+			exp: []byte(`{
+  "jti": "test_id"
+}
+---
+justifications:
+[]`),
+		},
+		{
+			name: "with_justs",
+			token: testTokenBuilder(t, jwt.
+				NewBuilder().
+				JwtID("test_id").
+				Claim(jwtJustificationsKey, []*Justification{
+					{
+						Category: "category",
+						Value:    "value",
+					},
+				}),
+			),
+			exp: []byte(`{
+  "jti": "test_id"
+}
+---
+justifications:
+[
+  {
+    "category": "category",
+    "value": "value"
+  }
+]`),
+		},
+	}
+
+	for _, tc := range cases {
+		tc := tc
+
+		t.Run(tc.name, func(t *testing.T) {
+			t.Parallel()
+
+			output, err := ToJSON(context.Background(), tc.token)
+
+			if diff := testutil.DiffErrString(err, tc.expErr); diff != "" {
+				t.Errorf("unexpected err: %s", diff)
+			}
+
+			if !reflect.DeepEqual(output, tc.exp) {
+				t.Errorf("out got=%q, want=%q", output, tc.exp)
+			}
+		})
+	}
+}
+
+func TestToYaml(t *testing.T) {
+	t.Parallel()
+
+	cases := []struct {
+		name   string
+		token  jwt.Token
+		exp    []byte
+		expErr string
+	}{
+		{
+			name:   "nil_token",
+			token:  nil,
+			expErr: "token cannot be nil",
+		},
+		{
+			name:  "empty_justs",
+			token: testTokenBuilder(t, jwt.NewBuilder().JwtID("test_id")),
+			exp: []byte(`jti: test_id
+---
+justifications:
+[]
+`),
+		},
+		{
+			name: "with_justs",
+			token: testTokenBuilder(t, jwt.
+				NewBuilder().
+				JwtID("test_id").
+				Claim(jwtJustificationsKey, []*Justification{
+					{
+						Category: "category",
+						Value:    "value",
+					},
+				}),
+			),
+			exp: []byte(`jti: test_id
+---
+justifications:
+- category: category
+  value: value
+`),
+		},
+	}
+
+	for _, tc := range cases {
+		tc := tc
+
+		t.Run(tc.name, func(t *testing.T) {
+			t.Parallel()
+
+			output, err := ToYAML(context.Background(), tc.token)
+
+			if diff := testutil.DiffErrString(err, tc.expErr); diff != "" {
+				t.Errorf("unexpected err: %s", diff)
+			}
+
+			if !reflect.DeepEqual(output, tc.exp) {
+				t.Errorf("out got=%q, want=%q", output, tc.exp)
 			}
 		})
 	}
