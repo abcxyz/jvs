@@ -273,7 +273,7 @@ func TestClearJustifications(t *testing.T) {
 	}
 }
 
-func TestToJson(t *testing.T) {
+func TestToJSON(t *testing.T) {
 	t.Parallel()
 
 	cases := []struct {
@@ -342,7 +342,7 @@ justifications:
 	}
 }
 
-func TestToYaml(t *testing.T) {
+func TestToYAML(t *testing.T) {
 	t.Parallel()
 
 	cases := []struct {

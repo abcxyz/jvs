@@ -34,7 +34,7 @@ const (
 )
 
 // marshalFn takes an input and return a byte array representation of the input.
-type marshalFn func(in interface{}) ([]byte, error)
+type marshalFn func(v any) ([]byte, error)
 
 // WithTypedJustifications is an option for parsing JWTs that will convert
 // decode the [Justification] claims into the correct Go structure. If this is
@@ -111,12 +111,12 @@ func ClearJustifications(t jwt.Token) error {
 
 // ToJSON converts the token into json with justification claims seperated from other claims.
 func ToJSON(ctx context.Context, t jwt.Token) ([]byte, error) {
-	return marshal(ctx, t, "\n---", func(in interface{}) ([]byte, error) { return json.MarshalIndent(in, "", "  ") })
+	return marshal(ctx, t, "\n---", func(v any) ([]byte, error) { return json.MarshalIndent(v, "", "  ") })
 }
 
 // ToYAML converts the token into yaml with justification claims seperated from other claims.
 func ToYAML(ctx context.Context, t jwt.Token) ([]byte, error) {
-	return marshal(ctx, t, "---", func(in interface{}) ([]byte, error) { return yaml.Marshal(in) })
+	return marshal(ctx, t, "---", func(v any) ([]byte, error) { return yaml.Marshal(v) })
 }
 
 // marshal converts the token into byte array using the given malshal function
