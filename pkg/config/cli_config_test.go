@@ -18,6 +18,7 @@ import (
 	"testing"
 
 	"github.com/abcxyz/pkg/testutil"
+	"github.com/google/go-cmp/cmp"
 )
 
 func TestCLIConfig_Validate(t *testing.T) {
@@ -31,8 +32,9 @@ func TestCLIConfig_Validate(t *testing.T) {
 		{
 			name: "no_error",
 			cfg: &CLIConfig{
-				Server:   "example.com",
-				Insecure: false,
+				Server:       "127.0.0.1:8080",
+				Insecure:     false,
+				JWKSEndpoint: "https://127.0.0.1:8080/.well-known/jwks",
 			},
 		},
 		{
@@ -51,6 +53,52 @@ func TestCLIConfig_Validate(t *testing.T) {
 			err := tc.cfg.Validate()
 			if diff := testutil.DiffErrString(err, tc.wantErr); diff != "" {
 				t.Errorf("unexpected err: %s", diff)
+			}
+		})
+	}
+}
+
+func TestCLIConfig_GetJWKSEndpoint(t *testing.T) {
+	t.Parallel()
+
+	tests := []struct {
+		name             string
+		cfg              *CLIConfig
+		wantJWKSEndpoint string
+	}{
+		{
+			name: "jwks_endpoint_not_empty",
+			cfg: &CLIConfig{
+				Server:       "127.0.0.1:8080",
+				Insecure:     false,
+				JWKSEndpoint: "https://1.2.3.4:8080/.well-known/jwks",
+			},
+			wantJWKSEndpoint: "https://1.2.3.4:8080/.well-known/jwks",
+		},
+		{
+			name: "default",
+			cfg: &CLIConfig{
+				Server:   "127.0.0.1:8080",
+				Insecure: false,
+			},
+			wantJWKSEndpoint: "https://127.0.0.1:8080/.well-known/jwks",
+		},
+		{
+			name: "empty",
+			cfg: &CLIConfig{
+				Insecure: false,
+			},
+			wantJWKSEndpoint: "",
+		},
+	}
+
+	for _, tc := range tests {
+		tc := tc
+		t.Run(tc.name, func(t *testing.T) {
+			t.Parallel()
+			gotJWKSEndpoint := tc.cfg.GetJWKSEndpoint()
+			if diff := cmp.Diff(tc.wantJWKSEndpoint, gotJWKSEndpoint); diff != "" {
+				t.Errorf("Output: diff (-want, +got):\n%s", diff)
 			}
 		})
 	}
