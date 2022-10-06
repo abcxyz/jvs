@@ -36,7 +36,7 @@ following block in the config:
 insecure: true
 ```
 
-JWKS endpoint is also required if you want to validate justification tokens via CLI, it will default to the server domain if it is not specified.
+JWKS endpoint is also required if you want to validate justification tokens, it will default to the server domain if it is not specified.
 
 ```yaml
 jwks_endpoint: https://example.com/.well-known/jwks
@@ -78,6 +78,6 @@ We are also able to validate JVS tokens, examples are provided as below.
 jvsctl validate --token "example token"
 
 # or pass token via pipe
-echo "${JVS_TOKEN}" | jvsctl validate --token -
-cat /tmp/jvs_token | jvsctl validate --token -
+echo $JVS_TOKEN | jvsctl validate --token -
+cat /tmp/jvs_token.txt | jvsctl validate --token -
 ```

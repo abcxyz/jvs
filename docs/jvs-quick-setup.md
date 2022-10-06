@@ -91,7 +91,7 @@ will also get created.
     jvsctl validate --token "example token" --jwks_endpoint ${JWKS_ENDPOINT}
 
     # or pass token via pipe
-    echo "${JVS_TOKEN}" | jvsctl validate --token -
+    echo $JVS_TOKEN | jvsctl validate --token -
     cat /tmp/jvs_token.txt | jvsctl validate --token -
     ```
 
