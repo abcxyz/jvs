@@ -45,18 +45,17 @@ jwks_endpoint: "https://1.2.3.4:8080/.well-known/jwks"
 	})
 
 	cases := []struct {
-		name            string
-		args            []string
-		expConfig       *config.CLIConfig
-		expJWKSEndpoint string
+		name      string
+		args      []string
+		expConfig *config.CLIConfig
 	}{
 		{
 			name: "default_config",
 			expConfig: &config.CLIConfig{
-				Version: "1",
-				Server:  "127.0.0.1:8080",
+				Version:      "1",
+				Server:       "127.0.0.1:8080",
+				JWKSEndpoint: "https://127.0.0.1:8080/.well-known/jwks",
 			},
-			expJWKSEndpoint: "https://127.0.0.1:8080/.well-known/jwks",
 		},
 		{
 			name: "flag_config",
@@ -67,26 +66,25 @@ jwks_endpoint: "https://1.2.3.4:8080/.well-known/jwks"
 				JWKSEndpoint: "https://1.2.3.4:8080/.well-known/jwks",
 				Insecure:     true,
 			},
-			expJWKSEndpoint: "https://1.2.3.4:8080/.well-known/jwks",
 		},
 		{
 			name: "flag_server",
 			args: []string{"--server", "1.2.3.4:5678"},
 			expConfig: &config.CLIConfig{
-				Version: "1",
-				Server:  "1.2.3.4:5678",
+				Version:      "1",
+				Server:       "1.2.3.4:5678",
+				JWKSEndpoint: "https://1.2.3.4:8080/.well-known/jwks",
 			},
-			expJWKSEndpoint: "https://1.2.3.4:8080/.well-known/jwks",
 		},
 		{
 			name: "flag_insecure",
 			args: []string{"--insecure"},
 			expConfig: &config.CLIConfig{
-				Version:  "1",
-				Server:   "127.0.0.1:8080",
-				Insecure: true,
+				Version:      "1",
+				Server:       "127.0.0.1:8080",
+				Insecure:     true,
+				JWKSEndpoint: "https://127.0.0.1:8080/.well-known/jwks",
 			},
-			expJWKSEndpoint: "https://127.0.0.1:8080/.well-known/jwks",
 		},
 		{
 			name: "flag_jwks_endpoint",
@@ -96,7 +94,6 @@ jwks_endpoint: "https://1.2.3.4:8080/.well-known/jwks"
 				Server:       "127.0.0.1:8080",
 				JWKSEndpoint: "https://1.2.3.4:8080/.well-known/jwks",
 			},
-			expJWKSEndpoint: "https://1.2.3.4:8080/.well-known/jwks",
 		},
 	}
 
@@ -123,9 +120,6 @@ jwks_endpoint: "https://1.2.3.4:8080/.well-known/jwks"
 
 			if diff := cmp.Diff(tc.expConfig, &cfg); diff != "" {
 				t.Errorf("config (-want, +got):\n%s", diff)
-			}
-			if diff := cmp.Diff(tc.expJWKSEndpoint, cfg.GetJWKSEndpoint()); diff != "" {
-				t.Errorf("jwksEndpoint (-want, +got):\n%s", diff)
 			}
 		})
 	}

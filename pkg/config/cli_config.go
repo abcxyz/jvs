@@ -59,12 +59,9 @@ func (cfg *CLIConfig) SetDefault() {
 	if cfg.Version == "" {
 		cfg.Version = "1"
 	}
-}
 
-// Default to server's doman if JWKSEndpoint is not specified.
-func (cfg *CLIConfig) GetJWKSEndpoint() string {
+	// Default to server's doman if JWKSEndpoint is not specified.
 	if cfg.JWKSEndpoint == "" && cfg.Server != "" {
-		return fmt.Sprintf("https://%s:8080/.well-known/jwks", strings.Split(cfg.Server, ":")[0])
+		cfg.JWKSEndpoint = fmt.Sprintf("https://%s:8080/.well-known/jwks", strings.Split(cfg.Server, ":")[0])
 	}
-	return cfg.JWKSEndpoint
 }

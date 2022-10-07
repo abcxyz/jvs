@@ -58,37 +58,51 @@ func TestCLIConfig_Validate(t *testing.T) {
 	}
 }
 
-func TestCLIConfig_GetJWKSEndpoint(t *testing.T) {
+func TestCLIConfig_SetDefault(t *testing.T) {
 	t.Parallel()
 
 	tests := []struct {
-		name             string
-		cfg              *CLIConfig
-		wantJWKSEndpoint string
+		name    string
+		cfg     *CLIConfig
+		wantCfg *CLIConfig
 	}{
 		{
-			name: "jwks_endpoint_not_empty",
+			name: "not_default",
 			cfg: &CLIConfig{
-				Server:       "127.0.0.1:8080",
+				Version:      "2",
+				Server:       "1.2.3.4:5678",
 				Insecure:     false,
 				JWKSEndpoint: "https://1.2.3.4:8080/.well-known/jwks",
 			},
-			wantJWKSEndpoint: "https://1.2.3.4:8080/.well-known/jwks",
-		},
-		{
-			name: "default",
-			cfg: &CLIConfig{
-				Server:   "127.0.0.1:8080",
-				Insecure: false,
+			wantCfg: &CLIConfig{
+				Version:      "2",
+				Server:       "1.2.3.4:5678",
+				Insecure:     false,
+				JWKSEndpoint: "https://1.2.3.4:8080/.well-known/jwks",
 			},
-			wantJWKSEndpoint: "https://127.0.0.1:8080/.well-known/jwks",
 		},
 		{
-			name: "empty",
+			name: "default_server",
 			cfg: &CLIConfig{
 				Insecure: false,
 			},
-			wantJWKSEndpoint: "",
+			wantCfg: &CLIConfig{
+				Version:  "1",
+				Insecure: false,
+			},
+		},
+		{
+			name: "default_jwks_endpoint",
+			cfg: &CLIConfig{
+				Server:   "1.2.3.4:5678",
+				Insecure: false,
+			},
+			wantCfg: &CLIConfig{
+				Version:      "1",
+				Server:       "1.2.3.4:5678",
+				Insecure:     false,
+				JWKSEndpoint: "https://1.2.3.4:8080/.well-known/jwks",
+			},
 		},
 	}
 
@@ -96,8 +110,8 @@ func TestCLIConfig_GetJWKSEndpoint(t *testing.T) {
 		tc := tc
 		t.Run(tc.name, func(t *testing.T) {
 			t.Parallel()
-			gotJWKSEndpoint := tc.cfg.GetJWKSEndpoint()
-			if diff := cmp.Diff(tc.wantJWKSEndpoint, gotJWKSEndpoint); diff != "" {
+			tc.cfg.SetDefault()
+			if diff := cmp.Diff(tc.wantCfg, tc.cfg); diff != "" {
 				t.Errorf("Output: diff (-want, +got):\n%s", diff)
 			}
 		})

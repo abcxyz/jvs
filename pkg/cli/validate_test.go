@@ -126,12 +126,13 @@ func TestNewValidateCmd(t *testing.T) {
 				JWKSEndpoint: svr.URL + path,
 			},
 			args: []string{"-t", signedToken},
-			expOut: `-------RESULT-------
-validated!
-breakglass  false
+			expOut: `-----BREAKGLASS-----
+false
+
 ----JUSTIFICATION----
 explanation  "test"
 foo          "bar"
+
 ---STANDARD CLAIMS---
 aud  ["dev.abcxyz.jvs"]
 iat  "1970-01-01T00:00:00Z"
@@ -147,11 +148,12 @@ sub  "jvsctl"
 				JWKSEndpoint: svr.URL + path,
 			},
 			args: []string{"-t", breakglassToken},
-			expOut: `-------RESULT-------
-validated!
-breakglass  true
+			expOut: `-----BREAKGLASS-----
+true
+
 ----JUSTIFICATION----
 breakglass  "prod is down"
+
 ---STANDARD CLAIMS---
 aud  ["dev.abcxyz.jvs"]
 iat  "1970-01-01T00:00:00Z"
@@ -168,12 +170,13 @@ sub  "jvsctl"
 			},
 			args: []string{"-t", "-"},
 			pipe: true,
-			expOut: `-------RESULT-------
-validated!
-breakglass  false
+			expOut: `-----BREAKGLASS-----
+false
+
 ----JUSTIFICATION----
 explanation  "test"
 foo          "bar"
+
 ---STANDARD CLAIMS---
 aud  ["dev.abcxyz.jvs"]
 iat  "1970-01-01T00:00:00Z"
