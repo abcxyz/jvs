@@ -64,7 +64,7 @@ For example:
     ------BREAKGLASS------
     false
 
-    ----JUSTIFICATIONs----
+    ----JUSTIFICATION----
     explanation  "test"
 
     ---STANDARD CLAIMS---
@@ -132,14 +132,14 @@ func runValidateCmd(cmd *cobra.Command, opts *validateCmdOptions, args []string)
 	// and standard claims.
 	w := tabwriter.NewWriter(cmd.OutOrStdout(), 0, 0, 2, ' ', 0)
 	if _, err := fmt.Fprintf(w, "-----BREAKGLASS-----\n%t\n", breakglass); err != nil {
-		return err
+		return fmt.Errorf("justification token is valid but failed to print breakglass: %w", err)
 	}
 
 	if err := writeJustification(w, token); err != nil {
-		return err
+		return fmt.Errorf("justification token is valid but failed to print justifications: %w", err)
 	}
 	if err := writeStandardClaims(ctx, w, token); err != nil {
-		return err
+		return fmt.Errorf("justification token is valid but failed to print standard claims: %w", err)
 	}
 	w.Flush()
 	return nil
@@ -151,7 +151,7 @@ func writeJustification(w *tabwriter.Writer, token jwt.Token) error {
 	}
 	justs, err := jvspb.GetJustifications(token)
 	if err != nil {
-		return fmt.Errorf("failed to get justifications from token")
+		return fmt.Errorf("failed to get justifications from token: %w", err)
 	}
 	for _, j := range justs {
 		if _, err := fmt.Fprintf(w, "%s\t\"%s\"\n", j.GetCategory(), j.GetValue()); err != nil {
@@ -162,7 +162,7 @@ func writeJustification(w *tabwriter.Writer, token jwt.Token) error {
 }
 
 func writeStandardClaims(ctx context.Context, w *tabwriter.Writer, token jwt.Token) error {
-	// Convert standard claims into a map, excluding justifications claim which is already handled
+	// Convert standard claims into a map, excluding justifications claim which is printed separately.
 	claimsMap, err := token.AsMap(ctx)
 	if err != nil {
 		return fmt.Errorf("failed to convert token into map: %w", err)
@@ -174,10 +174,9 @@ func writeStandardClaims(ctx context.Context, w *tabwriter.Writer, token jwt.Tok
 		claimsKeys = append(claimsKeys, k)
 		jv, err := json.Marshal(v)
 		if err != nil {
-			claims[k] = fmt.Sprintf("failed to marshal to json: %s", err)
-		} else {
-			claims[k] = string(jv)
+			return fmt.Errorf("failed to marshal standard claims to json: %w", err)
 		}
+		claims[k] = string(jv)
 	}
 
 	// Write standard claims in increasing order as a table

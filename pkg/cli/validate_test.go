@@ -22,7 +22,7 @@ import (
 	"fmt"
 	"net/http"
 	"net/http/httptest"
-	"os"
+	"strings"
 	"testing"
 	"time"
 
@@ -86,12 +86,12 @@ func TestNewValidateCmd(t *testing.T) {
 			Value:    "bar",
 		},
 	}); err != nil {
-		t.Fatalf("failed to set justifications in token: %s", err)
+		t.Fatalf("failed to set justifications in token: %v", err)
 	}
 	signedToken := testSignToken(t, token, privateKey, keyID)
 	breakglassToken, err := jvspb.CreateBreakglassToken(token, "prod is down")
 	if err != nil {
-		t.Fatalf("failed to build breakglass token: %s", err)
+		t.Fatalf("failed to build breakglass token: %v", err)
 	}
 
 	cases := []struct {
@@ -198,25 +198,7 @@ sub  "jvsctl"
 			var stdout string
 			var gotErr error
 			if tc.pipe {
-				// create tempFile with token
-				tempFile, err := os.CreateTemp("", "validate_test*")
-				if err != nil {
-					t.Errorf("failed to create temp file: %s", err)
-				}
-				// remove tempFile
-				defer os.Remove(tempFile.Name())
-
-				if _, err := tempFile.Write([]byte(signedToken)); err != nil {
-					t.Errorf("failed to write to temp file: %s", err)
-				}
-				if _, err := tempFile.Seek(0, 0); err != nil {
-					t.Errorf("failed to seek to the beginning of the temp file: %s", err)
-				}
-
-				stdout, _, gotErr = testExecuteCommandStdin(t, cmd, tempFile, tc.args...)
-				if err := tempFile.Close(); err != nil {
-					t.Errorf("failed to close temp file: %s", err)
-				}
+				stdout, _, gotErr = testExecuteCommandStdin(t, cmd, strings.NewReader(signedToken), tc.args...)
 			} else {
 				stdout, _, gotErr = testExecuteCommand(t, cmd, tc.args...)
 			}
@@ -247,7 +229,7 @@ func testTokenBuilder(tb testing.TB) jwt.Token {
 		Subject(Subject).
 		Build()
 	if err != nil {
-		tb.Fatalf("failed to create unsigned token: %s", err)
+		tb.Fatalf("failed to create unsigned token: %v", err)
 	}
 	return token
 }
@@ -262,7 +244,7 @@ func testSignToken(tb testing.TB, unsignedToken jwt.Token, privateKey *ecdsa.Pri
 
 	token, err := jwt.Sign(unsignedToken, jwt.WithKey(jwa.ES256, privateKey, jws.WithProtectedHeaders(headers)))
 	if err != nil {
-		tb.Fatalf("failed to sign token: %s", err)
+		tb.Fatalf("failed to sign token: %v", err)
 	}
 	return string(token)
 }
