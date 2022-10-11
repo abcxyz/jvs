@@ -36,8 +36,13 @@ following block in the config:
 insecure: true
 ```
 
-Alternatively, both of these values could be provided via CLI flags `--server`
-and `--insecure`.
+JWKS endpoint is also required if you want to validate justification tokens, it will default to the server domain + `/.well-known/jwks` if it is not specified.
+
+```yaml
+jwks_endpoint: https://example.com/.well-known/jwks
+```
+
+Alternatively, all of these values could be provided via CLI flags `--server`, `--insecure`, and `--jwks_endpoint`.
 
 ## Command
 
@@ -66,3 +71,13 @@ jvsctl token --breakglass --explanation "jvs is down" --ttl 30m
 In certain cases, we might need to bypass JVS for minting signed JVS tokens.
 E.g. JVS couldn't verify a justification because the ticket system is down. In
 such cases, we can mint break-glass token instead.
+
+We are also able to validate JVS tokens, examples are provided as below.
+
+```shell
+jvsctl validate --token "example token"
+
+# or pass token via pipe
+echo $JVS_TOKEN | jvsctl validate --token -
+cat /tmp/jvs_token.txt | jvsctl validate --token -
+```

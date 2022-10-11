@@ -16,6 +16,7 @@ package config
 
 import (
 	"fmt"
+	"strings"
 
 	"github.com/hashicorp/go-multierror"
 )
@@ -33,6 +34,10 @@ type CLIConfig struct {
 	// Insecure indicates whether the CLI should allow an insecure connection to
 	// the server.
 	Insecure bool `yaml:"insecure,omitempty"`
+
+	// JWKSEndpoint is the full path (including protocol and port) to the JWKS
+	// endpoint on a JVS server (e.g. https://example.com/.well-known/jwks).
+	JWKSEndpoint string `yaml:"jwks_endpoint,omitempty" mapstructure:"jwks_endpoint"`
 }
 
 // Validate checks if the config is valid.
@@ -53,5 +58,10 @@ func (cfg *CLIConfig) Validate() error {
 func (cfg *CLIConfig) SetDefault() {
 	if cfg.Version == "" {
 		cfg.Version = "1"
+	}
+
+	// Default to server's doman if JWKSEndpoint is not specified.
+	if cfg.JWKSEndpoint == "" && cfg.Server != "" {
+		cfg.JWKSEndpoint = fmt.Sprintf("https://%s:8080/.well-known/jwks", strings.Split(cfg.Server, ":")[0])
 	}
 }
