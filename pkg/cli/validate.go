@@ -31,6 +31,9 @@ import (
 	"github.com/spf13/cobra"
 )
 
+// cacheTimeout is required for creating jvs client via jvs config, it is not really used since cache is expired when CLI exits.
+const cacheTimeout = 5 * time.Minute
+
 // validateCmdOptions holds all the inputs and flags for the validate subcommand.
 type validateCmdOptions struct {
 	config *config.CLIConfig
@@ -96,7 +99,7 @@ func runValidateCmd(cmd *cobra.Command, opts *validateCmdOptions, args []string)
 	jvsclient, err := client.NewJVSClient(ctx, &client.JVSConfig{
 		Version:         "1",
 		JWKSEndpoint:    opts.config.JWKSEndpoint,
-		CacheTimeout:    5 * time.Minute,
+		CacheTimeout:    cacheTimeout,
 		AllowBreakglass: true,
 	})
 	if err != nil {

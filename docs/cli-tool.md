@@ -36,7 +36,7 @@ following block in the config:
 insecure: true
 ```
 
-JWKS endpoint is also required if you want to validate justification tokens, it will default to the server domain if it is not specified.
+JWKS endpoint is also required if you want to validate justification tokens, it will default to the server domain + `/.well-known/jwks` if it is not specified.
 
 ```yaml
 jwks_endpoint: https://example.com/.well-known/jwks

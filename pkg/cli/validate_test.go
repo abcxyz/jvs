@@ -20,6 +20,7 @@ import (
 	"crypto/rand"
 	"encoding/json"
 	"fmt"
+	"io"
 	"net/http"
 	"net/http/httptest"
 	"strings"
@@ -98,7 +99,7 @@ func TestNewValidateCmd(t *testing.T) {
 		name   string
 		config *config.CLIConfig
 		args   []string
-		pipe   bool
+		stdin  io.Reader
 		expOut string
 		expErr string
 	}{
@@ -164,12 +165,12 @@ sub  "jvsctl"
 `,
 		},
 		{
-			name: "signed_from_pipe",
+			name: "from_stdin",
 			config: &config.CLIConfig{
 				JWKSEndpoint: svr.URL + path,
 			},
-			args: []string{"-t", "-"},
-			pipe: true,
+			args:  []string{"-t", "-"},
+			stdin: strings.NewReader(signedToken),
 			expOut: `-----BREAKGLASS-----
 false
 
@@ -195,13 +196,7 @@ sub  "jvsctl"
 			t.Parallel()
 
 			cmd := newValidateCmd(tc.config)
-			var stdout string
-			var gotErr error
-			if tc.pipe {
-				stdout, _, gotErr = testExecuteCommandStdin(t, cmd, strings.NewReader(signedToken), tc.args...)
-			} else {
-				stdout, _, gotErr = testExecuteCommand(t, cmd, tc.args...)
-			}
+			stdout, _, gotErr := testExecuteCommandStdin(t, cmd, tc.stdin, tc.args...)
 			if diff := testutil.DiffErrString(gotErr, tc.expErr); diff != "" {
 				t.Fatal(diff)
 			}
