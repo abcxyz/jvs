@@ -35,25 +35,8 @@ resource "google_project_service" "services" {
   ]
 }
 
-resource "null_resource" "build" {
-  triggers = {
-    "tag" = var.tag
-  }
-
-  provisioner "local-exec" {
-    environment = {
-      PROJECT_ID = var.project_id
-      TAG        = var.tag
-      REPO       = "${var.artifact_registry_location}-docker.pkg.dev/${var.project_id}/docker-images/jvs"
-      APP_NAME   = "public-key-service"
-    }
-
-    command = "${path.module}/../../../scripts/build.sh public-key"
-  }
-}
-
 resource "google_cloud_run_service" "server" {
-  name     = "pubkey-${var.tag}"
+  name     = var.service_name
   location = var.region
   project  = var.project_id
 
@@ -62,7 +45,7 @@ resource "google_cloud_run_service" "server" {
       service_account_name = var.service_account
 
       containers {
-        image = "${var.artifact_registry_location}-docker.pkg.dev/${var.project_id}/docker-images/jvs/public-key-service:${var.tag}"
+        image = var.service_image
 
         resources {
           limits = {
@@ -84,10 +67,6 @@ resource "google_cloud_run_service" "server" {
   }
 
   autogenerate_revision_name = true
-
-  depends_on = [
-    null_resource.build,
-  ]
 
   lifecycle {
     ignore_changes = [

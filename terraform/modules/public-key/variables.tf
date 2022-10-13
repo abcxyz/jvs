@@ -41,9 +41,15 @@ variable "service_account" {
   description = "The service account email address to be used by the JVS"
 }
 
-variable "tag" {
+variable "service_image" {
   type        = string
-  description = "Tag that is intended to be unique across ci runs"
+  description = "The public key service image."
+}
+
+variable "service_name" {
+  type        = string
+  default     = "jvs"
+  description = "The name for the service."
 }
 
 variable "cache-timeout" {

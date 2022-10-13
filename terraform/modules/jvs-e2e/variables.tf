@@ -49,12 +49,17 @@ variable "key_propagation_delay" {
   description = "length of time that it takes for a change in the key in KMS to be reflected in the client"
 }
 
-variable "tag" {
+variable "jvs_image" {
   type        = string
-  default     = ""
-  description = "Tag is used for service naming; by default the tag is random on each apply; specify a tag to override"
+  description = "The JVS service image."
 }
 
-locals {
-  tag = var.tag == "" ? uuid() : var.tag
+variable "cert_rotation_image" {
+  type        = string
+  description = "The cert rotation service image."
+}
+
+variable "public_key_image" {
+  type        = string
+  description = "The public key service image."
 }

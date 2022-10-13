@@ -15,34 +15,14 @@
 
 set -eEuo pipefail
 
-app=$1
-
-if [ -z "${app}" ]; then
-  echo "Missing app! must be specified like so: ./build.sh app_name" >&2
+if [ -z "${CONTAINER_REGISTRY:-}" ]; then
+  echo "Missing CONTAINER_REGISTRY!" >&2
   exit 1
 fi
 
-if [ -z "${REPO:-}" ]; then
-  echo "✋ Missing REPO!" >&2
-  exit 1
-fi
+# Push all local JVS images to the given container registry.
+docker image push --all-tags ${CONTAINER_REGISTRY}/jvs-cert-rotation
+docker image push --all-tags ${CONTAINER_REGISTRY}/jvs-justification
+docker image push --all-tags ${CONTAINER_REGISTRY}/jvs-public-key
 
-if [ -z "${APP_NAME:-}" ]; then
-  echo "✋ Missing APP_NAME!" >&2
-  exit 1
-fi
-
-if [ -z "${TAG:-}" ]; then
-  echo "✋ Missing TAG!" >&2
-  exit 1
-fi
-
-ROOT="$(cd "$(dirname "$0")/.." &>/dev/null; pwd -P)"
-IMAGE_NAME=${REPO}/${APP_NAME}:${TAG}
-
-docker build \
-  --file="${ROOT}/Dockerfile" \
-  --tag=${IMAGE_NAME} \
-  --build-arg APP=$app \
-  ${ROOT}
-docker push ${IMAGE_NAME}
+# Add other images built by the goreleaser here.
