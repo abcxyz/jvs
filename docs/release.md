@@ -6,7 +6,8 @@ Reserve space for cshou.
 
 ## Build
 
-We leverage [goreleaser] to build JVS images. In repo root:
+We leverage [goreleaser](https://goreleaser.com/) to build JVS images. In repo
+root:
 
 ```sh
 # The container registry for the images.
