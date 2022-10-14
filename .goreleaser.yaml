@@ -1,4 +1,3 @@
-#!/usr/bin/env bash
 # Copyright 2022 Google LLC
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
@@ -14,23 +13,21 @@
 # limitations under the License.
 
 env:
-  # Set env var TAG_OVERRIDE to override the container images' tag.
-  # By default we use Version as the tag.
-  - TAG={{ if index .Env "TAG_OVERRIDE"  }}{{ .Env.TAG_OVERRIDE }}{{ else }}'{{ .Version }}'{{ end }}
+  # Global env vars for Go build.
+  - 'CGO_ENABLED=0'
+  - 'GO111MODULE=on'
+  - 'GOPROXY=https://proxy.golang.org,direct'
 
 before:
   hooks:
     - go mod tidy
 
+# Duplicate the builds to .goreleaser.docker.yaml
 builds:
   -
     id: cert-rotation
     main: ./cmd/cert-rotation
     binary: cert-rotation
-    env:
-      - 'CGO_ENABLED=0'
-      - 'GO111MODULE=on'
-      - 'GOPROXY=https://proxy.golang.org,direct'
     mod_timestamp: '{{ .CommitTimestamp }}'
     flags:
       - '-a'
@@ -54,10 +51,6 @@ builds:
     id: justification
     main: ./cmd/justification
     binary: justification
-    env:
-      - 'CGO_ENABLED=0'
-      - 'GO111MODULE=on'
-      - 'GOPROXY=https://proxy.golang.org,direct'
     mod_timestamp: '{{ .CommitTimestamp }}'
     flags:
       - '-a'
@@ -81,10 +74,6 @@ builds:
     id: public-key
     main: ./cmd/public-key
     binary: public-key
-    env:
-      - 'CGO_ENABLED=0'
-      - 'GO111MODULE=on'
-      - 'GOPROXY=https://proxy.golang.org,direct'
     mod_timestamp: '{{ .CommitTimestamp }}'
     flags:
       - '-a'
@@ -105,180 +94,16 @@ builds:
       - 'arm64'
 
 
-dockers:
-  -
-    ids:
-    - cert-rotation
-    use: 'buildx'
-    goos: 'linux'
-    goarch: 'amd64'
-    image_templates:
-      - '{{ .Env.CONTAINER_REGISTRY }}/jvs-cert-rotation:{{ .Version }}-amd64'
-      - '{{ .Env.CONTAINER_REGISTRY }}/jvs-cert-rotation:latest-amd64'
-    build_flag_templates:
-      - '--build-arg=APP=cert-rotation'
-      - '--platform=linux/amd64'
-      - '--pull'
-      - '--label=org.opencontainers.image.created={{ .CommitTimestamp }}'
-      - '--label=org.opencontainers.image.description=Why do you care?'
-      - '--label=org.opencontainers.image.licenses=Apache-2.0'
-      - '--label=org.opencontainers.image.name=jvs-cert-rotation'
-      - '--label=org.opencontainers.image.revision={{ .FullCommit }}'
-      - '--label=org.opencontainers.image.source={{ .GitURL }}'
-      - '--label=org.opencontainers.image.title=jvs-cert-rotation'
-      - '--label=org.opencontainers.image.version={{ .Version }}'
-  -
-    ids:
-    - cert-rotation
-    use: 'buildx'
-    goos: 'linux'
-    goarch: 'arm64'
-    image_templates:
-      - '{{ .Env.CONTAINER_REGISTRY }}/jvs-cert-rotation:{{ .Version }}-arm64'
-      - '{{ .Env.CONTAINER_REGISTRY }}/jvs-cert-rotation:latest-arm64'
-    build_flag_templates:
-      - '--build-arg=APP=cert-rotation'
-      - '--platform=linux/arm64'
-      - '--pull'
-      - '--label=org.opencontainers.image.created={{ .CommitTimestamp }}'
-      - '--label=org.opencontainers.image.description=Why do you care?'
-      - '--label=org.opencontainers.image.licenses=Apache-2.0'
-      - '--label=org.opencontainers.image.name=jvs-cert-rotation'
-      - '--label=org.opencontainers.image.revision={{ .FullCommit }}'
-      - '--label=org.opencontainers.image.source={{ .GitURL }}'
-      - '--label=org.opencontainers.image.title=jvs-cert-rotation'
-      - '--label=org.opencontainers.image.version={{ .Version }}'
-
-  -
-    ids:
-    - justification
-    use: 'buildx'
-    goos: 'linux'
-    goarch: 'amd64'
-    image_templates:
-      - '{{ .Env.CONTAINER_REGISTRY }}/jvs-justification:{{ .Version }}-amd64'
-      - '{{ .Env.CONTAINER_REGISTRY }}/jvs-justification:latest-amd64'
-    build_flag_templates:
-      - '--build-arg=APP=justification'
-      - '--platform=linux/amd64'
-      - '--pull'
-      - '--label=org.opencontainers.image.created={{ .CommitTimestamp }}'
-      - '--label=org.opencontainers.image.description=Why do you care?'
-      - '--label=org.opencontainers.image.licenses=Apache-2.0'
-      - '--label=org.opencontainers.image.name=jvs-justification'
-      - '--label=org.opencontainers.image.revision={{ .FullCommit }}'
-      - '--label=org.opencontainers.image.source={{ .GitURL }}'
-      - '--label=org.opencontainers.image.title=jvs-justification'
-      - '--label=org.opencontainers.image.version={{ .Version }}'
-  -
-    ids:
-    - justification
-    use: 'buildx'
-    goos: 'linux'
-    goarch: 'arm64'
-    image_templates:
-      - '{{ .Env.CONTAINER_REGISTRY }}/jvs-justification:{{ .Version }}-arm64'
-      - '{{ .Env.CONTAINER_REGISTRY }}/jvs-justification:latest-arm64'
-    build_flag_templates:
-      - '--build-arg=APP=justification'
-      - '--platform=linux/arm64'
-      - '--pull'
-      - '--label=org.opencontainers.image.created={{ .CommitTimestamp }}'
-      - '--label=org.opencontainers.image.description=Why do you care?'
-      - '--label=org.opencontainers.image.licenses=Apache-2.0'
-      - '--label=org.opencontainers.image.name=jvs-justification'
-      - '--label=org.opencontainers.image.revision={{ .FullCommit }}'
-      - '--label=org.opencontainers.image.source={{ .GitURL }}'
-      - '--label=org.opencontainers.image.title=jvs-justification'
-      - '--label=org.opencontainers.image.version={{ .Version }}'
-
-  -
-    ids:
-    - public-key
-    use: 'buildx'
-    goos: 'linux'
-    goarch: 'amd64'
-    image_templates:
-      - '{{ .Env.CONTAINER_REGISTRY }}/jvs-public-key:{{ .Version }}-amd64'
-      - '{{ .Env.CONTAINER_REGISTRY }}/jvs-public-key:latest-amd64'
-    build_flag_templates:
-      - '--build-arg=APP=public-key'
-      - '--platform=linux/amd64'
-      - '--pull'
-      - '--label=org.opencontainers.image.created={{ .CommitTimestamp }}'
-      - '--label=org.opencontainers.image.description=Why do you care?'
-      - '--label=org.opencontainers.image.licenses=Apache-2.0'
-      - '--label=org.opencontainers.image.name=jvs-public-key'
-      - '--label=org.opencontainers.image.revision={{ .FullCommit }}'
-      - '--label=org.opencontainers.image.source={{ .GitURL }}'
-      - '--label=org.opencontainers.image.title=jvs-public-key'
-      - '--label=org.opencontainers.image.version={{ .Version }}'
-  -
-    ids:
-    - public-key
-    use: 'buildx'
-    goos: 'linux'
-    goarch: 'arm64'
-    image_templates:
-      - '{{ .Env.CONTAINER_REGISTRY }}/jvs-public-key:{{ .Version }}-arm64'
-      - '{{ .Env.CONTAINER_REGISTRY }}/jvs-public-key:latest-arm64'
-    build_flag_templates:
-      - '--build-arg=APP=public-key'
-      - '--platform=linux/arm64'
-      - '--pull'
-      - '--label=org.opencontainers.image.created={{ .CommitTimestamp }}'
-      - '--label=org.opencontainers.image.description=Why do you care?'
-      - '--label=org.opencontainers.image.licenses=Apache-2.0'
-      - '--label=org.opencontainers.image.name=jvs-public-key'
-      - '--label=org.opencontainers.image.revision={{ .FullCommit }}'
-      - '--label=org.opencontainers.image.source={{ .GitURL }}'
-      - '--label=org.opencontainers.image.title=jvs-public-key'
-      - '--label=org.opencontainers.image.version={{ .Version }}'
-
-
-docker_manifests:
-  -
-    name_template: '{{ .Env.CONTAINER_REGISTRY }}/jvs-cert-rotation:{{ .Version }}'
-    image_templates:
-      - '{{ .Env.CONTAINER_REGISTRY }}/jvs-cert-rotation:{{ .Version }}-amd64'
-      - '{{ .Env.CONTAINER_REGISTRY }}/jvs-cert-rotation:{{ .Version }}-arm64'
-  -
-    name_template: '{{ .Env.CONTAINER_REGISTRY }}/jvs-cert-rotation:latest'
-    image_templates:
-      - '{{ .Env.CONTAINER_REGISTRY }}/jvs-cert-rotation:latest-amd64'
-      - '{{ .Env.CONTAINER_REGISTRY }}/jvs-cert-rotation:latest-arm64'
-  -
-    name_template: '{{ .Env.CONTAINER_REGISTRY }}/jvs-justification:{{ .Version }}'
-    image_templates:
-      - '{{ .Env.CONTAINER_REGISTRY }}/jvs-justification:{{ .Version }}-amd64'
-      - '{{ .Env.CONTAINER_REGISTRY }}/jvs-justification:{{ .Version }}-arm64'
-  -
-    name_template: '{{ .Env.CONTAINER_REGISTRY }}/jvs-justification:latest'
-    image_templates:
-      - '{{ .Env.CONTAINER_REGISTRY }}/jvs-justification:latest-amd64'
-      - '{{ .Env.CONTAINER_REGISTRY }}/jvs-justification:latest-arm64'
-  -
-    name_template: '{{ .Env.CONTAINER_REGISTRY }}/jvs-public-key:{{ .Version }}'
-    image_templates:
-      - '{{ .Env.CONTAINER_REGISTRY }}/jvs-public-key:{{ .Version }}-amd64'
-      - '{{ .Env.CONTAINER_REGISTRY }}/jvs-public-key:{{ .Version }}-arm64'
-  -
-    name_template: '{{ .Env.CONTAINER_REGISTRY }}/jvs-public-key:latest'
-    image_templates:
-      - '{{ .Env.CONTAINER_REGISTRY }}/jvs-public-key:latest-amd64'
-      - '{{ .Env.CONTAINER_REGISTRY }}/jvs-public-key:latest-arm64'
-
-
 archives:
   - format: 'tar.gz'
-    name_template: 'abcxyz_jvs_{{ .Version }}_{{ .Os }}_{{ .Arch }}'
+    name_template: 'jvs_{{ .Version }}_{{ .Os }}_{{ .Arch }}'
     format_overrides:
       - goos: 'windows'
         format: 'zip'
 
 
 checksum:
-  name_template: 'abcxyz_jvs_{{ .Version }}_SHA512SUMS'
+  name_template: 'jvs_{{ .Version }}_SHA512SUMS'
   algorithm: 'sha512'
 
 
@@ -298,6 +123,7 @@ changelog:
 #       - '--detach-sign'
 #       - '${artifact}'
 
-
+# Release to github.
 release:
   draft: false
+  mode: replace
