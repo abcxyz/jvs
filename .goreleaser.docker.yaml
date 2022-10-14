@@ -225,20 +225,20 @@ dockers:
 
 docker_manifests:
   -
-    name_template: '{{ .Env.CONTAINER_REGISTRY }}/jvs-cert-rotation:{{ .Version }}'
+    name_template: '{{ .Env.REGISTRY }}/jvs-cert-rotation:{{ .Version }}'
     image_templates:
-      - '{{ .Env.CONTAINER_REGISTRY }}/jvs-cert-rotation:{{ .Version }}-amd64'
-      - '{{ .Env.CONTAINER_REGISTRY }}/jvs-cert-rotation:{{ .Version }}-arm64'
+      - '{{ .Env.REGISTRY }}/jvs-cert-rotation:{{ .Version }}-amd64'
+      - '{{ .Env.REGISTRY }}/jvs-cert-rotation:{{ .Version }}-arm64'
   -
-    name_template: '{{ .Env.CONTAINER_REGISTRY }}/jvs-justification:{{ .Version }}'
+    name_template: '{{ .Env.REGISTRY }}/jvs-justification:{{ .Version }}'
     image_templates:
-      - '{{ .Env.CONTAINER_REGISTRY }}/jvs-justification:{{ .Version }}-amd64'
-      - '{{ .Env.CONTAINER_REGISTRY }}/jvs-justification:{{ .Version }}-arm64'
+      - '{{ .Env.REGISTRY }}/jvs-justification:{{ .Version }}-amd64'
+      - '{{ .Env.REGISTRY }}/jvs-justification:{{ .Version }}-arm64'
   -
-    name_template: '{{ .Env.CONTAINER_REGISTRY }}/jvs-public-key:{{ .Version }}'
+    name_template: '{{ .Env.REGISTRY }}/jvs-public-key:{{ .Version }}'
     image_templates:
-      - '{{ .Env.CONTAINER_REGISTRY }}/jvs-public-key:{{ .Version }}-amd64'
-      - '{{ .Env.CONTAINER_REGISTRY }}/jvs-public-key:{{ .Version }}-arm64'
+      - '{{ .Env.REGISTRY }}/jvs-public-key:{{ .Version }}-amd64'
+      - '{{ .Env.REGISTRY }}/jvs-public-key:{{ .Version }}-arm64'
 
 
 # TODO(#129): cosign the images.
