@@ -97,4 +97,5 @@ buildNumber.properties
 # Go workspace file
 go.work
 
+# Ignore goreleaser output
 dist/

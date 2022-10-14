@@ -1,34 +1,39 @@
-Reserve space for cshou.
-
-# Build & Release
+# Release
 
 **JVS is not an official Google product.**
 
-## Build
+We leverage [goreleaser](https://goreleaser.com/) for both container image
+release and SCM (GitHub) release. Due to `goreleaser` limitation, we have to
+split the two releases into two config files:
 
-We leverage [goreleaser](https://goreleaser.com/) to build JVS images. In repo
-root:
+-   `.goreleaser.docker.yaml` for container image release
+-   `.goreleaser.yaml` (default) for SCM (GitHub) release
+
+## Release Workflow
+
+TODO: Once we add the release workflow, document the most common steps to create
+a new release. It should only include pushing a new tag to remote.
+
+## Manually Release Images
+
+Or if you want to build/push images for local development.
 
 ```sh
-# The container registry for the images.
-CONTAINER_REGISTRY=us-docker.pkg.dev/my-project/images
+# By default we use JVS CI container registry for the images.
+# To override, set the following env var.
+# CONTAINER_REGISTRY=us-docker.pkg.dev/my-project/images
+
+# goreleaser expects a "clean" repo to release so commit any local changes if
+# needed.
+git add . && git commit -m "local changes"
+
+# goreleaser expects a tag.
+# The tag must be a semantic version https://semver.org/
+# DON'T push the tag if you're not releasing.
+git tag -f -a v0.0.0-$(git rev-parse --short HEAD)
 
 # Use goreleaser to build the images.
-goreleaser release --snapshot --rm-dist
-```
-
-By default, the images will be tagged in the format of `{{ .Version
-}}-SNAPSHOT-{{.ShortCommit}}` per
-[goreleaser format](https://goreleaser.com/customization/snapshots/). To
-override that, set the env var `TAG_OVERRIDE`.
-
-```sh
-TAG_OVERRIDE=my-tag goreleaser release --snapshot --rm-dist
-```
-
-goreleaser won't push the images in snapshot mode. Run the follow script to push
-all the images:
-
-```sh
-./scripts/docker_push.sh
+# It should in the end push all the images to the given container registry.
+# All the images will be tagged with the git tag given earlier.
+goreleaser release -f .goreleaser.docker.yaml --rm-dist
 ```
