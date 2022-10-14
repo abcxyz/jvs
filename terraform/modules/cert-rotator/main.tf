@@ -104,7 +104,7 @@ data "google_compute_default_service_account" "default" {
 }
 
 resource "google_cloud_scheduler_job" "job" {
-  name        = "cert-rotation-job-${var.tag}"
+  name        = "cert-rotation-job"
   project     = var.project_id
   region      = var.region
   description = "Regularly executes the certificate rotator"
