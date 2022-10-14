@@ -19,8 +19,7 @@ env:
   - 'GOPROXY=https://proxy.golang.org,direct'
   # Allow override the container registry.
   # Default to the JVS CI container registry.
-  # - REGISTRY={{ if index .Env "CONTAINER_REGISTRY"  }}{{ .Env.CONTAINER_REGISTRY }}{{ else }}us-docker.pkg.dev/jvs-ci-test/docker-images{{ end }}
-  - REGISTRY={{ if index .Env "CONTAINER_REGISTRY"  }}{{ .Env.CONTAINER_REGISTRY }}{{ else }}us-docker.pkg.dev/gochen/images{{ end }}
+  - REGISTRY={{ if index .Env "CONTAINER_REGISTRY"  }}{{ .Env.CONTAINER_REGISTRY }}{{ else }}us-docker.pkg.dev/jvs-ci-test/docker-images{{ end }}
 
 before:
   hooks:
