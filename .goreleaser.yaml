@@ -111,17 +111,7 @@ changelog:
   use: github
   sort: asc
 
-# TODO(#129): Enable checksum sign. Need to set up GPG.
-# signs:
-#   - artifacts: 'checksum'
-#     args:
-#       - '--batch'
-#       - '--local-user'
-#       - '{{ .Env.GPG_FINGERPRINT }}'
-#       - '--output'
-#       - '${signature}'
-#       - '--detach-sign'
-#       - '${artifact}'
+# TODO(#144): Follow up on sign.
 
 # Release to github.
 release:

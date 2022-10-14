@@ -240,9 +240,7 @@ docker_manifests:
       - '{{ .Env.REGISTRY }}/jvs-public-key:{{ .Version }}-arm64'
 
 
-# TODO(#129): cosign the images.
-# docker_signs:
-#   cmd: cosign
+# TODO(#144): Follow up on sign.
 
 
 # Disable SCM release we only want docker release here.
