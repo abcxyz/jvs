@@ -24,3 +24,18 @@ variable "artifact_registry_location" {
   default     = "us"
   description = "The artifact registry location."
 }
+
+variable "jvs_image" {
+  type        = string
+  description = "The JVS service image."
+}
+
+variable "cert_rotation_image" {
+  type        = string
+  description = "The cert rotation service image."
+}
+
+variable "public_key_image" {
+  type        = string
+  description = "The public key service image."
+}

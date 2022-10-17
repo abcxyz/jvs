@@ -36,25 +36,8 @@ resource "google_project_service" "services" {
   ]
 }
 
-resource "null_resource" "build" {
-  triggers = {
-    "tag" = var.tag
-  }
-
-  provisioner "local-exec" {
-    environment = {
-      PROJECT_ID = var.project_id
-      TAG        = var.tag
-      REPO       = "${var.artifact_registry_location}-docker.pkg.dev/${var.project_id}/docker-images/jvs"
-      APP_NAME   = "rotator-service"
-    }
-
-    command = "${path.module}/../../../scripts/build.sh cert-rotation"
-  }
-}
-
 resource "google_cloud_run_service" "cert-rotator" {
-  name     = "cert-rotator-${var.tag}"
+  name     = var.service_name
   location = var.region
   project  = var.project_id
 
@@ -63,7 +46,7 @@ resource "google_cloud_run_service" "cert-rotator" {
       service_account_name = var.service_account
 
       containers {
-        image = "${var.artifact_registry_location}-docker.pkg.dev/${var.project_id}/docker-images/jvs/rotator-service:${var.tag}"
+        image = var.service_image
 
         resources {
           limits = {
@@ -98,10 +81,6 @@ resource "google_cloud_run_service" "cert-rotator" {
 
   autogenerate_revision_name = true
 
-  depends_on = [
-    null_resource.build,
-  ]
-
   lifecycle {
     ignore_changes = [
       metadata[0].annotations["client.knative.dev/user-image"],
@@ -125,7 +104,7 @@ data "google_compute_default_service_account" "default" {
 }
 
 resource "google_cloud_scheduler_job" "job" {
-  name        = "cert-rotation-job-${var.tag}"
+  name        = "cert-rotation-job"
   project     = var.project_id
   region      = var.region
   description = "Regularly executes the certificate rotator"

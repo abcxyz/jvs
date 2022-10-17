@@ -61,9 +61,15 @@ variable "service_account" {
   description = "The service account email address to be used by the cert rotator"
 }
 
-variable "tag" {
+variable "service_image" {
   type        = string
-  description = "Tag that is intended to be unique across ci runs"
+  description = "The cert rotation service image."
+}
+
+variable "service_name" {
+  type        = string
+  default     = "cert-rotation"
+  description = "The name for the service."
 }
 
 variable "cadence" {
