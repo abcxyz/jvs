@@ -78,7 +78,9 @@ resource "google_artifact_registry_repository" "image_registry" {
 }
 
 module "jvs_e2e" {
-  source     = "../modules/jvs-e2e"
-  project_id = var.project_id
-  tag        = "e2e"
+  source              = "../modules/jvs-e2e"
+  project_id          = var.project_id
+  jvs_image           = var.jvs_image
+  cert_rotation_image = var.cert_rotation_image
+  public_key_image    = var.public_key_image
 }
