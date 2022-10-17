@@ -119,7 +119,8 @@ module "jvs-service" {
   project_id      = var.project_id
   key_id          = google_kms_crypto_key.asymmetric-sign-key.id
   service_account = google_service_account.server-acc.email
-  tag             = local.tag
+  service_image   = var.jvs_image
+  service_name    = local.jvs_service_name
   depends_on      = [google_kms_key_ring_iam_member.server_acc_roles]
 }
 
@@ -128,20 +129,8 @@ module "cert-rotator" {
   project_id            = var.project_id
   key_id                = google_kms_crypto_key.asymmetric-sign-key.id
   service_account       = google_service_account.rotator-acc.email
-  tag                   = local.tag
-  key_disabled_period   = var.key_disabled_period
-  key_grace_period      = var.key_grace_period
-  key_propagation_delay = var.key_propagation_delay
-  key_ttl               = var.key_ttl
-  depends_on            = [google_kms_key_ring_iam_member.rotator_acc_roles]
-}
-
-module "cert-actions" {
-  source                = "../cert-action-service"
-  project_id            = var.project_id
-  key_id                = google_kms_crypto_key.asymmetric-sign-key.id
-  service_account       = google_service_account.rotator-acc.email
-  tag                   = local.tag
+  service_image         = var.cert_rotation_image
+  service_name          = local.cert_rotation_service_name
   key_disabled_period   = var.key_disabled_period
   key_grace_period      = var.key_grace_period
   key_propagation_delay = var.key_propagation_delay
@@ -154,14 +143,21 @@ module "public-key" {
   project_id      = var.project_id
   key_id          = google_kms_crypto_key.asymmetric-sign-key.id
   service_account = google_service_account.public-key-acc.email
-  tag             = local.tag
+  service_image   = var.public_key_image
+  service_name    = local.public_key_service_name
   depends_on      = [google_kms_key_ring_iam_member.public_key_acc_roles]
 }
 
 module "monitoring" {
   source                     = "../monitoring"
   project_id                 = var.project_id
-  jvs_service_name           = "jvs-${local.tag}"
-  cert_rotation_service_name = "cert-rotator-${local.tag}"
-  public_key_service_name    = "pubkey-${local.tag}"
+  jvs_service_name           = local.jvs_service_name
+  cert_rotation_service_name = local.cert_rotation_service_name
+  public_key_service_name    = local.public_key_service_name
+}
+
+locals {
+  jvs_service_name           = "jvs"
+  cert_rotation_service_name = "cert-rotation"
+  public_key_service_name    = "public-key"
 }

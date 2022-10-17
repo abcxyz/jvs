@@ -30,3 +30,18 @@ variable "e2e_test_iam_roles" {
   default     = []
   description = "List of IAM roles needed to run e2e tests included in CI/CD."
 }
+
+variable "jvs_image" {
+  type        = string
+  description = "The JVS service image."
+}
+
+variable "cert_rotation_image" {
+  type        = string
+  description = "The cert rotation service image."
+}
+
+variable "public_key_image" {
+  type        = string
+  description = "The public key service image."
+}
