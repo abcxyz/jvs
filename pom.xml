@@ -14,7 +14,7 @@
   </modules>
 
   <properties>
-    <revision>1.0.0-SNAPSHOT</revision>
+    <revision>0.0.1-SNAPSHOT</revision>
   </properties>
 
   <!-- For releasing package to Artifact Registry -->
