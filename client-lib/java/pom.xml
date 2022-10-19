@@ -5,7 +5,7 @@
   <groupId>com.abcxyz.jvs</groupId>
   <artifactId>jvs-client</artifactId>
   <packaging>jar</packaging>
-  <version>0.0.1-SNAPSHOT</version>
+  <version>${revision}</version>
 
   <dependencyManagement>
     <dependencies>
@@ -116,5 +116,37 @@
         <version>3.0.0-M7</version>
       </plugin>
     </plugins>
+    <extensions>
+      <extension>
+        <groupId>com.google.cloud.artifactregistry</groupId>
+        <artifactId>artifactregistry-maven-wagon</artifactId>
+        <version>2.1.0</version>
+      </extension>
+    </extensions>
   </build>
+
+  <!-- For releasing package to Artifact Registry -->
+  <distributionManagement>
+    <snapshotRepository>
+      <id>artifact-registry</id>
+      <url>artifactregistry://us-maven.pkg.dev/abcxyz-artifacts/maven-repo</url>
+    </snapshotRepository>
+    <repository>
+      <id>artifact-registry</id>
+      <url>artifactregistry://us-maven.pkg.dev/abcxyz-artifacts/maven-repo</url>
+    </repository>
+  </distributionManagement>
+
+  <repositories>
+    <repository>
+      <id>artifact-registry</id>
+      <url>artifactregistry://us-maven.pkg.dev/abcxyz-artifacts/maven-repo</url>
+      <releases>
+        <enabled>true</enabled>
+      </releases>
+      <snapshots>
+        <enabled>true</enabled>
+      </snapshots>
+    </repository>
+  </repositories>
 </project>
