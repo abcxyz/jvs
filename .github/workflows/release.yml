@@ -9,6 +9,7 @@ env:
   WIF_PROVIDER: 'projects/1096923323432/locations/global/workloadIdentityPools/github-pool/providers/github-provider'
   WIF_SERVICE_ACCOUNT: 'gh-access-sa@jvs-ci-test.iam.gserviceaccount.com'
 
+# Don't cancel in progress since we don't want to have half-baked release.
 concurrency: '${{ github.workflow }}-${{ github.head_ref || github.ref }}'
 
 jobs:
