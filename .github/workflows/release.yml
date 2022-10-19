@@ -82,7 +82,6 @@ jobs:
         mvn clean deploy -Drevision=${${{ github.ref_name }}#v}
 
 
-  # TODO: Add maven package release.
   github-release:
     needs: ['image-release']
     runs-on: 'ubuntu-latest'
