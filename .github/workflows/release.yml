@@ -48,7 +48,7 @@ jobs:
           registry: 'us-docker.pkg.dev'
       - uses: 'goreleaser/goreleaser-action@b508e2e3ef3b19d4e4146d4f8fb3ba9db644a757' # ratchet:goreleaser/goreleaser-action@v3
         with:
-          version: 'v3.2.0' # Manually pinned
+          version: 'v1.12.3' # Manually pinned
           args: 'release -f .goreleaser.docker.yaml --rm-dist'
 
   maven-release:
@@ -89,7 +89,7 @@ jobs:
     steps:
       - uses: 'goreleaser/goreleaser-action@b508e2e3ef3b19d4e4146d4f8fb3ba9db644a757' # ratchet:goreleaser/goreleaser-action@v3
         with:
-          version: 'latest'
+          version: 'v1.12.3' # Manually pinned
           args: 'release --rm-dist'
         env:
           GITHUB_TOKEN: '${{ secrets.GITHUB_TOKEN }}'
