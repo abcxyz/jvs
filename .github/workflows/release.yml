@@ -72,8 +72,6 @@ jobs:
         service_account: '${{ env.WIF_SERVICE_ACCOUNT }}'
         # The Artifact Registry maven wagon looks for Google Application Default Credentials.
         # https://github.com/GoogleCloudPlatform/artifact-registry-maven-tools
-        create_credentials_file: true
-        export_environment_variables: true
     - name: 'Maven deploy'
       # Use git tag without prefix "v".
       # Even though Artifact Registry allows versions starts with "v",
