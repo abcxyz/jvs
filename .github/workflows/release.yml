@@ -10,7 +10,7 @@ env:
   WIF_SERVICE_ACCOUNT: 'gh-access-sa@jvs-ci-test.iam.gserviceaccount.com'
 
 # Don't cancel in progress since we don't want to have half-baked release.
-concurrency: '${{ github.workflow }}-${{ github.head_ref || github.ref }}'
+concurrency: '${{ github.workflow }}-${{ github.head_ref || github.ref }}-release'
 
 jobs:
   unit-test:
