@@ -11,7 +11,7 @@ on:
   workflow_call:
 
 concurrency:
-  group: '${{ github.workflow }}-${{ github.head_ref || github.ref }}'
+  group: '${{ github.workflow }}-${{ github.head_ref || github.ref }}-test-integration'
   cancel-in-progress: true
 
 jobs:
