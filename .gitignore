@@ -99,3 +99,6 @@ go.work
 
 # Ignore goreleaser output
 dist/
+
+# Ignore google auth action cred file.
+gha-creds-*.json
