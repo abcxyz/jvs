@@ -23,6 +23,7 @@ import (
 
 	kms "cloud.google.com/go/kms/apiv1"
 	jvspb "github.com/abcxyz/jvs/apis/v0"
+	"github.com/abcxyz/jvs/internal/version"
 	"github.com/abcxyz/jvs/pkg/config"
 	"github.com/abcxyz/jvs/pkg/justification"
 	"github.com/abcxyz/pkg/cfgloader"
@@ -51,6 +52,11 @@ func main() {
 
 func realMain(ctx context.Context) error {
 	logger := logging.FromContext(ctx)
+	logger.Debugw("server starting",
+		"name", version.Name,
+		"commit", version.Commit,
+		"version", version.Version)
+
 	s := grpc.NewServer(grpc.ChainUnaryInterceptor(
 		otelgrpc.UnaryServerInterceptor(),
 	))

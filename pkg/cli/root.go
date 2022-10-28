@@ -19,6 +19,7 @@ import (
 	"fmt"
 	"os"
 
+	"github.com/abcxyz/jvs/internal/version"
 	"github.com/abcxyz/jvs/pkg/config"
 	"github.com/spf13/cobra"
 	"github.com/spf13/viper"
@@ -27,6 +28,7 @@ import (
 // rootCmdOptions are used as options to the root command.
 type rootCmdOptions struct {
 	configPath string
+	version    bool
 }
 
 // newRootCmd creates a new instance of the root cobra command node.
@@ -45,6 +47,14 @@ func newRootCmd(cfg *config.CLIConfig) *cobra.Command {
 		PersistentPreRunE: func(cmd *cobra.Command, args []string) error {
 			return loadConfig(vpr, opts.configPath, cfg)
 		},
+
+		RunE: func(cmd *cobra.Command, args []string) error {
+			if opts.version {
+				fmt.Fprintln(cmd.ErrOrStderr(), version.HumanVersion)
+				return nil
+			}
+			return nil
+		},
 	}
 
 	// Flags
@@ -53,6 +63,7 @@ func newRootCmd(cfg *config.CLIConfig) *cobra.Command {
 	cmd.PersistentFlags().StringVar(&cfg.Server, "server", "127.0.0.1:8080", "IP or DNS address to the JVS server")
 	cmd.PersistentFlags().BoolVar(&cfg.Insecure, "insecure", false, "allow an insecure connection to the JVS server")
 	cmd.PersistentFlags().StringVar(&cfg.JWKSEndpoint, "jwks_endpoint", "", "JWKS publick key endpoint")
+	cmd.Flags().BoolVarP(&opts.version, "version", "v", false, "print version and exit")
 
 	// Subcommands
 	cmd.AddCommand(newTokenCmd(cfg))
