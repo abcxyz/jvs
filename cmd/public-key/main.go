@@ -25,6 +25,7 @@ import (
 	"time"
 
 	kms "cloud.google.com/go/kms/apiv1"
+	"github.com/abcxyz/jvs/internal/version"
 	"github.com/abcxyz/jvs/pkg/config"
 	"github.com/abcxyz/jvs/pkg/jvscrypto"
 	"github.com/abcxyz/pkg/cache"
@@ -52,6 +53,11 @@ func main() {
 //   - listening to incoming requests in a goroutine.
 func realMain(ctx context.Context) error {
 	logger := logging.FromContext(ctx)
+	logger.Debugw("server starting",
+		"name", version.Name,
+		"commit", version.Commit,
+		"version", version.Version)
+
 	kmsClient, err := kms.NewKeyManagementClient(ctx)
 	if err != nil {
 		return fmt.Errorf("failed to setup kms client: %w", err)
