@@ -10,6 +10,10 @@ on:
   workflow_dispatch:
   workflow_call:
 
+env:
+  WIF_PROVIDER: 'projects/1096923323432/locations/global/workloadIdentityPools/github-pool/providers/github-provider'
+  WIF_SERVICE_ACCOUNT: 'gh-access-sa@jvs-ci-test.iam.gserviceaccount.com'
+
 concurrency:
   group: '${{ github.workflow }}-${{ github.head_ref || github.ref }}-test-unit'
   cancel-in-progress: true
@@ -32,8 +36,23 @@ jobs:
 
   java_test:
     runs-on: 'ubuntu-latest'
+    permissions:
+      contents: 'read'
+      id-token: 'write'
     steps:
       - uses: 'actions/checkout@v3'
+
+      # Technically we don't need this step since we don't need anything from Artifact Registry.
+      # But the Artifact Registry wagon will keep retrying the authentication and blocking
+      # the unit test for a long time (likely a bug). As a result, we add this step to make
+      # the wagon happy.
+      - name: 'Authenticate to Google Cloud'
+        uses: 'google-github-actions/auth@c4799db9111fba4461e9f9da8732e5057b394f72' # ratchet:google-github-actions/auth@v0
+        with:
+          workload_identity_provider: '${{ env.WIF_PROVIDER }}'
+          service_account: '${{ env.WIF_SERVICE_ACCOUNT }}'
+          # The Artifact Registry maven wagon looks for Google Application Default Credentials.
+          # https://github.com/GoogleCloudPlatform/artifact-registry-maven-tools
 
       - name: Run test script
         run: |-
