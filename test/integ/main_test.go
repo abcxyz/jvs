@@ -937,7 +937,12 @@ func testCreateKeyVersion(ctx context.Context, tb testing.TB, kmsClient *kms.Key
 func testPublicKeysFromKMS(ctx context.Context, tb testing.TB, kmsClient *kms.KeyManagementClient, keyName string) (map[string]crypto.PublicKey, string) {
 	tb.Helper()
 
-	publicKeys, err := jvscrypto.PublicKeysFor(ctx, kmsClient, keyName)
+	keyVersions, err := jvscrypto.CryptoKeyVersionsFor(ctx, kmsClient, []string{keyName})
+	if err != nil {
+		tb.Fatal(err)
+	}
+
+	publicKeys, err := jvscrypto.PublicKeysFor(ctx, kmsClient, keyVersions)
 	if err != nil {
 		tb.Fatal(err)
 	}

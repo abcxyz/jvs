@@ -16,7 +16,6 @@ package jvscrypto
 
 import (
 	"context"
-	"crypto"
 	"encoding/json"
 	"fmt"
 	"net/http"
@@ -52,19 +51,17 @@ func (k *KeyServer) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 }
 
 func (k *KeyServer) generateJWKString(ctx context.Context) (string, error) {
-	// Compile a list of all public keys into a single structure.
-	allPublicKeys := make(map[string]crypto.PublicKey)
-	for _, parentKey := range k.PublicKeyConfig.KeyNames {
-		publicKeys, err := PublicKeysFor(ctx, k.KMSClient, parentKey)
-		if err != nil {
-			return "", fmt.Errorf("failed to get public keys for %s: %w", parentKey, err)
-		}
-		for k, v := range publicKeys {
-			allPublicKeys[k] = v
-		}
+	keyVersions, err := CryptoKeyVersionsFor(ctx, k.KMSClient, k.PublicKeyConfig.KeyNames)
+	if err != nil {
+		return "", fmt.Errorf("failed to list crypto keys: %w", err)
 	}
 
-	jwks, err := JWKSFromPublicKeys(allPublicKeys)
+	publicKeys, err := PublicKeysFor(ctx, k.KMSClient, keyVersions)
+	if err != nil {
+		return "", fmt.Errorf("failed to get public keys: %w", err)
+	}
+
+	jwks, err := JWKSFromPublicKeys(publicKeys)
 	if err != nil {
 		return "", fmt.Errorf("failed to create jwks: %w", err)
 	}
