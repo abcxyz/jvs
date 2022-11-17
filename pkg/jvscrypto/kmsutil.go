@@ -23,6 +23,7 @@ import (
 	"strings"
 
 	kms "cloud.google.com/go/kms/apiv1"
+	"github.com/abcxyz/pkg/worker"
 	"github.com/lestrrat-go/jwx/v2/jwk"
 	"google.golang.org/api/iterator"
 	kmspb "google.golang.org/genproto/googleapis/cloud/kms/v1"
@@ -93,38 +94,108 @@ func getLabelValue(versionName string) (string, error) {
 	return versionValue, nil
 }
 
-// PublicKeysFor returns a map of a Cloud KMS key version name to the public key
-// PEM for that key version. It only returns keys that are enabled.
-func PublicKeysFor(ctx context.Context, client *kms.KeyManagementClient, parentKey string) (map[string]crypto.PublicKey, error) {
-	it := client.ListCryptoKeyVersions(ctx, &kmspb.ListCryptoKeyVersionsRequest{
-		Parent: parentKey,
-		Filter: "state=ENABLED",
-	})
+// CryptoKeyVersionsFor returns the list of cryptoKeyVersions for all the given
+// parent keys.
+func CryptoKeyVersionsFor(ctx context.Context, client *kms.KeyManagementClient, parentKeys []string) ([]string, error) {
+	// Accumulate all the key versions for all provided keys.
+	versionsWorker := worker.New[[]string](0)
+	for _, parentKey := range parentKeys {
+		parentKey := parentKey
 
-	result := make(map[string]crypto.PublicKey)
-	for {
-		keyVersion, err := it.Next()
-		if errors.Is(err, iterator.Done) {
-			break
-		}
-		if err != nil {
-			return nil, fmt.Errorf("failed to get key version: %w", err)
-		}
+		if err := versionsWorker.Do(ctx, func() ([]string, error) {
+			it := client.ListCryptoKeyVersions(ctx, &kmspb.ListCryptoKeyVersionsRequest{
+				Parent: parentKey,
+				Filter: "state=ENABLED",
+			})
 
-		publicKeyResp, err := client.GetPublicKey(ctx, &kmspb.GetPublicKeyRequest{
-			Name: keyVersion.Name,
-		})
-		if err != nil {
-			return nil, fmt.Errorf("failed to get public key for key version %s: %w", keyVersion.Name, err)
+			var keyVersions []string
+			for {
+				keyVersion, err := it.Next()
+				if errors.Is(err, iterator.Done) {
+					break
+				}
+				if err != nil {
+					return nil, fmt.Errorf("failed to get key version for %s: %w", parentKey, err)
+				}
+				keyVersions = append(keyVersions, keyVersion.Name)
+			}
+			return keyVersions, nil
+		}); err != nil {
+			return nil, fmt.Errorf("failed to get versions for %s: %w", parentKey, err)
 		}
-
-		publicKey, _, err := jwk.DecodePEM([]byte(publicKeyResp.Pem))
-		if err != nil {
-			return nil, fmt.Errorf("failed to decode pem for key version %s: %w", keyVersion.Name, err)
-		}
-		result[keyVersion.Name] = publicKey
 	}
-	return result, nil
+
+	versionsResults, err := versionsWorker.Done(ctx)
+	if err != nil {
+		return nil, fmt.Errorf("failed to fetch versions: %w", err)
+	}
+
+	keyVersions := make(map[string]struct{}, len(versionsResults))
+	for _, result := range versionsResults {
+		if result.Error != nil {
+			return nil, err
+		}
+
+		for _, v := range result.Value {
+			keyVersions[v] = struct{}{}
+		}
+	}
+
+	final := make([]string, 0, len(keyVersions))
+	for v := range keyVersions {
+		final = append(final, v)
+	}
+	sort.Strings(final)
+	return final, nil
+}
+
+// PublicKeysFor returns a map of a Cloud KMS key version name to the public key
+// PEM for that key version for all the parent keys. It only returns keys that
+// are enabled.
+func PublicKeysFor(ctx context.Context, client *kms.KeyManagementClient, keyVersions []string) (map[string]crypto.PublicKey, error) {
+	type keyPair struct {
+		name      string
+		publicKey crypto.PublicKey
+	}
+
+	publicKeysWorker := worker.New[*keyPair](0)
+	for _, keyVersion := range keyVersions {
+		keyVersion := keyVersion
+
+		if err := publicKeysWorker.Do(ctx, func() (*keyPair, error) {
+			publicKeyResp, err := client.GetPublicKey(ctx, &kmspb.GetPublicKeyRequest{
+				Name: keyVersion,
+			})
+			if err != nil {
+				return nil, fmt.Errorf("failed to get public key for key version %s: %w", keyVersion, err)
+			}
+
+			publicKey, _, err := jwk.DecodePEM([]byte(publicKeyResp.Pem))
+			if err != nil {
+				return nil, fmt.Errorf("failed to decode pem for key version %s: %w", keyVersion, err)
+			}
+			return &keyPair{
+				name:      keyVersion,
+				publicKey: publicKey,
+			}, nil
+		}); err != nil {
+			return nil, fmt.Errorf("failed to get public key for %s: %w", keyVersion, err)
+		}
+	}
+
+	publicKeysResults, err := publicKeysWorker.Done(ctx)
+	if err != nil {
+		return nil, fmt.Errorf("failed to fetch versions: %w", err)
+	}
+
+	final := make(map[string]crypto.PublicKey, len(publicKeysResults))
+	for _, result := range publicKeysResults {
+		if result.Error != nil {
+			return nil, fmt.Errorf("failed to fetch public key: %w", err)
+		}
+		final[result.Value.name] = result.Value.publicKey
+	}
+	return final, nil
 }
 
 // JWKSet represents a set of JWK keys. The lestrrat-go/jwx/v2/jwk library has a
