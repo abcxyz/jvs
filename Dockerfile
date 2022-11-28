@@ -1,6 +1,7 @@
 # Use distroless for ca certs.
 FROM gcr.io/distroless/static AS distroless
 
+ARG APP
 
 # Use a scratch image to host our binary.
 FROM scratch
