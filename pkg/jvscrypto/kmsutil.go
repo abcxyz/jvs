@@ -133,7 +133,7 @@ func CryptoKeyVersionsFor(ctx context.Context, client *kms.KeyManagementClient, 
 	keyVersions := make(map[string]struct{}, len(versionsResults))
 	for _, result := range versionsResults {
 		if result.Error != nil {
-			return nil, err
+			return nil, result.Error
 		}
 
 		for _, v := range result.Value {
@@ -191,7 +191,7 @@ func PublicKeysFor(ctx context.Context, client *kms.KeyManagementClient, keyVers
 	final := make(map[string]crypto.PublicKey, len(publicKeysResults))
 	for _, result := range publicKeysResults {
 		if result.Error != nil {
-			return nil, fmt.Errorf("failed to fetch public key: %w", err)
+			return nil, fmt.Errorf("failed to fetch public key: %w", result.Error)
 		}
 		final[result.Value.name] = result.Value.publicKey
 	}
