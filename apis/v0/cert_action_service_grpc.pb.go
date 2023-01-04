@@ -98,5 +98,5 @@ var CertificateActionService_ServiceDesc = grpc.ServiceDesc{
 		},
 	},
 	Streams:  []grpc.StreamDesc{},
-	Metadata: "protos/v0/cert_action_service.proto",
+	Metadata: "cert_action_service.proto",
 }

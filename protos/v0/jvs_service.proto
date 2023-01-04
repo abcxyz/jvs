@@ -16,7 +16,7 @@ syntax = "proto3";
 
 package abcxyz.jvs;
 
-import "protos/v0/jvs_request.proto";
+import "jvs_request.proto";
 
 option go_package = "github.com/abcxyz/jvs/apis/v0";
 
