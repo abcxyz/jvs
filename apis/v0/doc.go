@@ -1,4 +1,4 @@
-// Copyright 2022 Google LLC
+// Copyright 2023 Google LLC
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -12,20 +12,7 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-syntax = "proto3";
+//go:generate protoc -I../../protos/v0 --go_out=. --go-grpc_out=. --go_opt=paths=source_relative --go-grpc_opt=paths=source_relative jvs_request.proto jvs_service.proto cert_action_request.proto cert_action_service.proto
 
-package abcxyz.jvs;
-
-import "cert_action_request.proto";
-
-option go_package = "github.com/abcxyz/jvs/apis/v0";
-
-// CertificateActionService performs actions on JVS certificates based on the
-// request.
-service CertificateActionService {
-  rpc CertificateAction(CertificateActionRequest)
-      returns (CertificateActionResponse);
-}
-
-// CertificateActionResponse is a blank response.
-message CertificateActionResponse {}
+// Package v0 contains versioned JVS contracts, e.g. service definition.
+package v0
