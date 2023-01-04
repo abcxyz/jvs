@@ -97,5 +97,5 @@ var JVSService_ServiceDesc = grpc.ServiceDesc{
 		},
 	},
 	Streams:  []grpc.StreamDesc{},
-	Metadata: "protos/v0/jvs_service.proto",
+	Metadata: "jvs_service.proto",
 }
