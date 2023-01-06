@@ -105,6 +105,10 @@ func TestDetermineActions(t *testing.T) {
 	if err != nil {
 		t.Error("Couldn't parse disable period")
 	}
+	propagationDelay, err := time.ParseDuration("12h") // half day
+	if err != nil {
+		t.Error("Couldn't parse propagation delay")
+	}
 
 	handler := &RotationHandler{
 		KMSClient: nil,
@@ -112,6 +116,7 @@ func TestDetermineActions(t *testing.T) {
 			KeyTTL:         keyTTL,
 			GracePeriod:    gracePeriod,
 			DisabledPeriod: disablePeriod,
+			PropagationDelay: propagationDelay,
 		},
 	}
 
@@ -128,7 +133,12 @@ func TestDetermineActions(t *testing.T) {
 		Name:       "oldEnabledKey2",
 	}
 	newEnabledKey := &kmspb.CryptoKeyVersion{
-		CreateTime: &timestamppb.Timestamp{Seconds: 99 * 60 * 60 * 24}, // 2 days old
+		CreateTime: &timestamppb.Timestamp{Seconds: 99 * 60 * 60 * 24}, // 1 day old
+		State:      kmspb.CryptoKeyVersion_ENABLED,
+		Name:       "newEnabledKey",
+	}
+	newEnabledKey2 := &kmspb.CryptoKeyVersion{
+		CreateTime: &timestamppb.Timestamp{Seconds: 100 * 60 * 60 * 24}, // 0 day old
 		State:      kmspb.CryptoKeyVersion_ENABLED,
 		Name:       "newEnabledKey",
 	}
@@ -163,6 +173,15 @@ func TestDetermineActions(t *testing.T) {
 			},
 		},
 		{
+			name: "single_key_new",
+			versions: []*kmspb.CryptoKeyVersion{
+				newEnabledKey2,
+			},
+			wantActions: []*actionTuple{
+				{ActionPromote, newEnabledKey2},
+			},
+		},
+		{
 			name: "single_key_old",
 			versions: []*kmspb.CryptoKeyVersion{
 				oldEnabledKey,
@@ -171,6 +190,15 @@ func TestDetermineActions(t *testing.T) {
 			wantActions: []*actionTuple{
 				{ActionCreateNew, nil},
 			},
+		},
+		{
+			name: "two_enabled_keys_no_action",
+			versions: []*kmspb.CryptoKeyVersion{
+				oldEnabledKey,
+				newEnabledKey2,
+			},
+			primary: oldEnabledKey.Name,
+			wantActions: []*actionTuple{},
 		},
 		{
 			name: "two_enabled_keys_old",
