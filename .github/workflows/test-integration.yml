@@ -54,7 +54,7 @@ jobs:
 
       - name: 'Run integration tests'
         env:
-          TEST_JVS_INTEGRATION: 'true'
+          TEST_INTEGRATION: 'true'
           TEST_JVS_KMS_KEY_RING: 'projects/${{ env.PROJECT_ID }}/locations/global/keyRings/ci-keyring'
         run: |-
           go test \
