@@ -58,15 +58,9 @@ import (
 
 func TestJVS(t *testing.T) {
 	t.Parallel()
-
-	if !testIsIntegration(t) {
-		// Not an integ test, don't run anything.
-		t.Skip("Not an integration test, skipping...")
-		return
-	}
+	testutil.SkipIfNotIntegration(t)
 
 	ctx := context.Background()
-
 	keyRing := os.Getenv("TEST_JVS_KMS_KEY_RING")
 	if keyRing == "" {
 		t.Fatal("Key ring must be provided using TEST_JVS_KMS_KEY_RING env variable.")
@@ -310,13 +304,9 @@ func TestJVS(t *testing.T) {
 //nolint:tparallel
 func TestRotator(t *testing.T) {
 	t.Parallel()
-	ctx := context.Background()
-	if !testIsIntegration(t) {
-		// Not an integ test, don't run anything.
-		t.Skip("Not an integration test, skipping...")
-		return
-	}
+	testutil.SkipIfNotIntegration(t)
 
+	ctx := context.Background()
 	kmsClient, keyName := testSetupRotator(ctx, t)
 
 	cfg := &config.CryptoConfig{
@@ -401,13 +391,9 @@ func TestRotator(t *testing.T) {
 //nolint:tparallel // Subtests need to run in sequence. To parallelize this, but we'd need separate keys from the above (more cruft).
 func TestRotator_EdgeCases(t *testing.T) {
 	t.Parallel()
-	ctx := context.Background()
-	if !testIsIntegration(t) {
-		// Not an integ test, don't run anything.
-		t.Skip("Not an integration test, skipping...")
-		return
-	}
+	testutil.SkipIfNotIntegration(t)
 
+	ctx := context.Background()
 	kmsClient, keyName := testSetupRotator(ctx, t)
 
 	cfg := &config.CryptoConfig{
@@ -463,13 +449,9 @@ func TestRotator_EdgeCases(t *testing.T) {
 
 func TestPublicKeys(t *testing.T) {
 	t.Parallel()
-	ctx := context.Background()
-	if !testIsIntegration(t) {
-		// Not an integ test, don't run anything.
-		t.Skip("Not an integration test, skipping...")
-		return
-	}
+	testutil.SkipIfNotIntegration(t)
 
+	ctx := context.Background()
 	kmsClient, err := kms.NewKeyManagementClient(ctx)
 	if err != nil {
 		t.Fatalf("failed to setup kms client: %s", err)
@@ -529,13 +511,9 @@ func TestPublicKeys(t *testing.T) {
 //nolint:tparallel
 func TestCertActions(t *testing.T) {
 	t.Parallel()
-	ctx := context.Background()
-	if !testIsIntegration(t) {
-		// Not an integ test, don't run anything.
-		t.Skip("Not an integration test, skipping...")
-		return
-	}
+	testutil.SkipIfNotIntegration(t)
 
+	ctx := context.Background()
 	kmsClient, keyName := testSetupRotator(ctx, t)
 
 	cfg := &config.CryptoConfig{
@@ -784,19 +762,6 @@ func testValidateKeyVersionState(ctx context.Context, tb testing.TB, kmsClient *
 	if primaryNumber != expectedPrimary {
 		tb.Errorf("primary was set to version %d, but expected %d", primaryNumber, expectedPrimary)
 	}
-}
-
-func testIsIntegration(tb testing.TB) bool {
-	tb.Helper()
-	integVal := os.Getenv("TEST_JVS_INTEGRATION")
-	if integVal == "" {
-		return false
-	}
-	isInteg, err := strconv.ParseBool(integVal)
-	if err != nil {
-		tb.Fatalf("Unable to parse TEST_JVS_INTEGRATION flag %s: %s", integVal, err)
-	}
-	return isInteg
 }
 
 // Create an asymmetric signing key for use with integration tests.
