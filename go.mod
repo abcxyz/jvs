@@ -4,7 +4,7 @@ go 1.18
 
 require (
 	cloud.google.com/go/kms v1.4.0
-	github.com/abcxyz/pkg v0.0.0-20221010190357-4e20e092316a
+	github.com/abcxyz/pkg v0.1.2-0.20230106203017-d05e75ed64fa
 	github.com/golang/protobuf v1.5.2
 	github.com/google/go-cmp v0.5.9
 	github.com/google/uuid v1.3.0
