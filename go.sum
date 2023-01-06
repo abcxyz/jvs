@@ -72,6 +72,10 @@ github.com/BurntSushi/xgb v0.0.0-20160522181843-27f122750802/go.mod h1:IVnqGOEym
 github.com/OneOfOne/xxhash v1.2.2/go.mod h1:HSdplMjZKSmBqAxg5vPj2TmRDmfkzw+cTzAElWljhcU=
 github.com/abcxyz/pkg v0.0.0-20221010190357-4e20e092316a h1:qibheUlonMxv3rMhBnarccQiUwiZivW8TUQiNn4+aG4=
 github.com/abcxyz/pkg v0.0.0-20221010190357-4e20e092316a/go.mod h1:vzO7x3uKaRbxbCCrQZvgxrglkVhMbf/1FlDgU/DJoxA=
+github.com/abcxyz/pkg v0.1.1 h1:WLYLqnX9KGJWrE4gev0CcwNFOrvyYoLzOTCykC47jeU=
+github.com/abcxyz/pkg v0.1.1/go.mod h1:vzO7x3uKaRbxbCCrQZvgxrglkVhMbf/1FlDgU/DJoxA=
+github.com/abcxyz/pkg v0.1.2-0.20230106203017-d05e75ed64fa h1:RfAkfbvZ+LOIwTgfyDV4vi3wiVCNDqvtI2FroCQ6QDI=
+github.com/abcxyz/pkg v0.1.2-0.20230106203017-d05e75ed64fa/go.mod h1:vzO7x3uKaRbxbCCrQZvgxrglkVhMbf/1FlDgU/DJoxA=
 github.com/antihax/optional v1.0.0/go.mod h1:uupD/76wgC+ih3iEmQUL+0Ugr19nfwCT1kdvxnR2qWY=
 github.com/benbjohnson/clock v1.3.0 h1:ip6w0uFQkncKQ979AypyG0ER7mqUSBdKLOgAle/AT8A=
 github.com/benbjohnson/clock v1.3.0/go.mod h1:J11/hYXuz8f4ySSvYwY0FKfm+ezbsZBKZxNJlLklBHA=
