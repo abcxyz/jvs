@@ -228,7 +228,7 @@ func (h *RotationHandler) shouldDisable(ctx context.Context, ver *kmspb.CryptoKe
 
 func (h *RotationHandler) shouldRotate(ctx context.Context, primary *kmspb.CryptoKeyVersion, newest *kmspb.CryptoKeyVersion, curTime time.Time) bool {
 	logger := logging.FromContext(ctx)
-	if (newest != nil) {
+	if newest != nil {
 		logger.Debug("new version already created, no action necessary.", zap.Any("version", newest))
 		return false
 	}

@@ -113,9 +113,9 @@ func TestDetermineActions(t *testing.T) {
 	handler := &RotationHandler{
 		KMSClient: nil,
 		CryptoConfig: &config.CryptoConfig{
-			KeyTTL:         keyTTL,
-			GracePeriod:    gracePeriod,
-			DisabledPeriod: disablePeriod,
+			KeyTTL:           keyTTL,
+			GracePeriod:      gracePeriod,
+			DisabledPeriod:   disablePeriod,
 			PropagationDelay: propagationDelay,
 		},
 	}
@@ -197,7 +197,7 @@ func TestDetermineActions(t *testing.T) {
 				oldEnabledKey,
 				newEnabledKey2,
 			},
-			primary: oldEnabledKey.Name,
+			primary:     oldEnabledKey.Name,
 			wantActions: []*actionTuple{},
 		},
 		{
