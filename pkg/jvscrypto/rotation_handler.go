@@ -226,7 +226,9 @@ func (h *RotationHandler) shouldDisable(ctx context.Context, ver *kmspb.CryptoKe
 	return shouldDisable
 }
 
-func (h *RotationHandler) shouldRotate(ctx context.Context, primary *kmspb.CryptoKeyVersion, newest *kmspb.CryptoKeyVersion, curTime time.Time) bool {
+// Determines whether a new key version should be created. It returns true only when the newest version does not exist and the
+// primary version reaches its rotation age.
+func (h *RotationHandler) shouldRotate(ctx context.Context, primary, newest *kmspb.CryptoKeyVersion, curTime time.Time) bool {
 	logger := logging.FromContext(ctx)
 	if newest != nil {
 		logger.Debug("new version already created, no action necessary.", zap.Any("version", newest))
@@ -242,7 +244,9 @@ func (h *RotationHandler) shouldRotate(ctx context.Context, primary *kmspb.Crypt
 	return shouldRotate
 }
 
-func (h *RotationHandler) shouldPromote(ctx context.Context, primary *kmspb.CryptoKeyVersion, newest *kmspb.CryptoKeyVersion, curTime time.Time) bool {
+// Determines whether the newest key version should be promoted to primary. It returns true when the primary verison does not exist
+// or when the newest version crosses its propagation delay.
+func (h *RotationHandler) shouldPromote(ctx context.Context, primary, newest *kmspb.CryptoKeyVersion, curTime time.Time) bool {
 	logger := logging.FromContext(ctx)
 	if newest == nil {
 		return false
