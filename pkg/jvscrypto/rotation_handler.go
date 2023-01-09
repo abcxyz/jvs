@@ -145,7 +145,7 @@ func (h *RotationHandler) actionsForNewVersions(ctx context.Context, vers []*kms
 	newest := newestEnabledVer(vers)
 
 	// If newest is eligible for promotion, promote and don't do anything with the current primary.
-	if h.shouldPromote(ctx, newest, curTime) {
+	if h.shouldPromote(ctx, primary, newest, curTime) {
 		return append(actions, &actionTuple{ActionPromote, newest})
 	}
 
@@ -157,7 +157,7 @@ func (h *RotationHandler) actionsForNewVersions(ctx context.Context, vers []*kms
 	}
 
 	// We don't have a new key we're promoting, see if we should create a new key.
-	if h.shouldRotate(ctx, primary, curTime) {
+	if h.shouldRotate(ctx, primary, newest, curTime) {
 		actions = append(actions, &actionTuple{ActionCreateNew, nil})
 	}
 	return actions
@@ -221,34 +221,46 @@ func (h *RotationHandler) shouldDisable(ctx context.Context, ver *kmspb.CryptoKe
 	if shouldDisable {
 		logger.Info("version created before cutoff date, should disable.", zap.Any("version", ver), zap.Any("cutoff", cutoff))
 	} else {
-		logger.Debug("version created before cutoff date, no action necessary.", zap.Any("version", ver), zap.Any("cutoff", cutoff))
+		logger.Debug("version created after cutoff date, no action necessary.", zap.Any("version", ver), zap.Any("cutoff", cutoff))
 	}
 	return shouldDisable
 }
 
-func (h *RotationHandler) shouldRotate(ctx context.Context, ver *kmspb.CryptoKeyVersion, curTime time.Time) bool {
+// Determines whether a new key version should be created. It returns true only when the newest version does not exist and the
+// primary version reaches its rotation age.
+func (h *RotationHandler) shouldRotate(ctx context.Context, primary, newest *kmspb.CryptoKeyVersion, curTime time.Time) bool {
 	logger := logging.FromContext(ctx)
+	if newest != nil {
+		logger.Debug("new version already created, no action necessary.", zap.Any("version", newest))
+		return false
+	}
 	cutoff := curTime.Add(-h.CryptoConfig.RotationAge())
-	shouldRotate := ver.CreateTime.AsTime().Before(cutoff)
+	shouldRotate := primary.CreateTime.AsTime().Before(cutoff)
 	if shouldRotate {
-		logger.Info("version created before cutoff date, should rotate.", zap.Any("version", ver), zap.Any("cutoff", cutoff))
+		logger.Info("version created before cutoff date, should rotate.", zap.Any("version", primary), zap.Any("cutoff", cutoff))
 	} else {
-		logger.Debug("version created before cutoff date, no action necessary.", zap.Any("version", ver), zap.Any("cutoff", cutoff))
+		logger.Debug("version created after cutoff date, no action necessary.", zap.Any("version", primary), zap.Any("cutoff", cutoff))
 	}
 	return shouldRotate
 }
 
-func (h *RotationHandler) shouldPromote(ctx context.Context, ver *kmspb.CryptoKeyVersion, curTime time.Time) bool {
+// Determines whether the newest key version should be promoted to primary. It returns true when the primary verison does not exist
+// or when the newest version crosses its propagation delay.
+func (h *RotationHandler) shouldPromote(ctx context.Context, primary, newest *kmspb.CryptoKeyVersion, curTime time.Time) bool {
 	logger := logging.FromContext(ctx)
-	if ver == nil {
+	if newest == nil {
 		return false
 	}
+	if primary == nil {
+		logger.Info("primary does not exist, should promote the newest key to primary regardless of propagation delay.", zap.Any("version", newest))
+		return true
+	}
 	cutoff := curTime.Add(-h.CryptoConfig.PropagationDelay)
-	canPromote := ver.CreateTime.AsTime().Before(cutoff)
+	canPromote := newest.CreateTime.AsTime().Before(cutoff)
 	if canPromote {
-		logger.Info("version created before cutoff date, should promote to primary.", zap.Any("version", ver), zap.Any("cutoff", cutoff))
+		logger.Info("version created before cutoff date, should promote to primary.", zap.Any("version", newest), zap.Any("cutoff", cutoff))
 	} else {
-		logger.Debug("version created after cutoff date, no action necessary.", zap.Any("version", ver), zap.Any("cutoff", cutoff))
+		logger.Debug("version created after cutoff date, no action necessary.", zap.Any("version", newest), zap.Any("cutoff", cutoff))
 	}
 	return canPromote
 }
