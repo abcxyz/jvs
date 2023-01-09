@@ -62,7 +62,7 @@ func newRootCmd(cfg *config.CLIConfig) *cobra.Command {
 		"path to a file on disk for the jvs configuration")
 	cmd.PersistentFlags().StringVar(&cfg.Server, "server", "127.0.0.1:8080", "IP or DNS address to the JVS server")
 	cmd.PersistentFlags().BoolVar(&cfg.Insecure, "insecure", false, "allow an insecure connection to the JVS server")
-	cmd.PersistentFlags().StringVar(&cfg.JWKSEndpoint, "jwks_endpoint", "", "JWKS publick key endpoint")
+	cmd.PersistentFlags().StringVar(&cfg.JWKSEndpoint, "jwks_endpoint", "", "JWKS public key endpoint")
 	cmd.Flags().BoolVarP(&opts.version, "version", "v", false, "print version and exit")
 
 	// Subcommands
