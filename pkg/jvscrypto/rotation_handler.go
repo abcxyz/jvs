@@ -23,7 +23,6 @@ import (
 
 	"github.com/abcxyz/jvs/pkg/config"
 	"github.com/abcxyz/pkg/logging"
-	"go.uber.org/zap"
 	"google.golang.org/protobuf/types/known/fieldmaskpb"
 
 	kms "cloud.google.com/go/kms/apiv1"
@@ -101,7 +100,7 @@ func (h *RotationHandler) determineActions(ctx context.Context, vers []*kmspb.Cr
 	var newerVers []*kmspb.CryptoKeyVersion
 
 	for _, ver := range vers {
-		logger.Debug("checking version", zap.Any("version", ver))
+		logger.Debugw("checking version", "version", ver)
 		if primaryName != "" && ver.Name == primaryName {
 			primary = ver
 			break
@@ -117,10 +116,10 @@ func (h *RotationHandler) determineActions(ctx context.Context, vers []*kmspb.Cr
 				continue
 			}
 			if createdBefore(ver, primary) {
-				logger.Debug("version is older", zap.Any("version", ver))
+				logger.Debugw("version is older", "version", ver)
 				olderVers = append(olderVers, ver)
 			} else {
-				logger.Debug("version is newer", zap.Any("version", ver))
+				logger.Debugw("version is newer", "version", ver)
 				newerVers = append(newerVers, ver)
 			}
 		}
@@ -196,7 +195,7 @@ func (h *RotationHandler) actionsForOlderVersions(ctx context.Context, vers []*k
 				actions = append(actions, &actionTuple{ActionDestroy, ver})
 			}
 		default:
-			logger.Info("no action needed for key version in current state.", zap.Any("version", ver), zap.Any("state", ver.State))
+			logger.Infow("no action needed for key version in current state.", "version", ver, "state", ver.State)
 		}
 	}
 	return actions
@@ -207,9 +206,9 @@ func (h *RotationHandler) shouldDestroy(ctx context.Context, ver *kmspb.CryptoKe
 	cutoff := curTime.Add(-h.CryptoConfig.DestroyAge())
 	shouldDestroy := ver.CreateTime.AsTime().Before(cutoff)
 	if shouldDestroy {
-		logger.Info("version created before cutoff date, should destroy.", zap.Any("version", ver), zap.Any("cutoff", cutoff))
+		logger.Infow("version created before cutoff date, should destroy.", "version", ver, "cutoff", cutoff)
 	} else {
-		logger.Debug("version created after cutoff date, no action necessary.", zap.Any("version", ver), zap.Any("cutoff", cutoff))
+		logger.Debugw("version created after cutoff date, no action necessary.", "version", ver, "cutoff", cutoff)
 	}
 	return shouldDestroy
 }
@@ -219,9 +218,9 @@ func (h *RotationHandler) shouldDisable(ctx context.Context, ver *kmspb.CryptoKe
 	cutoff := curTime.Add(-h.CryptoConfig.KeyTTL)
 	shouldDisable := ver.CreateTime.AsTime().Before(cutoff)
 	if shouldDisable {
-		logger.Info("version created before cutoff date, should disable.", zap.Any("version", ver), zap.Any("cutoff", cutoff))
+		logger.Infow("version created before cutoff date, should disable.", "version", ver, "cutoff", cutoff)
 	} else {
-		logger.Debug("version created after cutoff date, no action necessary.", zap.Any("version", ver), zap.Any("cutoff", cutoff))
+		logger.Debugw("version created after cutoff date, no action necessary.", "version", ver, "cutoff", cutoff)
 	}
 	return shouldDisable
 }
@@ -231,15 +230,15 @@ func (h *RotationHandler) shouldDisable(ctx context.Context, ver *kmspb.CryptoKe
 func (h *RotationHandler) shouldRotate(ctx context.Context, primary, newest *kmspb.CryptoKeyVersion, curTime time.Time) bool {
 	logger := logging.FromContext(ctx)
 	if newest != nil {
-		logger.Debug("new version already created, no action necessary.", zap.Any("version", newest))
+		logger.Debugw("new version already created, no action necessary.", "version", newest)
 		return false
 	}
 	cutoff := curTime.Add(-h.CryptoConfig.RotationAge())
 	shouldRotate := primary.CreateTime.AsTime().Before(cutoff)
 	if shouldRotate {
-		logger.Info("version created before cutoff date, should rotate.", zap.Any("version", primary), zap.Any("cutoff", cutoff))
+		logger.Infow("version created before cutoff date, should rotate.", "version", primary, "cutoff", cutoff)
 	} else {
-		logger.Debug("version created after cutoff date, no action necessary.", zap.Any("version", primary), zap.Any("cutoff", cutoff))
+		logger.Debugw("version created after cutoff date, no action necessary.", "version", primary, "cutoff", cutoff)
 	}
 	return shouldRotate
 }
@@ -252,15 +251,15 @@ func (h *RotationHandler) shouldPromote(ctx context.Context, primary, newest *km
 		return false
 	}
 	if primary == nil {
-		logger.Info("primary does not exist, should promote the newest key to primary regardless of propagation delay.", zap.Any("version", newest))
+		logger.Infow("primary does not exist, should promote the newest key to primary regardless of propagation delay.", "version", newest)
 		return true
 	}
 	cutoff := curTime.Add(-h.CryptoConfig.PropagationDelay)
 	canPromote := newest.CreateTime.AsTime().Before(cutoff)
 	if canPromote {
-		logger.Info("version created before cutoff date, should promote to primary.", zap.Any("version", newest), zap.Any("cutoff", cutoff))
+		logger.Infow("version created before cutoff date, should promote to primary.", "version", newest, "cutoff", cutoff)
 	} else {
-		logger.Debug("version created after cutoff date, no action necessary.", zap.Any("version", newest), zap.Any("cutoff", cutoff))
+		logger.Debugw("version created after cutoff date, no action necessary.", "version", newest, "cutoff", cutoff)
 	}
 	return canPromote
 }
@@ -312,7 +311,7 @@ func (h *RotationHandler) performDisable(ctx context.Context, ver *kmspb.CryptoK
 	// Make a copy to modify
 	newVerState := ver
 
-	logger.Info("disabling key version", zap.String("versionName", ver.Name))
+	logger.Infow("disabling key version", "versionName", ver.Name)
 	newVerState.State = kmspb.CryptoKeyVersion_DISABLED
 	var messageType *kmspb.CryptoKeyVersion
 	mask, err := fieldmaskpb.New(messageType, "state")
@@ -331,7 +330,7 @@ func (h *RotationHandler) performDisable(ctx context.Context, ver *kmspb.CryptoK
 
 func (h *RotationHandler) performDestroy(ctx context.Context, ver *kmspb.CryptoKeyVersion) error {
 	logger := logging.FromContext(ctx)
-	logger.Info("destroying key version", zap.String("versionName", ver.Name))
+	logger.Infow("destroying key version", "versionName", ver.Name)
 	destroyReq := &kmspb.DestroyCryptoKeyVersionRequest{
 		Name: ver.Name,
 	}
