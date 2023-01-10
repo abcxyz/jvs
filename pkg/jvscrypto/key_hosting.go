@@ -43,7 +43,7 @@ func (k *KeyServer) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 		return k.generateJWKString(r.Context())
 	})
 	if err != nil {
-		logger.Error("error generating jwk string", err)
+		logger.Errorw("error generating jwk string", "error", err)
 		http.Error(w, "error generating jwk string", http.StatusInternalServerError)
 		return
 	}
