@@ -31,7 +31,6 @@ import (
 	"github.com/abcxyz/pkg/cache"
 	"github.com/abcxyz/pkg/cfgloader"
 	"github.com/abcxyz/pkg/logging"
-	"go.uber.org/zap"
 )
 
 func main() {
@@ -81,7 +80,7 @@ func realMain(ctx context.Context) error {
 	mux.Handle("/.well-known/jwks", ks)
 
 	// Create the server and listen in a goroutine.
-	logger.Debug("starting server on port", zap.String("port", cfg.Port))
+	logger.Debugw("starting server on port", "port", cfg.Port)
 	server := &http.Server{
 		Addr:              ":" + cfg.Port,
 		Handler:           mux,
