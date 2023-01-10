@@ -223,6 +223,16 @@ func TestDetermineActions(t *testing.T) {
 			},
 		},
 		{
+			name: "three_enabled_keys_no_action",
+			versions: []*kmspb.CryptoKeyVersion{
+				oldEnabledKey,
+				newEnabledKey,
+				newEnabledKey2,
+			},
+			primary:     oldEnabledKey.Name,
+			wantActions: []*actionTuple{},
+		},
+		{
 			name: "three_enabled_keys",
 			versions: []*kmspb.CryptoKeyVersion{
 				oldEnabledKey,

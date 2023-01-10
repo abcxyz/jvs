@@ -30,7 +30,6 @@ import (
 	"github.com/abcxyz/pkg/grpcutil"
 	"github.com/abcxyz/pkg/logging"
 	"go.opentelemetry.io/contrib/instrumentation/google.golang.org/grpc/otelgrpc"
-	"go.uber.org/zap"
 	"golang.org/x/sync/errgroup"
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/reflection"
@@ -47,7 +46,7 @@ func main() {
 		done()
 		logger.Fatal(err)
 	}
-	logger.Infof("successful shutdown")
+	logger.Info("successful shutdown")
 }
 
 func realMain(ctx context.Context) error {
@@ -90,7 +89,7 @@ func realMain(ctx context.Context) error {
 	// https://github.com/grpc/grpc/blob/master/doc/health-checking.md
 	g, ctx := errgroup.WithContext(ctx)
 	g.Go(func() error {
-		logger.Debugf("server listening at", zap.Any("address", lis.Addr()))
+		logger.Debugw("server listening at", "address", lis.Addr())
 		return s.Serve(lis)
 	})
 

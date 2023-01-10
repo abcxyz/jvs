@@ -31,7 +31,6 @@ import (
 	"github.com/abcxyz/pkg/cfgloader"
 	"github.com/abcxyz/pkg/logging"
 	"github.com/hashicorp/go-multierror"
-	"go.uber.org/zap"
 )
 
 type server struct {
@@ -41,7 +40,7 @@ type server struct {
 // ServeHTTP rotates a single key's versions.
 func (s *server) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	logger := logging.FromContext(r.Context())
-	logger.Info("received request", zap.Any("url", r.URL))
+	logger.Infow("received request", "url", r.URL)
 
 	var errs error
 	// TODO: load keys from DB instead. https://github.com/abcxyz/jvs/issues/17
@@ -50,10 +49,10 @@ func (s *server) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 			errs = multierror.Append(errs, fmt.Errorf("error while rotating key %s: %w", key, err))
 			continue
 		}
-		logger.Info("successfully performed actions (if necessary) on key.", zap.String("key", key))
+		logger.Infow("successfully performed actions (if necessary) on key.", "key", key)
 	}
 	if errs != nil {
-		logger.Error("ran into errors while rotating keys", zap.Error(errs))
+		logger.Errorw("ran into errors while rotating keys", "errors", errs)
 		http.Error(w, "error while rotating keys", http.StatusInternalServerError)
 		return
 	}
@@ -109,7 +108,7 @@ func realMain(ctx context.Context) error {
 	port := os.Getenv("PORT")
 	if port == "" {
 		port = "8080"
-		logger.Debug("defaulting to port ", zap.String("port", port))
+		logger.Debugw("defaulting to port ", "port", port)
 	}
 
 	// Create the server and listen in a goroutine.
