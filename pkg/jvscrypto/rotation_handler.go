@@ -26,9 +26,9 @@ import (
 	"google.golang.org/protobuf/types/known/fieldmaskpb"
 
 	kms "cloud.google.com/go/kms/apiv1"
+	"cloud.google.com/go/kms/apiv1/kmspb"
 	"github.com/hashicorp/go-multierror"
 	"google.golang.org/api/iterator"
-	kmspb "google.golang.org/genproto/googleapis/cloud/kms/v1"
 )
 
 // RotationHandler handles all necessary rotation actions for asymmetric keys based off a provided

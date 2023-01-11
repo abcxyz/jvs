@@ -19,8 +19,8 @@ import (
 	"fmt"
 
 	kms "cloud.google.com/go/kms/apiv1"
+	"cloud.google.com/go/kms/apiv1/kmspb"
 	jvspb "github.com/abcxyz/jvs/apis/v0"
-	kmspb "google.golang.org/genproto/googleapis/cloud/kms/v1"
 )
 
 // CertificateActionService allows for performing manual actions on certificate versions.
