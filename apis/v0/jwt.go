@@ -90,7 +90,10 @@ func SetJustifications(t jwt.Token, justifications []*Justification) error {
 
 	cp := make([]*Justification, 0, len(justifications))
 	cp = append(cp, justifications...)
-	return t.Set(jwtJustificationsKey, cp)
+	if err := t.Set(jwtJustificationsKey, cp); err != nil {
+		return fmt.Errorf("failed to set justifications: %w", err)
+	}
+	return nil
 }
 
 // ClearJustifications removes the justifications from the token by deleting the
@@ -100,5 +103,8 @@ func ClearJustifications(t jwt.Token) error {
 		return fmt.Errorf("token cannot be nil")
 	}
 
-	return t.Remove(jwtJustificationsKey)
+	if err := t.Remove(jwtJustificationsKey); err != nil {
+		return fmt.Errorf("failed to remove justifications: %w", err)
+	}
+	return nil
 }

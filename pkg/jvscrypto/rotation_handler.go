@@ -31,8 +31,8 @@ import (
 	"google.golang.org/api/iterator"
 )
 
-// RotationHandler handles all necessary rotation actions for asymmetric keys based off a provided
-// configuration.
+// RotationHandler handles all necessary rotation actions for asymmetric keys
+// based off a provided configuration.
 type RotationHandler struct {
 	KMSClient    *kms.KeyManagementClient
 	CryptoConfig *config.CryptoConfig
@@ -133,7 +133,7 @@ func (h *RotationHandler) determineActions(ctx context.Context, vers []*kmspb.Cr
 	return actions, nil
 }
 
-func createdBefore(ver1 *kmspb.CryptoKeyVersion, ver2 *kmspb.CryptoKeyVersion) bool {
+func createdBefore(ver1, ver2 *kmspb.CryptoKeyVersion) bool {
 	return ver1.CreateTime.AsTime().Before(ver2.CreateTime.AsTime())
 }
 
@@ -143,13 +143,14 @@ func (h *RotationHandler) actionsForNewVersions(ctx context.Context, vers []*kms
 	actions := make([]*actionTuple, 0)
 	newest := newestEnabledVer(vers)
 
-	// If newest is eligible for promotion, promote and don't do anything with the current primary.
+	// If newest is eligible for promotion, promote and don't do anything with the
+	// current primary.
 	if h.shouldPromote(ctx, primary, newest, curTime) {
 		return append(actions, &actionTuple{ActionPromote, newest})
 	}
 
-	// We don't have a version eligible for promotion. If no primary currently exists, we need to
-	// create a new version and promote it to primary.
+	// We don't have a version eligible for promotion. If no primary currently
+	// exists, we need to create a new version and promote it to primary.
 	if primary == nil {
 		logger.Info("no primary or new keys found, creating a new key and immediately promoting to primary.")
 		return append(actions, &actionTuple{ActionCreateNewAndPromote, nil})
@@ -225,8 +226,9 @@ func (h *RotationHandler) shouldDisable(ctx context.Context, ver *kmspb.CryptoKe
 	return shouldDisable
 }
 
-// Determines whether a new key version should be created. It returns true only when the newest version does not exist and the
-// primary version reaches its rotation age.
+// Determines whether a new key version should be created. It returns true only
+// when the newest version does not exist and the primary version reaches its
+// rotation age.
 func (h *RotationHandler) shouldRotate(ctx context.Context, primary, newest *kmspb.CryptoKeyVersion, curTime time.Time) bool {
 	logger := logging.FromContext(ctx)
 	if newest != nil {
@@ -243,8 +245,9 @@ func (h *RotationHandler) shouldRotate(ctx context.Context, primary, newest *kms
 	return shouldRotate
 }
 
-// Determines whether the newest key version should be promoted to primary. It returns true when the primary verison does not exist
-// or when the newest version crosses its propagation delay.
+// Determines whether the newest key version should be promoted to primary. It
+// returns true when the primary version does not exist or when the newest
+// version crosses its propagation delay.
 func (h *RotationHandler) shouldPromote(ctx context.Context, primary, newest *kmspb.CryptoKeyVersion, curTime time.Time) bool {
 	logger := logging.FromContext(ctx)
 	if newest == nil {
@@ -264,45 +267,47 @@ func (h *RotationHandler) shouldPromote(ctx context.Context, primary, newest *km
 	return canPromote
 }
 
-// TODO: it may be worth adding rollback functionality for cases where multiple actions are expected to occur.
-// for example, if we are demoting a key, we also need to ensure we've marked another as primary, and may end up
-// in an odd state if one action occurs and the other does not.
+// TODO: it may be worth adding rollback functionality for cases where multiple
+// actions are expected to occur. for example, if we are demoting a key, we also
+// need to ensure we've marked another as primary, and may end up in an odd
+// state if one action occurs and the other does not.
 func (h *RotationHandler) performActions(ctx context.Context, keyName string, actions []*actionTuple) error {
 	logger := logging.FromContext(ctx)
-	var result error
+	var merr *multierror.Error
 	for _, action := range actions {
 		switch action.Action {
 		case ActionCreateNew:
 			_, err := h.performCreateNew(ctx, keyName)
 			if err != nil {
-				result = multierror.Append(result, err)
+				merr = multierror.Append(merr, err)
 			}
 		case ActionPromote:
 			if err := SetPrimary(ctx, h.KMSClient, keyName, action.Version.Name); err != nil {
-				result = multierror.Append(result, err)
+				merr = multierror.Append(merr, err)
 			}
 		case ActionCreateNewAndPromote:
 			newVer, err := h.performCreateNew(ctx, keyName)
 			if err != nil {
-				result = multierror.Append(result, err)
+				merr = multierror.Append(merr, err)
 				continue
 			}
 			logger.Info("Promoting immediately.")
 			if err := SetPrimary(ctx, h.KMSClient, keyName, newVer.Name); err != nil {
-				result = multierror.Append(result, err)
+				merr = multierror.Append(merr, err)
 			}
 		case ActionDisable:
 			if err := h.performDisable(ctx, action.Version); err != nil {
-				result = multierror.Append(result, err)
+				merr = multierror.Append(merr, err)
 				continue
 			}
 		case ActionDestroy:
 			if err := h.performDestroy(ctx, action.Version); err != nil {
-				result = multierror.Append(result, err)
+				merr = multierror.Append(merr, err)
 			}
 		}
 	}
-	return result
+
+	return merr.ErrorOrNil()
 }
 
 func (h *RotationHandler) performDisable(ctx context.Context, ver *kmspb.CryptoKeyVersion) error {
@@ -316,7 +321,7 @@ func (h *RotationHandler) performDisable(ctx context.Context, ver *kmspb.CryptoK
 	var messageType *kmspb.CryptoKeyVersion
 	mask, err := fieldmaskpb.New(messageType, "state")
 	if err != nil {
-		return err
+		return fmt.Errorf("failed to create fieldmask: %w", err)
 	}
 	updateReq := &kmspb.UpdateCryptoKeyVersionRequest{
 		CryptoKeyVersion: newVerState,
@@ -356,9 +361,10 @@ func (h *RotationHandler) performCreateNew(ctx context.Context, keyName string) 
 }
 
 // GetKeyNameFromVersion converts a key version name to a key name.
+//
 // Example:
-// `projects/*/locations/*/keyRings/*/cryptoKeys/*/cryptoKeyVersions/*`
-// -> `projects/*/locations/*/keyRings/*/cryptoKeys/*`.
+//
+//	projects/*/locations/*/keyRings/*/cryptoKeys/*/cryptoKeyVersions/* -> projects/*/locations/*/keyRings/*/cryptoKeys/*
 func getKeyNameFromVersion(keyVersionName string) (string, error) {
 	split := strings.Split(keyVersionName, "/")
 	if len(split) != 10 {
