@@ -23,10 +23,10 @@ import (
 	"strings"
 
 	kms "cloud.google.com/go/kms/apiv1"
+	"cloud.google.com/go/kms/apiv1/kmspb"
 	"github.com/abcxyz/pkg/worker"
 	"github.com/lestrrat-go/jwx/v2/jwk"
 	"google.golang.org/api/iterator"
-	kmspb "google.golang.org/genproto/googleapis/cloud/kms/v1"
 	"google.golang.org/protobuf/types/known/fieldmaskpb"
 )
 
