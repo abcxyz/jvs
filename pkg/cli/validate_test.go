@@ -127,20 +127,18 @@ func TestNewValidateCmd(t *testing.T) {
 				JWKSEndpoint: svr.URL + path,
 			},
 			args: []string{"-t", signedToken},
-			expOut: `-----BREAKGLASS-----
-false
+			expOut: `
+----- Justifications -----
+explanation    test
+foo            bar
 
-----JUSTIFICATION----
-explanation  "test"
-foo          "bar"
-
----STANDARD CLAIMS---
-aud  ["dev.abcxyz.jvs"]
-iat  "1970-01-01T00:00:00Z"
-iss  "jvsctl"
-jti  "test-jwt"
-nbf  "1970-01-01T00:00:00Z"
-sub  "jvsctl"
+----- Claims -----
+aud    [dev.abcxyz.jvs]
+iat    1970-01-01 12:00AM UTC
+iss    jvsctl
+jti    test-jwt
+nbf    1970-01-01 12:00AM UTC
+sub    jvsctl
 `,
 		},
 		{
@@ -149,19 +147,19 @@ sub  "jvsctl"
 				JWKSEndpoint: svr.URL + path,
 			},
 			args: []string{"-t", breakglassToken},
-			expOut: `-----BREAKGLASS-----
-true
+			expOut: `
+Warning! This is a breakglass token.
 
-----JUSTIFICATION----
-breakglass  "prod is down"
+----- Justifications -----
+breakglass    prod is down
 
----STANDARD CLAIMS---
-aud  ["dev.abcxyz.jvs"]
-iat  "1970-01-01T00:00:00Z"
-iss  "jvsctl"
-jti  "test-jwt"
-nbf  "1970-01-01T00:00:00Z"
-sub  "jvsctl"
+----- Claims -----
+aud    [dev.abcxyz.jvs]
+iat    1970-01-01 12:00AM UTC
+iss    jvsctl
+jti    test-jwt
+nbf    1970-01-01 12:00AM UTC
+sub    jvsctl
 `,
 		},
 		{
@@ -171,20 +169,49 @@ sub  "jvsctl"
 			},
 			args:  []string{"-t", "-"},
 			stdin: strings.NewReader(signedToken),
-			expOut: `-----BREAKGLASS-----
-false
+			expOut: `
+----- Justifications -----
+explanation    test
+foo            bar
 
-----JUSTIFICATION----
-explanation  "test"
-foo          "bar"
-
----STANDARD CLAIMS---
-aud  ["dev.abcxyz.jvs"]
-iat  "1970-01-01T00:00:00Z"
-iss  "jvsctl"
-jti  "test-jwt"
-nbf  "1970-01-01T00:00:00Z"
-sub  "jvsctl"
+----- Claims -----
+aud    [dev.abcxyz.jvs]
+iat    1970-01-01 12:00AM UTC
+iss    jvsctl
+jti    test-jwt
+nbf    1970-01-01 12:00AM UTC
+sub    jvsctl
+`,
+		},
+		{
+			name: "json",
+			config: &config.CLIConfig{
+				JWKSEndpoint: svr.URL + path,
+			},
+			args:   []string{"-t", breakglassToken, "-f", "json"},
+			expOut: `{"breakglass":true,"justifications":[{"category":"breakglass","value":"prod is down"}],"claims":{"aud":["dev.abcxyz.jvs"],"iat":"1970-01-01T00:00:00Z","iss":"jvsctl","jti":"test-jwt","nbf":"1970-01-01T00:00:00Z","sub":"jvsctl"}}`,
+		},
+		{
+			name: "yaml",
+			config: &config.CLIConfig{
+				JWKSEndpoint: svr.URL + path,
+			},
+			args: []string{"-t", signedToken, "-f", "yaml"},
+			expOut: `
+breakglass: false
+justifications:
+  - category: explanation
+    value: test
+  - category: foo
+    value: bar
+claims:
+  aud:
+    - dev.abcxyz.jvs
+  iat: 1970-01-01T00:00:00Z
+  iss: jvsctl
+  jti: test-jwt
+  nbf: 1970-01-01T00:00:00Z
+  sub: jvsctl
 `,
 		},
 	}
@@ -204,7 +231,7 @@ sub  "jvsctl"
 				return
 			}
 
-			if diff := cmp.Diff(tc.expOut, stdout); diff != "" {
+			if diff := cmp.Diff(strings.TrimSpace(tc.expOut), strings.TrimSpace(stdout)); diff != "" {
 				t.Errorf("output: diff (-want, +got):\n%s", diff)
 			}
 		})
