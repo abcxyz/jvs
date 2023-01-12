@@ -74,11 +74,13 @@ func SetPrimary(ctx context.Context, kms *kms.KeyManagementClient, key, versionN
 	var messageType *kmspb.CryptoKey
 	mask, err := fieldmaskpb.New(messageType, "labels")
 	if err != nil {
-		return err
+		return fmt.Errorf("failed to create fieldmask: %w", err)
 	}
-	_, err = kms.UpdateCryptoKey(ctx, &kmspb.UpdateCryptoKeyRequest{CryptoKey: response, UpdateMask: mask})
-	if err != nil {
-		return fmt.Errorf("issue while setting labels in kms %w", err)
+	if _, err := kms.UpdateCryptoKey(ctx, &kmspb.UpdateCryptoKeyRequest{
+		CryptoKey:  response,
+		UpdateMask: mask,
+	}); err != nil {
+		return fmt.Errorf("failed to set labels: %w", err)
 	}
 	return nil
 }

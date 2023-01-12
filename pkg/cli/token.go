@@ -58,7 +58,7 @@ func newTokenCmd(cfg *config.CLIConfig) *cobra.Command {
 		Short: "Generate a justification token",
 		Long: strings.Trim(`
 Generate a new justification token from the given JVS. The output will be the
-token, or any errors that occured.
+token, or any errors that occurred.
 
 For example:
 
@@ -128,7 +128,7 @@ func runTokenCmd(cmd *cobra.Command, opts *tokenCmdOptions, args []string) error
 	}
 	resp, err := jvsclient.CreateJustification(ctx, req, callOpts...)
 	if err != nil {
-		return err
+		return fmt.Errorf("failed to create justification: %w", err)
 	}
 
 	fmt.Fprintln(out, resp.Token)
@@ -159,12 +159,12 @@ func callOpts(ctx context.Context, insecure bool) ([]grpc.CallOption, error) {
 
 	ts, err := idtoken.FromDefaultCredentials(ctx)
 	if err != nil {
-		return nil, err
+		return nil, fmt.Errorf("failed to get default credentials: %w", err)
 	}
 
 	token, err := ts.Token()
 	if err != nil {
-		return nil, err
+		return nil, fmt.Errorf("failed to get token from default credentials: %w", err)
 	}
 	return []grpc.CallOption{grpc.PerRPCCredentials(oauth.NewOauthAccess(token))}, nil
 }

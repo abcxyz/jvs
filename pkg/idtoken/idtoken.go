@@ -47,7 +47,7 @@ type tokenSource struct {
 func (ts *tokenSource) Token() (*oauth2.Token, error) {
 	token, err := ts.tokenSource.Token()
 	if err != nil {
-		return nil, err
+		return nil, fmt.Errorf("failed to get token from token source: %w", err)
 	}
 
 	idToken, ok := token.Extra("id_token").(string)
