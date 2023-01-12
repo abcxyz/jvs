@@ -148,23 +148,20 @@ func runValidateCmd(cmd *cobra.Command, opts *validateCmdOptions, args []string)
 	return nil
 }
 
-func writeJustification(w *tabwriter.Writer, token jwt.Token) error {
-	if _, err := fmt.Fprintln(w, "\n----JUSTIFICATION----"); err != nil {
-		return err
-	}
+func writeJustification(w io.Writer, token jwt.Token) error {
 	justs, err := jvspb.GetJustifications(token)
 	if err != nil {
 		return fmt.Errorf("failed to get justifications from token: %w", err)
 	}
+
+	fmt.Fprintln(w, "\n----JUSTIFICATION----")
 	for _, j := range justs {
-		if _, err := fmt.Fprintf(w, "%s\t\"%s\"\n", j.GetCategory(), j.GetValue()); err != nil {
-			return err
-		}
+		fmt.Fprintf(w, "%s\t\"%s\"\n", j.GetCategory(), j.GetValue())
 	}
 	return nil
 }
 
-func writeStandardClaims(ctx context.Context, w *tabwriter.Writer, token jwt.Token) error {
+func writeStandardClaims(ctx context.Context, w io.Writer, token jwt.Token) error {
 	// Convert standard claims into a map, excluding justifications claim which is printed separately.
 	claimsMap, err := token.AsMap(ctx)
 	if err != nil {
@@ -184,13 +181,9 @@ func writeStandardClaims(ctx context.Context, w *tabwriter.Writer, token jwt.Tok
 
 	// Write standard claims in increasing order as a table
 	sort.Strings(claimsKeys)
-	if _, err := fmt.Fprintln(w, "\n---STANDARD CLAIMS---"); err != nil {
-		return err
-	}
+	fmt.Fprintln(w, "\n---STANDARD CLAIMS---")
 	for _, k := range claimsKeys {
-		if _, err := fmt.Fprintf(w, "%s\t%s\n", k, claims[k]); err != nil {
-			return err
-		}
+		fmt.Fprintf(w, "%s\t%s\n", k, claims[k])
 	}
 	return nil
 }

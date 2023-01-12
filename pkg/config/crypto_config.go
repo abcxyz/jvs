@@ -68,7 +68,7 @@ func (cfg *CryptoConfig) Validate() error {
 		err = multierror.Append(err, fmt.Errorf("disabled period must be a positive duration, got %q", cfg.DisabledPeriod))
 	}
 
-	// Propagation delay must be positive but less than than grace period.
+	// Propagation delay must be positive but less than the grace period.
 	if cfg.PropagationDelay <= 0 {
 		err = multierror.Append(err, fmt.Errorf("propagation delay must be a positive duration, got %q", cfg.PropagationDelay))
 	}

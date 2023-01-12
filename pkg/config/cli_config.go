@@ -16,6 +16,7 @@ package config
 
 import (
 	"fmt"
+	"net"
 	"strings"
 
 	"github.com/hashicorp/go-multierror"
@@ -62,6 +63,7 @@ func (cfg *CLIConfig) SetDefault() {
 
 	// Default to server's doman if JWKSEndpoint is not specified.
 	if cfg.JWKSEndpoint == "" && cfg.Server != "" {
-		cfg.JWKSEndpoint = fmt.Sprintf("https://%s:8080/.well-known/jwks", strings.Split(cfg.Server, ":")[0])
+		addr := net.JoinHostPort(strings.Split(cfg.Server, ":")[0], "8080")
+		cfg.JWKSEndpoint = fmt.Sprintf("https://%s/.well-known/jwks", addr)
 	}
 }
