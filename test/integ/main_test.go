@@ -25,6 +25,7 @@ import (
 	"encoding/json"
 	"encoding/pem"
 	"errors"
+	"fmt"
 	"net/http"
 	"net/http/httptest"
 	"os"
@@ -301,7 +302,7 @@ func TestJVS(t *testing.T) {
 // Subtests must be run in sequence, and they have waits in between.
 // Therefore, they cannot be parallelized, and aren't a good fit for table testing.
 //
-//nolint:tparallel
+//nolint:paralleltest
 func TestRotator(t *testing.T) {
 	t.Parallel()
 	testutil.SkipIfNotIntegration(t)
@@ -388,7 +389,7 @@ func TestRotator(t *testing.T) {
 	})
 }
 
-//nolint:tparallel // Subtests need to run in sequence. To parallelize this, but we'd need separate keys from the above (more cruft).
+//nolint:paralleltest // Subtests need to run in sequence. To parallelize this, but we'd need separate keys from the above (more cruft).
 func TestRotator_EdgeCases(t *testing.T) {
 	t.Parallel()
 	testutil.SkipIfNotIntegration(t)
@@ -679,11 +680,11 @@ func testSetupRotator(ctx context.Context, tb testing.TB) (*kms.KeyManagementCli
 
 // This is intended to mock an event where we need to emergently rotate the key.
 // We disable the key version and remove it as primary.
-func testEmergentDisable(ctx context.Context, tb testing.TB, kmsClient *kms.KeyManagementClient, keyName string, versionName string) {
+func testEmergentDisable(ctx context.Context, tb testing.TB, kmsClient *kms.KeyManagementClient, keyName, versionName string) {
 	tb.Helper()
 	ver, err := kmsClient.GetCryptoKeyVersion(ctx, &kmspb.GetCryptoKeyVersionRequest{Name: versionName})
 	if err != nil {
-		tb.Fatalf("unable to retreive version %s: %s", versionName, err)
+		tb.Fatalf("unable to retrieve version %s: %s", versionName, err)
 	}
 
 	ver.State = kmspb.CryptoKeyVersion_DISABLED
@@ -702,7 +703,7 @@ func testEmergentDisable(ctx context.Context, tb testing.TB, kmsClient *kms.KeyM
 
 	key, err := kmsClient.GetCryptoKey(ctx, &kmspb.GetCryptoKeyRequest{Name: keyName})
 	if err != nil {
-		tb.Fatalf("unable to retreive key %s: %s", keyName, err)
+		tb.Fatalf("unable to retrieve key %s: %s", keyName, err)
 	}
 
 	labels := make(map[string]string, 0)
@@ -796,7 +797,7 @@ func testCreateKey(ctx context.Context, tb testing.TB, kmsClient *kms.KeyManagem
 			Name: ck.Name + "/cryptoKeyVersions/" + primaryKeyVersion,
 		})
 		if err != nil {
-			return err
+			return fmt.Errorf("failed to get crypto key version: %w", err)
 		}
 		if ckv.State == kmspb.CryptoKeyVersion_ENABLED {
 			return nil
@@ -886,7 +887,7 @@ func testCreateKeyVersion(ctx context.Context, tb testing.TB, kmsClient *kms.Key
 			Name: ck.Name,
 		})
 		if err != nil {
-			return err
+			return fmt.Errorf("failed to get crypto key version: %w", err)
 		}
 		if ckv.State == kmspb.CryptoKeyVersion_ENABLED {
 			return nil
@@ -924,7 +925,7 @@ func testPublicKeysFromKMS(ctx context.Context, tb testing.TB, kmsClient *kms.Ke
 	return publicKeys, string(b)
 }
 
-func testValidatePublicKeys(ctx context.Context, tb testing.TB, ks *jvscrypto.KeyServer, expectedPublicKeys string) {
+func testValidatePublicKeys(ctx context.Context, tb testing.TB, s http.Handler, expectedPublicKeys string) {
 	tb.Helper()
 
 	req, err := http.NewRequestWithContext(ctx, "GET", "/.well-known/jwks", nil)
@@ -933,7 +934,7 @@ func testValidatePublicKeys(ctx context.Context, tb testing.TB, ks *jvscrypto.Ke
 	}
 
 	rw := httptest.NewRecorder()
-	ks.ServeHTTP(rw, req)
+	s.ServeHTTP(rw, req)
 	if gotCode, wantCode := rw.Code, http.StatusOK; gotCode != wantCode {
 		tb.Errorf("Response Code: got %d, want %d", gotCode, wantCode)
 		return

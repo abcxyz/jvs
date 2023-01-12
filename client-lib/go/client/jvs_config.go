@@ -45,18 +45,18 @@ type JVSConfig struct {
 
 // Validate checks if the config is valid.
 func (cfg *JVSConfig) Validate() error {
-	var err *multierror.Error
+	var merr *multierror.Error
 	if !versions.Contains(cfg.Version) {
-		err = multierror.Append(err, fmt.Errorf("version %q is invalid, valid versions are: %q",
+		merr = multierror.Append(merr, fmt.Errorf("version %q is invalid, valid versions are: %q",
 			cfg.Version, versions.List()))
 	}
 	if cfg.JWKSEndpoint == "" {
-		err = multierror.Append(err, fmt.Errorf("endpoint must be set"))
+		merr = multierror.Append(merr, fmt.Errorf("endpoint must be set"))
 	}
 	if cfg.CacheTimeout <= 0 {
-		err = multierror.Append(err, fmt.Errorf("cache timeout must be a positive duration, got %q", cfg.CacheTimeout))
+		merr = multierror.Append(merr, fmt.Errorf("cache timeout must be a positive duration, got %q", cfg.CacheTimeout))
 	}
-	return err.ErrorOrNil()
+	return merr.ErrorOrNil()
 }
 
 // LoadJVSConfig calls the necessary methods to load in config using the OsLookuper which finds env variables specified on the host.
@@ -66,18 +66,18 @@ func LoadJVSConfig(ctx context.Context, b []byte) (*JVSConfig, error) {
 
 // loadConfigFromLooker reads in a yaml file, applies ENV config overrides from the lookuper, and finally validates the config.
 func loadJVSConfigFromLookuper(ctx context.Context, b []byte, lookuper envconfig.Lookuper) (*JVSConfig, error) {
-	cfg := &JVSConfig{}
-	if err := yaml.Unmarshal(b, cfg); err != nil {
-		return nil, err
+	var cfg JVSConfig
+	if err := yaml.Unmarshal(b, &cfg); err != nil {
+		return nil, fmt.Errorf("failed to parse yaml: %w", err)
 	}
 
 	// Process overrides from env vars.
-	if err := envconfig.ProcessWith(ctx, cfg, lookuper); err != nil {
-		return nil, err
+	if err := envconfig.ProcessWith(ctx, &cfg, lookuper); err != nil {
+		return nil, fmt.Errorf("failed to process environment variables: %w", err)
 	}
 
 	if err := cfg.Validate(); err != nil {
 		return nil, fmt.Errorf("failed validating config: %w", err)
 	}
-	return cfg, nil
+	return &cfg, nil
 }

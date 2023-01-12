@@ -73,6 +73,7 @@ func (j *JVSClient) ValidateJWT(jwtStr string) (jwt.Token, error) {
 
 	// If we got this far, the token was not breakglass, so parse as normal.
 	token, err = jwt.ParseString(jwtStr,
+		jwt.WithContext(context.TODO()),
 		jvspb.WithTypedJustifications(),
 		jwt.WithKeySet(j.keys, jws.WithInferAlgorithmFromKey(true)),
 	)

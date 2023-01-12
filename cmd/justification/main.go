@@ -90,7 +90,10 @@ func realMain(ctx context.Context) error {
 	g, ctx := errgroup.WithContext(ctx)
 	g.Go(func() error {
 		logger.Debugw("server listening at", "address", lis.Addr())
-		return s.Serve(lis)
+		if err := s.Serve(lis); err != nil {
+			return fmt.Errorf("server failed to listen: %w", err)
+		}
+		return nil
 	})
 
 	// Either we have received a TERM signal or errgroup has encountered an err.
