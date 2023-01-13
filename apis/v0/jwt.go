@@ -22,19 +22,22 @@ import (
 )
 
 const (
-	// jwtJustificationsKey is the key in the JWT where justifications are stored.
+	// JustificationsKey is the key in the JWT where justifications are stored.
 	// Ideally this would be "justifications", but the RFC and various online
 	// resources recommend key names be as short as possible to keep the JWTs
 	// small. Akamai recommends less than 8 characters and Okta recommends less
 	// than 6.
-	jwtJustificationsKey string = "justs"
+	//
+	// Most callers should use the higher-level functions, but this is exposed in
+	// case users need to manipulate lower-level structures in the claims map.
+	JustificationsKey string = "justs"
 )
 
 // WithTypedJustifications is an option for parsing JWTs that will convert
 // decode the [Justification] claims into the correct Go structure. If this is
 // not supplied, the claims will be "any" and future type assertions may fail.
 func WithTypedJustifications() jwt.ParseOption {
-	return jwt.WithTypedClaim(jwtJustificationsKey, []*Justification{})
+	return jwt.WithTypedClaim(JustificationsKey, []*Justification{})
 }
 
 // GetJustifications retrieves a copy of the justifications on the token. If the
@@ -53,7 +56,7 @@ func GetJustifications(t jwt.Token) ([]*Justification, error) {
 		return nil, fmt.Errorf("token cannot be nil")
 	}
 
-	raw, ok := t.Get(jwtJustificationsKey)
+	raw, ok := t.Get(JustificationsKey)
 	if !ok {
 		return []*Justification{}, nil
 	}
@@ -90,7 +93,7 @@ func SetJustifications(t jwt.Token, justifications []*Justification) error {
 
 	cp := make([]*Justification, 0, len(justifications))
 	cp = append(cp, justifications...)
-	if err := t.Set(jwtJustificationsKey, cp); err != nil {
+	if err := t.Set(JustificationsKey, cp); err != nil {
 		return fmt.Errorf("failed to set justifications: %w", err)
 	}
 	return nil
@@ -103,7 +106,7 @@ func ClearJustifications(t jwt.Token) error {
 		return fmt.Errorf("token cannot be nil")
 	}
 
-	if err := t.Remove(jwtJustificationsKey); err != nil {
+	if err := t.Remove(JustificationsKey); err != nil {
 		return fmt.Errorf("failed to remove justifications: %w", err)
 	}
 	return nil

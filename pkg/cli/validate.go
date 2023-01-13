@@ -16,18 +16,15 @@ package cli
 
 import (
 	"context"
-	"encoding/json"
 	"fmt"
 	"io"
-	"sort"
 	"strings"
-	"text/tabwriter"
 	"time"
 
 	jvspb "github.com/abcxyz/jvs/apis/v0"
 	"github.com/abcxyz/jvs/client-lib/go/client"
 	"github.com/abcxyz/jvs/pkg/config"
-	"github.com/lestrrat-go/jwx/v2/jwt"
+	"github.com/abcxyz/jvs/pkg/formatter"
 	"github.com/spf13/cobra"
 )
 
@@ -37,6 +34,9 @@ const cacheTimeout = 5 * time.Minute
 // validateCmdOptions holds all the inputs and flags for the validate subcommand.
 type validateCmdOptions struct {
 	config *config.CLIConfig
+
+	// format flag to the command.
+	format string
 
 	// token flag to the command.
 	token string
@@ -85,11 +85,11 @@ For example:
 	}
 
 	flags := cmd.Flags()
-	flags.StringVarP(&opts.token, "token", "t", "", `
-The JVS token that needs validation, can be passed as string or via pipe
-`)
+	flags.StringVarP(&opts.format, "format", "f", "table",
+		"output format (valid values: table, json, yaml)")
+	flags.StringVarP(&opts.token, "token", "t", "",
+		"JVS token that needs validation, can be passed as string or via pipe")
 	cmd.MarkFlagRequired("token") //nolint // not expect err
-	// TODO: #140 add output format flag.
 	return cmd
 }
 
@@ -106,6 +106,20 @@ func runValidateCmd(cmd *cobra.Command, opts *validateCmdOptions, args []string)
 		return fmt.Errorf("failed to create jvs client: %w", err)
 	}
 
+	// Compute the formatter
+	var f formatter.Formatter
+	switch v := strings.TrimSpace(strings.ToLower(opts.format)); v {
+	case "json":
+		f = formatter.NewJSON()
+	case "", "table", "text":
+		f = formatter.NewText()
+	case "yaml":
+		f = formatter.NewYAML()
+	default:
+		return fmt.Errorf("unknown formatter %q", v)
+	}
+
+	// Read token from stdin
 	if opts.token == "-" {
 		buf, err := io.ReadAll(io.LimitReader(cmd.InOrStdin(), 64*1_000))
 		if err != nil || len(buf) == 0 {
@@ -131,59 +145,8 @@ func runValidateCmd(cmd *cobra.Command, opts *validateCmdOptions, args []string)
 		}
 	}
 
-	// Output the token into three subtables: breakglass, justification,
-	// and standard claims.
-	w := tabwriter.NewWriter(cmd.OutOrStdout(), 0, 0, 2, ' ', 0)
-	if _, err := fmt.Fprintf(w, "-----BREAKGLASS-----\n%t\n", breakglass); err != nil {
-		return fmt.Errorf("justification token is valid but failed to print breakglass: %w", err)
-	}
-
-	if err := writeJustification(w, token); err != nil {
-		return fmt.Errorf("justification token is valid but failed to print justifications: %w", err)
-	}
-	if err := writeStandardClaims(ctx, w, token); err != nil {
-		return fmt.Errorf("justification token is valid but failed to print standard claims: %w", err)
-	}
-	w.Flush()
-	return nil
-}
-
-func writeJustification(w io.Writer, token jwt.Token) error {
-	justs, err := jvspb.GetJustifications(token)
-	if err != nil {
-		return fmt.Errorf("failed to get justifications from token: %w", err)
-	}
-
-	fmt.Fprintln(w, "\n----JUSTIFICATION----")
-	for _, j := range justs {
-		fmt.Fprintf(w, "%s\t\"%s\"\n", j.GetCategory(), j.GetValue())
-	}
-	return nil
-}
-
-func writeStandardClaims(ctx context.Context, w io.Writer, token jwt.Token) error {
-	// Convert standard claims into a map, excluding justifications claim which is printed separately.
-	claimsMap, err := token.AsMap(ctx)
-	if err != nil {
-		return fmt.Errorf("failed to convert token into map: %w", err)
-	}
-	delete(claimsMap, "justs")
-	claims := make(map[string]string, len(claimsMap))
-	claimsKeys := make([]string, 0, len(claimsMap))
-	for k, v := range claimsMap {
-		claimsKeys = append(claimsKeys, k)
-		jv, err := json.Marshal(v)
-		if err != nil {
-			return fmt.Errorf("failed to marshal standard claims to json: %w", err)
-		}
-		claims[k] = string(jv)
-	}
-
-	// Write standard claims in increasing order as a table
-	sort.Strings(claimsKeys)
-	fmt.Fprintln(w, "\n---STANDARD CLAIMS---")
-	for _, k := range claimsKeys {
-		fmt.Fprintf(w, "%s\t%s\n", k, claims[k])
+	if err := f.FormatTo(ctx, cmd.OutOrStdout(), token, breakglass); err != nil {
+		return fmt.Errorf("failed to format token: %w", err)
 	}
 	return nil
 }

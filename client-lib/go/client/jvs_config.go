@@ -22,7 +22,7 @@ import (
 	"github.com/abcxyz/jvs/pkg/config"
 	"github.com/hashicorp/go-multierror"
 	"github.com/sethvargo/go-envconfig"
-	"gopkg.in/yaml.v2"
+	"gopkg.in/yaml.v3"
 )
 
 var versions = config.NewVersionList("1")
