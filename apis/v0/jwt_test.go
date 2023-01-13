@@ -48,7 +48,7 @@ func TestGetJustifications(t *testing.T) {
 			name: "wrong_type",
 			token: testTokenBuilder(t, jwt.
 				NewBuilder().
-				Claim(jwtJustificationsKey, "not_valid")),
+				Claim(JustificationsKey, "not_valid")),
 			expErr: "unknown type",
 		},
 		{
@@ -59,7 +59,7 @@ func TestGetJustifications(t *testing.T) {
 			name: "not_decoded_claims",
 			token: func() jwt.Token {
 				token, err := jwt.NewBuilder().
-					Claim(jwtJustificationsKey, []*Justification{
+					Claim(JustificationsKey, []*Justification{
 						{
 							Category: "category",
 							Value:    "value",
@@ -92,7 +92,7 @@ func TestGetJustifications(t *testing.T) {
 			name: "single_justification",
 			token: testTokenBuilder(t, jwt.
 				NewBuilder().
-				Claim(jwtJustificationsKey, &Justification{
+				Claim(JustificationsKey, &Justification{
 					Category: "category",
 					Value:    "value",
 				}),
@@ -108,7 +108,7 @@ func TestGetJustifications(t *testing.T) {
 			name: "returns_justifications",
 			token: testTokenBuilder(t, jwt.
 				NewBuilder().
-				Claim(jwtJustificationsKey, []*Justification{
+				Claim(JustificationsKey, []*Justification{
 					{
 						Category: "category",
 						Value:    "value",
@@ -175,7 +175,7 @@ func TestSetJustifications(t *testing.T) {
 			name: "overwrites",
 			token: testTokenBuilder(t, jwt.
 				NewBuilder().
-				Claim(jwtJustificationsKey, []*Justification{
+				Claim(JustificationsKey, []*Justification{
 					{
 						Category: "old",
 						Value:    "value",
@@ -234,7 +234,7 @@ func TestClearJustifications(t *testing.T) {
 			name: "overwrites",
 			token: testTokenBuilder(t, jwt.
 				NewBuilder().
-				Claim(jwtJustificationsKey, []*Justification{
+				Claim(JustificationsKey, []*Justification{
 					{
 						Category: "category",
 						Value:    "value",
