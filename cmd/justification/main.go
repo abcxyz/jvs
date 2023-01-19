@@ -18,6 +18,7 @@ import (
 	"context"
 	"fmt"
 	"net"
+	"os"
 	"os/signal"
 	"syscall"
 
@@ -28,7 +29,7 @@ import (
 	"github.com/abcxyz/jvs/pkg/justification"
 	"github.com/abcxyz/pkg/cfgloader"
 	"github.com/abcxyz/pkg/gcputil"
-	"github.com/abcxyz/pkg/logging"
+	logging "github.com/abcxyz/pkg/logging/exp"
 	"go.opentelemetry.io/contrib/instrumentation/google.golang.org/grpc/otelgrpc"
 	"golang.org/x/sync/errgroup"
 	"google.golang.org/grpc"
@@ -44,14 +45,15 @@ func main() {
 
 	if err := realMain(ctx); err != nil {
 		done()
-		logger.Fatal(err)
+		logger.Error("justification failed", "error", err)
+		os.Exit(1)
 	}
 	logger.Info("successful shutdown")
 }
 
 func realMain(ctx context.Context) error {
 	logger := logging.FromContext(ctx)
-	logger.Debugw("server starting",
+	logger.Debug("server starting",
 		"name", version.Name,
 		"commit", version.Commit,
 		"version", version.Version)
@@ -68,7 +70,7 @@ func realMain(ctx context.Context) error {
 		return fmt.Errorf("failed to load config: %w", err)
 	}
 
-	logger.Debugw("computed configuration", "config", cfg)
+	logger.Debug("computed configuration", "config", cfg)
 
 	kmsClient, err := kms.NewKeyManagementClient(ctx)
 	if err != nil {
@@ -89,7 +91,7 @@ func realMain(ctx context.Context) error {
 	// https://github.com/grpc/grpc/blob/master/doc/health-checking.md
 	g, ctx := errgroup.WithContext(ctx)
 	g.Go(func() error {
-		logger.Debugw("server listening at", "address", lis.Addr())
+		logger.Debug("server listening at", "address", lis.Addr())
 		if err := s.Serve(lis); err != nil {
 			return fmt.Errorf("server failed to listen: %w", err)
 		}

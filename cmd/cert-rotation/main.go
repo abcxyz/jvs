@@ -30,7 +30,7 @@ import (
 	"github.com/abcxyz/jvs/pkg/jvscrypto"
 	"github.com/abcxyz/pkg/cfgloader"
 	"github.com/abcxyz/pkg/gcputil"
-	"github.com/abcxyz/pkg/logging"
+	logging "github.com/abcxyz/pkg/logging/exp"
 	"github.com/hashicorp/go-multierror"
 )
 
@@ -41,7 +41,7 @@ type server struct {
 // ServeHTTP rotates a single key's versions.
 func (s *server) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	logger := logging.FromContext(r.Context())
-	logger.Infow("received request", "url", r.URL)
+	logger.Info("received request", "url", r.URL)
 
 	var errs error
 	// TODO: load keys from DB instead. https://github.com/abcxyz/jvs/issues/17
@@ -50,10 +50,10 @@ func (s *server) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 			errs = multierror.Append(errs, fmt.Errorf("error while rotating key %s: %w", key, err))
 			continue
 		}
-		logger.Infow("successfully performed actions (if necessary) on key.", "key", key)
+		logger.Info("successfully performed actions (if necessary) on key.", "key", key)
 	}
 	if errs != nil {
-		logger.Errorw("ran into errors while rotating keys", "errors", errs)
+		logger.Error("ran into errors while rotating keys", "error", errs)
 		http.Error(w, "error while rotating keys", http.StatusInternalServerError)
 		return
 	}
@@ -69,7 +69,8 @@ func main() {
 
 	if err := realMain(ctx); err != nil {
 		done()
-		logger.Fatal(err)
+		logger.Error("cert-rotation failed", "error", err)
+		os.Exit(1)
 	}
 }
 
@@ -79,7 +80,7 @@ func main() {
 //   - listening to incoming requests in a goroutine
 func realMain(ctx context.Context) error {
 	logger := logging.FromContext(ctx)
-	logger.Debugw("server starting",
+	logger.Debug("server starting",
 		"name", version.Name,
 		"commit", version.Commit,
 		"version", version.Version)
@@ -97,7 +98,7 @@ func realMain(ctx context.Context) error {
 		return fmt.Errorf("failed to load config: %w", err)
 	}
 
-	logger.Debugw("loaded configuration", "config", cfg)
+	logger.Debug("loaded configuration", "config", cfg)
 
 	mux := http.NewServeMux()
 	mux.Handle("/", logging.HTTPInterceptor(logger, projectID)(
@@ -113,7 +114,7 @@ func realMain(ctx context.Context) error {
 	port := os.Getenv("PORT")
 	if port == "" {
 		port = "8080"
-		logger.Debugw("defaulting to port ", "port", port)
+		logger.Debug("defaulting to port ", "port", port)
 	}
 
 	// Create the server and listen in a goroutine.

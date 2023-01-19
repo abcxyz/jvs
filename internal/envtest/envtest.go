@@ -88,7 +88,7 @@ func NewServerConfig(tb testing.TB, port string, allowlist []string, devMode boo
 	r, err := renderer.New(ctx, assets.ServerFS(),
 		renderer.WithDebug(true),
 		renderer.WithOnError(func(err error) {
-			logger.Error(err)
+			logger.Error("failed to render", "error", err)
 		}))
 	if err != nil {
 		tb.Fatal(err)

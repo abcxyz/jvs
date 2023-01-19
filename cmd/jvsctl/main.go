@@ -20,7 +20,7 @@ import (
 	"syscall"
 
 	"github.com/abcxyz/jvs/pkg/cli"
-	"github.com/abcxyz/pkg/logging"
+	logging "github.com/abcxyz/pkg/logging/exp"
 )
 
 func main() {

@@ -18,8 +18,8 @@ import (
 	"context"
 	"errors"
 	"fmt"
-	"log"
 	"net/http"
+	"os"
 	"os/signal"
 	"syscall"
 	"time"
@@ -31,7 +31,7 @@ import (
 	"github.com/abcxyz/pkg/cache"
 	"github.com/abcxyz/pkg/cfgloader"
 	"github.com/abcxyz/pkg/gcputil"
-	"github.com/abcxyz/pkg/logging"
+	logging "github.com/abcxyz/pkg/logging/exp"
 )
 
 func main() {
@@ -43,8 +43,10 @@ func main() {
 
 	if err := realMain(ctx); err != nil {
 		done()
-		log.Fatal(err)
+		logger.Error("public-key failed", "error", err)
+		os.Exit(1)
 	}
+	logger.Info("successful shutdown")
 }
 
 // realMain creates an HTTP server for use with hosting public certs.
@@ -53,7 +55,7 @@ func main() {
 //   - listening to incoming requests in a goroutine.
 func realMain(ctx context.Context) error {
 	logger := logging.FromContext(ctx)
-	logger.Debugw("server starting",
+	logger.Debug("server starting",
 		"name", version.Name,
 		"commit", version.Commit,
 		"version", version.Version)
@@ -71,7 +73,7 @@ func realMain(ctx context.Context) error {
 		return fmt.Errorf("failed to load config: %w", err)
 	}
 
-	logger.Debugw("loaded configuration", "config", cfg)
+	logger.Debug("loaded configuration", "config", cfg)
 
 	cache := cache.New[string](cfg.CacheTimeout)
 
@@ -85,7 +87,7 @@ func realMain(ctx context.Context) error {
 	))
 
 	// Create the server and listen in a goroutine.
-	logger.Debugw("starting server on port", "port", cfg.Port)
+	logger.Debug("starting server on port", "port", cfg.Port)
 	server := &http.Server{
 		Addr:              ":" + cfg.Port,
 		Handler:           mux,

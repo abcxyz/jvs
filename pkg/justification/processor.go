@@ -24,7 +24,7 @@ import (
 	"github.com/abcxyz/jvs/pkg/config"
 	"github.com/abcxyz/jvs/pkg/jvscrypto"
 	"github.com/abcxyz/pkg/cache"
-	"github.com/abcxyz/pkg/logging"
+	logging "github.com/abcxyz/pkg/logging/exp"
 	"github.com/abcxyz/pkg/timeutil"
 	"github.com/google/uuid"
 	"github.com/hashicorp/go-multierror"
@@ -76,13 +76,13 @@ func (p *Processor) CreateToken(ctx context.Context, requestor string, req *jvsp
 	logger := logging.FromContext(ctx)
 
 	if err := p.runValidations(req); err != nil {
-		logger.Errorw("failed to validate request", "error", err)
+		logger.Error("failed to validate request", "error", err)
 		return nil, status.Errorf(codes.InvalidArgument, "failed to validate request: %s", err)
 	}
 
 	token, err := p.createToken(ctx, requestor, req, now)
 	if err != nil {
-		logger.Errorw("failed to create token", "error", err)
+		logger.Error("failed to create token", "error", err)
 		return nil, status.Errorf(codes.Internal, "failed to create token: %s", err)
 	}
 
@@ -90,21 +90,21 @@ func (p *Processor) CreateToken(ctx context.Context, requestor string, req *jvsp
 		return p.getPrimarySigner(ctx)
 	})
 	if err != nil {
-		logger.Errorw("failed to get token signer", "error", err)
+		logger.Error("failed to get token signer", "error", err)
 		return nil, status.Errorf(codes.Internal, "failed to get token signer: %s", err)
 	}
 
 	// Build custom headers and set the "kid" as the signer ID.
 	headers := jws.NewHeaders()
 	if err := headers.Set(jws.KeyIDKey, signer.id); err != nil {
-		logger.Errorw("failed to set kid header", "error", err)
+		logger.Error("failed to set kid header", "error", err)
 		return nil, status.Errorf(codes.Internal, "failed to set token headers: %s", err)
 	}
 
 	// Sign the token.
 	b, err := jwt.Sign(token, jwt.WithKey(jwa.ES256, signer, jws.WithProtectedHeaders(headers)))
 	if err != nil {
-		logger.Errorw("failed to sign token", "error", err)
+		logger.Error("failed to sign token", "error", err)
 		return nil, status.Error(codes.Internal, "failed to sign token")
 	}
 
