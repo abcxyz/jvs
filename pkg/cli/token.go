@@ -41,10 +41,11 @@ import (
 type tokenCmdOptions struct {
 	config *config.CLIConfig
 
-	explanation string
-	breakglass  bool
-	ttl         time.Duration
-	issTimeUnix int64
+	explanation  string
+	breakglass   bool
+	ttl          time.Duration
+	issTimeUnix  int64
+	disableAuthn bool
 }
 
 // newTokenCmd creates a new subcommand for issuing tokens.
@@ -85,6 +86,9 @@ For example:
 	flags.Int64Var(&opts.issTimeUnix, "iat", time.Now().Unix(),
 		"A hidden flag to specify token issue time")
 	flags.MarkHidden("iat") //nolint // not expect err
+	flags.BoolVar(&opts.disableAuthn, "disable-authn", false,
+		"A hidden flag to disable authentication")
+	flags.MarkHidden("disable-authn") //nolint // not expect err
 
 	return cmd
 }
@@ -108,7 +112,7 @@ func runTokenCmd(cmd *cobra.Command, opts *tokenCmdOptions, args []string) error
 	if err != nil {
 		return err
 	}
-	callOpts, err := callOpts(ctx, opts.config.Insecure)
+	callOpts, err := callOpts(ctx, opts.disableAuthn)
 	if err != nil {
 		return err
 	}
@@ -152,8 +156,8 @@ func dialOpts(insecure bool) ([]grpc.DialOption, error) {
 	return []grpc.DialOption{grpc.WithTransportCredentials(cred)}, nil
 }
 
-func callOpts(ctx context.Context, insecure bool) ([]grpc.CallOption, error) {
-	if insecure {
+func callOpts(ctx context.Context, disableAuthn bool) ([]grpc.CallOption, error) {
+	if disableAuthn {
 		return nil, nil
 	}
 
