@@ -80,7 +80,7 @@ func (p *Processor) CreateToken(ctx context.Context, req *jvspb.CreateJustificat
 	if err := p.runValidations(req); err != nil {
 		// panic(err.Error())
 		logger.Errorw("failed to validate request", "error", err)
-		return nil, status.Error(codes.InvalidArgument, "failed to validate request, "+err.Error())
+		return nil, status.Error(codes.InvalidArgument, fmt.Sprintf("failed to validate request, %s", err.Error()))
 	}
 
 	token, err := p.createToken(ctx, now, req)
