@@ -78,8 +78,9 @@ func (p *Processor) CreateToken(ctx context.Context, req *jvspb.CreateJustificat
 	logger := logging.FromContext(ctx)
 
 	if err := p.runValidations(req); err != nil {
+		// panic(err.Error())
 		logger.Errorw("failed to validate request", "error", err)
-		return nil, status.Error(codes.InvalidArgument, "failed to validate request")
+		return nil, status.Error(codes.InvalidArgument, "failed to validate request, "+err.Error())
 	}
 
 	token, err := p.createToken(ctx, now, req)
@@ -141,6 +142,14 @@ func (p *Processor) runValidations(request *jvspb.CreateJustificationRequest) er
 		return fmt.Errorf("no ttl specified")
 	}
 
+	if request.Ttl.AsDuration() > time.Duration(24*time.Hour) {
+		return fmt.Errorf("token ttl shouldn't exceed 24 hours")
+	}
+
+	if request.Ttl.AsDuration() <= time.Duration(0*time.Second) {
+		return fmt.Errorf("token ttl should be positive")
+	}
+
 	var err *multierror.Error
 	for _, j := range request.Justifications {
 		switch j.Category {
@@ -164,9 +173,6 @@ func (p *Processor) createToken(ctx context.Context, now time.Time, req *jvspb.C
 	}
 
 	id := uuid.New().String()
-	if req.Ttl.AsDuration() > 24*time.Hour {
-		return nil, fmt.Errorf("token ttl should be less than 24 hours")
-	}
 	exp := now.Add(req.Ttl.AsDuration())
 
 	justs := req.Justifications

@@ -95,7 +95,7 @@ func TestCreateToken(t *testing.T) {
 			request: &jvspb.CreateJustificationRequest{
 				Ttl: durationpb.New(3600 * time.Second),
 			},
-			wantErr: "failed to validate request",
+			wantErr: "failed to validate request, no justifications specified",
 		},
 		{
 			name: "no_ttl",
@@ -107,14 +107,33 @@ func TestCreateToken(t *testing.T) {
 					},
 				},
 			},
-			wantErr: "failed to validate request",
+			wantErr: "failed to validate request, no ttl specified",
 		},
 		{
 			name: "ttl_too_long",
 			request: &jvspb.CreateJustificationRequest{
+				Justifications: []*jvspb.Justification{
+					{
+						Category: "explanation",
+						Value:    "test",
+					},
+				},
 				Ttl: durationpb.New(25 * time.Hour),
 			},
-			wantErr: "failed to validate request",
+			wantErr: "failed to validate request, token ttl shouldn't exceed 24 hours",
+		},
+		{
+			name: "negative_ttl",
+			request: &jvspb.CreateJustificationRequest{
+				Justifications: []*jvspb.Justification{
+					{
+						Category: "explanation",
+						Value:    "test",
+					},
+				},
+				Ttl: durationpb.New(-1 * time.Hour),
+			},
+			wantErr: "failed to validate request, token ttl should be positive",
 		},
 	}
 
