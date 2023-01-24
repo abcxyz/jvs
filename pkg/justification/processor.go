@@ -164,7 +164,7 @@ func (p *Processor) createToken(ctx context.Context, now time.Time, req *jvspb.C
 	}
 
 	id := uuid.New().String()
-	if req.Ttl.AsDuration() > time.Duration(24*time.Hour) {
+	if req.Ttl.AsDuration() > 24*time.Hour {
 		return nil, fmt.Errorf("token ttl should be less than 24 hours")
 	}
 	exp := now.Add(req.Ttl.AsDuration())
