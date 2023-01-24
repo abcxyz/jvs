@@ -142,11 +142,11 @@ func (p *Processor) runValidations(request *jvspb.CreateJustificationRequest) er
 		return fmt.Errorf("no ttl specified")
 	}
 
-	if request.Ttl.AsDuration() > time.Duration(24*time.Hour) {
+	if request.Ttl.AsDuration() > 24*time.Hour {
 		return fmt.Errorf("token ttl shouldn't exceed 24 hours")
 	}
 
-	if request.Ttl.AsDuration() <= time.Duration(0*time.Second) {
+	if request.Ttl.AsDuration() <= 0*time.Second {
 		return fmt.Errorf("token ttl should be positive")
 	}
 
