@@ -109,6 +109,13 @@ func TestCreateToken(t *testing.T) {
 			},
 			wantErr: "failed to validate request",
 		},
+		{
+			name: "ttl_too_long",
+			request: &jvspb.CreateJustificationRequest{
+				Ttl: durationpb.New(25 * time.Hour),
+			},
+			wantErr: "failed to validate request",
+		},
 	}
 
 	for _, tc := range tests {
