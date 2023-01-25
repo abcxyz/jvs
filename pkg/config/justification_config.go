@@ -19,6 +19,7 @@ import (
 	"fmt"
 	"time"
 
+	"github.com/abcxyz/pkg/timeutil"
 	"github.com/hashicorp/go-multierror"
 )
 
@@ -43,6 +44,14 @@ type JustificationConfig struct {
 
 	// Issuer will be used to set the issuer field when signing JWTs
 	Issuer string `yaml:"issuer" env:"ISSUER,overwrite,default=jvs.abcxyz.dev"`
+
+	// DefaultTTL sets the default TTL for JVS tokens that do not explicitly
+	// request a TTL. MaxTTL is the system-configured maximum TTL that a token can
+	// request.
+	//
+	// The DefaultTTL must be less than or equal to MaxTTL.
+	DefaultTTL time.Duration `yaml:"default_ttl" env:"DEFAULT_TTL,overwrite,default=15m"`
+	MaxTTL     time.Duration `yaml:"max_ttl" env:"MAX_TTL,overwrite,default=4h"`
 }
 
 // Validate checks if the config is valid.
@@ -58,5 +67,11 @@ func (cfg *JustificationConfig) Validate() error {
 		err = multierror.Append(err, fmt.Errorf("cache timeout must be a positive duration, got %s",
 			cfg.SignerCacheTimeout))
 	}
+
+	if def, max := cfg.DefaultTTL, cfg.MaxTTL; def > max {
+		err = multierror.Append(err, fmt.Errorf("default ttl (%s) must be less than or equal to the max ttl (%s)",
+			timeutil.HumanDuration(def), timeutil.HumanDuration(max)))
+	}
+
 	return err.ErrorOrNil()
 }
