@@ -29,6 +29,7 @@ import (
 	"github.com/abcxyz/jvs/pkg/config"
 	"github.com/abcxyz/jvs/pkg/jvscrypto"
 	"github.com/abcxyz/pkg/cfgloader"
+	"github.com/abcxyz/pkg/gcputil"
 	"github.com/abcxyz/pkg/logging"
 	"github.com/hashicorp/go-multierror"
 )
@@ -83,6 +84,8 @@ func realMain(ctx context.Context) error {
 		"commit", version.Commit,
 		"version", version.Version)
 
+	projectID := gcputil.ProjectID(ctx)
+
 	kmsClient, err := kms.NewKeyManagementClient(ctx)
 	if err != nil {
 		return fmt.Errorf("failed to setup kms client: %w", err)
@@ -94,15 +97,17 @@ func realMain(ctx context.Context) error {
 		return fmt.Errorf("failed to load config: %w", err)
 	}
 
-	handler := &jvscrypto.RotationHandler{
-		KMSClient:    kmsClient,
-		CryptoConfig: &cfg,
-	}
+	logger.Debugw("loaded configuration", "config", cfg)
 
 	mux := http.NewServeMux()
-	mux.Handle("/", &server{
-		handler: handler,
-	})
+	mux.Handle("/", logging.HTTPInterceptor(logger, projectID)(
+		&server{
+			handler: &jvscrypto.RotationHandler{
+				KMSClient:    kmsClient,
+				CryptoConfig: &cfg,
+			},
+		},
+	))
 
 	// Determine port for HTTP service.
 	port := os.Getenv("PORT")
