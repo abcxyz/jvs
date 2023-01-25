@@ -65,15 +65,15 @@ func (h *RotationHandler) RotateKey(ctx context.Context, key string) error {
 	// Get any relevant Key Version information from the StateStore
 	primaryName, err := GetPrimary(ctx, h.KMSClient, key)
 	if err != nil {
-		return fmt.Errorf("unable to determine primary: %w", err)
+		return fmt.Errorf("failed to determine primary: %w", err)
 	}
 	actions, err := h.determineActions(ctx, vers, primaryName, curTime)
 	if err != nil {
-		return fmt.Errorf("unable to determine cert actions: %w", err)
+		return fmt.Errorf("failed to determine cert actions: %w", err)
 	}
 
 	if err = h.performActions(ctx, key, actions); err != nil {
-		return fmt.Errorf("unable to perform some cert actions: %w", err)
+		return fmt.Errorf("failed to perform some cert actions: %w", err)
 	}
 	return nil
 }

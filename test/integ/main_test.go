@@ -88,6 +88,8 @@ func TestJVS(t *testing.T) {
 		KeyName:            keyName,
 		Issuer:             "ci-test",
 		SignerCacheTimeout: 1 * time.Nanosecond, // no caching
+		DefaultTTL:         15 * time.Minute,
+		MaxTTL:             2 * time.Hour,
 	}
 	if err := cfg.Validate(); err != nil {
 		t.Fatal(err)
@@ -185,18 +187,6 @@ func TestJVS(t *testing.T) {
 				},
 				Ttl: &durationpb.Duration{
 					Seconds: 3600,
-				},
-			},
-			wantErr: "failed to validate request",
-		},
-		{
-			name: "no_ttl",
-			request: &jvspb.CreateJustificationRequest{
-				Justifications: []*jvspb.Justification{
-					{
-						Category: "explanation",
-						Value:    "This is a test.",
-					},
 				},
 			},
 			wantErr: "failed to validate request",
