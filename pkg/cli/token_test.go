@@ -66,7 +66,7 @@ func TestNewTokenCmd(t *testing.T) {
 				Server:   badJVS,
 				Insecure: true,
 			},
-			args:   []string{"-e", "for testing purposes"},
+			args:   []string{"-e", "for testing purposes", "--disable-authn"},
 			expErr: "testing server error",
 		},
 		{
@@ -75,7 +75,7 @@ func TestNewTokenCmd(t *testing.T) {
 				Server:   goodJVS,
 				Insecure: true,
 			},
-			args: []string{"-e=for testing purposes"},
+			args: []string{"-e=for testing purposes", "--disable-authn"},
 			expJustifications: []*jvspb.Justification{
 				{
 					Category: "explanation",
