@@ -26,6 +26,7 @@ import (
 	"github.com/abcxyz/pkg/cache"
 	"github.com/abcxyz/pkg/grpcutil"
 	"github.com/abcxyz/pkg/logging"
+	"github.com/abcxyz/pkg/timeutil"
 	"github.com/google/uuid"
 	"github.com/hashicorp/go-multierror"
 	"github.com/lestrrat-go/jwx/v2/jwa"
@@ -79,28 +80,28 @@ func (p *Processor) CreateToken(ctx context.Context, req *jvspb.CreateJustificat
 
 	if err := p.runValidations(req); err != nil {
 		logger.Errorw("failed to validate request", "error", err)
-		return nil, status.Error(codes.InvalidArgument, "failed to validate request")
+		return nil, status.Errorf(codes.InvalidArgument, "failed to validate request: %s", err)
 	}
 
 	token, err := p.createToken(ctx, now, req)
 	if err != nil {
 		logger.Errorw("failed to create token", "error", err)
-		return nil, status.Error(codes.Internal, "failed to create token")
+		return nil, status.Errorf(codes.Internal, "failed to create token: %s", err)
 	}
 
 	signer, err := p.cache.WriteThruLookup(cacheKey, func() (*signerWithID, error) {
 		return p.getPrimarySigner(ctx)
 	})
 	if err != nil {
-		logger.Errorw("failed to get signer", "error", err)
-		return nil, status.Error(codes.Internal, "failed to get token signer")
+		logger.Errorw("failed to get token signer", "error", err)
+		return nil, status.Errorf(codes.Internal, "failed to get token signer: %s", err)
 	}
 
 	// Build custom headers and set the "kid" as the signer ID.
 	headers := jws.NewHeaders()
 	if err := headers.Set(jws.KeyIDKey, signer.id); err != nil {
 		logger.Errorw("failed to set kid header", "error", err)
-		return nil, status.Error(codes.Internal, "failed to set token headers")
+		return nil, status.Errorf(codes.Internal, "failed to set token headers: %s", err)
 	}
 
 	// Sign the token.
@@ -116,14 +117,14 @@ func (p *Processor) CreateToken(ctx context.Context, req *jvspb.CreateJustificat
 func (p *Processor) getPrimarySigner(ctx context.Context) (*signerWithID, error) {
 	primaryVer, err := jvscrypto.GetPrimary(ctx, p.kms, p.config.KeyName)
 	if err != nil {
-		return nil, fmt.Errorf("unable to determine primary, %w", err)
+		return nil, fmt.Errorf("failed to determine primary signing key: %w", err)
 	}
 	if primaryVer == "" {
 		return nil, fmt.Errorf("no primary version found")
 	}
 	sig, err := gcpkms.NewSigner(ctx, p.kms, primaryVer)
 	if err != nil {
-		return nil, fmt.Errorf("failed to create signer, %w", err)
+		return nil, fmt.Errorf("failed to create signer: %w", err)
 	}
 	return &signerWithID{
 		Signer: sig,
@@ -135,10 +136,6 @@ func (p *Processor) getPrimarySigner(ctx context.Context) (*signerWithID, error)
 func (p *Processor) runValidations(request *jvspb.CreateJustificationRequest) error {
 	if len(request.Justifications) < 1 {
 		return fmt.Errorf("no justifications specified")
-	}
-
-	if request.Ttl == nil {
-		return fmt.Errorf("no ttl specified")
 	}
 
 	var err *multierror.Error
@@ -160,12 +157,18 @@ func (p *Processor) runValidations(request *jvspb.CreateJustificationRequest) er
 func (p *Processor) createToken(ctx context.Context, now time.Time, req *jvspb.CreateJustificationRequest) (jwt.Token, error) {
 	email, err := p.authHandler.RequestPrincipal(ctx)
 	if err != nil {
-		return nil, fmt.Errorf("unable to get email of requestor: %w", err)
+		return nil, fmt.Errorf("failed to get email of requestor: %w", err)
+	}
+
+	ttl, err := computeTTL(req.Ttl.AsDuration(), p.config.DefaultTTL, p.config.MaxTTL)
+	if err != nil {
+		return nil, fmt.Errorf("failed to compute ttl: %w", err)
 	}
 
 	id := uuid.New().String()
-	exp := now.Add(req.Ttl.AsDuration())
+	exp := now.Add(ttl)
 	justs := req.Justifications
+	iss := p.config.Issuer
 
 	// Use audiences in the request if provided.
 	aud := req.Audiences
@@ -177,7 +180,7 @@ func (p *Processor) createToken(ctx context.Context, now time.Time, req *jvspb.C
 		Audience(aud).
 		Expiration(exp).
 		IssuedAt(now).
-		Issuer(p.config.Issuer).
+		Issuer(iss).
 		JwtID(id).
 		NotBefore(now).
 		Subject(email).
@@ -191,4 +194,21 @@ func (p *Processor) createToken(ctx context.Context, now time.Time, req *jvspb.C
 	}
 
 	return token, nil
+}
+
+// computeTTL is a helper that computes the best TTL given the requested TTL,
+// default TTL, and maximum configured TTL. If the requested TTL is greater than
+// the maximum TTL, it returns an error. If the requested TTL is 0, it returns
+// the default TTL.
+func computeTTL(req, def, max time.Duration) (time.Duration, error) {
+	if req <= 0 {
+		return def, nil
+	}
+
+	if req > max {
+		return 0, fmt.Errorf("requested ttl (%s) cannot be greater than max tll (%s)",
+			timeutil.HumanDuration(req), timeutil.HumanDuration(max))
+	}
+
+	return req, nil
 }

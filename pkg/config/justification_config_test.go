@@ -41,6 +41,8 @@ func TestJustificationConfig_Defaults(t *testing.T) {
 		Port:               "8080",
 		SignerCacheTimeout: 5 * time.Minute,
 		Issuer:             "jvs.abcxyz.dev",
+		DefaultTTL:         15 * time.Minute,
+		MaxTTL:             4 * time.Hour,
 	}
 
 	if diff := cmp.Diff(want, &justificationConfig); diff != "" {
@@ -66,12 +68,16 @@ port: 123
 version: 1
 signer_cache_timeout: 1m
 issuer: jvs
+default_ttl: 5m
+max_ttl: 30m
 `,
 			wantConfig: &JustificationConfig{
 				Port:               "123",
 				Version:            "1",
 				SignerCacheTimeout: 1 * time.Minute,
 				Issuer:             "jvs",
+				DefaultTTL:         5 * time.Minute,
+				MaxTTL:             30 * time.Minute,
 			},
 		},
 		{
@@ -82,10 +88,12 @@ issuer: jvs
 				Version:            "1",
 				SignerCacheTimeout: 5 * time.Minute,
 				Issuer:             "jvs.abcxyz.dev",
+				DefaultTTL:         15 * time.Minute,
+				MaxTTL:             4 * time.Hour,
 			},
 		},
 		{
-			name: "test_wrong_version",
+			name: "wrong_version",
 			cfg: `
 version: 255
 `,
@@ -93,12 +101,21 @@ version: 255
 			wantErr:    `version "255" is invalid, valid versions are:`,
 		},
 		{
-			name: "test_invalid_signer_cache_timeout",
+			name: "invalid_signer_cache_timeout",
 			cfg: `
 signer_cache_timeout: -1m
 `,
 			wantConfig: nil,
 			wantErr:    `cache timeout must be a positive duration, got -1m0s`,
+		},
+		{
+			name: "default_ttl_greater_than_max_ttl",
+			cfg: `
+default_ttl: 1h
+max_ttl: 30m
+`,
+			wantConfig: nil,
+			wantErr:    `default ttl (1h) must be less than or equal to the max ttl (30m)`,
 		},
 		{
 			name: "all_values_specified_env_override",
@@ -107,18 +124,24 @@ version: 1
 port: 8080
 signer_cache_timeout: 1m
 issuer: jvs
+default_ttl: 15m
+max_ttl: 1h
 `,
 			envs: map[string]string{
 				"VERSION":              "1",
 				"PORT":                 "tcp",
 				"SIGNER_CACHE_TIMEOUT": "2m",
 				"ISSUER":               "other",
+				"DEFAULT_TTL":          "30m",
+				"MAX_TTL":              "2h",
 			},
 			wantConfig: &JustificationConfig{
 				Version:            "1",
 				Port:               "tcp",
 				SignerCacheTimeout: 2 * time.Minute,
 				Issuer:             "other",
+				DefaultTTL:         30 * time.Minute,
+				MaxTTL:             2 * time.Hour,
 			},
 		},
 	}

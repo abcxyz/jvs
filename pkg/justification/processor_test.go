@@ -32,6 +32,7 @@ import (
 	"github.com/abcxyz/jvs/pkg/jvscrypto"
 	"github.com/abcxyz/jvs/pkg/testutil"
 	"github.com/abcxyz/pkg/grpcutil"
+	"github.com/abcxyz/pkg/logging"
 	pkgtestutil "github.com/abcxyz/pkg/testutil"
 	"github.com/google/go-cmp/cmp"
 	"github.com/google/go-cmp/cmp/cmpopts"
@@ -59,6 +60,7 @@ func TestCreateToken(t *testing.T) {
 	tests := []struct {
 		name          string
 		request       *jvspb.CreateJustificationRequest
+		wantTTL       time.Duration
 		wantAudiences []string
 		wantErr       string
 		serverErr     error
@@ -74,6 +76,7 @@ func TestCreateToken(t *testing.T) {
 				},
 				Ttl: durationpb.New(3600 * time.Second),
 			},
+			wantTTL:       1 * time.Hour,
 			wantAudiences: []string{DefaultAudience},
 		},
 		{
@@ -88,6 +91,7 @@ func TestCreateToken(t *testing.T) {
 				Ttl:       durationpb.New(3600 * time.Second),
 				Audiences: []string{"aud1", "aud2"},
 			},
+			wantTTL:       1 * time.Hour,
 			wantAudiences: []string{"aud1", "aud2"},
 		},
 		{
@@ -107,7 +111,21 @@ func TestCreateToken(t *testing.T) {
 					},
 				},
 			},
-			wantErr: "failed to validate request",
+			wantTTL:       15 * time.Minute, // comes from default
+			wantAudiences: []string{"dev.abcxyz.jvs"},
+		},
+		{
+			name: "ttl_exceeds_max",
+			request: &jvspb.CreateJustificationRequest{
+				Justifications: []*jvspb.Justification{
+					{
+						Category: "explanation",
+						Value:    "test",
+					},
+				},
+				Ttl: durationpb.New(10 * time.Hour),
+			},
+			wantErr: "requested ttl (10h) cannot be greater than max tll (1h)",
 		},
 	}
 
@@ -117,7 +135,7 @@ func TestCreateToken(t *testing.T) {
 		t.Run(tc.name, func(t *testing.T) {
 			t.Parallel()
 
-			ctx := context.Background()
+			ctx := logging.WithLogger(context.Background(), logging.TestLogger(t))
 			now := time.Now().UTC()
 
 			var clientOpt option.ClientOption
@@ -187,6 +205,8 @@ func TestCreateToken(t *testing.T) {
 				KeyName:            key,
 				SignerCacheTimeout: 5 * time.Minute,
 				Issuer:             "test-iss",
+				DefaultTTL:         1 * time.Minute,
+				MaxTTL:             1 * time.Hour,
 			}, authHandler)
 
 			mockKeyManagement.Reqs = nil
@@ -196,7 +216,7 @@ func TestCreateToken(t *testing.T) {
 
 			response, gotErr := processor.CreateToken(ctx, tc.request)
 			if diff := pkgtestutil.DiffErrString(gotErr, tc.wantErr); diff != "" {
-				t.Errorf("Unexpected err: %s", diff)
+				t.Error(diff)
 			}
 			if gotErr != nil {
 				return
@@ -262,6 +282,65 @@ func TestCreateToken(t *testing.T) {
 			expectedJustifications := tc.request.Justifications
 			if diff := cmp.Diff(expectedJustifications, gotJustifications, cmpopts.IgnoreUnexported(jvspb.Justification{})); diff != "" {
 				t.Errorf("justs: diff (-want, +got):\n%s", diff)
+			}
+		})
+	}
+}
+
+func TestComputeTTL(t *testing.T) {
+	t.Parallel()
+
+	cases := []struct {
+		name string
+		req  time.Duration
+		def  time.Duration
+		max  time.Duration
+		exp  time.Duration
+		err  string
+	}{
+		{
+			name: "request_zero_uses_default",
+			req:  0,
+			def:  15 * time.Minute,
+			max:  30 * time.Minute,
+			exp:  15 * time.Minute,
+		},
+		{
+			name: "request_negative_uses_default",
+			req:  -10 * time.Second,
+			def:  15 * time.Minute,
+			max:  30 * time.Minute,
+			exp:  15 * time.Minute,
+		},
+		{
+			name: "request_uses_self_in_bounds",
+			req:  12 * time.Minute,
+			def:  15 * time.Minute,
+			max:  30 * time.Minute,
+			exp:  12 * time.Minute,
+		},
+		{
+			name: "request_greater_than_max_errors",
+			req:  1 * time.Hour,
+			def:  15 * time.Minute,
+			max:  30 * time.Minute,
+			err:  "requested ttl (1h) cannot be greater than max tll (30m)",
+		},
+	}
+
+	for _, tc := range cases {
+		tc := tc
+
+		t.Run(tc.name, func(t *testing.T) {
+			t.Parallel()
+
+			got, err := computeTTL(tc.req, tc.def, tc.max)
+			if result := pkgtestutil.DiffErrString(err, tc.err); result != "" {
+				t.Fatal(result)
+			}
+
+			if want := tc.exp; got != want {
+				t.Errorf("expected %q to be %q", got, want)
 			}
 		})
 	}
