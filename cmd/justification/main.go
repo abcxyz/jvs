@@ -27,6 +27,7 @@ import (
 	"github.com/abcxyz/jvs/pkg/config"
 	"github.com/abcxyz/jvs/pkg/justification"
 	"github.com/abcxyz/pkg/cfgloader"
+	"github.com/abcxyz/pkg/gcputil"
 	"github.com/abcxyz/pkg/grpcutil"
 	"github.com/abcxyz/pkg/logging"
 	"go.opentelemetry.io/contrib/instrumentation/google.golang.org/grpc/otelgrpc"
@@ -56,7 +57,10 @@ func realMain(ctx context.Context) error {
 		"commit", version.Commit,
 		"version", version.Version)
 
+	projectID := gcputil.ProjectID(ctx)
+
 	s := grpc.NewServer(grpc.ChainUnaryInterceptor(
+		logging.GRPCUnaryInterceptor(logger, projectID),
 		otelgrpc.UnaryServerInterceptor(),
 	))
 
@@ -64,6 +68,8 @@ func realMain(ctx context.Context) error {
 	if err := cfgloader.Load(ctx, &cfg); err != nil {
 		return fmt.Errorf("failed to load config: %w", err)
 	}
+
+	logger.Debugw("computed configuration", "config", cfg)
 
 	kmsClient, err := kms.NewKeyManagementClient(ctx)
 	if err != nil {
