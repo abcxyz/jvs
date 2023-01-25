@@ -30,6 +30,7 @@ import (
 	"github.com/abcxyz/jvs/pkg/jvscrypto"
 	"github.com/abcxyz/pkg/cache"
 	"github.com/abcxyz/pkg/cfgloader"
+	"github.com/abcxyz/pkg/gcputil"
 	"github.com/abcxyz/pkg/logging"
 )
 
@@ -57,6 +58,8 @@ func realMain(ctx context.Context) error {
 		"commit", version.Commit,
 		"version", version.Version)
 
+	projectID := gcputil.ProjectID(ctx)
+
 	kmsClient, err := kms.NewKeyManagementClient(ctx)
 	if err != nil {
 		return fmt.Errorf("failed to setup kms client: %w", err)
@@ -68,16 +71,18 @@ func realMain(ctx context.Context) error {
 		return fmt.Errorf("failed to load config: %w", err)
 	}
 
+	logger.Debugw("loaded configuration", "config", cfg)
+
 	cache := cache.New[string](cfg.CacheTimeout)
 
-	ks := &jvscrypto.KeyServer{
-		KMSClient:       kmsClient,
-		PublicKeyConfig: &cfg,
-		Cache:           cache,
-	}
-
 	mux := http.NewServeMux()
-	mux.Handle("/.well-known/jwks", ks)
+	mux.Handle("/.well-known/jwks", logging.HTTPInterceptor(logger, projectID)(
+		&jvscrypto.KeyServer{
+			KMSClient:       kmsClient,
+			PublicKeyConfig: &cfg,
+			Cache:           cache,
+		},
+	))
 
 	// Create the server and listen in a goroutine.
 	logger.Debugw("starting server on port", "port", cfg.Port)
