@@ -47,6 +47,7 @@ func TestNewTokenCmd(t *testing.T) {
 		name              string
 		config            *config.CLIConfig
 		args              []string
+		expAudiences      []string
 		expJustifications []*jvspb.Justification
 		expErr            string
 	}{
@@ -75,7 +76,8 @@ func TestNewTokenCmd(t *testing.T) {
 				Server:   goodJVS,
 				Insecure: true,
 			},
-			args: []string{"-e=for testing purposes", "--disable-authn"},
+			args:         []string{"-e=for testing purposes", "--disable-authn"},
+			expAudiences: []string{justification.DefaultAudience},
 			expJustifications: []*jvspb.Justification{
 				{
 					Category: "explanation",
@@ -84,9 +86,22 @@ func TestNewTokenCmd(t *testing.T) {
 			},
 		},
 		{
-			name:   "breakglass",
-			config: &config.CLIConfig{},
-			args:   []string{"-e=prod is down", "--breakglass", "--iat=0"},
+			name:         "breakglass",
+			config:       &config.CLIConfig{},
+			args:         []string{"-e=prod is down", "--breakglass", "--iat=0"},
+			expAudiences: []string{justification.DefaultAudience},
+			expJustifications: []*jvspb.Justification{
+				{
+					Category: "breakglass",
+					Value:    "prod is down",
+				},
+			},
+		},
+		{
+			name:         "audiences",
+			config:       &config.CLIConfig{},
+			args:         []string{"-e=prod is down", "--breakglass", "--audiences=foo,bar"},
+			expAudiences: []string{"foo", "bar"},
 			expJustifications: []*jvspb.Justification{
 				{
 					Category: "breakglass",
@@ -123,7 +138,7 @@ func TestNewTokenCmd(t *testing.T) {
 			}
 
 			// Validate standard claims.
-			if got, want := token.Audience(), []string{justification.DefaultAudience}; !reflect.DeepEqual(got, want) {
+			if got, want := token.Audience(), tc.expAudiences; !reflect.DeepEqual(got, want) {
 				t.Errorf("aud: expected %q to be %q", got, want)
 			}
 			if got := token.Expiration(); !got.After(now) {

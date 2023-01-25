@@ -41,6 +41,7 @@ import (
 type tokenCmdOptions struct {
 	config *config.CLIConfig
 
+	audiences    []string
 	explanation  string
 	breakglass   bool
 	ttl          time.Duration
@@ -66,6 +67,9 @@ For example:
     # Generate a token with a 30min ttl
     jvsctl token --explanation "issues/12345" --ttl 30m
 
+    # Generate a token with custom audiences
+    jvsctl token --explanation "access production" --audiences "my.service.dev"
+
     # Generate a breakglass token
     jvsctl token --explanation "everything is broken" --breakglass
 `, "\n"),
@@ -79,6 +83,8 @@ For example:
 	flags.StringVarP(&opts.explanation, "explanation", "e", "",
 		"The explanation for the action")
 	cmd.MarkFlagRequired("explanation") //nolint // not expect err
+	flags.StringSliceVar(&opts.audiences, "audiences", []string{justification.DefaultAudience},
+		"The list of audiences for the token")
 	flags.BoolVar(&opts.breakglass, "breakglass", false,
 		"Whether it will be a breakglass action")
 	flags.DurationVar(&opts.ttl, "ttl", 15*time.Minute,
@@ -181,7 +187,7 @@ func breakglassToken(ctx context.Context, opts *tokenCmdOptions) (string, error)
 	exp := now.Add(opts.ttl)
 
 	token, err := jwt.NewBuilder().
-		Audience([]string{justification.DefaultAudience}).
+		Audience(opts.audiences).
 		Expiration(exp).
 		IssuedAt(now).
 		Issuer(Issuer).
