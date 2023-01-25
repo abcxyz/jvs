@@ -133,13 +133,16 @@ func (p *Processor) getPrimarySigner(ctx context.Context) (*signerWithID, error)
 }
 
 // TODO: Each category should have its own validator struct, with a shared interface.
-func (p *Processor) runValidations(request *jvspb.CreateJustificationRequest) error {
-	if len(request.Justifications) < 1 {
+func (p *Processor) runValidations(req *jvspb.CreateJustificationRequest) error {
+	if len(req.Justifications) < 1 {
 		return fmt.Errorf("no justifications specified")
 	}
 
+	var justificationsLength int
 	var err *multierror.Error
-	for _, j := range request.Justifications {
+	for _, j := range req.Justifications {
+		justificationsLength += len(j.Category) + len(j.Value)
+
 		switch j.Category {
 		case "explanation":
 			if j.Value == "" {
@@ -149,6 +152,23 @@ func (p *Processor) runValidations(request *jvspb.CreateJustificationRequest) er
 			err = multierror.Append(err, fmt.Errorf("unexpected justification %v unrecognized", j))
 		}
 	}
+
+	// This isn't perfect, but it's the easiest place to get "close" to limiting
+	// the size.
+	if got, max := justificationsLength, 4_000; got > max {
+		err = multierror.Append(err, fmt.Errorf("justification size (%d bytes) must be less than %d bytes",
+			got, max))
+	}
+
+	var audiencesLength int
+	for _, v := range req.Audiences {
+		audiencesLength += len(v)
+	}
+	if got, max := audiencesLength, 1_000; got > max {
+		err = multierror.Append(err, fmt.Errorf("audiences size (%d bytes) must be less than %d bytes",
+			got, max))
+	}
+
 	return err.ErrorOrNil()
 }
 
