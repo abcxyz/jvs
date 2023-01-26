@@ -147,7 +147,7 @@ func TestValidateJWT(t *testing.T) {
 			if err != nil {
 				t.Fatalf("failed to create JVS client: %v", err)
 			}
-			res, err := client.ValidateJWT(tc.jwt)
+			res, err := client.ValidateJWT(ctx, tc.jwt)
 
 			if diff := testutil.DiffErrString(err, tc.wantErr); diff != "" {
 				t.Errorf("Unexpected err: %s", diff)
