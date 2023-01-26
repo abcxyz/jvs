@@ -139,7 +139,7 @@ func runValidateCmd(cmd *cobra.Command, opts *validateCmdOptions, args []string)
 	if token != nil {
 		breakglass = true
 	} else {
-		token, err = jvsclient.ValidateJWT(opts.token)
+		token, err = jvsclient.ValidateJWT(ctx, opts.token)
 		if err != nil {
 			return fmt.Errorf("failed to validate jwt: %w", err)
 		}
