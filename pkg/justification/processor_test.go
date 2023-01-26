@@ -22,6 +22,7 @@ import (
 	"crypto/x509"
 	"encoding/pem"
 	"reflect"
+	"strings"
 	"testing"
 	"time"
 
@@ -126,6 +127,33 @@ func TestCreateToken(t *testing.T) {
 				Ttl: durationpb.New(10 * time.Hour),
 			},
 			wantErr: "requested ttl (10h) cannot be greater than max tll (1h)",
+		},
+		{
+			name: "justifications_too_long",
+			request: &jvspb.CreateJustificationRequest{
+				Justifications: []*jvspb.Justification{
+					{
+						Category: "explanation",
+						Value:    strings.Repeat("test", 4_000),
+					},
+				},
+				Ttl: durationpb.New(10 * time.Hour),
+			},
+			wantErr: "must be less than 4000 bytes",
+		},
+		{
+			name: "audiences_too_long",
+			request: &jvspb.CreateJustificationRequest{
+				Justifications: []*jvspb.Justification{
+					{
+						Category: "explanation",
+						Value:    "test",
+					},
+				},
+				Audiences: []string{strings.Repeat("test", 1_000)},
+				Ttl:       durationpb.New(10 * time.Hour),
+			},
+			wantErr: "must be less than 1000 bytes",
 		},
 	}
 
