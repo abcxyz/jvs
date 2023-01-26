@@ -58,7 +58,7 @@ func NewJVSClient(ctx context.Context, config *JVSConfig) (*JVSClient, error) {
 
 // ValidateJWT takes a jwt string, converts it to a JWT, and validates the
 // signature against the keys in the JWKs endpoint.
-func (j *JVSClient) ValidateJWT(jwtStr string) (jwt.Token, error) {
+func (j *JVSClient) ValidateJWT(ctx context.Context, jwtStr string) (jwt.Token, error) {
 	// Handle breakglass tokens
 	token, err := jvspb.ParseBreakglassToken(jwtStr)
 	if err != nil {
@@ -73,7 +73,7 @@ func (j *JVSClient) ValidateJWT(jwtStr string) (jwt.Token, error) {
 
 	// If we got this far, the token was not breakglass, so parse as normal.
 	token, err = jwt.ParseString(jwtStr,
-		jwt.WithContext(context.TODO()),
+		jwt.WithContext(ctx),
 		jvspb.WithTypedJustifications(),
 		jwt.WithKeySet(j.keys, jws.WithInferAlgorithmFromKey(true)),
 	)
