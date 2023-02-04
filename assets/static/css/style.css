@@ -32,7 +32,21 @@
   .primary-button:hover {
     background-color: #115deb;
   }
+
+  .secondary-button {
+    background-color: #d1d3d87b;
+    color: black;
+    padding: 12px 20px;
+    border: none;
+    border-radius: 4px;
+    cursor: pointer;
+    float: right;
+  }
   
+  .secondary-button:hover {
+    background-color: #d1d3d8c8;
+  }
+
   .container {
     border-radius: 5px;
     background-color: #f2f2f2;
