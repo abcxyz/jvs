@@ -2,83 +2,156 @@ package ui
 
 import (
 	"context"
-	"encoding/json"
 	"fmt"
 	"html/template"
 	"log"
 	"net/http"
-	"net/url"
 	"strings"
-	"time"
 )
 
-type FormDetails struct {
-	Category string
-	Value    string
-	TTL      string
+type Pair struct {
+	Key  string
+	Text string
 }
+
+type Content struct {
+	UserLabel     string
+	CategoryLabel string
+	ReasonLabel   string
+	TTLLabel      string
+	Categories    []Pair
+	TTLs          []Pair
+}
+
+type FormDetails struct {
+	PageTitle string
+	Content   Content
+	Category  string
+	Reason    string
+	TTL       string
+	Errors    map[string]string
+}
+
+var categories []string
+var ttls []string
 
 var tmpl *template.Template
 
-func printStuff(r *http.Request) {
-	r.ParseForm()                 // parse arguments, you have to call this by yourself
-	fmt.Println("r.Form", r.Form) // print form information in server side
-	// set data?
-	fmt.Println("r.URL.Path", r.URL.Path)
-	fmt.Println("r.URL.Host", r.URL.Host)
-	fmt.Println("r.URL.Hostname", r.URL.Hostname())
-	fmt.Println("r.Form[\"url_long\"]", r.Form["url_long"])
-	for k, v := range r.Form {
-		fmt.Println("key:", k)
-		fmt.Println("val:", strings.Join(v, ""))
-	}
-	// fmt.Fprintf(w, "Hello astaxie!") // send data to client side
+func RunServer(ctx context.Context) {
+	categories = []string{"explanation", "breakglass"}
+	ttls = []string{"15", "30", "60", "120", "240"}
 
-	res, _ := json.Marshal(r)
-	fmt.Println("r", string(res))
-
-	fmt.Println("r.RequestURI", r.RequestURI)
-
-	parsed, err := url.ParseRequestURI(r.RequestURI)
-	if err != nil {
-		log.Fatal(err)
-	}
-	fmt.Println("parsed", parsed)
-
-	originUriEncoded := r.URL.Query().Get("origin")
-	fmt.Println("r.URL.Query().Get(\"origin\")", originUriEncoded)
-
-	originUriDecoded, err := url.PathUnescape(originUriEncoded)
-	if err != nil {
-		log.Fatal(err)
-	}
-
-	fmt.Println("decoded param", originUriDecoded)
+	mux := http.NewServeMux()
+	fs := http.FileServer(http.Dir("./assets/static"))
+	mux.Handle("/assets/static/", http.StripPrefix("/assets/static/", fs))
+	mux.HandleFunc("/popup", popup)
+	log.Fatal(http.ListenAndServe(":9091", mux))
 }
 
 func popup(w http.ResponseWriter, r *http.Request) {
 
 	details := FormDetails{
-		Category: r.FormValue("category"),
-		Value:    r.FormValue("value"),
-		TTL:      r.FormValue("ttl"),
+		PageTitle: "JVS - Justification Request System",
+		Category:  r.FormValue("category"),
+		Reason:    r.FormValue("reason"),
+		TTL:       r.FormValue("ttl"),
+		Content: Content{
+			UserLabel:     "User",
+			CategoryLabel: "Category",
+			ReasonLabel:   "Reason",
+			TTLLabel:      "TTL",
+			Categories: []Pair{
+				{
+					Key:  "explanation",
+					Text: "Explanation",
+				},
+				{
+					Key:  "breakglass",
+					Text: "Breakglass",
+				},
+			},
+			TTLs: []Pair{
+				{
+					Key:  "15",
+					Text: "15m",
+				},
+				{
+					Key:  "30",
+					Text: "30m",
+				},
+				{
+					Key:  "60",
+					Text: "1h",
+				},
+				{
+					Key:  "120",
+					Text: "2h",
+				},
+				{
+					Key:  "240",
+					Text: "4h",
+				},
+			},
+		},
 	}
 
-	dt := time.Now()
-	fmt.Println("Current date and time is: ", dt.String())
+	fmt.Println("details", details)
+	// initial page load, just render the page
+	if r.Method == "GET" {
+		// set some defaults
+		details.Category = categories[0]
+		details.TTL = ttls[0]
+		render(w, "./assets/templates/index.gohtml", details)
+	} else {
 
-	printStuff(r)
+		// 1. Validate input
+		if details.Validate() == false {
+			render(w, "./assets/templates/index.gohtml", details)
+			return
+		}
 
-	tmpl.Execute(w, details)
+		// 2. Request a token
+		// 3. Redirect to a confirmation page, here js gets executed
+	}
 }
 
-func RunServer(ctx context.Context) {
-	mux := http.NewServeMux()
-	tmpl = template.Must(template.ParseFiles("./assets/templates/index.html"))
+func (formDetails *FormDetails) Validate() bool {
+	formDetails.Errors = make(map[string]string)
 
-	fs := http.FileServer(http.Dir("./assets/static"))
-	mux.Handle("/assets/static/", http.StripPrefix("/assets/static/", fs))
-	mux.HandleFunc("/popup", popup)
+	if !isValidOneOf(formDetails.Category, categories) {
+		formDetails.Errors["Category"] = "Category must be selected"
+	}
 
-	log.Fatal(http.ListenAndServe(":9091", mux))
+	if strings.TrimSpace(formDetails.Reason) == "" {
+		formDetails.Errors["Reason"] = "Reason is required"
+	}
+
+	if !isValidOneOf(formDetails.TTL, ttls) {
+		formDetails.Errors["TTL"] = "TTL is required"
+	}
+
+	return len(formDetails.Errors) == 0
+}
+
+func isValidOneOf(selection string, options []string) bool {
+	for _, v := range options {
+		if v == selection {
+			return true
+		}
+	}
+	return false
+}
+
+func render(w http.ResponseWriter, filename string, data interface{}) {
+	tmpl, err := template.ParseFiles(filename)
+	if err != nil {
+		log.Print(err)
+		http.Error(w, "Sorry, something went wrong", http.StatusInternalServerError)
+		return
+	}
+
+	if err := tmpl.Execute(w, data); err != nil {
+		log.Print(err)
+		http.Error(w, "Sorry, something went wrong", http.StatusInternalServerError)
+	}
 }

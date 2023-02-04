@@ -19,7 +19,7 @@
     display: inline-block;
   }
   
-  input[type=submit] {
+  .primary-button {
     background-color: #115debc8;
     color: white;
     padding: 12px 20px;
@@ -29,7 +29,7 @@
     float: right;
   }
   
-  input[type=submit]:hover {
+  .primary-button:hover {
     background-color: #115deb;
   }
   

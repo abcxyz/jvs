@@ -6,18 +6,18 @@
   <meta http-equiv="X-UA-Compatible" content="IE=edge">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <link rel="stylesheet" type="text/css" href="./assets/static/css/style.css">
-  <title>JVS Token Retrieval</title>
+  <title>{{.PageTitle}}</title>
 </head>
 
 <body>
-
+  {{ $context := . }}
   <div class="container">
-    <h1>JVS - Justification Request System</h1>
+    <h1>{{.PageTitle}}</h1>
     <form action="/popup" method="post">
       <!-- User -->
       <div class="row">
         <div class="col-25">
-          <label for="user">User</label>
+          <label for="user">{{.Content.UserLabel}}</label>
         </div>
         <div class="col-75">
           <label id="username" name="username">TODO Username here</text>
@@ -27,32 +27,37 @@
       <!-- Category -->
       <div class="row">
         <div class="col-25">
-          <label for="category">Category</label>
+          <label for="category">{{.Content.CategoryLabel}}</label>
         </div>
         <div class="col-75">
           <div>
             <select id="category" name="category">
-              <option value="explanation">Explanation</option>
-              <option value="breakglass">Breakglass</option>
+              {{range $index, $element := .Content.Categories}}
+                {{if eq $element.Key $context.Category}}
+                  <option value={{$element.Key}} selected="selected" >{{$element.Text}}</option>
+                {{else}}
+                  <option value={{$element.Key}}>{{$element.Text}}</option>
+                {{end}}
+              {{end}}
             </select>
           </div>
-          {{ if .Errors.Category }}
-          <p class="error" style="color:red;">{{ .Errors.Category }}</p>
-          {{ end }}
+          {{if .Errors.Category}}
+          <p class="error" style="color:red;">{{.Errors.Category}}</p>
+          {{end}}
         </div>
       </div>
 
-      <!-- Value -->
+      <!-- Reason -->
       <div class="row">
         <div class="col-25">
-          <label for="value">Value</label>
+          <label for="reason">{{.Content.ReasonLabel}}</label>
         </div>
         <div class="col-75">
           <div>
-            <input type="text" id="value" name="value" placeholder="i.e issue/xxxxx">
+            <input type="text" id="reason" name="reason" placeholder="i.e issue/xxxxx">
           </div>
-          {{ if .Errors.Value }}
-          <p class="error" style="color:red;">{{ .Errors.Value }}</p>
+          {{ if .Errors.Reason }}
+          <p class="error" style="color:red;">{{ .Errors.Reason }}</p>
           {{ end }}
         </div>
       </div>
@@ -60,16 +65,18 @@
       <!-- TTL -->
       <div class="row">
         <div class="col-25">
-          <label for="ttl">TTL</label>
+          <label for="ttl">{{.Content.TTLLabel}}</label>
         </div>
         <div class="col-75">
           <div>
             <select id="ttl" name="ttl">
-              <option value="15">15m</option>
-              <option value="30">30m</option>
-              <option value="60">1h</option>
-              <option value="120">2h</option>
-              <option value="240">4h</option>
+              {{range $index, $element := .Content.TTLs}}
+                {{if eq $element.Key $context.TTL}}
+                  <option value={{$element.Key}} selected="selected" >{{$element.Text}}</option>
+                {{else}}
+                  <option value={{$element.Key}}>{{$element.Text}}</option>
+                {{end}}
+              {{end}}
             </select>
           </div>
           {{ if .Errors.TTL }}
@@ -82,7 +89,7 @@
 
       <!-- Primary Button -->
       <div class="row">
-        <input id="submit-btn" type="submit" value="Submit">
+        <input class="primary-button" type="submit" value="Submit">
       </div>
     </form>
   </div>
