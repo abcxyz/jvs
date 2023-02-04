@@ -2,7 +2,6 @@ package ui
 
 import (
 	"context"
-	"fmt"
 	"html/template"
 	"log"
 	"net/http"
@@ -34,8 +33,6 @@ type FormDetails struct {
 
 var categories []string
 var ttls []string
-
-var tmpl *template.Template
 
 func RunServer(ctx context.Context) {
 	categories = []string{"explanation", "breakglass"}
@@ -95,7 +92,6 @@ func popup(w http.ResponseWriter, r *http.Request) {
 		},
 	}
 
-	fmt.Println("details", details)
 	// initial page load, just render the page
 	if r.Method == "GET" {
 		// set some defaults
@@ -110,8 +106,8 @@ func popup(w http.ResponseWriter, r *http.Request) {
 			return
 		}
 
-		// 2. Request a token
-		// 3. Redirect to a confirmation page, here js gets executed
+		// 2. [TODO] Request a token
+		// 3. [TODO] Redirect to a confirmation page, here js gets executed
 	}
 }
 
