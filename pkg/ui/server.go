@@ -8,11 +8,13 @@ import (
 	"strings"
 )
 
+// Pair represents a key value pair used by the select HTML element.
 type Pair struct {
 	Key  string
 	Text string
 }
 
+// Content defines the displayable parts of the token retrieval form.
 type Content struct {
 	UserLabel     string
 	CategoryLabel string
@@ -22,18 +24,29 @@ type Content struct {
 	TTLs          []Pair
 }
 
+// FormDetails represents all the input and content used for the token retrievlal form.
 type FormDetails struct {
-	PageTitle string
-	Content   Content
-	Category  string
-	Reason    string
-	TTL       string
-	Errors    map[string]string
+	WindowName string
+	Origin     string
+	PageTitle  string
+	Content    Content
+	Category   string
+	Reason     string
+	TTL        string
+	Errors     map[string]string
+}
+
+// SuccessDetails represents the data used for the success page and the postMessage response to the client.
+type SuccessDetails struct {
+	Token        string
+	TargetOrigin string
+	WindowName   string
 }
 
 var categories []string
 var ttls []string
 
+// RunServer initializes a server on port 9091 and registers a handler for the /popup route
 func RunServer(ctx context.Context) {
 	categories = []string{"explanation", "breakglass"}
 	ttls = []string{"15", "30", "60", "120", "240"}
@@ -46,12 +59,13 @@ func RunServer(ctx context.Context) {
 }
 
 func popup(w http.ResponseWriter, r *http.Request) {
-
 	details := FormDetails{
-		PageTitle: "JVS - Justification Request System",
-		Category:  r.FormValue("category"),
-		Reason:    r.FormValue("reason"),
-		TTL:       r.FormValue("ttl"),
+		WindowName: r.FormValue("windowname"),
+		Origin:     r.FormValue("origin"),
+		PageTitle:  "JVS - Justification Request System",
+		Category:   r.FormValue("category"),
+		Reason:     r.FormValue("reason"),
+		TTL:        r.FormValue("ttl"),
 		Content: Content{
 			UserLabel:     "User",
 			CategoryLabel: "Category",
@@ -92,22 +106,34 @@ func popup(w http.ResponseWriter, r *http.Request) {
 		},
 	}
 
-	// initial page load, just render the page
+	// Initial page load, just render the page
 	if r.Method == "GET" {
 		// set some defaults
 		details.Category = categories[0]
 		details.TTL = ttls[0]
-		render(w, "./assets/templates/index.gohtml", details)
-	} else {
+		render(w, "./assets/templates/index.html.tmpl", details)
+		return
+	}
 
+	// Form submission
+	if r.Method == "POST" {
 		// 1. Validate input
 		if details.Validate() == false {
-			render(w, "./assets/templates/index.gohtml", details)
+			render(w, "./assets/templates/index.html.tmpl", details)
 			return
 		}
 
 		// 2. [TODO] Request a token
-		// 3. [TODO] Redirect to a confirmation page, here js gets executed
+		token := "token_from_server"
+
+		// 3. Redirect to a confirmation page with context, ultimately needed to postMessage back to the client
+		successContext := SuccessDetails{
+			Token:        token,
+			TargetOrigin: details.Origin,
+			WindowName:   details.WindowName,
+		}
+
+		render(w, "./assets/templates/success.html.tmpl", successContext)
 	}
 }
 
