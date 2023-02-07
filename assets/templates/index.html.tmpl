@@ -11,6 +11,7 @@
   <meta name="apple-mobile-web-app-status-bar-style" property="apple-mobile-web-app-status-bar-style" media="(prefers-color-scheme: dark)" content="black">
   <meta name="theme-color" media="(prefers-color-scheme: light)" content="white">
   <meta name="theme-color" media="(prefers-color-scheme: dark)" content="black">
+  <link rel="stylesheet" type="text/css" href="./assets/static/css/reset.css">
   <link rel="stylesheet" type="text/css" href="./assets/static/css/style.css">
   <title>{{ .PageTitle }}</title>
 </head>
@@ -20,88 +21,74 @@
   <div class="container">
     <h1 class="title">{{ .PageTitle }}</h1>
     <form action="/popup?origin={{ .Origin }}" method="post">
-      <!-- User -->
-      <div class="row">
-        <div class="col-25">
-          <label class="field-label" class="field-label" for="user">{{ .Content.UserLabel }}</label>
-        </div>
-        <div class="col-75">
-          <label class="field-label" id="username" name="username">TODO Username here</text>
-        </div>
-      </div>
-
-      <!-- Category -->
-      <div class="row">
-        <div class="col-25">
-          <label class="field-label" for="category">{{ .Content.CategoryLabel }}</label>
-        </div>
-        <div class="col-75">
-          <div>
-            <select class="category" id="category" name="category">
-              {{ range $index, $element := .Content.Categories }}
-                {{ if eq $element.Key $context.Category }}
-                  <option value={{ $element.Key }} selected="selected" >{{ $element.Text }}</option>
-                {{ else }}
-                  <option value={{ $element.Key }}>{{ $element.Text }}</option>
-                {{ end }}
+      <ul class="flex-outer">
+        
+        <!-- Username -->
+        <li class="content-row">
+          <label class="content-label" for="username">Username</label>
+          <label class="content-data" for="username">TODO username</label>
+        </li>
+        
+        <!-- Category row -->
+        <li class="content-row">
+          <label class="content-label" for="category">Category</label>
+          <select class="content-select" id="category" name="category">      
+            {{ range $index, $element := .Content.Categories }}
+              {{ if eq $element.Key $context.Category }}
+                <option value="{{ $element.Key }}" selected="selected" >{{ $element.Text }}</option>
+              {{ else }}
+                <option value="{{ $element.Key }}">{{ $element.Text }}</option>
               {{ end }}
-            </select>
-          </div>
-          {{ if .Errors.Category }}
-          <p class="error" style="color:red;">{{ .Errors.Category }}</p>
-          {{ end }}
-        </div>
-      </div>
-
-      <!-- Reason -->
-      <div class="row">
-        <div class="col-25">
-          <label class="field-label" for="reason">{{ .Content.ReasonLabel }}</label>
-        </div>
-        <div class="col-75">
-          <div>
-            <input class="reason" type="text" id="reason" name="reason" placeholder="i.e issue/xxxxx">
-          </div>
-          {{ if .Errors.Reason }}
-          <p class="error" style="color:red;">{{ .Errors.Reason }}</p>
-          {{ end }}
-        </div>
-      </div>
-      
-      <!-- TTL -->
-      <div class="row">
-        <div class="col-25">
-          <label class="field-label" for="ttl">{{ .Content.TTLLabel }}</label>
-        </div>
-        <div class="col-75">
-          <div>
-            <select class="ttl" id="ttl" name="ttl">
-              {{ range $index, $element := .Content.TTLs }}
-                {{ if eq $element.Key $context.TTL }}
-                  <option value={{ $element.Key }} selected="selected" >{{ $element.Text }}</option>
-                {{ else }}
-                  <option value={{ $element.Key }}>{{ $element.Text }}</option>
-                {{ end }}
+            {{ end }}
+          </select>
+        </li>
+        {{ if .Errors.Category }}      
+          <li class="content-row">
+            <label class="content-error" style="color:red;">{{ .Errors.Category }}</label>
+          </li>
+        {{ end }}      
+        
+        <!-- Reason row -->
+        <li class="content-row">
+          <label class="content-label" for="reason">Reason</label>
+          <input class="content-input" type="text" id="reason" placeholder="i.e. issue/xxxxx">
+        </li>
+        {{ if .Errors.Reason }}      
+          <li class="content-row">
+            <label class="content-error" style="color:red;">{{ .Errors.Reason }}</label>
+          </li>
+        {{ end }}
+        
+        <!-- TTL row -->
+        <li class="content-row">
+          <label class="content-label" for="ttl">TTL</label>
+          <select class="content-select" id="ttl" name="ttl">
+            {{ range $index, $element := .Content.TTLs }}
+              {{ if eq $element.Key $context.TTL }}
+                <option value="{{ $element.Key }}" selected="selected" >{{ $element.Text }}</option>
+              {{ else }}
+                <option value="{{ $element.Key }}">{{ $element.Text }}</option>
               {{ end }}
-            </select>
-          </div>
-          {{ if .Errors.TTL }}
-          <p class="error" style="color:red;">{{ .Errors.TTL }}</p>
-          {{ end }}
+            {{ end }}
+          </select>
+        </li>
+        {{ if .Errors.TTL }}      
+          <li class="content-row">
+            <label class="content-error" style="color:red;">{{ .Errors.TTL }}</label>
+          </li>
+        {{ end }}
+        
+        <!-- Action buttons -->
+        <div class="form-btns">
+          <input class="secondary-btn" type="reset" value="Reset">
+          <input class="primary-btn" type="submit" value="Submit">
         </div>
-      </div>
-      <br>
-
-      <!-- Primary Button -->
-      <div class="row">
-        <input class="primary-button" type="submit" value="Submit">
-        <input class="secondary-button" type="reset"  value="Reset">
-      </div>
-
+      </ul>
+  
       <!-- Hidden fields -->
       <input type="hidden" id="origin" name="origin" value="">
       <input type="hidden" id="windowname" name="windowname" value="">
-
+  
     </form>
   </div>
 </body>

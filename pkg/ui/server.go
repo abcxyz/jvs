@@ -46,7 +46,7 @@ type SuccessDetails struct {
 var categories []string
 var ttls []string
 
-// RunServer initializes a server on port 9091 and registers a handler for the /popup route
+// RunServer initializes a server on port 9091 and registers a handler for the /popup route.
 func RunServer(ctx context.Context) {
 	categories = []string{"explanation", "breakglass"}
 	ttls = []string{"15", "30", "60", "120", "240"}
@@ -118,7 +118,7 @@ func popup(w http.ResponseWriter, r *http.Request) {
 	// Form submission
 	if r.Method == "POST" {
 		// 1. Validate input
-		if details.Validate() == false {
+		if !details.Validate() {
 			render(w, "./assets/templates/index.html.tmpl", details)
 			return
 		}
