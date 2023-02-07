@@ -4,19 +4,26 @@
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0, minimum-scale=1.0, maximum-scale=1.0, user-scalable=no, shrink-to-fit=no, viewport-fit=cover, target-densityDpi=device-dpi">
+  <meta name="robots" content="noindex, nofollow, noarchive">
+  <meta name="description" content="Justification Verification System">
+  <meta name="apple-mobile-web-app-capable" property="apple-mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-status-bar-style" property="apple-mobile-web-app-status-bar-style" media="(prefers-color-scheme: light)" content="white">
+  <meta name="apple-mobile-web-app-status-bar-style" property="apple-mobile-web-app-status-bar-style" media="(prefers-color-scheme: dark)" content="black">
+  <meta name="theme-color" media="(prefers-color-scheme: light)" content="white">
+  <meta name="theme-color" media="(prefers-color-scheme: dark)" content="black">
   <link rel="stylesheet" type="text/css" href="./assets/static/css/style.css">
-  <title>{{.PageTitle}}</title>
+  <title>{{ .PageTitle }}</title>
 </head>
 
 <body>
-  {{  $context := . }}
+  {{ $context := . }}
   <div class="container">
-    <h1 class="title">{{  .PageTitle }}</h1>
-    <form action="/popup?origin={{  .Origin }}" method="post">
+    <h1 class="title">{{ .PageTitle }}</h1>
+    <form action="/popup?origin={{ .Origin }}" method="post">
       <!-- User -->
       <div class="row">
         <div class="col-25">
-          <label class="field-label" class="field-label" for="user">{{  .Content.UserLabel }}</label>
+          <label class="field-label" class="field-label" for="user">{{ .Content.UserLabel }}</label>
         </div>
         <div class="col-75">
           <label class="field-label" id="username" name="username">TODO Username here</text>
@@ -26,14 +33,14 @@
       <!-- Category -->
       <div class="row">
         <div class="col-25">
-          <label class="field-label" for="category">{{  .Content.CategoryLabel }}</label>
+          <label class="field-label" for="category">{{ .Content.CategoryLabel }}</label>
         </div>
         <div class="col-75">
           <div>
             <select class="category" id="category" name="category">
-              {{  range $index, $element := .Content.Categories }}
-                {{  if eq $element.Key $context.Category }}
-                  <option value={{  $element.Key }} selected="selected" >{{  $element.Text }}</option>
+              {{ range $index, $element := .Content.Categories }}
+                {{ if eq $element.Key $context.Category }}
+                  <option value={{ $element.Key }} selected="selected" >{{ $element.Text }}</option>
                 {{ else }}
                   <option value={{ $element.Key }}>{{ $element.Text }}</option>
                 {{ end }}
@@ -91,13 +98,14 @@
         <input class="secondary-button" type="reset"  value="Reset">
       </div>
 
+      <!-- Hidden fields -->
       <input type="hidden" id="origin" name="origin" value="">
       <input type="hidden" id="windowname" name="windowname" value="">
 
     </form>
   </div>
-
 </body>
+
 <script src="./assets/static/js/index.js" type="text/javascript"></script>
 
 </html>
