@@ -1,3 +1,17 @@
+// Copyright 2023 The Authors (see AUTHORS file)
+//
+// Licensed under the Apache License, Version 2.0 (the "License");
+// you may not use this file except in compliance with the License.
+// You may obtain a copy of the License at
+//
+//     http://www.apache.org/licenses/LICENSE-2.0
+//
+// Unless required by applicable law or agreed to in writing, software
+// distributed under the License is distributed on an "AS IS" BASIS,
+// WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+// See the License for the specific language governing permissions and
+// limitations under the License.
+
 package ui
 
 import (
@@ -6,6 +20,7 @@ import (
 	"log"
 	"net/http"
 	"strings"
+	"time"
 )
 
 // Pair represents a key value pair used by the select HTML element.
@@ -43,19 +58,29 @@ type SuccessDetails struct {
 	WindowName   string
 }
 
-var categories []string
-var ttls []string
+var (
+	categories []string
+	ttls       []string
+)
 
 // RunServer initializes a server on port 9091 and registers a handler for the /popup route.
 func RunServer(ctx context.Context) {
 	categories = []string{"explanation", "breakglass"}
 	ttls = []string{"15", "30", "60", "120", "240"}
 
-	mux := http.NewServeMux()
+	router := http.NewServeMux()
+	server := &http.Server{
+		Addr:         ":9091",
+		Handler:      router,
+		ReadTimeout:  5 * time.Second,
+		WriteTimeout: 1 * time.Second,
+		IdleTimeout:  15 * time.Second,
+	}
+
 	fs := http.FileServer(http.Dir("./assets/static"))
-	mux.Handle("/assets/static/", http.StripPrefix("/assets/static/", fs))
-	mux.HandleFunc("/popup", popup)
-	log.Fatal(http.ListenAndServe(":9091", mux))
+	router.Handle("/assets/static/", http.StripPrefix("/assets/static/", fs))
+	router.HandleFunc("/popup", popup)
+	log.Fatal(server.ListenAndServe())
 }
 
 func popup(w http.ResponseWriter, r *http.Request) {
