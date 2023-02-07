@@ -1,0 +1,103 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, minimum-scale=1.0, maximum-scale=1.0, user-scalable=no, shrink-to-fit=no, viewport-fit=cover, target-densityDpi=device-dpi">
+  <link rel="stylesheet" type="text/css" href="./assets/static/css/style.css">
+  <title>{{.PageTitle}}</title>
+</head>
+
+<body>
+  {{  $context := . }}
+  <div class="container">
+    <h1 class="title">{{  .PageTitle }}</h1>
+    <form action="/popup?origin={{  .Origin }}" method="post">
+      <!-- User -->
+      <div class="row">
+        <div class="col-25">
+          <label class="field-label" class="field-label" for="user">{{  .Content.UserLabel }}</label>
+        </div>
+        <div class="col-75">
+          <label class="field-label" id="username" name="username">TODO Username here</text>
+        </div>
+      </div>
+
+      <!-- Category -->
+      <div class="row">
+        <div class="col-25">
+          <label class="field-label" for="category">{{  .Content.CategoryLabel }}</label>
+        </div>
+        <div class="col-75">
+          <div>
+            <select class="category" id="category" name="category">
+              {{  range $index, $element := .Content.Categories }}
+                {{  if eq $element.Key $context.Category }}
+                  <option value={{  $element.Key }} selected="selected" >{{  $element.Text }}</option>
+                {{ else }}
+                  <option value={{ $element.Key }}>{{ $element.Text }}</option>
+                {{ end }}
+              {{ end }}
+            </select>
+          </div>
+          {{ if .Errors.Category }}
+          <p class="error" style="color:red;">{{ .Errors.Category }}</p>
+          {{ end }}
+        </div>
+      </div>
+
+      <!-- Reason -->
+      <div class="row">
+        <div class="col-25">
+          <label class="field-label" for="reason">{{ .Content.ReasonLabel }}</label>
+        </div>
+        <div class="col-75">
+          <div>
+            <input class="reason" type="text" id="reason" name="reason" placeholder="i.e issue/xxxxx">
+          </div>
+          {{ if .Errors.Reason }}
+          <p class="error" style="color:red;">{{ .Errors.Reason }}</p>
+          {{ end }}
+        </div>
+      </div>
+      
+      <!-- TTL -->
+      <div class="row">
+        <div class="col-25">
+          <label class="field-label" for="ttl">{{ .Content.TTLLabel }}</label>
+        </div>
+        <div class="col-75">
+          <div>
+            <select class="ttl" id="ttl" name="ttl">
+              {{ range $index, $element := .Content.TTLs }}
+                {{ if eq $element.Key $context.TTL }}
+                  <option value={{ $element.Key }} selected="selected" >{{ $element.Text }}</option>
+                {{ else }}
+                  <option value={{ $element.Key }}>{{ $element.Text }}</option>
+                {{ end }}
+              {{ end }}
+            </select>
+          </div>
+          {{ if .Errors.TTL }}
+          <p class="error" style="color:red;">{{ .Errors.TTL }}</p>
+          {{ end }}
+        </div>
+      </div>
+      <br>
+
+      <!-- Primary Button -->
+      <div class="row">
+        <input class="primary-button" type="submit" value="Submit">
+        <input class="secondary-button" type="reset"  value="Reset">
+      </div>
+
+      <input type="hidden" id="origin" name="origin" value="">
+      <input type="hidden" id="windowname" name="windowname" value="">
+
+    </form>
+  </div>
+
+</body>
+<script src="./assets/static/js/index.js" type="text/javascript"></script>
+
+</html>
