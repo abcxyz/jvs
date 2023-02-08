@@ -84,7 +84,7 @@ func RunServer(ctx context.Context) {
 }
 
 func popup(w http.ResponseWriter, r *http.Request) {
-	details := FormDetails{
+	details := &FormDetails{
 		WindowName: r.FormValue("windowname"),
 		Origin:     r.FormValue("origin"),
 		PageTitle:  "JVS - Justification Request System",
