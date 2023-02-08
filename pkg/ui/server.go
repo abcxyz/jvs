@@ -189,7 +189,7 @@ func isValidOneOf(selection string, options []string) bool {
 	return false
 }
 
-func render(w http.ResponseWriter, filename string, data interface{}) {
+func render(w http.ResponseWriter, filename string, data any) {
 	tmpl, err := template.ParseFiles(filename)
 	if err != nil {
 		log.Print(err)
