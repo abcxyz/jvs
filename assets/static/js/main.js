@@ -1,4 +1,4 @@
-document.addEventListener("DOMContentLoaded", function() {
+document.addEventListener("DOMContentLoaded", function () {
     const scriptTag = document.getElementById('main');
     const targetOrigin = scriptTag.getAttribute("origin")
     const token = scriptTag.getAttribute("token")
@@ -10,7 +10,7 @@ document.addEventListener("DOMContentLoaded", function() {
         alert("You must pass a window name from your application to successfully retrieve a token.")
     } else if (!token) {
         alert("Something went wrong, unable to retrieve a token.")
-    } else {    
+    } else {
         window.opener.postMessage(
             JSON.stringify({
                 // notify the requestor of the window name that was provided, 
@@ -21,8 +21,8 @@ document.addEventListener("DOMContentLoaded", function() {
                 },
             }),
             targetOrigin
-            );
-        }
+        );
+    }
 
     window.close();
- });
+});

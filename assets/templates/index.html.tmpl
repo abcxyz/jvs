@@ -3,12 +3,17 @@
 
 <head>
   <meta charset="utf-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0, minimum-scale=1.0, maximum-scale=1.0, user-scalable=no, shrink-to-fit=no, viewport-fit=cover, target-densityDpi=device-dpi">
+  <meta name="viewport"
+    content="width=device-width, initial-scale=1.0, minimum-scale=1.0, maximum-scale=1.0, user-scalable=no, shrink-to-fit=no, viewport-fit=cover, target-densityDpi=device-dpi">
   <meta name="robots" content="noindex, nofollow, noarchive">
-  <meta name="description" content="Justification Verification System">
+  <meta name="description" content="Justification Verification System form used for minting tokens.">
+  <meta property="og:title" content="Justification Verification System Form" />
+  <meta property="og:description" content="Justification Verification System form used for minting tokens." />
   <meta name="apple-mobile-web-app-capable" property="apple-mobile-web-app-capable" content="yes">
-  <meta name="apple-mobile-web-app-status-bar-style" property="apple-mobile-web-app-status-bar-style" media="(prefers-color-scheme: light)" content="white">
-  <meta name="apple-mobile-web-app-status-bar-style" property="apple-mobile-web-app-status-bar-style" media="(prefers-color-scheme: dark)" content="black">
+  <meta name="apple-mobile-web-app-status-bar-style" property="apple-mobile-web-app-status-bar-style"
+    media="(prefers-color-scheme: light)" content="white">
+  <meta name="apple-mobile-web-app-status-bar-style" property="apple-mobile-web-app-status-bar-style"
+    media="(prefers-color-scheme: dark)" content="black">
   <meta name="theme-color" media="(prefers-color-scheme: light)" content="white">
   <meta name="theme-color" media="(prefers-color-scheme: dark)" content="black">
   <link rel="stylesheet" type="text/css" href="./assets/static/css/reset.css">
@@ -22,73 +27,73 @@
     <h1 class="title">{{ .PageTitle }}</h1>
     <form action="/popup?origin={{ .Origin }}" method="post">
       <ul class="flex-outer">
-        
+
         <!-- Username -->
         <li class="content-row">
           <label class="content-label" for="username">Username</label>
           <label class="content-data" for="username">TODO username</label>
         </li>
-        
+
         <!-- Category row -->
         <li class="content-row">
           <label class="content-label" for="category">Category</label>
-          <select class="content-select" id="category" name="category">      
+          <select class="content-select" id="category" name="category">
             {{ range $index, $element := .Content.Categories }}
-              {{ if eq $element.Key $context.Category }}
-                <option value="{{ $element.Key }}" selected="selected" >{{ $element.Text }}</option>
-              {{ else }}
-                <option value="{{ $element.Key }}">{{ $element.Text }}</option>
-              {{ end }}
+            {{ if eq $element.Key $context.Category }}
+            <option value="{{ $element.Key }}" selected="selected">{{ $element.Text }}</option>
+            {{ else }}
+            <option value="{{ $element.Key }}">{{ $element.Text }}</option>
+            {{ end }}
             {{ end }}
           </select>
         </li>
-        {{ if .Errors.Category }}      
-          <li class="content-row">
-            <label class="content-error" style="color:red;">{{ .Errors.Category }}</label>
-          </li>
-        {{ end }}      
-        
+        {{ if .Errors.Category }}
+        <li class="content-row">
+          <label class="content-error" style="color:red;">{{ .Errors.Category }}</label>
+        </li>
+        {{ end }}
+
         <!-- Reason row -->
         <li class="content-row">
           <label class="content-label" for="reason">Reason</label>
           <input class="content-input" type="text" id="reason" name="reason" placeholder="i.e. issue/xxxxx">
         </li>
-        {{ if .Errors.Reason }}      
-          <li class="content-row">
-            <label class="content-error" style="color:red;">{{ .Errors.Reason }}</label>
-          </li>
+        {{ if .Errors.Reason }}
+        <li class="content-row">
+          <label class="content-error" style="color:red;">{{ .Errors.Reason }}</label>
+        </li>
         {{ end }}
-        
+
         <!-- TTL row -->
         <li class="content-row">
           <label class="content-label" for="ttl">TTL</label>
           <select class="content-select" id="ttl" name="ttl">
             {{ range $index, $element := .Content.TTLs }}
-              {{ if eq $element.Key $context.TTL }}
-                <option value="{{ $element.Key }}" selected="selected" >{{ $element.Text }}</option>
-              {{ else }}
-                <option value="{{ $element.Key }}">{{ $element.Text }}</option>
-              {{ end }}
+            {{ if eq $element.Key $context.TTL }}
+            <option value="{{ $element.Key }}" selected="selected">{{ $element.Text }}</option>
+            {{ else }}
+            <option value="{{ $element.Key }}">{{ $element.Text }}</option>
+            {{ end }}
             {{ end }}
           </select>
         </li>
-        {{ if .Errors.TTL }}      
-          <li class="content-row">
-            <label class="content-error" style="color:red;">{{ .Errors.TTL }}</label>
-          </li>
+        {{ if .Errors.TTL }}
+        <li class="content-row">
+          <label class="content-error" style="color:red;">{{ .Errors.TTL }}</label>
+        </li>
         {{ end }}
-        
+
         <!-- Action buttons -->
         <div class="form-btns">
           <input class="secondary-btn" type="reset" value="Reset">
           <input class="primary-btn" type="submit" value="Submit">
         </div>
       </ul>
-  
+
       <!-- Hidden fields -->
       <input type="hidden" id="origin" name="origin" value="">
       <input type="hidden" id="windowname" name="windowname" value="">
-  
+
     </form>
   </div>
 </body>

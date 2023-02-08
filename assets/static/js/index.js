@@ -1,6 +1,6 @@
 const urlParams = new URLSearchParams(window.location.search);
 
-document.addEventListener("DOMContentLoaded", function() {
+document.addEventListener("DOMContentLoaded", function () {
     // leverage the URL parameter provided from the request and set it to the target origin
     const encodedUriComponent = urlParams.get("origin");
     if (!encodedUriComponent) {
@@ -19,4 +19,4 @@ document.addEventListener("DOMContentLoaded", function() {
     // set values for the following hidden input elements, will be persisted to the next page
     document.getElementById("origin").value = targetOrigin;
     document.getElementById("windowname").value = window.name;
- });
+});
