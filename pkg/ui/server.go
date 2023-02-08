@@ -16,11 +16,11 @@ package ui
 
 import (
 	"context"
+	"fmt"
 	"html/template"
 	"log"
 	"net/http"
 	"strings"
-	"time"
 )
 
 // Pair represents a key value pair used by the select HTML element.
@@ -58,32 +58,51 @@ type SuccessDetails struct {
 	WindowName   string
 }
 
-var (
-	categories []string
-	ttls       []string
-)
-
-// RunServer initializes a server on port 9091 and registers a handler for the /popup route.
-func RunServer(ctx context.Context) {
-	categories = []string{"explanation", "breakglass"}
-	ttls = []string{"15", "30", "60", "120", "240"}
-
-	router := http.NewServeMux()
-	server := &http.Server{
-		Addr:         ":9091",
-		Handler:      router,
-		ReadTimeout:  5 * time.Second,
-		WriteTimeout: 1 * time.Second,
-		IdleTimeout:  15 * time.Second,
-	}
-
-	fs := http.FileServer(http.Dir("./assets/static"))
-	router.Handle("/assets/static/", http.StripPrefix("/assets/static/", fs))
-	router.HandleFunc("/popup", popup)
-	log.Fatal(server.ListenAndServe())
+type Server struct {
+	templates map[string]*template.Template
 }
 
-func popup(w http.ResponseWriter, r *http.Request) {
+var (
+	categories = []string{"explanation", "breakglass"}
+	ttls       = []string{"15", "30", "60", "120", "240"}
+)
+
+// NewServer creates a new HTTP server implementation that will handle
+// rendering the JVS form and parses the go templates.
+func NewServer(ctx context.Context, cfg *ServiceConfig, tmplLocations map[string]string) (*Server, error) {
+	templateMap := make(map[string]*template.Template)
+
+	// Parse templates
+	for key, path := range tmplLocations {
+		tmpl, err := template.ParseFiles(path)
+		if err != nil {
+			return nil, fmt.Errorf("parsing %s template: %w", path, err)
+		}
+		templateMap[key] = tmpl
+	}
+
+	return &Server{
+		templates: templateMap,
+	}, nil
+}
+
+// Routes creates a ServeMux of all of the routes that
+// this Router supports.
+func (s *Server) Routes() http.Handler {
+	mux := http.NewServeMux()
+	fs := http.FileServer(http.Dir("./assets/static"))
+	mux.Handle("/assets/static/", http.StripPrefix("/assets/static/", fs))
+	mux.Handle("/popup", s.handlePopup())
+	return mux
+}
+
+func (s *Server) handlePopup() http.Handler {
+	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		handlePopupFunc(w, r, s.templates)
+	})
+}
+
+func handlePopupFunc(w http.ResponseWriter, r *http.Request, templates map[string]*template.Template) {
 	details := &FormDetails{
 		WindowName: r.FormValue("windowname"),
 		Origin:     r.FormValue("origin"),
@@ -133,18 +152,18 @@ func popup(w http.ResponseWriter, r *http.Request) {
 
 	// Initial page load, just render the page
 	if r.Method == "GET" {
-		// set some defaults
+		// set some defaults for the form
 		details.Category = categories[0]
 		details.TTL = ttls[0]
-		render(w, "./assets/templates/index.html.tmpl", details)
+		render(w, templates["popup"], details)
 		return
 	}
 
 	// Form submission
 	if r.Method == "POST" {
 		// 1. Validate input
-		if !details.Validate() {
-			render(w, "./assets/templates/index.html.tmpl", details)
+		if !validate(details) {
+			render(w, templates["popup"], details)
 			return
 		}
 
@@ -152,17 +171,17 @@ func popup(w http.ResponseWriter, r *http.Request) {
 		token := "token_from_server"
 
 		// 3. Redirect to a confirmation page with context, ultimately needed to postMessage back to the client
-		successContext := SuccessDetails{
+		successContext := &SuccessDetails{
 			Token:        token,
 			TargetOrigin: details.Origin,
 			WindowName:   details.WindowName,
 		}
 
-		render(w, "./assets/templates/success.html.tmpl", successContext)
+		render(w, templates["success"], successContext)
 	}
 }
 
-func (formDetails *FormDetails) Validate() bool {
+func validate(formDetails *FormDetails) bool {
 	formDetails.Errors = make(map[string]string)
 
 	if !isValidOneOf(formDetails.Category, categories) {
@@ -189,14 +208,7 @@ func isValidOneOf(selection string, options []string) bool {
 	return false
 }
 
-func render(w http.ResponseWriter, filename string, data any) {
-	tmpl, err := template.ParseFiles(filename)
-	if err != nil {
-		log.Print(err)
-		http.Error(w, "Sorry, something went wrong", http.StatusInternalServerError)
-		return
-	}
-
+func render(w http.ResponseWriter, tmpl *template.Template, data any) {
 	if err := tmpl.Execute(w, data); err != nil {
 		log.Print(err)
 		http.Error(w, "Sorry, something went wrong", http.StatusInternalServerError)
