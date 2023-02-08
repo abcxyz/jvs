@@ -4,13 +4,15 @@ document.addEventListener("DOMContentLoaded", function() {
     // leverage the URL parameter provided from the request and set it to the target origin
     const encodedUriComponent = urlParams.get("origin");
     if (!encodedUriComponent) {
-        console.error("An origin URL parameter must be provided.")
+        alert("An origin URL parameter must be provided.")
+        window.close();
         return;
     }
 
     const targetOrigin = decodeURIComponent(encodedUriComponent);
     if (!targetOrigin) {
-        console.error("Decoded URL parameter is invalid.")
+        alert("Decoded URL parameter is invalid.")
+        window.close();
         return;
     }
 
