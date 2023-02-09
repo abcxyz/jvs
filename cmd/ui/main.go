@@ -48,8 +48,9 @@ func realMain(ctx context.Context) error {
 	}
 
 	tmplLocations := map[string]string{
-		"popup":   "./assets/templates/index.html.tmpl",
-		"success": "./assets/templates/success.html.tmpl",
+		"popup":     "./assets/templates/index.html.tmpl",
+		"success":   "./assets/templates/success.html.tmpl",
+		"forbidden": "./assets/templates/forbidden.html.tmpl",
 	}
 
 	uiServer, err := ui.NewServer(ctx, cfg, tmplLocations)

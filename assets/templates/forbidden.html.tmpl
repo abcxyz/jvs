@@ -7,8 +7,8 @@
     content="width=device-width, initial-scale=1.0, minimum-scale=1.0, maximum-scale=1.0, user-scalable=no, shrink-to-fit=no, viewport-fit=cover, target-densityDpi=device-dpi">
   <meta name="robots" content="noindex, nofollow, noarchive">
   <meta property="og:title" content="{{ .PageTitle }}" />
-  <meta property="og:description" content="Successful token page." />
-  <meta name="description" content="Successful token page">
+  <meta property="og:description" content="Error page" />
+  <meta name="description" content="Error page">
   <meta name="apple-mobile-web-app-capable" property="apple-mobile-web-app-capable" content="yes">
   <meta name="apple-mobile-web-app-status-bar-style" property="apple-mobile-web-app-status-bar-style"
     media="(prefers-color-scheme: light)" content="white">
@@ -32,9 +32,7 @@
 </head>
 
 <body>
+  <div>{{ .Message }}</div>
 </body>
-
-<script id="main" src="/assets/static/js/main.js" origin="{{ .TargetOrigin }}" token="{{ .Token }}"
-  windowname="{{ .WindowName }}" type="text/javascript"></script>
 
 </html>
