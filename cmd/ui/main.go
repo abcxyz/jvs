@@ -18,7 +18,6 @@ import (
 	"context"
 	"errors"
 	"fmt"
-	"html/template"
 	"log"
 	"net/http"
 	"os/signal"
@@ -28,13 +27,6 @@ import (
 	"github.com/abcxyz/jvs/pkg/ui"
 	"github.com/abcxyz/pkg/logging"
 )
-
-type Template struct {
-	Popup   *template.Template
-	Success *template.Template
-}
-
-var Templates *Template
 
 func main() {
 	ctx, done := signal.NotifyContext(context.Background(), syscall.SIGINT, syscall.SIGTERM)
@@ -49,7 +41,6 @@ func main() {
 	}
 }
 
-// realMain creates an HTTP server that renders a justification form and handles its submission.
 func realMain(ctx context.Context) error {
 	cfg, err := ui.NewConfig(ctx)
 	if err != nil {

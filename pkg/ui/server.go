@@ -58,6 +58,7 @@ type SuccessDetails struct {
 	WindowName   string
 }
 
+// Server holds the parsed html templates
 type Server struct {
 	templates map[string]*template.Template
 }
