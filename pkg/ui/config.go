@@ -17,6 +17,7 @@ package ui
 import (
 	"context"
 	"fmt"
+	"regexp"
 
 	"github.com/abcxyz/pkg/cfgloader"
 	"github.com/sethvargo/go-envconfig"
@@ -25,7 +26,8 @@ import (
 // ServiceConfig defines the set over environment variables required
 // for running this application.
 type ServiceConfig struct {
-	Port string `env:"PORT,default=9091"`
+	Port      string   `env:"PORT,default=9091"`
+	AllowList []string `env:"ALLOW_LIST,delimiter=;,required"`
 }
 
 // NewConfig creates a new ServiceConfig from environment variables.
@@ -35,5 +37,22 @@ func NewConfig(ctx context.Context) (*ServiceConfig, error) {
 	if err != nil {
 		return nil, fmt.Errorf("failed to parse server config: %w", err)
 	}
+
+	validRegexPattern, err := regexp.Compile(`^(([\w-]+\.)|(\*\.))+[\w-]+$`)
+	if err != nil {
+		return nil, fmt.Errorf("failed to compile regex: %w", err)
+	}
+
+	// validate the AllowList entries are valid
+	for _, domain := range cfg.AllowList {
+		if domain == "*" {
+			continue
+		}
+
+		if !validRegexPattern.MatchString(domain) {
+			return nil, fmt.Errorf("entry in the ALLOW_LIST was invalid %w", err)
+		}
+	}
+
 	return &cfg, nil
 }

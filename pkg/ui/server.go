@@ -53,14 +53,21 @@ type FormDetails struct {
 
 // SuccessDetails represents the data used for the success page and the postMessage response to the client.
 type SuccessDetails struct {
+	PageTitle    string
 	Token        string
 	TargetOrigin string
 	WindowName   string
 }
 
-// Server holds the parsed html templates
+type ForbiddenDetails struct {
+	PageTitle string
+	Message   string
+}
+
+// Server holds the parsed html templates.
 type Server struct {
 	templates map[string]*template.Template
+	allowList []string
 }
 
 var (
@@ -84,6 +91,7 @@ func NewServer(ctx context.Context, cfg *ServiceConfig, tmplLocations map[string
 
 	return &Server{
 		templates: templateMap,
+		allowList: cfg.AllowList,
 	}, nil
 }
 
@@ -99,18 +107,133 @@ func (s *Server) Routes() http.Handler {
 
 func (s *Server) handlePopup() http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		handlePopupFunc(w, r, s.templates)
+		handlePopupFunc(w, r, s.templates, s.allowList)
 	})
 }
 
-func handlePopupFunc(w http.ResponseWriter, r *http.Request, templates map[string]*template.Template) {
-	details := &FormDetails{
+// handlePopupFunc the initial page load of the form as well as responds to the submission of the form and ultimately renders an HTML page.
+func handlePopupFunc(w http.ResponseWriter, r *http.Request, templates map[string]*template.Template, allowList []string) {
+	formDetails := getFormDetails(r)
+
+	// Initial page load, just render the page
+	if r.Method == "GET" {
+		// set some defaults for the form
+		formDetails.Category = categories[0]
+		formDetails.TTL = ttls[0]
+		render(w, templates["popup"], formDetails)
+		return
+	}
+
+	// Form submission
+	if r.Method == "POST" {
+		// 1. Check if the origin is part of the allowlist
+		if !validateOrigin(r.FormValue("origin"), allowList) {
+			forbiddenDetails := &ForbiddenDetails{
+				PageTitle: "JVS - Error page",
+				Message:   "Something went wrong",
+			}
+			render(w, templates["forbidden"], forbiddenDetails)
+			return
+		}
+
+		// 2. Validate input
+		if !validateForm(formDetails) {
+			render(w, templates["popup"], formDetails)
+			return
+		}
+
+		// 3. [TODO] Request a token
+		token := "token_from_server"
+
+		// 4. Redirect to a confirmation page with context, ultimately needed to postMessage back to the client
+		successDetails := &SuccessDetails{
+			PageTitle:    "JVS - Successful token retrieval",
+			Token:        token,
+			TargetOrigin: formDetails.Origin,
+			WindowName:   formDetails.WindowName,
+		}
+
+		render(w, templates["success"], successDetails)
+	}
+}
+
+// Checks the origin parameter against all entries in the allow list.
+func validateOrigin(originParam string, allowList []string) bool {
+	// origin: shop.acme.com
+	// allowList: [acme.com,*]
+
+	// Check if origin is localhost or private ip
+	if strings.HasPrefix(originParam, "http://localhost") {
+		return true
+	}
+
+	fmt.Println(originParam)
+	originSplit := strings.Split(originParam, "")
+
+	for _, domain := range allowList {
+		// special case, allow everything
+		fmt.Println("look: " + domain)
+		if domain == "*" {
+			return true
+		}
+
+		domainSplit := strings.Split(domain, ".")
+
+		// this domain is longer than the origin, skip over it
+		if len(domainSplit) > len(originSplit) {
+			continue
+		}
+
+		// compare the origin and current domain from right to left
+		for i, j := len(domainSplit)-1, len(originSplit)-1; i >= 0 && j >= 0; i, j = i-1, j-1 {
+			// not a wildcard reference and no match, proceed to the next domain candidate in the allow list
+			if domainSplit[i] != "*" && domainSplit[i] != originSplit[j] {
+				break
+			}
+
+			if i == 0 {
+				return true
+			}
+		}
+	}
+	return false
+}
+
+func validateForm(formDetails *FormDetails) bool {
+	formDetails.Errors = make(map[string]string)
+
+	if !isValidOneOf(formDetails.Category, categories) {
+		formDetails.Errors["Category"] = "Category must be selected"
+	}
+
+	if strings.TrimSpace(formDetails.Reason) == "" {
+		formDetails.Errors["Reason"] = "Reason is required"
+	}
+
+	if !isValidOneOf(formDetails.TTL, ttls) {
+		formDetails.Errors["TTL"] = "TTL is required"
+	}
+
+	return len(formDetails.Errors) == 0
+}
+
+func isValidOneOf(selection string, options []string) bool {
+	for _, v := range options {
+		if v == selection {
+			return true
+		}
+	}
+	return false
+}
+
+func getFormDetails(r *http.Request) *FormDetails {
+	return &FormDetails{
 		WindowName: r.FormValue("windowname"),
 		Origin:     r.FormValue("origin"),
-		PageTitle:  "JVS - Justification Request System",
 		Category:   r.FormValue("category"),
 		Reason:     r.FormValue("reason"),
 		TTL:        r.FormValue("ttl"),
+		PageTitle:  "JVS - Justification Request System",
 		Content: Content{
 			UserLabel:     "User",
 			CategoryLabel: "Category",
@@ -150,63 +273,6 @@ func handlePopupFunc(w http.ResponseWriter, r *http.Request, templates map[strin
 			},
 		},
 	}
-
-	// Initial page load, just render the page
-	if r.Method == "GET" {
-		// set some defaults for the form
-		details.Category = categories[0]
-		details.TTL = ttls[0]
-		render(w, templates["popup"], details)
-		return
-	}
-
-	// Form submission
-	if r.Method == "POST" {
-		// 1. Validate input
-		if !validate(details) {
-			render(w, templates["popup"], details)
-			return
-		}
-
-		// 2. [TODO] Request a token
-		token := "token_from_server"
-
-		// 3. Redirect to a confirmation page with context, ultimately needed to postMessage back to the client
-		successContext := &SuccessDetails{
-			Token:        token,
-			TargetOrigin: details.Origin,
-			WindowName:   details.WindowName,
-		}
-
-		render(w, templates["success"], successContext)
-	}
-}
-
-func validate(formDetails *FormDetails) bool {
-	formDetails.Errors = make(map[string]string)
-
-	if !isValidOneOf(formDetails.Category, categories) {
-		formDetails.Errors["Category"] = "Category must be selected"
-	}
-
-	if strings.TrimSpace(formDetails.Reason) == "" {
-		formDetails.Errors["Reason"] = "Reason is required"
-	}
-
-	if !isValidOneOf(formDetails.TTL, ttls) {
-		formDetails.Errors["TTL"] = "TTL is required"
-	}
-
-	return len(formDetails.Errors) == 0
-}
-
-func isValidOneOf(selection string, options []string) bool {
-	for _, v := range options {
-		if v == selection {
-			return true
-		}
-	}
-	return false
 }
 
 func render(w http.ResponseWriter, tmpl *template.Template, data any) {
