@@ -59,6 +59,7 @@ type SuccessDetails struct {
 	WindowName   string
 }
 
+// ForbiddenDetails represents the data used for the forbidden page.
 type ForbiddenDetails struct {
 	PageTitle string
 	Message   string
@@ -167,12 +168,10 @@ func validateOrigin(originParam string, allowList []string) bool {
 		return true
 	}
 
-	fmt.Println(originParam)
-	originSplit := strings.Split(originParam, "")
+	originSplit := strings.Split(originParam, ".")
 
 	for _, domain := range allowList {
 		// special case, allow everything
-		fmt.Println("look: " + domain)
 		if domain == "*" {
 			return true
 		}
