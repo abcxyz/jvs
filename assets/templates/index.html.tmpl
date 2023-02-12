@@ -37,7 +37,7 @@
   {{ $context := . }}
   <div class="container">
     <h1 class="title">{{ .PageTitle }}</h1>
-    <form action="/popup?origin={{ .Origin }}" method="post">
+    <form action="/popup" method="post">
       <ul class="flex-outer">
 
         <!-- Username -->
@@ -108,8 +108,7 @@
 
     </form>
   </div>
+  <script src="/assets/static/js/index.js" type="text/javascript"></script>
 </body>
-
-<script src="/assets/static/js/index.js" type="text/javascript"></script>
 
 </html>

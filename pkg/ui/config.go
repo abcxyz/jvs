@@ -30,11 +30,12 @@ type ServiceConfig struct {
 	AllowList []string `env:"ALLOW_LIST,delimiter=;,required"`
 }
 
+var validRegexPattern = regexp.MustCompile(`^(([\w-]+\.)|(\*\.))+[\w-]+$`)
+
 // NewConfig creates a new ServiceConfig from environment variables.
 func NewConfig(ctx context.Context) (*ServiceConfig, error) {
 	var cfg ServiceConfig
-	err := cfgloader.Load(ctx, &cfg, cfgloader.WithLookuper(envconfig.OsLookuper()))
-	if err != nil {
+	if err := cfgloader.Load(ctx, &cfg, cfgloader.WithLookuper(envconfig.OsLookuper())); err != nil {
 		return nil, fmt.Errorf("failed to parse server config: %w", err)
 	}
 
@@ -50,7 +51,7 @@ func NewConfig(ctx context.Context) (*ServiceConfig, error) {
 		}
 
 		if !validRegexPattern.MatchString(domain) {
-			return nil, fmt.Errorf("entry in the ALLOW_LIST was invalid %w", err)
+			return nil, fmt.Errorf("domain in the ALLOW_LIST is invalid: %s", domain)
 		}
 	}
 
