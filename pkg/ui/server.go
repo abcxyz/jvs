@@ -117,7 +117,7 @@ func handlePopupFunc(w http.ResponseWriter, r *http.Request, templates map[strin
 	formDetails := getFormDetails(r)
 
 	// Initial page load, just render the page
-	if r.Method == "GET" {
+	if r.Method == http.MethodGet {
 		// set some defaults for the form
 		formDetails.Category = categories[0]
 		formDetails.TTL = ttls[0]
