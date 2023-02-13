@@ -19,7 +19,9 @@ import (
 	"fmt"
 	"html/template"
 	"log"
+	"net"
 	"net/http"
+	"net/url"
 	"strings"
 )
 
@@ -83,7 +85,7 @@ func NewServer(ctx context.Context, cfg *ServiceConfig, tmplLocations map[string
 
 	// Parse templates
 	for key, path := range tmplLocations {
-		tmpl, err := template.ParseFiles(path)
+		tmpl, err := template.ParseFiles(path, "./assets/templates/_head.html.tmpl")
 		if err != nil {
 			return nil, fmt.Errorf("parsing %s template: %w", path, err)
 		}
@@ -108,74 +110,72 @@ func (s *Server) Routes() http.Handler {
 
 func (s *Server) handlePopup() http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		handlePopupFunc(w, r, s.templates, s.allowList)
+		formDetails := getFormDetails(r)
+
+		// Initial page load, just render the page
+		if r.Method == http.MethodGet {
+			// set some defaults for the form
+			formDetails.Category = categories[0]
+			formDetails.TTL = ttls[0]
+			render(w, s.templates["popup"], formDetails)
+			return
+		}
+
+		// Form submission
+		if r.Method == http.MethodPost {
+			// 1. Check if the origin is part of the allowlist
+			validOrigin, err := validateOrigin(r.FormValue("origin"), s.allowList)
+			if err != nil {
+				log.Fatalf("failed to validate the origin query parameter %s", err)
+			}
+
+			if !validOrigin {
+				forbiddenDetails := &ForbiddenDetails{
+					PageTitle: "JVS - Error page",
+					Message:   "Something went wrong",
+				}
+				render(w, s.templates["forbidden"], forbiddenDetails)
+				return
+			}
+
+			// 2. Validate input
+			if !validateForm(formDetails) {
+				render(w, s.templates["popup"], formDetails)
+				return
+			}
+
+			// 3. [TODO] Request a token
+			token := "token_from_server"
+
+			// 4. Redirect to a confirmation page with context, ultimately needed to postMessage back to the client
+			successDetails := &SuccessDetails{
+				PageTitle:    "JVS - Successful token retrieval",
+				Token:        token,
+				TargetOrigin: formDetails.Origin,
+				WindowName:   formDetails.WindowName,
+			}
+
+			render(w, s.templates["success"], successDetails)
+		}
 	})
 }
 
-// handlePopupFunc the initial page load of the form as well as responds to the submission of the form and ultimately renders an HTML page.
-func handlePopupFunc(w http.ResponseWriter, r *http.Request, templates map[string]*template.Template, allowList []string) {
-	formDetails := getFormDetails(r)
-
-	// Initial page load, just render the page
-	if r.Method == http.MethodGet {
-		// set some defaults for the form
-		formDetails.Category = categories[0]
-		formDetails.TTL = ttls[0]
-		render(w, templates["popup"], formDetails)
-		return
-	}
-
-	// Form submission
-	if r.Method == "POST" {
-		// 1. Check if the origin is part of the allowlist
-		if !validateOrigin(r.FormValue("origin"), allowList) {
-			forbiddenDetails := &ForbiddenDetails{
-				PageTitle: "JVS - Error page",
-				Message:   "Something went wrong",
-			}
-			render(w, templates["forbidden"], forbiddenDetails)
-			return
-		}
-
-		// 2. Validate input
-		if !validateForm(formDetails) {
-			render(w, templates["popup"], formDetails)
-			return
-		}
-
-		// 3. [TODO] Request a token
-		token := "token_from_server"
-
-		// 4. Redirect to a confirmation page with context, ultimately needed to postMessage back to the client
-		successDetails := &SuccessDetails{
-			PageTitle:    "JVS - Successful token retrieval",
-			Token:        token,
-			TargetOrigin: formDetails.Origin,
-			WindowName:   formDetails.WindowName,
-		}
-
-		render(w, templates["success"], successDetails)
-	}
-}
-
 // Checks the origin parameter against all entries in the allow list.
-func validateOrigin(originParam string, allowList []string) bool {
-	// origin: shop.acme.com
-	// allowList: [acme.com,*]
-
+func validateOrigin(originParam string, allowList []string) (bool, error) {
 	// Check if origin is localhost or private ip
-	if strings.HasPrefix(originParam, "http://localhost") {
-		return true
+	validIP, err := validateLocalIP(originParam)
+	if err != nil {
+		return false, err
+	}
+
+	// either local developemtn or all origins are allowed
+	if validIP || (len(allowList) == 1 && allowList[0] == "*") {
+		return true, nil
 	}
 
 	originSplit := strings.Split(originParam, ".")
 
 	for _, domain := range allowList {
-		// special case, allow everything
-		if domain == "*" {
-			return true
-		}
-
 		domainSplit := strings.Split(domain, ".")
 
 		// this domain is longer than the origin, skip over it
@@ -191,11 +191,25 @@ func validateOrigin(originParam string, allowList []string) bool {
 			}
 
 			if i == 0 {
-				return true
+				return true, nil
 			}
 		}
 	}
-	return false
+	return false, nil
+}
+
+func validateLocalIP(originParam string) (bool, error) {
+	u, err := url.Parse(originParam)
+	if err != nil {
+		return false, fmt.Errorf("unable to parse url: %w", err)
+	}
+
+	ipAddr, err := net.ResolveIPAddr("ip", u.Hostname())
+	if err != nil {
+		return false, fmt.Errorf("unable to resolve IP Address: %w", err)
+	}
+
+	return net.ParseIP(ipAddr.IP.String()).IsLoopback(), nil
 }
 
 func validateForm(formDetails *FormDetails) bool {

@@ -15,170 +15,264 @@
 package ui
 
 import (
+	"fmt"
 	"testing"
+
+	"github.com/abcxyz/pkg/testutil"
+	"github.com/google/go-cmp/cmp"
 )
 
-type testValidateOriginParam struct {
-	origin    string
-	allowList []string
-	expected  bool
-}
-
 type testValidateFormParam struct {
-	detail   FormDetails
-	expected bool
-}
-
-type testIsValidOneOfInputParam struct {
-	selection string
-	options   []string
-	expected  bool
+	name    string
+	detail  FormDetails
+	wantRes bool
 }
 
 func TestValidateOrigin(t *testing.T) {
 	t.Parallel()
 
-	inputs := []testValidateOriginParam{
+	tests := []struct {
+		name      string
+		origin    string
+		allowList []string
+		wantRes   bool
+		wantErr   string
+	}{
 		{
+			name:      "no_origin_and_empty_allow_list",
 			origin:    "",
 			allowList: []string{},
-			expected:  false,
+			wantRes:   false,
 		},
 		{
+			name:      "no_origin",
 			origin:    "",
 			allowList: []string{"foo.com"},
-			expected:  false,
+			wantRes:   false,
 		},
 		{
+			name:      "origin_domain_no_match",
 			origin:    "bar.com",
 			allowList: []string{"foo.com"},
-			expected:  false,
+			wantRes:   false,
 		},
 		{
+			name:      "origin_subdomain_no_match",
 			origin:    "go.foo.com",
 			allowList: []string{"bar.com", "baz.com"},
-			expected:  false,
+			wantRes:   false,
 		},
 		{
+			name:      "origin_match_asterisk",
+			origin:    "foo.com",
+			allowList: []string{"*"},
+			wantRes:   true,
+		},
+		{
+			name:      "subdomain_origin_match",
 			origin:    "go.foo.com",
 			allowList: []string{"bar.com", "foo.com"},
-			expected:  true,
+			wantRes:   true,
 		},
 		{
+			name:      "domain_origin_match",
 			origin:    "foo.com",
 			allowList: []string{"bar.com", "foo.com"},
-			expected:  true,
+			wantRes:   true,
 		},
 		{
-			origin:    "foo.com",
-			allowList: []string{"bar.com", "*"},
-			expected:  true,
+			name:      "local_origin",
+			origin:    "localhost",
+			allowList: []string{"*"},
+			wantRes:   true,
 		},
 	}
 
-	for _, value := range inputs {
-		if validateOrigin(value.origin, value.allowList) != value.expected {
-			t.Fatalf("Failed validating %+v", value)
-		}
+	for _, tc := range tests {
+		tc := tc
+		t.Run(tc.name, func(t *testing.T) {
+			t.Parallel()
+			gotRes, err := validateOrigin(tc.origin, tc.allowList)
+			if diff := testutil.DiffErrString(err, tc.wantErr); diff != "" {
+				t.Errorf("Unexpected err: %s", diff)
+			}
+			if diff := cmp.Diff(tc.wantRes, gotRes); diff != "" {
+				t.Errorf("Failed validating (-want,+got):\n%s", diff)
+			}
+		})
+	}
+}
+
+func TestValidateLocalIp(t *testing.T) {
+	t.Parallel()
+
+	tests := []struct {
+		name    string
+		origin  string
+		wantRes bool
+		wantErr string
+	}{
+		{
+			name:    "no_origin",
+			origin:  "",
+			wantRes: false,
+		},
+		{
+			name:    "missing_protocol",
+			origin:  "localhost",
+			wantRes: false,
+		},
+		{
+			name:    "localhost_origin",
+			origin:  "http://localhost",
+			wantRes: true,
+		},
+		{
+			name:    "local_ip_origin",
+			origin:  "http://127.0.0.1",
+			wantRes: true,
+		},
+		{
+			name:    "non_local_ip_origin",
+			origin:  "google.com",
+			wantRes: false,
+		},
+	}
+
+	for _, tc := range tests {
+		tc := tc
+		t.Run(tc.name, func(t *testing.T) {
+			t.Parallel()
+			gotRes, err := validateLocalIP(tc.origin)
+			if diff := testutil.DiffErrString(err, tc.wantErr); diff != "" {
+				t.Errorf("Unexpected err: %s", diff)
+			}
+			if diff := cmp.Diff(tc.wantRes, gotRes); diff != "" {
+				t.Errorf("Failed validating (-want,+got):\n%s", diff)
+			}
+		})
 	}
 }
 
 func TestValidateForm(t *testing.T) {
 	t.Parallel()
 
-	var inputs []testValidateFormParam
+	var tests []testValidateFormParam
 
 	for i := 0; i < len(categories); i++ {
 		category := categories[i]
 		for j := 0; j < len(ttls); j++ {
 			ttl := ttls[j]
-
+			reason := "reason"
 			happyPathCase := testValidateFormParam{
+				name: fmt.Sprintf("%s_%s_%s", category, reason, ttl),
 				detail: FormDetails{
 					Category: category,
-					Reason:   "reason",
+					Reason:   reason,
 					TTL:      ttl,
 				},
-				expected: true,
+				wantRes: true,
 			}
-
-			inputs = append(inputs, happyPathCase)
+			tests = append(tests, happyPathCase)
 		}
 	}
 
 	sadPathCases := []testValidateFormParam{
 		{
+			name: "empty_input_all",
 			detail: FormDetails{
 				Category: "",
 				Reason:   "",
 				TTL:      "",
 			},
-			expected: false,
+			wantRes: false,
 		},
 		{
+			name: "empty_input_category",
 			detail: FormDetails{
 				Category: "",
 				Reason:   "reason",
 				TTL:      ttls[0],
 			},
-			expected: false,
+			wantRes: false,
 		},
 		{
+			name: "empty_input_reason",
 			detail: FormDetails{
 				Category: categories[0],
 				Reason:   "",
 				TTL:      ttls[1],
 			},
-			expected: false,
+			wantRes: false,
 		},
 		{
+			name: "empty_input_ttl",
 			detail: FormDetails{
 				Category: categories[0],
 				Reason:   "reason",
 				TTL:      "",
 			},
-			expected: false,
+			wantRes: false,
 		},
 	}
 
-	inputs = append(inputs, sadPathCases...)
+	tests = append(tests, sadPathCases...)
 
-	for _, value := range inputs {
-		if validateForm(&value.detail) != value.expected {
-			t.Fatalf("Failed validating form %+v", value)
-		}
+	for _, tc := range tests {
+		tc := tc
+		t.Run(tc.name, func(t *testing.T) {
+			t.Parallel()
+			gotRes := validateForm(&tc.detail)
+			if diff := cmp.Diff(tc.wantRes, gotRes); diff != "" {
+				t.Errorf("Failed validating (-want,+got):\n%s", diff)
+			}
+		})
 	}
 }
 
 func TestIsValidOneOf(t *testing.T) {
 	t.Parallel()
 
-	inputs := []testIsValidOneOfInputParam{
+	tests := []struct {
+		name      string
+		selection string
+		options   []string
+		wantRes   bool
+	}{
 		{
+			name:      "empty_selection_and_options_input",
 			selection: "",
 			options:   []string{},
-			expected:  false,
+			wantRes:   false,
 		},
 		{
+			name:      "empty_options_input",
 			selection: "foo",
 			options:   []string{},
-			expected:  false,
+			wantRes:   false,
 		},
 		{
+			name:      "selection_not_in_options",
 			selection: "foo",
 			options:   []string{"bar"},
-			expected:  false,
+			wantRes:   false,
 		},
 		{
+			name:      "selection_in_options",
 			selection: "foo",
 			options:   []string{"bar", "foo"},
-			expected:  true,
+			wantRes:   true,
 		},
 	}
 
-	for _, value := range inputs {
-		if isValidOneOf(value.selection, value.options) != value.expected {
-			t.Fatalf("Failed validating %+v", value)
-		}
+	for _, tc := range tests {
+		tc := tc
+		t.Run(tc.name, func(t *testing.T) {
+			t.Parallel()
+			gotRes := isValidOneOf(tc.selection, tc.options)
+			if diff := cmp.Diff(tc.wantRes, gotRes); diff != "" {
+				t.Errorf("Failed validating (-want,+got):\n%s", diff)
+			}
+		})
 	}
 }
