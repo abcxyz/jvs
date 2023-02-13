@@ -91,7 +91,7 @@ func realMain(ctx context.Context) error {
 	return nil
 }
 
-// TODO use filepath.WalkDir to dynamically generate this map
+// TODO use filepath.WalkDir to dynamically generate this map.
 func constructTmplMap(root string) map[string]string {
 	// tmplMap := make(map[string]string)
 

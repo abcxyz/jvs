@@ -23,6 +23,9 @@ import (
 	"net/http"
 	"net/url"
 	"strings"
+
+	"github.com/abcxyz/pkg/logging"
+	"go.uber.org/zap"
 )
 
 // Pair represents a key value pair used by the select HTML element.
@@ -110,6 +113,8 @@ func (s *Server) Routes() http.Handler {
 
 func (s *Server) handlePopup() http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		logger := logging.FromContext(r.Context())
+
 		formDetails := getFormDetails(r)
 
 		// Initial page load, just render the page
@@ -117,7 +122,7 @@ func (s *Server) handlePopup() http.Handler {
 			// set some defaults for the form
 			formDetails.Category = categories[0]
 			formDetails.TTL = ttls[0]
-			render(w, s.templates["popup"], formDetails)
+			render(w, s.templates["popup"], formDetails, logger)
 			return
 		}
 
@@ -126,7 +131,7 @@ func (s *Server) handlePopup() http.Handler {
 			// 1. Check if the origin is part of the allowlist
 			validOrigin, err := validateOrigin(r.FormValue("origin"), s.allowList)
 			if err != nil {
-				log.Fatalf("failed to validate the origin query parameter %s", err)
+				logger.Fatalf("failed to validate the origin query parameter %s", err)
 			}
 
 			if !validOrigin {
@@ -134,13 +139,13 @@ func (s *Server) handlePopup() http.Handler {
 					PageTitle: "JVS - Error page",
 					Message:   "Something went wrong",
 				}
-				render(w, s.templates["forbidden"], forbiddenDetails)
+				render(w, s.templates["forbidden"], forbiddenDetails, logger)
 				return
 			}
 
 			// 2. Validate input
 			if !validateForm(formDetails) {
-				render(w, s.templates["popup"], formDetails)
+				render(w, s.templates["popup"], formDetails, logger)
 				return
 			}
 
@@ -155,7 +160,7 @@ func (s *Server) handlePopup() http.Handler {
 				WindowName:   formDetails.WindowName,
 			}
 
-			render(w, s.templates["success"], successDetails)
+			render(w, s.templates["success"], successDetails, logger)
 		}
 	})
 }
@@ -288,7 +293,7 @@ func getFormDetails(r *http.Request) *FormDetails {
 	}
 }
 
-func render(w http.ResponseWriter, tmpl *template.Template, data any) {
+func render(w http.ResponseWriter, tmpl *template.Template, data any, logger *zap.SugaredLogger) {
 	if err := tmpl.Execute(w, data); err != nil {
 		log.Print(err)
 		http.Error(w, "Sorry, something went wrong", http.StatusInternalServerError)

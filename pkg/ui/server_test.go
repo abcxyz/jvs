@@ -23,9 +23,9 @@ import (
 )
 
 type testValidateFormParam struct {
-	name    string
-	detail  FormDetails
-	wantRes bool
+	name   string
+	detail FormDetails
+	want   bool
 }
 
 func TestValidateOrigin(t *testing.T) {
@@ -107,35 +107,34 @@ func TestValidateLocalIp(t *testing.T) {
 	t.Parallel()
 
 	tests := []struct {
-		name    string
-		origin  string
-		wantRes bool
-		wantErr string
+		name   string
+		origin string
+		want   bool
 	}{
 		{
-			name:    "no_origin",
-			origin:  "",
-			wantRes: false,
+			name:   "no_origin",
+			origin: "",
+			want:   false,
 		},
 		{
-			name:    "missing_protocol",
-			origin:  "localhost",
-			wantRes: false,
+			name:   "missing_protocol",
+			origin: "localhost",
+			want:   false,
 		},
 		{
-			name:    "localhost_origin",
-			origin:  "http://localhost",
-			wantRes: true,
+			name:   "localhost_origin",
+			origin: "http://localhost",
+			want:   true,
 		},
 		{
-			name:    "local_ip_origin",
-			origin:  "http://127.0.0.1",
-			wantRes: true,
+			name:   "local_ip_origin",
+			origin: "http://127.0.0.1",
+			want:   true,
 		},
 		{
-			name:    "non_local_ip_origin",
-			origin:  "google.com",
-			wantRes: false,
+			name:   "non_local_ip_origin",
+			origin: "google.com",
+			want:   false,
 		},
 	}
 
@@ -143,11 +142,8 @@ func TestValidateLocalIp(t *testing.T) {
 		tc := tc
 		t.Run(tc.name, func(t *testing.T) {
 			t.Parallel()
-			gotRes, err := validateLocalIP(tc.origin)
-			if diff := testutil.DiffErrString(err, tc.wantErr); diff != "" {
-				t.Errorf("Unexpected err: %s", diff)
-			}
-			if diff := cmp.Diff(tc.wantRes, gotRes); diff != "" {
+			got, _ := validateLocalIP(tc.origin)
+			if diff := cmp.Diff(tc.want, got); diff != "" {
 				t.Errorf("Failed validating (-want,+got):\n%s", diff)
 			}
 		})
@@ -171,7 +167,7 @@ func TestValidateForm(t *testing.T) {
 					Reason:   reason,
 					TTL:      ttl,
 				},
-				wantRes: true,
+				want: true,
 			}
 			tests = append(tests, happyPathCase)
 		}
@@ -185,7 +181,7 @@ func TestValidateForm(t *testing.T) {
 				Reason:   "",
 				TTL:      "",
 			},
-			wantRes: false,
+			want: false,
 		},
 		{
 			name: "empty_input_category",
@@ -194,7 +190,7 @@ func TestValidateForm(t *testing.T) {
 				Reason:   "reason",
 				TTL:      ttls[0],
 			},
-			wantRes: false,
+			want: false,
 		},
 		{
 			name: "empty_input_reason",
@@ -203,7 +199,7 @@ func TestValidateForm(t *testing.T) {
 				Reason:   "",
 				TTL:      ttls[1],
 			},
-			wantRes: false,
+			want: false,
 		},
 		{
 			name: "empty_input_ttl",
@@ -212,7 +208,7 @@ func TestValidateForm(t *testing.T) {
 				Reason:   "reason",
 				TTL:      "",
 			},
-			wantRes: false,
+			want: false,
 		},
 	}
 
@@ -222,8 +218,8 @@ func TestValidateForm(t *testing.T) {
 		tc := tc
 		t.Run(tc.name, func(t *testing.T) {
 			t.Parallel()
-			gotRes := validateForm(&tc.detail)
-			if diff := cmp.Diff(tc.wantRes, gotRes); diff != "" {
+			got := validateForm(&tc.detail)
+			if diff := cmp.Diff(tc.want, got); diff != "" {
 				t.Errorf("Failed validating (-want,+got):\n%s", diff)
 			}
 		})
@@ -237,31 +233,31 @@ func TestIsValidOneOf(t *testing.T) {
 		name      string
 		selection string
 		options   []string
-		wantRes   bool
+		want      bool
 	}{
 		{
 			name:      "empty_selection_and_options_input",
 			selection: "",
 			options:   []string{},
-			wantRes:   false,
+			want:      false,
 		},
 		{
 			name:      "empty_options_input",
 			selection: "foo",
 			options:   []string{},
-			wantRes:   false,
+			want:      false,
 		},
 		{
 			name:      "selection_not_in_options",
 			selection: "foo",
 			options:   []string{"bar"},
-			wantRes:   false,
+			want:      false,
 		},
 		{
 			name:      "selection_in_options",
 			selection: "foo",
 			options:   []string{"bar", "foo"},
-			wantRes:   true,
+			want:      true,
 		},
 	}
 
@@ -269,8 +265,8 @@ func TestIsValidOneOf(t *testing.T) {
 		tc := tc
 		t.Run(tc.name, func(t *testing.T) {
 			t.Parallel()
-			gotRes := isValidOneOf(tc.selection, tc.options)
-			if diff := cmp.Diff(tc.wantRes, gotRes); diff != "" {
+			got := isValidOneOf(tc.selection, tc.options)
+			if diff := cmp.Diff(tc.want, got); diff != "" {
 				t.Errorf("Failed validating (-want,+got):\n%s", diff)
 			}
 		})

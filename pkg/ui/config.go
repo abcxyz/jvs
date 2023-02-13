@@ -28,6 +28,8 @@ import (
 type ServiceConfig struct {
 	Port      string   `env:"PORT,default=9091"`
 	AllowList []string `env:"ALLOW_LIST,delimiter=;,required"`
+
+	cfgloader.Validatable
 }
 
 var validRegexPattern = regexp.MustCompile(`^(([\w-]+\.)|(\*\.))+[\w-]+$`)
@@ -43,25 +45,33 @@ func newConfig(ctx context.Context, lu envconfig.Lookuper) (*ServiceConfig, erro
 		return nil, fmt.Errorf("failed to parse server config: %w", err)
 	}
 
+	if err := cfg.Validate(); err != nil {
+		return nil, err
+	}
+
+	return &cfg, nil
+}
+
+func (cfg *ServiceConfig) Validate() error {
 	// edge case, exclusive asterisk(*)
 	if len(cfg.AllowList) == 1 && cfg.AllowList[0] == "*" {
-		return &cfg, nil
+		return nil
 	}
 
 	// confirm no asterisks if muiltiple values provided
 	// i.e. ["example.com" "*"] is invalid
 	for _, e := range cfg.AllowList {
 		if e == "*" {
-			return nil, fmt.Errorf("asterisk(*) must be exclusive, no other domains allowed")
+			return fmt.Errorf("asterisk(*) must be exclusive, no other domains allowed")
 		}
 	}
 
 	// validate the AllowList entries are valid
 	for _, domain := range cfg.AllowList {
 		if !validRegexPattern.MatchString(domain) {
-			return nil, fmt.Errorf("domain in the ALLOW_LIST is invalid: %s", domain)
+			return fmt.Errorf("domain in the ALLOW_LIST is invalid: %s", domain)
 		}
 	}
 
-	return &cfg, nil
+	return nil
 }
