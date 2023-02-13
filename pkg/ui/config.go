@@ -34,22 +34,30 @@ var validRegexPattern = regexp.MustCompile(`^(([\w-]+\.)|(\*\.))+[\w-]+$`)
 
 // NewConfig creates a new ServiceConfig from environment variables.
 func NewConfig(ctx context.Context) (*ServiceConfig, error) {
+	return newConfig(ctx, envconfig.OsLookuper())
+}
+
+func newConfig(ctx context.Context, lu envconfig.Lookuper) (*ServiceConfig, error) {
 	var cfg ServiceConfig
-	if err := cfgloader.Load(ctx, &cfg, cfgloader.WithLookuper(envconfig.OsLookuper())); err != nil {
+	if err := cfgloader.Load(ctx, &cfg, cfgloader.WithLookuper(lu)); err != nil {
 		return nil, fmt.Errorf("failed to parse server config: %w", err)
 	}
 
-	validRegexPattern, err := regexp.Compile(`^(([\w-]+\.)|(\*\.))+[\w-]+$`)
-	if err != nil {
-		return nil, fmt.Errorf("failed to compile regex: %w", err)
+	// edge case, exclusive asterisk(*)
+	if len(cfg.AllowList) == 1 && cfg.AllowList[0] == "*" {
+		return &cfg, nil
+	}
+
+	// confirm no asterisks if muiltiple values provided
+	// i.e. ["example.com" "*"] is invalid
+	for _, e := range cfg.AllowList {
+		if e == "*" {
+			return nil, fmt.Errorf("asterisk(*) must be exclusive, no other domains allowed")
+		}
 	}
 
 	// validate the AllowList entries are valid
 	for _, domain := range cfg.AllowList {
-		if domain == "*" {
-			continue
-		}
-
 		if !validRegexPattern.MatchString(domain) {
 			return nil, fmt.Errorf("domain in the ALLOW_LIST is invalid: %s", domain)
 		}
