@@ -47,11 +47,7 @@ func realMain(ctx context.Context) error {
 		return fmt.Errorf("server.NewConfig: %w", err)
 	}
 
-	tmplLocations := map[string]string{
-		"popup":     "./assets/templates/index.html.tmpl",
-		"success":   "./assets/templates/success.html.tmpl",
-		"forbidden": "./assets/templates/forbidden.html.tmpl",
-	}
+	tmplLocations := constructTmplMap("./assets/templates")
 
 	uiServer, err := ui.NewServer(ctx, cfg, tmplLocations)
 	if err != nil {
@@ -93,4 +89,20 @@ func realMain(ctx context.Context) error {
 	}
 
 	return nil
+}
+
+// TODO use filepath.WalkDir to dynamically generate this map
+func constructTmplMap(root string) map[string]string {
+	// tmplMap := make(map[string]string)
+
+	// filepath.WalkDir(root, func(path string, di fs.DirEntry, err error) error {
+	// 	fmt.Printf("Visited: %s\n", path)
+	// 	return nil
+	// })
+
+	return map[string]string{
+		"popup":     "./assets/templates/popup.html.tmpl",
+		"success":   "./assets/templates/success.html.tmpl",
+		"forbidden": "./assets/templates/forbidden.html.tmpl",
+	}
 }
