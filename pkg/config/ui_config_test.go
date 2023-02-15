@@ -12,7 +12,7 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-package ui
+package config
 
 import (
 	"context"
@@ -30,7 +30,7 @@ func TestNewConfig(t *testing.T) {
 	tests := []struct {
 		name       string
 		envs       map[string]string
-		wantConfig *ServiceConfig
+		wantConfig *UIServiceConfig
 		wantErr    string
 	}{
 		{
@@ -38,7 +38,7 @@ func TestNewConfig(t *testing.T) {
 			envs: map[string]string{
 				"ALLOW_LIST": "example.com",
 			},
-			wantConfig: &ServiceConfig{
+			wantConfig: &UIServiceConfig{
 				Port:      "9091",
 				AllowList: []string{"example.com"},
 			},
@@ -49,7 +49,7 @@ func TestNewConfig(t *testing.T) {
 				"PORT":       "1010",
 				"ALLOW_LIST": "example.com",
 			},
-			wantConfig: &ServiceConfig{
+			wantConfig: &UIServiceConfig{
 				Port:      "1010",
 				AllowList: []string{"example.com"},
 			},
@@ -73,7 +73,7 @@ func TestNewConfig(t *testing.T) {
 			envs: map[string]string{
 				"ALLOW_LIST": "*",
 			},
-			wantConfig: &ServiceConfig{
+			wantConfig: &UIServiceConfig{
 				Port:      "9091",
 				AllowList: []string{"*"},
 			},
@@ -83,7 +83,7 @@ func TestNewConfig(t *testing.T) {
 			envs: map[string]string{
 				"ALLOW_LIST": "subdomain.foo.com;*.example.com",
 			},
-			wantConfig: &ServiceConfig{
+			wantConfig: &UIServiceConfig{
 				Port:      "9091",
 				AllowList: []string{"subdomain.foo.com", "*.example.com"},
 			},
@@ -95,7 +95,7 @@ func TestNewConfig(t *testing.T) {
 		t.Run(tc.name, func(t *testing.T) {
 			t.Parallel()
 			lookuper := envconfig.MapLookuper(tc.envs)
-			gotConfig, err := newConfig(ctx, lookuper)
+			gotConfig, err := newUIConfig(ctx, lookuper)
 			if diff := testutil.DiffErrString(err, tc.wantErr); diff != "" {
 				t.Errorf("Unexpected err: %s", diff)
 			}

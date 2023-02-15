@@ -12,11 +12,9 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-const urlParams = new URLSearchParams(window.location.search);
-
 window.addEventListener("DOMContentLoaded", async () => {
   // leverage the URL parameter provided from the request and set it to the target origin
-  const encodedUriComponent = urlParams.get("origin");
+  const encodedUriComponent = new URLSearchParams(window.location.search).get("origin");
   if (!encodedUriComponent) {
     alert("An origin URL parameter must be provided.")
     window.close();

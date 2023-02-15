@@ -12,7 +12,7 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-package ui
+package config
 
 import (
 	"context"
@@ -23,36 +23,32 @@ import (
 	"github.com/sethvargo/go-envconfig"
 )
 
-// ServiceConfig defines the set over environment variables required
+// UIServiceConfig defines the set over environment variables required
 // for running this application.
-type ServiceConfig struct {
+type UIServiceConfig struct {
 	Port      string   `env:"PORT,default=9091"`
 	AllowList []string `env:"ALLOW_LIST,delimiter=;,required"`
-
+	DevMode   bool     `env:"DEV_MODE,default=false"`
 	cfgloader.Validatable
 }
 
 var validRegexPattern = regexp.MustCompile(`^(([\w-]+\.)|(\*\.))+[\w-]+$`)
 
-// NewConfig creates a new ServiceConfig from environment variables.
-func NewConfig(ctx context.Context) (*ServiceConfig, error) {
-	return newConfig(ctx, envconfig.OsLookuper())
+// NewUIConfig creates a new UIServiceConfig from environment variables.
+func NewUIConfig(ctx context.Context) (*UIServiceConfig, error) {
+	return newUIConfig(ctx, envconfig.OsLookuper())
 }
 
-func newConfig(ctx context.Context, lu envconfig.Lookuper) (*ServiceConfig, error) {
-	var cfg ServiceConfig
+func newUIConfig(ctx context.Context, lu envconfig.Lookuper) (*UIServiceConfig, error) {
+	var cfg UIServiceConfig
 	if err := cfgloader.Load(ctx, &cfg, cfgloader.WithLookuper(lu)); err != nil {
 		return nil, fmt.Errorf("failed to parse server config: %w", err)
-	}
-
-	if err := cfg.Validate(); err != nil {
-		return nil, err
 	}
 
 	return &cfg, nil
 }
 
-func (cfg *ServiceConfig) Validate() error {
+func (cfg *UIServiceConfig) Validate() error {
 	// edge case, exclusive asterisk(*)
 	if len(cfg.AllowList) == 1 && cfg.AllowList[0] == "*" {
 		return nil

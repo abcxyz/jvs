@@ -24,6 +24,7 @@ import (
 	"syscall"
 	"time"
 
+	"github.com/abcxyz/jvs/pkg/config"
 	"github.com/abcxyz/jvs/pkg/ui"
 	"github.com/abcxyz/pkg/logging"
 )
@@ -42,14 +43,12 @@ func main() {
 }
 
 func realMain(ctx context.Context) error {
-	cfg, err := ui.NewConfig(ctx)
+	cfg, err := config.NewUIConfig(ctx)
 	if err != nil {
-		return fmt.Errorf("server.NewConfig: %w", err)
+		return fmt.Errorf("server.NewUIConfig: %w", err)
 	}
 
-	tmplLocations := constructTmplMap("./assets/templates")
-
-	uiServer, err := ui.NewServer(ctx, cfg, tmplLocations)
+	uiServer, err := ui.NewServer(ctx, cfg)
 	if err != nil {
 		return fmt.Errorf("server.NewServer: %w", err)
 	}
@@ -89,20 +88,4 @@ func realMain(ctx context.Context) error {
 	}
 
 	return nil
-}
-
-// TODO use filepath.WalkDir to dynamically generate this map.
-func constructTmplMap(root string) map[string]string {
-	// tmplMap := make(map[string]string)
-
-	// filepath.WalkDir(root, func(path string, di fs.DirEntry, err error) error {
-	// 	fmt.Printf("Visited: %s\n", path)
-	// 	return nil
-	// })
-
-	return map[string]string{
-		"popup":     "./assets/templates/popup.html.tmpl",
-		"success":   "./assets/templates/success.html.tmpl",
-		"forbidden": "./assets/templates/forbidden.html.tmpl",
-	}
 }
