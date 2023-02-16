@@ -23,7 +23,6 @@ import (
 
 	"github.com/abcxyz/jvs/internal/project"
 	"github.com/abcxyz/jvs/pkg/render"
-	"github.com/abcxyz/pkg/logging"
 )
 
 // Controller manages use of the renderer in the http handler.
@@ -89,8 +88,6 @@ func New(h *render.Renderer) *Controller {
 
 func (c *Controller) HandlePopup(allowList []string) http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		logger := logging.FromContext(r.Context())
-
 		formDetails := getFormDetails(r)
 
 		// Initial page load, just render the page
@@ -121,14 +118,12 @@ func (c *Controller) HandlePopup(allowList []string) http.Handler {
 					Description: t,
 					Message:     m,
 				}
-				logger.Info("about to render 400")
 				c.h.RenderHTMLStatus(w, http.StatusBadRequest, "400.html.tmpl", forbiddenDetails)
 				return
 			}
 
 			// 2. Validate input
 			if !validateForm(formDetails) {
-				logger.Info("about to render popup due to invalid form")
 				c.h.RenderHTML(w, "popup.html.tmpl", formDetails)
 				return
 			}

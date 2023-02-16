@@ -16,8 +16,12 @@ package controller
 
 import (
 	"fmt"
+	"net/http"
+	"net/url"
 	"testing"
 
+	envstest "github.com/abcxyz/jvs/internal/envtest"
+	"github.com/abcxyz/jvs/internal/project"
 	"github.com/abcxyz/pkg/testutil"
 	"github.com/google/go-cmp/cmp"
 )
@@ -26,6 +30,75 @@ type testValidateFormParam struct {
 	name   string
 	detail FormDetails
 	want   bool
+}
+
+func TestHandlePopup(t *testing.T) {
+	t.Parallel()
+
+	ctx := project.TestContext(t)
+
+	tests := []struct {
+		name        string
+		method      string
+		path        string
+		queryParam  url.Values
+		allowList   []string
+		wantResCode int
+	}{
+		{
+			name:   "success_get",
+			method: http.MethodGet,
+			path:   "/popup",
+			queryParam: url.Values{
+				"origin": {"https://localhost:3000"},
+			},
+			allowList:   []string{"*"},
+			wantResCode: http.StatusOK,
+		},
+		{
+			name:   "success_post",
+			method: http.MethodPost,
+			path:   "/popup",
+			queryParam: url.Values{
+				"origin": {"https://localhost:3000"},
+			},
+			allowList:   []string{"*"},
+			wantResCode: http.StatusOK,
+		},
+		{
+			name:   "invalid_query_param_attribute",
+			method: http.MethodPost,
+			path:   "/popup",
+			queryParam: url.Values{
+				"foo": {"bar"},
+			},
+			allowList:   []string{},
+			wantResCode: http.StatusBadRequest,
+		},
+	}
+
+	for _, tc := range tests {
+		tc := tc
+
+		t.Run(tc.name, func(t *testing.T) {
+			t.Parallel()
+
+			ctx := ctx
+			harness := envstest.NewServerConfig(t, "9091", tc.allowList, true)
+			c := New(harness.Renderer)
+
+			w, r := envstest.BuildFormRequest(ctx, t, http.MethodPost, tc.path,
+				&tc.queryParam,
+			)
+
+			handler := c.HandlePopup(tc.allowList)
+			handler.ServeHTTP(w, r)
+
+			if got, want := w.Code, tc.wantResCode; got != want {
+				t.Errorf("expected %d to be %d", got, want)
+			}
+		})
+	}
 }
 
 func TestValidateOrigin(t *testing.T) {
@@ -100,6 +173,7 @@ func TestValidateOrigin(t *testing.T) {
 		tc := tc
 		t.Run(tc.name, func(t *testing.T) {
 			t.Parallel()
+
 			gotRes, err := validateOrigin(tc.origin, tc.allowList)
 			if diff := testutil.DiffErrString(err, tc.wantErr); diff != "" {
 				t.Errorf("Unexpected err: %s", diff)
