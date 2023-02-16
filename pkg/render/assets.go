@@ -22,7 +22,6 @@ import (
 	htmltemplate "html/template"
 	"io"
 	"io/fs"
-	"log"
 	"path/filepath"
 	"strings"
 	"sync"
@@ -94,7 +93,6 @@ func assetIncludeTag(fsys fs.FS, search string, tmpl *texttemplate.Template, cac
 			if err != nil {
 				return "", fmt.Errorf("failed to generate SRI for %s: %w", name, err)
 			}
-			log.Printf("path %v", pth)
 
 			list = append(list, &asset{
 				Path: pth,
@@ -122,7 +120,7 @@ func generateSRI(r io.ReadCloser) (string, error) {
 
 	h := sha512.New()
 	if _, err := io.Copy(h, r); err != nil {
-		return "", err
+		return "", fmt.Errorf("error with io.Copy: %w", err)
 	}
 	return sriPrefix + base64.RawStdEncoding.EncodeToString(h.Sum(nil)), nil
 }

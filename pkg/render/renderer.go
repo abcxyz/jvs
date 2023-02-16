@@ -93,7 +93,11 @@ func (r *Renderer) executeHTMLTemplate(w io.Writer, name string, data interface{
 		return fmt.Errorf("no html templates are defined")
 	}
 
-	return r.templates.ExecuteTemplate(w, name, data)
+	if err := r.templates.ExecuteTemplate(w, name, data); err != nil {
+		return fmt.Errorf("error with executeTemplate: %w", err)
+	}
+
+	return nil
 }
 
 // loadTemplates loads or reloads all templates.
@@ -119,7 +123,7 @@ func (r *Renderer) loadTemplates() error {
 }
 
 func loadTemplates(fsys fs.FS, htmltmpl *htmltemplate.Template) error {
-	return fs.WalkDir(fsys, ".", func(pth string, info fs.DirEntry, err error) error {
+	err := fs.WalkDir(fsys, ".", func(pth string, info fs.DirEntry, err error) error {
 		if err != nil {
 			return err
 		}
@@ -135,6 +139,11 @@ func loadTemplates(fsys fs.FS, htmltmpl *htmltemplate.Template) error {
 		}
 		return nil
 	})
+	if err != nil {
+		return fmt.Errorf("error while walking the directory: %w", err)
+	}
+
+	return nil
 }
 
 // Define helper methods that may be needed within the templates, examples can be found here

@@ -59,7 +59,10 @@ func (r *Renderer) RenderHTMLStatus(w http.ResponseWriter, code int, tmpl string
 	}
 
 	// Acquire a renderer
-	b := r.rendererPool.Get().(*bytes.Buffer)
+	b, ok := r.rendererPool.Get().(*bytes.Buffer)
+	if !ok {
+		r.logger.Error("renderer unable to be assigned as *bytes.Buffer")
+	}
 	b.Reset()
 	defer r.rendererPool.Put(b)
 
