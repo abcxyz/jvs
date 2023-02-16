@@ -18,11 +18,9 @@ import (
 	"bytes"
 	"context"
 	"fmt"
-	"html/template"
 	htmltemplate "html/template"
 	"io"
 	"io/fs"
-	"log"
 	"net/http"
 	"net/url"
 	"strings"
@@ -36,7 +34,9 @@ import (
 // primarily here to catch if someone, in the future, accidentally includes a
 // bad status code.
 var allowedResponseCodes = map[int]struct{}{
-	http.StatusOK: {},
+	http.StatusOK:         {},
+	http.StatusBadRequest: {},
+	// TODO add more response codes and render generic html for each
 }
 
 // Renderer is responsible for rendering various content and templates like HTML
@@ -129,7 +129,6 @@ func loadTemplates(fsys fs.FS, htmltmpl *htmltemplate.Template) error {
 		}
 
 		if strings.HasSuffix(info.Name(), ".html.tmpl") {
-			log.Println("found a go template: ", info.Name())
 			if _, err := htmltmpl.ParseFS(fsys, pth); err != nil {
 				return fmt.Errorf("failed to parse %s: %w", pth, err)
 			}
@@ -140,9 +139,11 @@ func loadTemplates(fsys fs.FS, htmltmpl *htmltemplate.Template) error {
 
 // Define helper methods that may be needed within the templates, examples can be found here
 // https://github.com/google/exposure-notifications-verification-server/blob/main/pkg/render/renderer.go#L348-L385.
-func (r *Renderer) templateFuncs() template.FuncMap {
+func (r *Renderer) templateFuncs() htmltemplate.FuncMap {
 	return map[string]interface{}{
-		"jsIncludeTag":  assetIncludeTag(r.fs, "static/js", jsIncludeTmpl, &jsIncludeTagCache, r.debug),
+		// only pulling in js for popup page
+		"jsPopupIncludeTag": assetIncludeTag(r.fs, "static/js/popup", jsPopupIncludeTmpl, &jsPopupIncludeTagCache, r.debug),
+		// pull all css
 		"cssIncludeTag": assetIncludeTag(r.fs, "static/css", cssIncludeTmpl, &cssIncludeTagCache, r.debug),
 
 		"pathEscape":    url.PathEscape,

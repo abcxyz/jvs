@@ -29,7 +29,6 @@ type UIServiceConfig struct {
 	Port      string   `env:"PORT,default=9091"`
 	AllowList []string `env:"ALLOW_LIST,delimiter=;,required"`
 	DevMode   bool     `env:"DEV_MODE,default=false"`
-	cfgloader.Validatable
 }
 
 var validRegexPattern = regexp.MustCompile(`^(([\w-]+\.)|(\*\.))+[\w-]+$`)
@@ -48,6 +47,7 @@ func newUIConfig(ctx context.Context, lu envconfig.Lookuper) (*UIServiceConfig, 
 	return &cfg, nil
 }
 
+// Validate checks if the config is valid.
 func (cfg *UIServiceConfig) Validate() error {
 	// edge case, exclusive asterisk(*)
 	if len(cfg.AllowList) == 1 && cfg.AllowList[0] == "*" {

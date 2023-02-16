@@ -12,7 +12,7 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-package ui
+package controller
 
 import (
 	"fmt"
@@ -39,16 +39,24 @@ func TestValidateOrigin(t *testing.T) {
 		wantErr   string
 	}{
 		{
-			name:      "no_origin_and_empty_allow_list",
+			name:      "no_allow_list",
+			origin:    "foo",
+			allowList: []string{},
+			wantRes:   false,
+		},
+		{
+			name:      "no_origin_and_no_allow_list",
 			origin:    "",
 			allowList: []string{},
 			wantRes:   false,
+			wantErr:   "origin was not provided",
 		},
 		{
 			name:      "no_origin",
 			origin:    "",
 			allowList: []string{"foo.com"},
 			wantRes:   false,
+			wantErr:   "origin was not provided",
 		},
 		{
 			name:      "origin_domain_no_match",
@@ -175,7 +183,7 @@ func TestValidateForm(t *testing.T) {
 
 	sadPathCases := []testValidateFormParam{
 		{
-			name: "empty_input_all",
+			name: "no_input_all",
 			detail: FormDetails{
 				Category: "",
 				Reason:   "",
@@ -184,7 +192,7 @@ func TestValidateForm(t *testing.T) {
 			want: false,
 		},
 		{
-			name: "empty_input_category",
+			name: "no_input_category",
 			detail: FormDetails{
 				Category: "",
 				Reason:   "reason",
@@ -193,7 +201,7 @@ func TestValidateForm(t *testing.T) {
 			want: false,
 		},
 		{
-			name: "empty_input_reason",
+			name: "no_input_reason",
 			detail: FormDetails{
 				Category: categories[0],
 				Reason:   "",
@@ -202,7 +210,7 @@ func TestValidateForm(t *testing.T) {
 			want: false,
 		},
 		{
-			name: "empty_input_ttl",
+			name: "no_input_ttl",
 			detail: FormDetails{
 				Category: categories[0],
 				Reason:   "reason",
@@ -236,13 +244,13 @@ func TestIsValidOneOf(t *testing.T) {
 		want      bool
 	}{
 		{
-			name:      "empty_selection_and_options_input",
+			name:      "no_selection_and_options_input",
 			selection: "",
 			options:   []string{},
 			want:      false,
 		},
 		{
-			name:      "empty_options_input",
+			name:      "no_options_input",
 			selection: "foo",
 			options:   []string{},
 			want:      false,

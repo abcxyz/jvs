@@ -41,6 +41,7 @@ func TestNewConfig(t *testing.T) {
 			wantConfig: &UIServiceConfig{
 				Port:      "9091",
 				AllowList: []string{"example.com"},
+				DevMode:   false,
 			},
 		},
 		{
@@ -51,6 +52,18 @@ func TestNewConfig(t *testing.T) {
 			},
 			wantConfig: &UIServiceConfig{
 				Port:      "1010",
+				AllowList: []string{"example.com"},
+			},
+		},
+		{
+			name: "dev_mode_on",
+			envs: map[string]string{
+				"DEV_MODE":   "true",
+				"ALLOW_LIST": "example.com",
+			},
+			wantConfig: &UIServiceConfig{
+				Port:      "9091",
+				DevMode:   true,
 				AllowList: []string{"example.com"},
 			},
 		},

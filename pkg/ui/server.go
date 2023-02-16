@@ -34,7 +34,6 @@ type Server struct {
 // NewServer creates a new HTTP server implementation that will handle
 // rendering the JVS form and parses the go templates.
 func NewServer(ctx context.Context, cfg *config.UIServiceConfig) (*Server, error) {
-
 	// Create the renderer
 	h, err := render.NewRenderer(ctx, assets.ServerFS(), cfg.DevMode)
 	if err != nil {

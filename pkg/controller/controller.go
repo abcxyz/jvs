@@ -6,11 +6,10 @@ import (
 	"net/http"
 	"net/url"
 	"strings"
-	"text/template"
 
+	"github.com/abcxyz/jvs/internal/project"
 	"github.com/abcxyz/jvs/pkg/render"
 	"github.com/abcxyz/pkg/logging"
-	"go.uber.org/zap"
 )
 
 type Controller struct {
@@ -48,15 +47,15 @@ type FormDetails struct {
 
 // SuccessDetails represents the data used for the success page and the postMessage response to the client.
 type SuccessDetails struct {
-	PageTitle    string
-	Description  string
-	Token        string
-	TargetOrigin string
-	WindowName   string
+	WindowName  string
+	Origin      string
+	PageTitle   string
+	Description string
+	Token       string
 }
 
-// ForbiddenDetails represents the data used for the forbidden page.
-type ForbiddenDetails struct {
+// ErrorDetails represents the data used for the 400 page.
+type ErrorDetails struct {
 	PageTitle   string
 	Description string
 	Message     string
@@ -92,23 +91,29 @@ func (c *Controller) HandlePopup(allowList []string) http.Handler {
 		// Form submission
 		if r.Method == http.MethodPost {
 			// 1. Check if the origin is part of the allowlist
-			validOrigin, err := validateOrigin(r.FormValue("origin"), allowList)
-			if err != nil {
-				logger.Fatalf("failed to validate the origin query parameter %s", err)
-			}
-
-			if !validOrigin {
-				forbiddenDetails := &ForbiddenDetails{
-					PageTitle:   "JVS - Error page",
-					Description: "Error page",
-					Message:     "Something went wrong",
+			origin := r.FormValue("origin")
+			if validOrigin, err := validateOrigin(origin, allowList); err != nil || !validOrigin {
+				var m string
+				if err != nil {
+					m = err.Error()
+				} else if !validOrigin {
+					m = "Unexpected origin provided"
 				}
-				c.h.RenderHTML(w, "forbidden.html.tmpl", forbiddenDetails)
+
+				t := http.StatusText(http.StatusBadRequest)
+				forbiddenDetails := &ErrorDetails{
+					PageTitle:   t,
+					Description: t,
+					Message:     m,
+				}
+				logger.Info("about to render 400")
+				c.h.RenderHTMLStatus(w, http.StatusBadRequest, "400.html.tmpl", forbiddenDetails)
 				return
 			}
 
 			// 2. Validate input
 			if !validateForm(formDetails) {
+				logger.Info("about to render popup due to invalid form")
 				c.h.RenderHTML(w, "popup.html.tmpl", formDetails)
 				return
 			}
@@ -118,13 +123,12 @@ func (c *Controller) HandlePopup(allowList []string) http.Handler {
 
 			// 4. Redirect to a confirmation page with context, ultimately needed to postMessage back to the client
 			successDetails := &SuccessDetails{
-				PageTitle:    "JVS - Successful token retrieval",
-				Description:  "Successful token page",
-				Token:        token,
-				TargetOrigin: formDetails.Origin,
-				WindowName:   formDetails.WindowName,
+				PageTitle:   "JVS - Successful token retrieval",
+				Description: "Successful token page",
+				Token:       token,
+				Origin:      formDetails.Origin,
+				WindowName:  formDetails.WindowName,
 			}
-
 			c.h.RenderHTML(w, "success.html.tmpl", successDetails)
 		}
 	})
@@ -132,13 +136,17 @@ func (c *Controller) HandlePopup(allowList []string) http.Handler {
 
 // Checks the origin parameter against all entries in the allow list.
 func validateOrigin(originParam string, allowList []string) (bool, error) {
+	if len(originParam) == 0 {
+		return false, fmt.Errorf("origin was not provided")
+	}
+
 	// Check if origin is localhost or private ip
 	validIP, err := validateLocalIP(originParam)
 	if err != nil {
 		return false, err
 	}
 
-	// either local developemtn or all origins are allowed
+	// either local development or all origins are allowed
 	if validIP || (len(allowList) == 1 && allowList[0] == "*") {
 		return true, nil
 	}
@@ -165,10 +173,15 @@ func validateOrigin(originParam string, allowList []string) (bool, error) {
 			}
 		}
 	}
+
 	return false, nil
 }
 
 func validateLocalIP(originParam string) (bool, error) {
+	if project.DevMode() {
+		return true, nil
+	}
+
 	u, err := url.Parse(originParam)
 	if err != nil {
 		return false, fmt.Errorf("unable to parse url: %w", err)
@@ -184,6 +197,14 @@ func validateLocalIP(originParam string) (bool, error) {
 
 func validateForm(formDetails *FormDetails) bool {
 	formDetails.Errors = make(map[string]string)
+
+	if len(formDetails.Origin) == 0 {
+
+	}
+
+	if len(formDetails.WindowName) == 0 {
+
+	}
 
 	if !isValidOneOf(formDetails.Category, categories) {
 		formDetails.Errors["Category"] = "Category must be selected"
@@ -256,12 +277,5 @@ func getFormDetails(r *http.Request) *FormDetails {
 				},
 			},
 		},
-	}
-}
-
-func renderReplaceMe(w http.ResponseWriter, tmpl *template.Template, data any, logger *zap.SugaredLogger) {
-	if err := tmpl.Execute(w, data); err != nil {
-		logger.Error(err)
-		http.Error(w, "Sorry, something went wrong", http.StatusInternalServerError)
 	}
 }

@@ -3,6 +3,7 @@
 
 <head>
   {{ template "head" . }}
+  {{ jsPopupIncludeTag }}
 </head>
 
 <body>
@@ -75,12 +76,11 @@
       </ul>
 
       <!-- Hidden fields -->
-      <input type="hidden" id="origin" name="origin" value="">
-      <input type="hidden" id="windowname" name="windowname" value="">
+      <input type="hidden" id="origin" name="origin" value="{{ .Origin }}">
+      <input type="hidden" id="windowname" name="windowname" value="{{ .WindowName }}">
 
     </form>
   </div>
-  <script src="/static/js/popup.js" type="text/javascript"></script>
 </body>
 
 </html>

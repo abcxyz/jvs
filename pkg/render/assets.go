@@ -22,6 +22,7 @@ import (
 	htmltemplate "html/template"
 	"io"
 	"io/fs"
+	"log"
 	"path/filepath"
 	"strings"
 	"sync"
@@ -41,13 +42,13 @@ var (
 )
 
 var (
-	jsIncludeTmpl = texttemplate.Must(texttemplate.New(`jsIncludeTmpl`).Parse(strings.TrimSpace(`
+	jsPopupIncludeTmpl = texttemplate.Must(texttemplate.New(`jsPopupIncludeTag`).Parse(strings.TrimSpace(`
 {{ range . -}}
 <script defer src="/{{.Path}}"
   integrity="{{.SRI}}" crossorigin="anonymous" referrerpolicy="no-referrer"></script>
 {{ end }}
 `)))
-	jsIncludeTagCache htmltemplate.HTML
+	jsPopupIncludeTagCache htmltemplate.HTML
 )
 
 // asset represents a javascript or css asset.
@@ -93,13 +94,13 @@ func assetIncludeTag(fsys fs.FS, search string, tmpl *texttemplate.Template, cac
 			if err != nil {
 				return "", fmt.Errorf("failed to generate SRI for %s: %w", name, err)
 			}
+			log.Printf("path %v", pth)
 
 			list = append(list, &asset{
 				Path: pth,
 				SRI:  integrity,
 			})
 		}
-
 		var b bytes.Buffer
 		if err := tmpl.Execute(&b, list); err != nil {
 			return "", fmt.Errorf("failed to render %s asset: %w", search, err)

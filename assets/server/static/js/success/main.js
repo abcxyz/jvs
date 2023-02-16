@@ -14,10 +14,11 @@
 
 const scriptTag = document.querySelector("#success");
 const targetOrigin = scriptTag.getAttribute("origin");
-const token = scriptTag.getAttribute("token");
 const windowName = scriptTag.getAttribute("window-name");
+const token = scriptTag.getAttribute("token");
 if (!targetOrigin) {
   alert("You must pass a target origin from your application to successfully retrieve a token.")
+  window.close()
 } else if (!windowName) {
   alert("You must pass a window name from your application to successfully retrieve a token.")
 } else if (!token) {
@@ -36,4 +37,3 @@ if (!targetOrigin) {
   );
 }
 window.close();
-
