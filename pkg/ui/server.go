@@ -27,7 +27,7 @@ import (
 
 // Server holds the parsed html templates.
 type Server struct {
-	allowList []string
+	allowlist []string
 	h         *render.Renderer
 }
 
@@ -41,7 +41,7 @@ func NewServer(ctx context.Context, cfg *config.UIServiceConfig) (*Server, error
 	}
 
 	return &Server{
-		allowList: cfg.AllowList,
+		allowlist: cfg.Allowlist,
 		h:         h,
 	}, nil
 }
@@ -55,6 +55,6 @@ func (s *Server) Routes() http.Handler {
 	mux.Handle("/static/", http.StripPrefix("/static/", fileServer))
 
 	ctrl := controller.New(s.h)
-	mux.Handle("/popup", ctrl.HandlePopup(s.allowList))
+	mux.Handle("/popup", ctrl.HandlePopup(s.allowlist))
 	return mux
 }

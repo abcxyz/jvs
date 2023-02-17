@@ -26,9 +26,10 @@ JVS consists of the following components:
     *   [Public Key API](./cmd/public-key):
         [JWKs](https://auth0.com/docs/secure/tokens/json-web-tokens/json-web-key-sets).
 *   [CLI Tool](./cmd/jvsctl)
+*   [UI](./cmd/ui)
 
-See manuals for [JVS APIs usage](./docs/jvs-apis.md) and
-[JVS CLI Tool Usage](./docs/cli-tool.md)
+See manuals for [JVS APIs usage](./docs/jvs-apis.md), 
+[JVS CLI Tool Usage](./docs/cli-tool.md), and [JVS UI usage](./docs/jvs-ui.md)
 
 **TODO(#115):** add a simple diagram to describe the user experience flow of
 enabling JVS in Lumberjack.

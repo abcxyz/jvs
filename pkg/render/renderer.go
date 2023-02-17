@@ -21,7 +21,6 @@ import (
 	htmltemplate "html/template"
 	"io"
 	"io/fs"
-	"net/http"
 	"net/url"
 	"strings"
 	"sync"
@@ -29,15 +28,6 @@ import (
 	"github.com/abcxyz/pkg/logging"
 	"go.uber.org/zap"
 )
-
-// allowedResponseCodes are the list of allowed response codes. This is
-// primarily here to catch if someone, in the future, accidentally includes a
-// bad status code.
-var allowedResponseCodes = map[int]struct{}{
-	http.StatusOK:         {},
-	http.StatusBadRequest: {},
-	// TODO add more response codes and render generic html for each
-}
 
 // Renderer is responsible for rendering various content and templates like HTML
 // and JSON responses. This implementation caches templates and uses a pool of buffers.
@@ -160,11 +150,4 @@ func (r *Renderer) templateFuncs() htmltemplate.FuncMap {
 		"queryEscape":   url.QueryEscape,
 		"queryUnescape": url.QueryUnescape,
 	}
-}
-
-// AllowedResponseCode returns true if the code is a permitted response code,
-// false otherwise.
-func (r *Renderer) AllowedResponseCode(code int) bool {
-	_, ok := allowedResponseCodes[code]
-	return ok
 }

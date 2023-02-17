@@ -38,15 +38,6 @@ func (r *Renderer) RenderHTML(w http.ResponseWriter, tmpl string, data interface
 // The buffers are fetched via a sync.Pool to reduce allocations and improve
 // performance.
 func (r *Renderer) RenderHTMLStatus(w http.ResponseWriter, code int, tmpl string, data interface{}) {
-	if !r.AllowedResponseCode(code) {
-		r.logger.Errorw("unregistered response code", "code", code)
-
-		w.WriteHeader(http.StatusInternalServerError)
-		msg := fmt.Sprintf("%d is not a registered response code", code)
-		fmt.Fprintf(w, htmlErrTmpl, msg)
-		return
-	}
-
 	if r.debug {
 		if err := r.loadTemplates(); err != nil {
 			r.logger.Errorw("failed to reload templates in renderer", "error", err)

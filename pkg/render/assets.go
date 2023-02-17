@@ -103,6 +103,8 @@ func assetIncludeTag(fsys fs.FS, search string, tmpl *texttemplate.Template, cac
 		if err := tmpl.Execute(&b, list); err != nil {
 			return "", fmt.Errorf("failed to render %s asset: %w", search, err)
 		}
+
+		//nolint:gosec // No user-supplied input
 		result := htmltemplate.HTML(b.String())
 
 		if !devMode {

@@ -15,13 +15,13 @@
 package controller
 
 import (
+	"context"
 	"fmt"
 	"net/http"
 	"net/url"
 	"testing"
 
 	envstest "github.com/abcxyz/jvs/internal/envtest"
-	"github.com/abcxyz/jvs/internal/project"
 	"github.com/abcxyz/pkg/testutil"
 	"github.com/google/go-cmp/cmp"
 )
@@ -35,14 +35,14 @@ type testValidateFormParam struct {
 func TestHandlePopup(t *testing.T) {
 	t.Parallel()
 
-	ctx := project.TestContext(t)
+	ctx := context.Background()
 
-	tests := []struct {
+	cases := []struct {
 		name        string
 		method      string
 		path        string
 		queryParam  url.Values
-		allowList   []string
+		allowlist   []string
 		wantResCode int
 	}{
 		{
@@ -52,7 +52,7 @@ func TestHandlePopup(t *testing.T) {
 			queryParam: url.Values{
 				"origin": {"https://localhost:3000"},
 			},
-			allowList:   []string{"*"},
+			allowlist:   []string{"*"},
 			wantResCode: http.StatusOK,
 		},
 		{
@@ -62,7 +62,7 @@ func TestHandlePopup(t *testing.T) {
 			queryParam: url.Values{
 				"origin": {"https://localhost:3000"},
 			},
-			allowList:   []string{"*"},
+			allowlist:   []string{"*"},
 			wantResCode: http.StatusOK,
 		},
 		{
@@ -72,26 +72,26 @@ func TestHandlePopup(t *testing.T) {
 			queryParam: url.Values{
 				"foo": {"bar"},
 			},
-			allowList:   []string{},
+			allowlist:   []string{},
 			wantResCode: http.StatusBadRequest,
 		},
 	}
 
-	for _, tc := range tests {
+	for _, tc := range cases {
 		tc := tc
 
 		t.Run(tc.name, func(t *testing.T) {
 			t.Parallel()
 
 			ctx := ctx
-			harness := envstest.NewServerConfig(t, "9091", tc.allowList, true)
+			harness := envstest.NewServerConfig(t, "9091", tc.allowlist, true)
 			c := New(harness.Renderer)
 
 			w, r := envstest.BuildFormRequest(ctx, t, http.MethodPost, tc.path,
 				&tc.queryParam,
 			)
 
-			handler := c.HandlePopup(tc.allowList)
+			handler := c.HandlePopup(tc.allowlist)
 			handler.ServeHTTP(w, r)
 
 			if got, want := w.Code, tc.wantResCode; got != want {
@@ -104,77 +104,77 @@ func TestHandlePopup(t *testing.T) {
 func TestValidateOrigin(t *testing.T) {
 	t.Parallel()
 
-	tests := []struct {
+	cases := []struct {
 		name      string
 		origin    string
-		allowList []string
+		allowlist []string
 		wantRes   bool
 		wantErr   string
 	}{
 		{
-			name:      "no_allow_list",
+			name:      "no_allowlist",
 			origin:    "foo",
-			allowList: []string{},
+			allowlist: []string{},
 			wantRes:   false,
 		},
 		{
-			name:      "no_origin_and_no_allow_list",
+			name:      "no_origin_and_no_allowlist",
 			origin:    "",
-			allowList: []string{},
+			allowlist: []string{},
 			wantRes:   false,
 			wantErr:   "origin was not provided",
 		},
 		{
 			name:      "no_origin",
 			origin:    "",
-			allowList: []string{"foo.com"},
+			allowlist: []string{"foo.com"},
 			wantRes:   false,
 			wantErr:   "origin was not provided",
 		},
 		{
 			name:      "origin_domain_no_match",
 			origin:    "bar.com",
-			allowList: []string{"foo.com"},
+			allowlist: []string{"foo.com"},
 			wantRes:   false,
 		},
 		{
 			name:      "origin_subdomain_no_match",
 			origin:    "go.foo.com",
-			allowList: []string{"bar.com", "baz.com"},
+			allowlist: []string{"bar.com", "baz.com"},
 			wantRes:   false,
 		},
 		{
 			name:      "origin_match_asterisk",
 			origin:    "foo.com",
-			allowList: []string{"*"},
+			allowlist: []string{"*"},
 			wantRes:   true,
 		},
 		{
 			name:      "subdomain_origin_match",
 			origin:    "go.foo.com",
-			allowList: []string{"bar.com", "foo.com"},
+			allowlist: []string{"bar.com", "foo.com"},
 			wantRes:   true,
 		},
 		{
 			name:      "domain_origin_match",
 			origin:    "foo.com",
-			allowList: []string{"bar.com", "foo.com"},
+			allowlist: []string{"bar.com", "foo.com"},
 			wantRes:   true,
 		},
 		{
 			name:      "local_origin",
 			origin:    "localhost",
-			allowList: []string{"*"},
+			allowlist: []string{"*"},
 			wantRes:   true,
 		},
 	}
 
-	for _, tc := range tests {
+	for _, tc := range cases {
 		tc := tc
 		t.Run(tc.name, func(t *testing.T) {
 			t.Parallel()
 
-			gotRes, err := validateOrigin(tc.origin, tc.allowList)
+			gotRes, err := validateOrigin(tc.origin, tc.allowlist)
 			if diff := testutil.DiffErrString(err, tc.wantErr); diff != "" {
 				t.Errorf("Unexpected err: %s", diff)
 			}
@@ -188,7 +188,7 @@ func TestValidateOrigin(t *testing.T) {
 func TestValidateLocalIp(t *testing.T) {
 	t.Parallel()
 
-	tests := []struct {
+	cases := []struct {
 		name   string
 		origin string
 		want   bool
@@ -220,7 +220,7 @@ func TestValidateLocalIp(t *testing.T) {
 		},
 	}
 
-	for _, tc := range tests {
+	for _, tc := range cases {
 		tc := tc
 		t.Run(tc.name, func(t *testing.T) {
 			t.Parallel()
@@ -235,14 +235,14 @@ func TestValidateLocalIp(t *testing.T) {
 func TestValidateForm(t *testing.T) {
 	t.Parallel()
 
-	var tests []testValidateFormParam
+	var cases []*testValidateFormParam
 
 	for i := 0; i < len(categories); i++ {
 		category := categories[i]
 		for j := 0; j < len(ttls); j++ {
 			ttl := ttls[j]
 			reason := "reason"
-			happyPathCase := testValidateFormParam{
+			happyPathCase := &testValidateFormParam{
 				name: fmt.Sprintf("%s_%s_%s", category, reason, ttl),
 				detail: FormDetails{
 					Category: category,
@@ -251,11 +251,11 @@ func TestValidateForm(t *testing.T) {
 				},
 				want: true,
 			}
-			tests = append(tests, happyPathCase)
+			cases = append(cases, happyPathCase)
 		}
 	}
 
-	sadPathCases := []testValidateFormParam{
+	sadPathCases := []*testValidateFormParam{
 		{
 			name: "no_input_all",
 			detail: FormDetails{
@@ -294,9 +294,9 @@ func TestValidateForm(t *testing.T) {
 		},
 	}
 
-	tests = append(tests, sadPathCases...)
+	cases = append(cases, sadPathCases...)
 
-	for _, tc := range tests {
+	for _, tc := range cases {
 		tc := tc
 		t.Run(tc.name, func(t *testing.T) {
 			t.Parallel()
@@ -311,7 +311,7 @@ func TestValidateForm(t *testing.T) {
 func TestIsValidOneOf(t *testing.T) {
 	t.Parallel()
 
-	tests := []struct {
+	cases := []struct {
 		name      string
 		selection string
 		options   []string
@@ -343,7 +343,7 @@ func TestIsValidOneOf(t *testing.T) {
 		},
 	}
 
-	for _, tc := range tests {
+	for _, tc := range cases {
 		tc := tc
 		t.Run(tc.name, func(t *testing.T) {
 			t.Parallel()

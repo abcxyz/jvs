@@ -27,7 +27,7 @@ func TestNewConfig(t *testing.T) {
 	t.Parallel()
 	ctx := context.Background()
 
-	tests := []struct {
+	cases := []struct {
 		name       string
 		envs       map[string]string
 		wantConfig *UIServiceConfig
@@ -36,47 +36,47 @@ func TestNewConfig(t *testing.T) {
 		{
 			name: "default_port",
 			envs: map[string]string{
-				"ALLOW_LIST": "example.com",
+				"ALLOWLIST": "example.com",
 			},
 			wantConfig: &UIServiceConfig{
 				Port:      "9091",
-				AllowList: []string{"example.com"},
+				Allowlist: []string{"example.com"},
 				DevMode:   false,
 			},
 		},
 		{
 			name: "override_port",
 			envs: map[string]string{
-				"PORT":       "1010",
-				"ALLOW_LIST": "example.com",
+				"PORT":      "1010",
+				"ALLOWLIST": "example.com",
 			},
 			wantConfig: &UIServiceConfig{
 				Port:      "1010",
-				AllowList: []string{"example.com"},
+				Allowlist: []string{"example.com"},
 			},
 		},
 		{
 			name: "dev_mode_on",
 			envs: map[string]string{
-				"DEV_MODE":   "true",
-				"ALLOW_LIST": "example.com",
+				"DEV_MODE":  "true",
+				"ALLOWLIST": "example.com",
 			},
 			wantConfig: &UIServiceConfig{
 				Port:      "9091",
 				DevMode:   true,
-				AllowList: []string{"example.com"},
+				Allowlist: []string{"example.com"},
 			},
 		},
 		{
-			name:       "no_port_no_allow_list",
+			name:       "no_port_no_allowlist",
 			envs:       map[string]string{},
 			wantConfig: nil,
 			wantErr:    "failed to parse server config:",
 		},
 		{
-			name: "asterisks_in_allow_list",
+			name: "asterisks_in_allowlist",
 			envs: map[string]string{
-				"ALLOW_LIST": "example.com;*",
+				"ALLOWLIST": "example.com;*",
 			},
 			wantConfig: nil,
 			wantErr:    "asterisk(*) must be exclusive, no other domains allowed",
@@ -84,26 +84,26 @@ func TestNewConfig(t *testing.T) {
 		{
 			name: "exclusive_asterisk",
 			envs: map[string]string{
-				"ALLOW_LIST": "*",
+				"ALLOWLIST": "*",
 			},
 			wantConfig: &UIServiceConfig{
 				Port:      "9091",
-				AllowList: []string{"*"},
+				Allowlist: []string{"*"},
 			},
 		},
 		{
 			name: "multiple_domains",
 			envs: map[string]string{
-				"ALLOW_LIST": "subdomain.foo.com;*.example.com",
+				"ALLOWLIST": "subdomain.foo.com;*.example.com",
 			},
 			wantConfig: &UIServiceConfig{
 				Port:      "9091",
-				AllowList: []string{"subdomain.foo.com", "*.example.com"},
+				Allowlist: []string{"subdomain.foo.com", "*.example.com"},
 			},
 		},
 	}
 
-	for _, tc := range tests {
+	for _, tc := range cases {
 		tc := tc
 		t.Run(tc.name, func(t *testing.T) {
 			t.Parallel()

@@ -23,6 +23,7 @@ import (
 
 	"github.com/abcxyz/jvs/internal/project"
 	"github.com/abcxyz/jvs/pkg/render"
+	"golang.org/x/exp/slices"
 )
 
 // Controller manages use of the renderer in the http handler.
@@ -86,66 +87,76 @@ func New(h *render.Renderer) *Controller {
 	}
 }
 
-func (c *Controller) HandlePopup(allowList []string) http.Handler {
+func (c *Controller) HandlePopup(allowlist []string) http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		formDetails := getFormDetails(r)
-
-		// Initial page load, just render the page
-		if r.Method == http.MethodGet {
-			// set some defaults for the form
-			formDetails.Category = categories[0]
-			formDetails.TTL = ttls[0]
-
-			c.h.RenderHTML(w, "popup.html.tmpl", formDetails)
-			return
-		}
-
-		// Form submission
-		if r.Method == http.MethodPost {
-			// 1. Check if the origin is part of the allowlist
-			origin := r.FormValue("origin")
-			if validOrigin, err := validateOrigin(origin, allowList); err != nil || !validOrigin {
-				var m string
-				if err != nil {
-					m = err.Error()
-				} else if !validOrigin {
-					m = "Unexpected origin provided"
-				}
-
-				t := http.StatusText(http.StatusBadRequest)
-				forbiddenDetails := &ErrorDetails{
-					PageTitle:   t,
-					Description: t,
-					Message:     m,
-				}
-				c.h.RenderHTMLStatus(w, http.StatusBadRequest, "400.html.tmpl", forbiddenDetails)
-				return
-			}
-
-			// 2. Validate input
-			if !validateForm(formDetails) {
-				c.h.RenderHTML(w, "popup.html.tmpl", formDetails)
-				return
-			}
-
-			// 3. [TODO] Request a token
-			token := "token_from_server"
-
-			// 4. Redirect to a confirmation page with context, ultimately needed to postMessage back to the client
-			successDetails := &SuccessDetails{
-				PageTitle:   "JVS - Successful token retrieval",
-				Description: "Successful token page",
-				Token:       token,
-				Origin:      formDetails.Origin,
-				WindowName:  formDetails.WindowName,
-			}
-			c.h.RenderHTML(w, "success.html.tmpl", successDetails)
+		switch r.Method {
+		case http.MethodGet:
+			c.handlePopupGet(w, r)
+		case http.MethodPost:
+			c.handlePopupPost(w, r, allowlist)
+		default:
+			http.Error(w, "unexpected method", http.StatusMethodNotAllowed)
 		}
 	})
 }
 
+// handlePopupGet handles the initial page load.
+func (c *Controller) handlePopupGet(w http.ResponseWriter, r *http.Request) {
+	formDetails := getFormDetails(r)
+
+	// set some defaults for the form
+	formDetails.Category = categories[0]
+	formDetails.TTL = ttls[0]
+
+	c.h.RenderHTML(w, "popup.html.tmpl", formDetails)
+}
+
+// handlePopupPost handles form submission.
+func (c *Controller) handlePopupPost(w http.ResponseWriter, r *http.Request, allowlist []string) {
+	formDetails := getFormDetails(r)
+
+	// 1. Check if the origin is part of the allowlist
+	origin := r.FormValue("origin")
+	if validOrigin, err := validateOrigin(origin, allowlist); err != nil || !validOrigin {
+		var m string
+		if err != nil {
+			m = err.Error()
+		} else if !validOrigin {
+			m = "Unexpected origin provided"
+		}
+
+		t := http.StatusText(http.StatusBadRequest)
+		forbiddenDetails := &ErrorDetails{
+			PageTitle:   t,
+			Description: t,
+			Message:     m,
+		}
+		c.h.RenderHTMLStatus(w, http.StatusBadRequest, "400.html.tmpl", forbiddenDetails)
+		return
+	}
+
+	// 2. Validate input
+	if !validateForm(formDetails) {
+		c.h.RenderHTML(w, "popup.html.tmpl", formDetails)
+		return
+	}
+
+	// 3. [TODO] Request a token
+	token := "token_from_server"
+
+	// 4. Redirect to a confirmation page with context, ultimately needed to postMessage back to the client
+	successDetails := &SuccessDetails{
+		PageTitle:   "JVS - Successful token retrieval",
+		Description: "Successful token page",
+		Token:       token,
+		Origin:      formDetails.Origin,
+		WindowName:  formDetails.WindowName,
+	}
+	c.h.RenderHTML(w, "success.html.tmpl", successDetails)
+}
+
 // Checks the origin parameter against all entries in the allow list.
-func validateOrigin(originParam string, allowList []string) (bool, error) {
+func validateOrigin(originParam string, allowlist []string) (bool, error) {
 	if len(originParam) == 0 {
 		return false, fmt.Errorf("origin was not provided")
 	}
@@ -157,13 +168,13 @@ func validateOrigin(originParam string, allowList []string) (bool, error) {
 	}
 
 	// either local development or all origins are allowed
-	if validIP || (len(allowList) == 1 && allowList[0] == "*") {
+	if validIP || (len(allowlist) == 1 && allowlist[0] == "*") {
 		return true, nil
 	}
 
 	originSplit := strings.Split(originParam, ".")
 
-	for _, domain := range allowList {
+	for _, domain := range allowlist {
 		domainSplit := strings.Split(domain, ".")
 
 		// this domain is longer than the origin, skip over it
@@ -224,12 +235,7 @@ func validateForm(formDetails *FormDetails) bool {
 }
 
 func isValidOneOf(selection string, options []string) bool {
-	for _, v := range options {
-		if v == selection {
-			return true
-		}
-	}
-	return false
+	return slices.Contains(options, selection)
 }
 
 func getFormDetails(r *http.Request) *FormDetails {

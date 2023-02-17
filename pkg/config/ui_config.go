@@ -17,7 +17,6 @@ package config
 import (
 	"context"
 	"fmt"
-	"regexp"
 
 	"github.com/abcxyz/pkg/cfgloader"
 	"github.com/sethvargo/go-envconfig"
@@ -27,11 +26,9 @@ import (
 // for running this application.
 type UIServiceConfig struct {
 	Port      string   `env:"PORT,default=9091"`
-	AllowList []string `env:"ALLOW_LIST,delimiter=;,required"`
+	Allowlist []string `env:"ALLOWLIST,delimiter=;,required"`
 	DevMode   bool     `env:"DEV_MODE,default=false"`
 }
-
-var validRegexPattern = regexp.MustCompile(`^(([\w-]+\.)|(\*\.))+[\w-]+$`)
 
 // NewUIConfig creates a new UIServiceConfig from environment variables.
 func NewUIConfig(ctx context.Context) (*UIServiceConfig, error) {
@@ -50,22 +47,15 @@ func newUIConfig(ctx context.Context, lu envconfig.Lookuper) (*UIServiceConfig, 
 // Validate checks if the config is valid.
 func (cfg *UIServiceConfig) Validate() error {
 	// edge case, exclusive asterisk(*)
-	if len(cfg.AllowList) == 1 && cfg.AllowList[0] == "*" {
+	if len(cfg.Allowlist) == 1 && cfg.Allowlist[0] == "*" {
 		return nil
 	}
 
 	// confirm no asterisks if muiltiple values provided
 	// i.e. ["example.com" "*"] is invalid
-	for _, e := range cfg.AllowList {
+	for _, e := range cfg.Allowlist {
 		if e == "*" {
 			return fmt.Errorf("asterisk(*) must be exclusive, no other domains allowed")
-		}
-	}
-
-	// validate the AllowList entries are valid
-	for _, domain := range cfg.AllowList {
-		if !validRegexPattern.MatchString(domain) {
-			return fmt.Errorf("domain in the ALLOW_LIST is invalid: %s", domain)
 		}
 	}
 

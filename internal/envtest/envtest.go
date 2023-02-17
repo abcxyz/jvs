@@ -24,9 +24,9 @@ import (
 	"testing"
 
 	"github.com/abcxyz/jvs/assets"
-	"github.com/abcxyz/jvs/internal/project"
 	"github.com/abcxyz/jvs/pkg/config"
 	"github.com/abcxyz/jvs/pkg/render"
+	"github.com/abcxyz/pkg/logging"
 )
 
 // ServerConfigResponse is the response from creating a server config.
@@ -59,14 +59,14 @@ func BuildFormRequest(ctx context.Context, tb testing.TB, meth, pth string, v *u
 // NewServerConfig creates a new server configuration. It creates all the keys,
 // databases, and cacher, but does not actually start the server. All cleanup is
 // scheduled by t.Cleanup.
-func NewServerConfig(tb testing.TB, port string, allowList []string, devMode bool) *ServerConfigResponse {
+func NewServerConfig(tb testing.TB, port string, allowlist []string, devMode bool) *ServerConfigResponse {
 	tb.Helper()
 
-	ctx := project.TestContext(tb)
+	ctx := logging.WithLogger(context.Background(), logging.TestLogger(tb))
 
 	cfg := &config.UIServiceConfig{
 		Port:      port,
-		AllowList: allowList,
+		Allowlist: allowlist,
 		DevMode:   devMode,
 	}
 
