@@ -85,13 +85,13 @@ func TestHandlePopup(t *testing.T) {
 
 			ctx := ctx
 			harness := envstest.NewServerConfig(t, "9091", tc.allowlist, true)
-			c := New(harness.Renderer)
+			c := New(harness.Renderer, tc.allowlist)
 
 			w, r := envstest.BuildFormRequest(ctx, t, http.MethodPost, tc.path,
 				&tc.queryParam,
 			)
 
-			handler := c.HandlePopup(tc.allowlist)
+			handler := c.HandlePopup()
 			handler.ServeHTTP(w, r)
 
 			if got, want := w.Code, tc.wantResCode; got != want {
