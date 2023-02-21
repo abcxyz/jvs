@@ -1,0 +1,86 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+  {{ template "head" . }}
+  {{ jsPopupIncludeTag }}
+</head>
+
+<body>
+  {{ $context := . }}
+  <div class="container">
+    <h1 class="title">{{ .PageTitle }}</h1>
+    <form action="/popup" method="post">
+      <ul class="flex-outer">
+
+        <!-- Username -->
+        <li class="content-row">
+          <label class="content-label" for="username">Username</label>
+          <label class="content-data" for="username">TODO username</label>
+        </li>
+
+        <!-- Category row -->
+        <li class="content-row">
+          <label class="content-label" for="category">Category</label>
+          <select class="content-select" id="category" name="category">
+            {{ range $index, $element := .Content.Categories }}
+            {{ if eq $element.Key $context.Category }}
+            <option value="{{ $element.Key }}" selected="selected">{{ $element.Text }}</option>
+            {{ else }}
+            <option value="{{ $element.Key }}">{{ $element.Text }}</option>
+            {{ end }}
+            {{ end }}
+          </select>
+        </li>
+        {{ if .Errors.Category }}
+        <li class="content-row">
+          <label class="content-error" style="color:red;">{{ .Errors.Category }}</label>
+        </li>
+        {{ end }}
+
+        <!-- Reason row -->
+        <li class="content-row">
+          <label class="content-label" for="reason">Reason</label>
+          <input class="content-input" type="text" id="reason" name="reason" placeholder="i.e. issue/xxxxx">
+        </li>
+        {{ if .Errors.Reason }}
+        <li class="content-row">
+          <label class="content-error" style="color:red;">{{ .Errors.Reason }}</label>
+        </li>
+        {{ end }}
+
+        <!-- TTL row -->
+        <li class="content-row">
+          <label class="content-label" for="ttl">TTL</label>
+          <select class="content-select" id="ttl" name="ttl">
+            {{ range $index, $element := .Content.TTLs }}
+            {{ if eq $element.Key $context.TTL }}
+            <option value="{{ $element.Key }}" selected="selected">{{ $element.Text }}</option>
+            {{ else }}
+            <option value="{{ $element.Key }}">{{ $element.Text }}</option>
+            {{ end }}
+            {{ end }}
+          </select>
+        </li>
+        {{ if .Errors.TTL }}
+        <li class="content-row">
+          <label class="content-error" style="color:red;">{{ .Errors.TTL }}</label>
+        </li>
+        {{ end }}
+
+        <!-- Action buttons -->
+        <div class="form-btns">
+          <input class="secondary-btn" type="reset" value="Reset">
+          <input class="primary-btn" type="submit" value="Submit">
+        </div>
+      </ul>
+
+      <!-- Hidden fields -->
+      <input type="hidden" id="origin" name="origin" value="{{ .Origin }}">
+      <input type="hidden" id="windowname" name="windowname" value="{{ .WindowName }}">
+
+    </form>
+  </div>
+</body>
+
+</html>
