@@ -12,28 +12,35 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-window.addEventListener("DOMContentLoaded", async () => {
-  const originElement = document.getElementById("origin");
-  const windowElement = document.getElementById("windowname");
+const originElement = document.querySelector("#origin");
+const windowElement = document.querySelector("#windowname");
 
-  // leverage the URL parameter provided from the request and set it to the target origin
-  const encodedUriComponent = new URLSearchParams(window.location.search).get("origin");
-  if (!encodedUriComponent && !originElement) {
-    alert("An origin URL parameter must be provided.")
+if (!originElement) {
+  alert("The origin input was not detected.");
+  window.close();
+}
+
+if (!windowElement) {
+  alert("The windowname input was not detected.");
+  window.close();
+}
+
+// leverage the URL parameter provided from the request and set it to the target origin
+const encodedUriComponent = new URLSearchParams(window.location.search).get("origin");
+if (!encodedUriComponent && !originElement) {
+  alert("An origin URL parameter must be provided.");
+  window.close();
+}
+
+if (encodedUriComponent) {
+  const targetOrigin = decodeURIComponent(encodedUriComponent);
+  if (!targetOrigin) {
+    alert("Decoded URL parameter is invalid.");
     window.close();
-    return;
   }
 
-  if (encodedUriComponent) {
-    const targetOrigin = decodeURIComponent(encodedUriComponent);
-    if (!targetOrigin) {
-      alert("Decoded URL parameter is invalid.")
-      window.close();
-      return;
-    }
+  // set values for the following hidden input elements, will be persisted to the next page
+  originElement.value = targetOrigin;
+  windowElement.value = window.name;
+}
 
-    // set values for the following hidden input elements, will be persisted to the next page
-    originElement.value = targetOrigin;
-    windowElement.value = window.name;
-  }
-}, true);
