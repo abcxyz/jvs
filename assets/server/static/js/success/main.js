@@ -12,18 +12,30 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-const scriptTag = document.querySelector("#success");
-const targetOrigin = scriptTag.getAttribute("data-origin");
-const windowName = scriptTag.getAttribute("data-window-name");
-const token = scriptTag.getAttribute("data-token");
-if (!targetOrigin) {
-  alert("You must pass a target origin from your application to successfully retrieve a token.")
-  window.close()
-} else if (!windowName) {
-  alert("You must pass a window name from your application to successfully retrieve a token.")
-} else if (!token) {
-  alert("Something went wrong, unable to retrieve a token.")
-} else {
+window.addEventListener("DOMContentLoaded", async () => {
+  const scriptTag = document.querySelector("#success");
+  const targetOrigin = scriptTag.getAttribute("data-origin");
+  const windowName = scriptTag.getAttribute("data-window-name");
+  const token = scriptTag.getAttribute("data-token");
+
+  if (!targetOrigin) {
+    alert("You must pass a target origin from your application to successfully retrieve a token.")
+    window.close()
+    return;
+  }
+
+  if (!windowName) {
+    alert("You must pass a window name from your application to successfully retrieve a token.")
+    window.close()
+    return;
+  }
+
+  if (!token) {
+    alert("Something went wrong, unable to retrieve a token.")
+    window.close()
+    return;
+  }
+
   window.opener.postMessage(
     JSON.stringify({
       // notify the requestor of the window name that was provided, 
@@ -35,5 +47,6 @@ if (!targetOrigin) {
     }),
     targetOrigin
   );
-}
-window.close();
+
+  window.close();
+}, true);

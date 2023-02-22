@@ -85,13 +85,13 @@ func TestHandlePopup(t *testing.T) {
 
 			ctx := ctx
 			harness := envstest.NewServerConfig(t, "9091", tc.allowlist, true)
-			c := New(harness.Renderer)
+			c := New(harness.Renderer, tc.allowlist)
 
 			w, r := envstest.BuildFormRequest(ctx, t, http.MethodPost, tc.path,
 				&tc.queryParam,
 			)
 
-			handler := c.HandlePopup(tc.allowlist)
+			handler := c.HandlePopup()
 			handler.ServeHTTP(w, r)
 
 			if got, want := w.Code, tc.wantResCode; got != want {
@@ -171,6 +171,7 @@ func TestValidateOrigin(t *testing.T) {
 
 	for _, tc := range cases {
 		tc := tc
+
 		t.Run(tc.name, func(t *testing.T) {
 			t.Parallel()
 
@@ -222,8 +223,10 @@ func TestValidateLocalIp(t *testing.T) {
 
 	for _, tc := range cases {
 		tc := tc
+
 		t.Run(tc.name, func(t *testing.T) {
 			t.Parallel()
+
 			got, _ := validateLocalIP(tc.origin)
 			if diff := cmp.Diff(tc.want, got); diff != "" {
 				t.Errorf("Failed validating (-want,+got):\n%s", diff)
@@ -298,8 +301,10 @@ func TestValidateForm(t *testing.T) {
 
 	for _, tc := range cases {
 		tc := tc
+
 		t.Run(tc.name, func(t *testing.T) {
 			t.Parallel()
+
 			got := validateForm(&tc.detail)
 			if diff := cmp.Diff(tc.want, got); diff != "" {
 				t.Errorf("Failed validating (-want,+got):\n%s", diff)
@@ -345,8 +350,10 @@ func TestIsValidOneOf(t *testing.T) {
 
 	for _, tc := range cases {
 		tc := tc
+
 		t.Run(tc.name, func(t *testing.T) {
 			t.Parallel()
+
 			got := isValidOneOf(tc.selection, tc.options)
 			if diff := cmp.Diff(tc.want, got); diff != "" {
 				t.Errorf("Failed validating (-want,+got):\n%s", diff)
