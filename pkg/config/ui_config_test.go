@@ -25,6 +25,7 @@ import (
 
 func TestNewConfig(t *testing.T) {
 	t.Parallel()
+
 	ctx := context.Background()
 
 	cases := []struct {
@@ -105,8 +106,10 @@ func TestNewConfig(t *testing.T) {
 
 	for _, tc := range cases {
 		tc := tc
+
 		t.Run(tc.name, func(t *testing.T) {
 			t.Parallel()
+
 			lookuper := envconfig.MapLookuper(tc.envs)
 			gotConfig, err := newUIConfig(ctx, lookuper)
 			if diff := testutil.DiffErrString(err, tc.wantErr); diff != "" {

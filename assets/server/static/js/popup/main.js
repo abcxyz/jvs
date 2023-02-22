@@ -13,13 +13,25 @@
 // limitations under the License.
 
 window.addEventListener("DOMContentLoaded", async () => {
-  const originElement = document.getElementById("origin");
-  const windowElement = document.getElementById("windowname");
+  const originElement = document.querySelector("#origin");
+  const windowElement = document.querySelector("#windowname");
+
+  if (!originElement) {
+    alert("The origin input was not detected.");
+    window.close();
+    return;
+  }
+
+  if (!windowElement) {
+    alert("The windowname input was not detected.");
+    window.close();
+    return;
+  }
 
   // leverage the URL parameter provided from the request and set it to the target origin
   const encodedUriComponent = new URLSearchParams(window.location.search).get("origin");
   if (!encodedUriComponent && !originElement) {
-    alert("An origin URL parameter must be provided.")
+    alert("An origin URL parameter must be provided.");
     window.close();
     return;
   }
@@ -27,7 +39,7 @@ window.addEventListener("DOMContentLoaded", async () => {
   if (encodedUriComponent) {
     const targetOrigin = decodeURIComponent(encodedUriComponent);
     if (!targetOrigin) {
-      alert("Decoded URL parameter is invalid.")
+      alert("Decoded URL parameter is invalid.");
       window.close();
       return;
     }
