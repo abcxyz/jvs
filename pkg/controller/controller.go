@@ -95,7 +95,7 @@ func (c *Controller) HandlePopup() http.Handler {
 		case http.MethodGet:
 			c.handlePopupGet(w, r)
 		case http.MethodPost:
-			c.handlePopupPost(w, r, c.allowlist)
+			c.handlePopupPost(w, r)
 		default:
 			http.Error(w, "unexpected method", http.StatusMethodNotAllowed)
 		}
@@ -114,12 +114,12 @@ func (c *Controller) handlePopupGet(w http.ResponseWriter, r *http.Request) {
 }
 
 // handlePopupPost handles form submission.
-func (c *Controller) handlePopupPost(w http.ResponseWriter, r *http.Request, allowlist []string) {
+func (c *Controller) handlePopupPost(w http.ResponseWriter, r *http.Request) {
 	formDetails := getFormDetails(r)
 
 	// 1. Check if the origin is part of the allowlist
 	origin := r.FormValue("origin")
-	if validOrigin, err := validateOrigin(origin, allowlist); err != nil || !validOrigin {
+	if validOrigin, err := validateOrigin(origin, c.allowlist); err != nil || !validOrigin {
 		var m string
 		if err != nil {
 			m = err.Error()

@@ -12,36 +12,41 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-const scriptTag = document.querySelector("#success");
-const targetOrigin = scriptTag.getAttribute("data-origin");
-const windowName = scriptTag.getAttribute("data-window-name");
-const token = scriptTag.getAttribute("data-token");
+document.addEventListener("DOMContentLoaded", function () {
+  const scriptTag = document.querySelector("#success");
+  const targetOrigin = scriptTag.getAttribute("data-origin");
+  const windowName = scriptTag.getAttribute("data-window-name");
+  const token = scriptTag.getAttribute("data-token");
 
-if (!targetOrigin) {
-  alert("You must pass a target origin from your application to successfully retrieve a token.")
-  window.close()
-}
+  if (!targetOrigin) {
+    alert("You must pass a target origin from your application to successfully retrieve a token.")
+    window.close()
+    return;
+  }
 
-if (!windowName) {
-  alert("You must pass a window name from your application to successfully retrieve a token.")
-  window.close()
-}
+  if (!windowName) {
+    alert("You must pass a window name from your application to successfully retrieve a token.")
+    window.close()
+    return;
+  }
 
-if (!token) {
-  alert("Something went wrong, unable to retrieve a token.")
-  window.close()
-}
+  if (!token) {
+    alert("Something went wrong, unable to retrieve a token.")
+    window.close()
+    return;
+  }
 
-window.opener.postMessage(
-  JSON.stringify({
-    // notify the requestor of the window name that was provided, 
-    // client should check this as a sanity check
-    source: windowName,
-    payload: {
-      token,
-    },
-  }),
-  targetOrigin
-);
+  window.opener.postMessage(
+    JSON.stringify({
+      // notify the requestor of the window name that was provided, 
+      // client should check this as a sanity check
+      source: windowName,
+      payload: {
+        token,
+      },
+    }),
+    targetOrigin
+  );
 
-window.close();
+  window.close();
+}, true);
