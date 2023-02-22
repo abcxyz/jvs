@@ -28,7 +28,8 @@ import (
 
 // Controller manages use of the renderer in the http handler.
 type Controller struct {
-	h *render.Renderer
+	h         *render.Renderer
+	allowlist []string
 }
 
 // Pair represents a key value pair used by the select HTML element.
@@ -81,19 +82,20 @@ var (
 	ttls       = []string{"15", "30", "60", "120", "240"}
 )
 
-func New(h *render.Renderer) *Controller {
+func New(h *render.Renderer, allowlist []string) *Controller {
 	return &Controller{
-		h: h,
+		h:         h,
+		allowlist: allowlist,
 	}
 }
 
-func (c *Controller) HandlePopup(allowlist []string) http.Handler {
+func (c *Controller) HandlePopup() http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		switch r.Method {
 		case http.MethodGet:
 			c.handlePopupGet(w, r)
 		case http.MethodPost:
-			c.handlePopupPost(w, r, allowlist)
+			c.handlePopupPost(w, r)
 		default:
 			http.Error(w, "unexpected method", http.StatusMethodNotAllowed)
 		}
@@ -112,12 +114,12 @@ func (c *Controller) handlePopupGet(w http.ResponseWriter, r *http.Request) {
 }
 
 // handlePopupPost handles form submission.
-func (c *Controller) handlePopupPost(w http.ResponseWriter, r *http.Request, allowlist []string) {
+func (c *Controller) handlePopupPost(w http.ResponseWriter, r *http.Request) {
 	formDetails := getFormDetails(r)
 
 	// 1. Check if the origin is part of the allowlist
 	origin := r.FormValue("origin")
-	if validOrigin, err := validateOrigin(origin, allowlist); err != nil || !validOrigin {
+	if validOrigin, err := validateOrigin(origin, c.allowlist); err != nil || !validOrigin {
 		var m string
 		if err != nil {
 			m = err.Error()

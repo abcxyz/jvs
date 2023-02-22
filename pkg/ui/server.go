@@ -27,12 +27,11 @@ import (
 
 // Server holds the parsed html templates.
 type Server struct {
-	allowlist []string
-	h         *render.Renderer
+	c *controller.Controller
 }
 
 // NewServer creates a new HTTP server implementation that will handle
-// rendering the JVS form and parses the go templates.
+// rendering the JVS form using a controller.
 func NewServer(ctx context.Context, cfg *config.UIServiceConfig) (*Server, error) {
 	// Create the renderer
 	h, err := render.NewRenderer(ctx, assets.ServerFS(), cfg.DevMode)
@@ -41,8 +40,7 @@ func NewServer(ctx context.Context, cfg *config.UIServiceConfig) (*Server, error
 	}
 
 	return &Server{
-		allowlist: cfg.Allowlist,
-		h:         h,
+		c: controller.New(h, cfg.Allowlist),
 	}, nil
 }
 
@@ -53,8 +51,6 @@ func (s *Server) Routes() http.Handler {
 	mux := http.NewServeMux()
 	fileServer := http.FileServer(http.FS(staticFS))
 	mux.Handle("/static/", http.StripPrefix("/static/", fileServer))
-
-	ctrl := controller.New(s.h)
-	mux.Handle("/popup", ctrl.HandlePopup(s.allowlist))
+	mux.Handle("/popup", s.c.HandlePopup())
 	return mux
 }

@@ -22,7 +22,7 @@ import (
 )
 
 // RenderHTML calls RenderHTMLStatus with a http.StatusOK (200).
-func (r *Renderer) RenderHTML(w http.ResponseWriter, tmpl string, data interface{}) {
+func (r *Renderer) RenderHTML(w http.ResponseWriter, tmpl string, data any) {
 	r.RenderHTMLStatus(w, http.StatusOK, tmpl, data)
 }
 
@@ -37,7 +37,7 @@ func (r *Renderer) RenderHTML(w http.ResponseWriter, tmpl string, data interface
 //
 // The buffers are fetched via a sync.Pool to reduce allocations and improve
 // performance.
-func (r *Renderer) RenderHTMLStatus(w http.ResponseWriter, code int, tmpl string, data interface{}) {
+func (r *Renderer) RenderHTMLStatus(w http.ResponseWriter, code int, tmpl string, data any) {
 	if r.debug {
 		if err := r.loadTemplates(); err != nil {
 			r.logger.Errorw("failed to reload templates in renderer", "error", err)
