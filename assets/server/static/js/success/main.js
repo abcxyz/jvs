@@ -12,7 +12,7 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-document.addEventListener("DOMContentLoaded", async () => {
+window.addEventListener("DOMContentLoaded", async () => {
   const scriptTag = document.querySelector("#success");
   const targetOrigin = scriptTag.getAttribute("data-origin");
   const windowName = scriptTag.getAttribute("data-window-name");
