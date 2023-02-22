@@ -25,6 +25,7 @@ import (
 	"github.com/google/uuid"
 	"github.com/lestrrat-go/jwx/v2/jwt"
 	"github.com/spf13/cobra"
+	"golang.org/x/oauth2"
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/credentials"
 	grpcinsecure "google.golang.org/grpc/credentials/insecure"
@@ -176,7 +177,12 @@ func callOpts(ctx context.Context, disableAuthn bool) ([]grpc.CallOption, error)
 	if err != nil {
 		return nil, fmt.Errorf("failed to get token from default credentials: %w", err)
 	}
-	return []grpc.CallOption{grpc.PerRPCCredentials(oauth.NewOauthAccess(token))}, nil
+
+	rpcCreds := oauth.TokenSource{
+		TokenSource: oauth2.StaticTokenSource(token),
+	}
+
+	return []grpc.CallOption{grpc.PerRPCCredentials(rpcCreds)}, nil
 }
 
 // breakglassToken creates a new breakglass token from the CLI flags. See
