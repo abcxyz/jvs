@@ -31,7 +31,56 @@ const (
 	// Most callers should use the higher-level functions, but this is exposed in
 	// case users need to manipulate lower-level structures in the claims map.
 	JustificationsKey string = "justs"
+
+	// RequestorKey is the key in the JWT that holds the identity of the principal
+	// that requested this JWT.
+	RequestorKey string = "req"
 )
+
+// GetRequestor retrieves the identity of the principal that requested this JWT.
+// This is typically an email address that is extracted by the JVS using an
+// incoming authentication header. However, if the JVS is not protected by
+// authentication, it could be the empty string or omitted entirely.
+func GetRequestor(t jwt.Token) (string, error) {
+	if t == nil {
+		return "", fmt.Errorf("token cannot be nil")
+	}
+
+	raw, ok := t.Get(RequestorKey)
+	if !ok {
+		return "", nil
+	}
+
+	str, ok := raw.(string)
+	if !ok {
+		return "", fmt.Errorf("found requestor, but was of unknown type %T", raw)
+	}
+	return str, nil
+}
+
+// SetRequestor sets the req field on the JWT. It overwrites any existing value.
+func SetRequestor(t jwt.Token, req string) error {
+	if t == nil {
+		return fmt.Errorf("token cannot be nil")
+	}
+
+	if err := t.Set(RequestorKey, req); err != nil {
+		return fmt.Errorf("failed to set requestor: %w", err)
+	}
+	return nil
+}
+
+// ClearRequestor removes the req field from the JWT.
+func ClearRequestor(t jwt.Token) error {
+	if t == nil {
+		return fmt.Errorf("token cannot be nil")
+	}
+
+	if err := t.Remove(RequestorKey); err != nil {
+		return fmt.Errorf("failed to remove requestor: %w", err)
+	}
+	return nil
+}
 
 // WithTypedJustifications is an option for parsing JWTs that will convert
 // decode the [Justification] claims into the correct Go structure. If this is
