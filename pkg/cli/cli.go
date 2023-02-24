@@ -27,9 +27,6 @@ import (
 const (
 	// Issuer is the default issuer (iss) for tokens created by the CLI.
 	Issuer = "jvsctl"
-
-	// Subject is the default subject (sub) for tokens created by the CLI.
-	Subject = "jvsctl"
 )
 
 // defaultConfigPath is the path on disk for the default configuration.
