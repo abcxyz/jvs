@@ -28,6 +28,12 @@ message CreateJustificationRequest {
 
   // Optional audiences for the justifications.
   repeated string audiences = 3;
+
+  // Subject will be the corresponding subject in the JWT. Consumers of these
+  // JWTs must verify that the caller matches the embedded principal. If
+  // unspecified, the JVS will attempt to extract this from the caller's
+  // identity.
+  string subject = 4;
 }
 
 // Justification is intended to be used to provide reasons that data access is

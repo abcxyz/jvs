@@ -32,7 +32,6 @@ import (
 	"github.com/abcxyz/jvs/pkg/config"
 	"github.com/abcxyz/jvs/pkg/jvscrypto"
 	"github.com/abcxyz/jvs/pkg/testutil"
-	"github.com/abcxyz/pkg/grpcutil"
 	"github.com/abcxyz/pkg/logging"
 	pkgtestutil "github.com/abcxyz/pkg/testutil"
 	"github.com/google/go-cmp/cmp"
@@ -43,17 +42,8 @@ import (
 	"github.com/lestrrat-go/jwx/v2/jwt"
 	"google.golang.org/api/option"
 	"google.golang.org/grpc"
-	"google.golang.org/grpc/metadata"
 	"google.golang.org/protobuf/types/known/durationpb"
 )
-
-type MockJWTAuthHandler struct {
-	grpcutil.JWTAuthenticationHandler
-}
-
-func (j *MockJWTAuthHandler) RequestPrincipal(ctx context.Context) string {
-	return "me@example.com"
-}
 
 func TestCreateToken(t *testing.T) {
 	t.Parallel()
@@ -61,7 +51,9 @@ func TestCreateToken(t *testing.T) {
 	tests := []struct {
 		name          string
 		request       *jvspb.CreateJustificationRequest
+		requestor     string
 		wantTTL       time.Duration
+		wantSubject   string
 		wantAudiences []string
 		wantErr       string
 		serverErr     error
@@ -81,7 +73,39 @@ func TestCreateToken(t *testing.T) {
 			wantAudiences: []string{DefaultAudience},
 		},
 		{
-			name: "override_aud",
+			name: "custom_subject",
+			request: &jvspb.CreateJustificationRequest{
+				Subject: "user@example.com",
+				Justifications: []*jvspb.Justification{
+					{
+						Category: "explanation",
+						Value:    "test",
+					},
+				},
+				Ttl: durationpb.New(3600 * time.Second),
+			},
+			wantSubject:   "user@example.com",
+			wantTTL:       1 * time.Hour,
+			wantAudiences: []string{DefaultAudience},
+		},
+		{
+			name: "subject_inherits_requestor",
+			request: &jvspb.CreateJustificationRequest{
+				Justifications: []*jvspb.Justification{
+					{
+						Category: "explanation",
+						Value:    "test",
+					},
+				},
+				Ttl: durationpb.New(3600 * time.Second),
+			},
+			requestor:     "requestor@example.com",
+			wantSubject:   "requestor@example.com",
+			wantTTL:       1 * time.Hour,
+			wantAudiences: []string{DefaultAudience},
+		},
+		{
+			name: "custom_audience",
 			request: &jvspb.CreateJustificationRequest{
 				Justifications: []*jvspb.Justification{
 					{
@@ -216,18 +240,6 @@ func TestCreateToken(t *testing.T) {
 				t.Fatal(err)
 			}
 
-			tok := pkgtestutil.CreateJWT(t, "test_id", "user@example.com")
-			validJWT := pkgtestutil.SignToken(t, tok, authKey, keyID)
-
-			ctx = metadata.NewIncomingContext(ctx, metadata.New(map[string]string{
-				"authorization": "Bearer " + validJWT,
-			}))
-
-			authHandler, err := grpcutil.NewJWTAuthenticationHandler(ctx, grpcutil.NoJWTAuthValidation())
-			if err != nil {
-				t.Fatal(err)
-			}
-
 			processor := NewProcessor(c, &config.JustificationConfig{
 				Version:            "1",
 				KeyName:            key,
@@ -235,14 +247,14 @@ func TestCreateToken(t *testing.T) {
 				Issuer:             "test-iss",
 				DefaultTTL:         1 * time.Minute,
 				MaxTTL:             1 * time.Hour,
-			}, authHandler)
+			})
 
 			mockKeyManagement.Reqs = nil
 			mockKeyManagement.Err = tc.serverErr
 
 			mockKeyManagement.Resps = append(mockKeyManagement.Resps[:0], &kmspb.CryptoKeyVersion{})
 
-			response, gotErr := processor.CreateToken(ctx, tc.request)
+			response, gotErr := processor.CreateToken(ctx, tc.requestor, tc.request)
 			if diff := pkgtestutil.DiffErrString(gotErr, tc.wantErr); diff != "" {
 				t.Error(diff)
 			}
@@ -298,11 +310,19 @@ func TestCreateToken(t *testing.T) {
 			if got := token.NotBefore(); !got.Before(now) {
 				t.Errorf("nbf: expected %q to be after %q (%q)", got, now, got.Sub(now))
 			}
-			if got, want := token.Subject(), "user@example.com"; got != want {
+			if got, want := token.Subject(), tc.wantSubject; got != want {
 				t.Errorf("sub: expected %q to be %q", got, want)
 			}
 
 			// Validate custom claims.
+			gotRequestor, err := jvspb.GetRequestor(token)
+			if err != nil {
+				t.Fatal(err)
+			}
+			if got, want := gotRequestor, tc.requestor; got != want {
+				t.Errorf("expected %q to be %q", got, want)
+			}
+
 			gotJustifications, err := jvspb.GetJustifications(token)
 			if err != nil {
 				t.Fatal(err)

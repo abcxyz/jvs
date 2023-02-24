@@ -28,7 +28,6 @@ import (
 	"github.com/abcxyz/jvs/pkg/justification"
 	"github.com/abcxyz/pkg/cfgloader"
 	"github.com/abcxyz/pkg/gcputil"
-	"github.com/abcxyz/pkg/grpcutil"
 	"github.com/abcxyz/pkg/logging"
 	"go.opentelemetry.io/contrib/instrumentation/google.golang.org/grpc/otelgrpc"
 	"golang.org/x/sync/errgroup"
@@ -76,12 +75,7 @@ func realMain(ctx context.Context) error {
 		return fmt.Errorf("failed to setup kms client: %w", err)
 	}
 
-	authHandler, err := grpcutil.NewJWTAuthenticationHandler(ctx, grpcutil.NoJWTAuthValidation())
-	if err != nil {
-		return fmt.Errorf("failed to setup grpc auth handler: %w", err)
-	}
-
-	p := justification.NewProcessor(kmsClient, &cfg, authHandler)
+	p := justification.NewProcessor(kmsClient, &cfg)
 	jvsAgent := justification.NewJVSAgent(p)
 	jvspb.RegisterJVSServiceServer(s, jvsAgent)
 	reflection.Register(s)

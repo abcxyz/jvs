@@ -25,6 +25,173 @@ import (
 	"github.com/lestrrat-go/jwx/v2/jwt"
 )
 
+func TestGetRequestor(t *testing.T) {
+	t.Parallel()
+
+	cases := []struct {
+		name   string
+		token  jwt.Token
+		exp    string
+		expErr string
+	}{
+		{
+			name:   "nil_token",
+			token:  nil,
+			expErr: "token cannot be nil",
+		},
+		{
+			name:  "no_req",
+			token: testTokenBuilder(t, jwt.NewBuilder()),
+			exp:   "",
+		},
+		{
+			name: "wrong_type",
+			token: testTokenBuilder(t, jwt.
+				NewBuilder().
+				Claim(RequestorKey, []string{"not_valid"})),
+			expErr: "unknown type",
+		},
+		{
+			name: "returns_requestor",
+			token: testTokenBuilder(t, jwt.
+				NewBuilder().
+				Claim(RequestorKey, "user@example.com"),
+			),
+			exp: "user@example.com",
+		},
+	}
+
+	for _, tc := range cases {
+		tc := tc
+
+		t.Run(tc.name, func(t *testing.T) {
+			t.Parallel()
+
+			justs, err := GetRequestor(tc.token)
+			if diff := testutil.DiffErrString(err, tc.expErr); diff != "" {
+				t.Fatal(diff)
+			}
+			if err != nil {
+				return
+			}
+
+			if diff := cmp.Diff(tc.exp, justs, cmpopts.IgnoreUnexported(Justification{})); diff != "" {
+				t.Errorf("justs: diff (-want, +got):\n%s", diff)
+			}
+		})
+	}
+}
+
+func TestSetRequestor(t *testing.T) {
+	t.Parallel()
+
+	cases := []struct {
+		name   string
+		token  jwt.Token
+		exp    string
+		expErr string
+	}{
+		{
+			name:   "nil_token",
+			token:  nil,
+			expErr: "token cannot be nil",
+		},
+		{
+			name:  "sets",
+			token: testTokenBuilder(t, jwt.NewBuilder()),
+			exp:   "user@example.com",
+		},
+		{
+			name: "overwrites",
+			token: testTokenBuilder(t, jwt.
+				NewBuilder().
+				Claim(RequestorKey, "foo@bar.com"),
+			),
+			exp: "user@example.com",
+		},
+	}
+
+	for _, tc := range cases {
+		tc := tc
+
+		t.Run(tc.name, func(t *testing.T) {
+			t.Parallel()
+
+			err := SetRequestor(tc.token, "user@example.com")
+			if diff := testutil.DiffErrString(err, tc.expErr); diff != "" {
+				t.Fatal(diff)
+			}
+			if err != nil {
+				return
+			}
+
+			got, err := GetRequestor(tc.token)
+			if err != nil {
+				t.Fatal(err)
+			}
+
+			if got, want := got, tc.exp; got != want {
+				t.Errorf("expected %q to be %q", got, want)
+			}
+		})
+	}
+}
+
+func TestClearRequestor(t *testing.T) {
+	t.Parallel()
+
+	cases := []struct {
+		name   string
+		token  jwt.Token
+		exp    string
+		expErr string
+	}{
+		{
+			name:   "nil_token",
+			token:  nil,
+			expErr: "token cannot be nil",
+		},
+		{
+			name:  "clears_empty",
+			token: testTokenBuilder(t, jwt.NewBuilder()),
+			exp:   "",
+		},
+		{
+			name: "clears_set",
+			token: testTokenBuilder(t, jwt.
+				NewBuilder().
+				Claim(RequestorKey, "user@example.com"),
+			),
+			exp: "",
+		},
+	}
+
+	for _, tc := range cases {
+		tc := tc
+
+		t.Run(tc.name, func(t *testing.T) {
+			t.Parallel()
+
+			err := ClearRequestor(tc.token)
+			if diff := testutil.DiffErrString(err, tc.expErr); diff != "" {
+				t.Fatal(diff)
+			}
+			if err != nil {
+				return
+			}
+
+			justs, err := GetRequestor(tc.token)
+			if err != nil {
+				t.Fatal(err)
+			}
+
+			if diff := cmp.Diff(tc.exp, justs, cmpopts.IgnoreUnexported(Justification{})); diff != "" {
+				t.Errorf("justs: diff (-want, +got):\n%s", diff)
+			}
+		})
+	}
+}
+
 func TestGetJustifications(t *testing.T) {
 	t.Parallel()
 

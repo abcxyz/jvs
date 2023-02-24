@@ -24,7 +24,6 @@ import (
 	"github.com/abcxyz/jvs/pkg/config"
 	"github.com/abcxyz/jvs/pkg/jvscrypto"
 	"github.com/abcxyz/pkg/cache"
-	"github.com/abcxyz/pkg/grpcutil"
 	"github.com/abcxyz/pkg/logging"
 	"github.com/abcxyz/pkg/timeutil"
 	"github.com/google/uuid"
@@ -41,10 +40,9 @@ import (
 // mints a token.
 type Processor struct {
 	jvspb.UnimplementedJVSServiceServer
-	kms         *kms.KeyManagementClient
-	config      *config.JustificationConfig
-	cache       *cache.Cache[*signerWithID]
-	authHandler *grpcutil.JWTAuthenticationHandler
+	kms    *kms.KeyManagementClient
+	config *config.JustificationConfig
+	cache  *cache.Cache[*signerWithID]
 }
 
 type signerWithID struct {
@@ -53,13 +51,12 @@ type signerWithID struct {
 }
 
 // NewProcessor creates a processor with the signer cache initialized.
-func NewProcessor(kms *kms.KeyManagementClient, config *config.JustificationConfig, authHandler *grpcutil.JWTAuthenticationHandler) *Processor {
+func NewProcessor(kms *kms.KeyManagementClient, config *config.JustificationConfig) *Processor {
 	cache := cache.New[*signerWithID](config.SignerCacheTimeout)
 	return &Processor{
-		kms:         kms,
-		config:      config,
-		cache:       cache,
-		authHandler: authHandler,
+		kms:    kms,
+		config: config,
+		cache:  cache,
 	}
 }
 
@@ -73,7 +70,7 @@ const (
 
 // CreateToken implements the create token API which creates and signs a JWT
 // token if the provided justifications are valid.
-func (p *Processor) CreateToken(ctx context.Context, req *jvspb.CreateJustificationRequest) ([]byte, error) {
+func (p *Processor) CreateToken(ctx context.Context, requestor string, req *jvspb.CreateJustificationRequest) ([]byte, error) {
 	now := time.Now().UTC()
 
 	logger := logging.FromContext(ctx)
@@ -83,7 +80,7 @@ func (p *Processor) CreateToken(ctx context.Context, req *jvspb.CreateJustificat
 		return nil, status.Errorf(codes.InvalidArgument, "failed to validate request: %s", err)
 	}
 
-	token, err := p.createToken(ctx, now, req)
+	token, err := p.createToken(ctx, requestor, req, now)
 	if err != nil {
 		logger.Errorw("failed to create token", "error", err)
 		return nil, status.Errorf(codes.Internal, "failed to create token: %s", err)
@@ -174,12 +171,7 @@ func (p *Processor) runValidations(req *jvspb.CreateJustificationRequest) error 
 
 // createToken is an internal helper for testing that builds an unsigned jwt
 // token from the request.
-func (p *Processor) createToken(ctx context.Context, now time.Time, req *jvspb.CreateJustificationRequest) (jwt.Token, error) {
-	email, err := p.authHandler.RequestPrincipal(ctx)
-	if err != nil {
-		return nil, fmt.Errorf("failed to get email of requestor: %w", err)
-	}
-
+func (p *Processor) createToken(ctx context.Context, requestor string, req *jvspb.CreateJustificationRequest, now time.Time) (jwt.Token, error) {
 	ttl, err := computeTTL(req.Ttl.AsDuration(), p.config.DefaultTTL, p.config.MaxTTL)
 	if err != nil {
 		return nil, fmt.Errorf("failed to compute ttl: %w", err)
@@ -196,6 +188,12 @@ func (p *Processor) createToken(ctx context.Context, now time.Time, req *jvspb.C
 		aud = []string{DefaultAudience}
 	}
 
+	// If no subject was given, default to the caller's identity.
+	subject := req.Subject
+	if subject == "" {
+		subject = requestor
+	}
+
 	token, err := jwt.NewBuilder().
 		Audience(aud).
 		Expiration(exp).
@@ -203,10 +201,14 @@ func (p *Processor) createToken(ctx context.Context, now time.Time, req *jvspb.C
 		Issuer(iss).
 		JwtID(id).
 		NotBefore(now).
-		Subject(email).
+		Subject(subject).
 		Build()
 	if err != nil {
 		return nil, fmt.Errorf("failed to build jwt: %w", err)
+	}
+
+	if err := jvspb.SetRequestor(token, requestor); err != nil {
+		return nil, fmt.Errorf("failed to set requestor on jwt: %w", err)
 	}
 
 	if err := jvspb.SetJustifications(token, justs); err != nil {
