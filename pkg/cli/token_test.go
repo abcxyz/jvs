@@ -70,7 +70,6 @@ func TestNewTokenCmd(t *testing.T) {
 			},
 			args: []string{
 				"--explanation=for testing purposes",
-				"--disable-authn",
 			},
 			expErr: "testing server error",
 		},
@@ -82,7 +81,6 @@ func TestNewTokenCmd(t *testing.T) {
 			},
 			args: []string{
 				"--explanation=for testing purposes",
-				"--disable-authn",
 			},
 			expAudiences: []string{justification.DefaultAudience},
 			expJustifications: []*jvspb.Justification{
