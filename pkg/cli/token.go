@@ -35,7 +35,6 @@ import (
 
 	jvspb "github.com/abcxyz/jvs/apis/v0"
 	"github.com/abcxyz/jvs/pkg/config"
-	"github.com/abcxyz/jvs/pkg/idtoken"
 	"github.com/abcxyz/jvs/pkg/justification"
 )
 
@@ -43,13 +42,13 @@ import (
 type tokenCmdOptions struct {
 	config *config.CLIConfig
 
-	subject      string
-	audiences    []string
-	explanation  string
-	breakglass   bool
-	ttl          time.Duration
-	issTimeUnix  int64
-	disableAuthn bool
+	authToken   string
+	subject     string
+	audiences   []string
+	explanation string
+	breakglass  bool
+	ttl         time.Duration
+	issTimeUnix int64
 }
 
 // newTokenCmd creates a new subcommand for issuing tokens.
@@ -93,21 +92,20 @@ avoid specifying --subject on each invocation.
 
 	flags := cmd.Flags()
 	flags.StringVarP(&opts.explanation, "explanation", "e", "",
-		"The explanation for the action")
+		"Explanation for the action")
 	flags.StringVarP(&opts.subject, "subject", "s", os.Getenv("JVSCTL_SUBJECT"),
-		"The principal that be making calls with the justification token")
+		"Principal that will be making calls with the justification token")
 	flags.StringSliceVar(&opts.audiences, "audiences", []string{justification.DefaultAudience},
-		"The list of audiences for the token")
+		"List of audiences for the token")
 	flags.BoolVar(&opts.breakglass, "breakglass", false,
-		"Whether it will be a breakglass action")
+		"Make a breakglass token")
 	flags.DurationVar(&opts.ttl, "ttl", 15*time.Minute,
-		"The token time-to-live duration")
+		"Token lifetime, as a duration")
+	flags.StringVar(&opts.authToken, "auth-token", "",
+		"OIDC token to use for authentication")
 	flags.Int64Var(&opts.issTimeUnix, "iat", time.Now().Unix(),
-		"A hidden flag to specify token issue time")
+		"Hidden flag to specify token issue time")
 	flags.MarkHidden("iat") //nolint // not expect err
-	flags.BoolVar(&opts.disableAuthn, "disable-authn", false,
-		"A hidden flag to disable authentication")
-	flags.MarkHidden("disable-authn") //nolint // not expect err
 
 	return cmd
 }
@@ -142,7 +140,7 @@ func runTokenCmd(cmd *cobra.Command, opts *tokenCmdOptions, args []string) error
 	}
 	jvsclient := jvspb.NewJVSServiceClient(conn)
 
-	callOpts, err := callOptions(ctx, opts.disableAuthn)
+	callOpts, err := callOptions(ctx, opts.authToken)
 	if err != nil {
 		return err
 	}
@@ -166,7 +164,9 @@ func runTokenCmd(cmd *cobra.Command, opts *tokenCmdOptions, args []string) error
 
 func dialOptions(insecure bool) ([]grpc.DialOption, error) {
 	if insecure {
-		return []grpc.DialOption{grpc.WithTransportCredentials(grpcinsecure.NewCredentials())}, nil
+		return []grpc.DialOption{
+			grpc.WithTransportCredentials(grpcinsecure.NewCredentials()),
+		}, nil
 	}
 
 	// The default.
@@ -178,29 +178,27 @@ func dialOptions(insecure bool) ([]grpc.DialOption, error) {
 	cred := credentials.NewTLS(&tls.Config{
 		RootCAs: systemRoots,
 	})
-	return []grpc.DialOption{grpc.WithTransportCredentials(cred)}, nil
+	return []grpc.DialOption{
+		grpc.WithTransportCredentials(cred),
+	}, nil
 }
 
-func callOptions(ctx context.Context, disableAuthn bool) ([]grpc.CallOption, error) {
-	if disableAuthn {
+func callOptions(ctx context.Context, authToken string) ([]grpc.CallOption, error) {
+	if authToken == "" {
 		return nil, nil
 	}
 
-	ts, err := idtoken.FromDefaultCredentials(ctx)
-	if err != nil {
-		return nil, fmt.Errorf("failed to get default credentials: %w", err)
-	}
-
-	token, err := ts.Token()
-	if err != nil {
-		return nil, fmt.Errorf("failed to get token from default credentials: %w", err)
+	token := &oauth2.Token{
+		AccessToken: authToken,
 	}
 
 	rpcCreds := oauth.TokenSource{
 		TokenSource: oauth2.StaticTokenSource(token),
 	}
 
-	return []grpc.CallOption{grpc.PerRPCCredentials(rpcCreds)}, nil
+	return []grpc.CallOption{
+		grpc.PerRPCCredentials(rpcCreds),
+	}, nil
 }
 
 // breakglassToken creates a new breakglass token from the CLI flags. See
