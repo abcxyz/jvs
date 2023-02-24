@@ -41,6 +41,12 @@ func newRootCmd(cfg *config.CLIConfig) *cobra.Command {
 		Use:   "jvsctl",
 		Short: "jvsctl facilitates the justification verification flow provided by abcxyz/jvs",
 
+		// We bubble up errors in our main handler.
+		SilenceErrors: true,
+
+		// Usage is long and hides the error message.
+		SilenceUsage: true,
+
 		// Load the configuration before each child command. The actual "compiled"
 		// configuration is passed in to the newChildCmd() function, but this sets
 		// the values of that config.

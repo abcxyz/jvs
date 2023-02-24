@@ -42,7 +42,7 @@ import (
 	"github.com/abcxyz/jvs/pkg/justification"
 	"github.com/abcxyz/jvs/pkg/jvscrypto"
 	"github.com/abcxyz/pkg/cache"
-	"github.com/abcxyz/pkg/grpcutil"
+	"github.com/abcxyz/pkg/logging"
 	"github.com/abcxyz/pkg/testutil"
 	"github.com/google/go-cmp/cmp"
 	"github.com/google/go-cmp/cmp/cmpopts"
@@ -61,7 +61,8 @@ func TestJVS(t *testing.T) {
 	t.Parallel()
 	testutil.SkipIfNotIntegration(t)
 
-	ctx := context.Background()
+	ctx := logging.WithLogger(context.Background(), logging.TestLogger(t))
+
 	keyRing := os.Getenv("TEST_JVS_KMS_KEY_RING")
 	if keyRing == "" {
 		t.Fatal("Key ring must be provided using TEST_JVS_KMS_KEY_RING env variable.")
@@ -95,11 +96,6 @@ func TestJVS(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	authHandler, err := grpcutil.NewJWTAuthenticationHandler(ctx, grpcutil.NoJWTAuthValidation())
-	if err != nil {
-		t.Fatalf("failed to setup grpc auth handler: %v", err)
-	}
-
 	authKey, err := ecdsa.GenerateKey(elliptic.P256(), rand.Reader)
 	if err != nil {
 		t.Fatal(err)
@@ -115,18 +111,19 @@ func TestJVS(t *testing.T) {
 
 	keySet := testKeySetFromKMS(ctx, t, kmsClient, keyName)
 
-	tok := testutil.CreateJWT(t, "test_id", "user@example.com")
+	tok := testutil.CreateJWT(t, "test_id", "requestor@example.com")
 	validJWT := testutil.SignToken(t, tok, authKey, keyID)
 	ctx = metadata.NewIncomingContext(ctx, metadata.New(map[string]string{
 		"authorization": "Bearer " + validJWT,
 	}))
 
-	p := justification.NewProcessor(kmsClient, cfg, authHandler)
+	p := justification.NewProcessor(kmsClient, cfg)
 	jvsAgent := justification.NewJVSAgent(p)
 
 	tests := []struct {
 		name          string
 		request       *jvspb.CreateJustificationRequest
+		wantSubject   string
 		wantAudiences []string
 		wantErr       string
 	}{
@@ -143,10 +140,28 @@ func TestJVS(t *testing.T) {
 					Seconds: 3600,
 				},
 			},
+			wantSubject:   "requestor@example.com", // subject inherits requestor
 			wantAudiences: []string{justification.DefaultAudience},
 		},
 		{
-			name: "override_audiences",
+			name: "custom_subject",
+			request: &jvspb.CreateJustificationRequest{
+				Subject: "foo@bar.com",
+				Justifications: []*jvspb.Justification{
+					{
+						Category: "explanation",
+						Value:    "This is a test.",
+					},
+				},
+				Ttl: &durationpb.Duration{
+					Seconds: 3600,
+				},
+			},
+			wantSubject:   "foo@bar.com",
+			wantAudiences: []string{justification.DefaultAudience},
+		},
+		{
+			name: "custom_audiences",
 			request: &jvspb.CreateJustificationRequest{
 				Justifications: []*jvspb.Justification{
 					{
@@ -159,6 +174,7 @@ func TestJVS(t *testing.T) {
 				},
 				Audiences: []string{"aud1", "aud2"},
 			},
+			wantSubject:   "requestor@example.com", // subject inherits requestor
 			wantAudiences: []string{"aud1", "aud2"},
 		},
 		{
@@ -272,11 +288,19 @@ func TestJVS(t *testing.T) {
 			if got := token.NotBefore(); !got.Before(now) {
 				t.Errorf("nbf: expected %q to be after %q (%q)", got, now, got.Sub(now))
 			}
-			if got, want := token.Subject(), "user@example.com"; got != want {
+			if got, want := token.Subject(), tc.wantSubject; got != want {
 				t.Errorf("sub: expected %q to be %q", got, want)
 			}
 
 			// Validate custom claims.
+			gotRequestor, err := jvspb.GetRequestor(token)
+			if err != nil {
+				t.Fatal(err)
+			}
+			if got, want := gotRequestor, "requestor@example.com"; got != want {
+				t.Errorf("expected %q to be %q", got, want)
+			}
+
 			gotJustifications, err := jvspb.GetJustifications(token)
 			if err != nil {
 				t.Fatal(err)
@@ -297,7 +321,8 @@ func TestRotator(t *testing.T) {
 	t.Parallel()
 	testutil.SkipIfNotIntegration(t)
 
-	ctx := context.Background()
+	ctx := logging.WithLogger(context.Background(), logging.TestLogger(t))
+
 	kmsClient, keyName := testSetupRotator(ctx, t)
 
 	cfg := &config.CryptoConfig{
@@ -384,7 +409,8 @@ func TestRotator_EdgeCases(t *testing.T) {
 	t.Parallel()
 	testutil.SkipIfNotIntegration(t)
 
-	ctx := context.Background()
+	ctx := logging.WithLogger(context.Background(), logging.TestLogger(t))
+
 	kmsClient, keyName := testSetupRotator(ctx, t)
 
 	cfg := &config.CryptoConfig{
@@ -442,7 +468,8 @@ func TestPublicKeys(t *testing.T) {
 	t.Parallel()
 	testutil.SkipIfNotIntegration(t)
 
-	ctx := context.Background()
+	ctx := logging.WithLogger(context.Background(), logging.TestLogger(t))
+
 	kmsClient, err := kms.NewKeyManagementClient(ctx)
 	if err != nil {
 		t.Fatalf("failed to setup kms client: %s", err)
@@ -504,7 +531,8 @@ func TestCertActions(t *testing.T) {
 	t.Parallel()
 	testutil.SkipIfNotIntegration(t)
 
-	ctx := context.Background()
+	ctx := logging.WithLogger(context.Background(), logging.TestLogger(t))
+
 	kmsClient, keyName := testSetupRotator(ctx, t)
 
 	cfg := &config.CryptoConfig{

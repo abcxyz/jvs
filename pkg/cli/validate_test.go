@@ -138,7 +138,7 @@ iat    1970-01-01 12:00AM UTC
 iss    jvsctl
 jti    test-jwt
 nbf    1970-01-01 12:00AM UTC
-sub    jvsctl
+sub    test-sub
 `,
 		},
 		{
@@ -159,7 +159,7 @@ iat    1970-01-01 12:00AM UTC
 iss    jvsctl
 jti    test-jwt
 nbf    1970-01-01 12:00AM UTC
-sub    jvsctl
+sub    test-sub
 `,
 		},
 		{
@@ -180,7 +180,7 @@ iat    1970-01-01 12:00AM UTC
 iss    jvsctl
 jti    test-jwt
 nbf    1970-01-01 12:00AM UTC
-sub    jvsctl
+sub    test-sub
 `,
 		},
 		{
@@ -189,7 +189,7 @@ sub    jvsctl
 				JWKSEndpoint: svr.URL + path,
 			},
 			args:   []string{"-t", breakglassToken, "-f", "json"},
-			expOut: `{"breakglass":true,"justifications":[{"category":"breakglass","value":"prod is down"}],"claims":{"aud":["dev.abcxyz.jvs"],"iat":"1970-01-01T00:00:00Z","iss":"jvsctl","jti":"test-jwt","nbf":"1970-01-01T00:00:00Z","sub":"jvsctl"}}`,
+			expOut: `{"breakglass":true,"justifications":[{"category":"breakglass","value":"prod is down"}],"claims":{"aud":["dev.abcxyz.jvs"],"iat":"1970-01-01T00:00:00Z","iss":"jvsctl","jti":"test-jwt","nbf":"1970-01-01T00:00:00Z","sub":"test-sub"}}`,
 		},
 		{
 			name: "yaml",
@@ -211,7 +211,7 @@ claims:
   iss: jvsctl
   jti: test-jwt
   nbf: 1970-01-01T00:00:00Z
-  sub: jvsctl
+  sub: test-sub
 `,
 		},
 	}
@@ -248,7 +248,7 @@ func testTokenBuilder(tb testing.TB) jwt.Token {
 		Issuer(Issuer).
 		JwtID("test-jwt").
 		NotBefore(now).
-		Subject(Subject).
+		Subject("test-sub").
 		Build()
 	if err != nil {
 		tb.Fatalf("failed to create unsigned token: %v", err)

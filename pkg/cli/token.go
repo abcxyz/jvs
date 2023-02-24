@@ -19,6 +19,7 @@ import (
 	"crypto/tls"
 	"crypto/x509"
 	"fmt"
+	"os"
 	"strings"
 	"time"
 
@@ -42,6 +43,7 @@ import (
 type tokenCmdOptions struct {
 	config *config.CLIConfig
 
+	subject      string
 	audiences    []string
 	explanation  string
 	breakglass   bool
@@ -66,13 +68,22 @@ token, or any errors that occurred.
 For example:
 
     # Generate a token with a 30min ttl
-    jvsctl token --explanation "issues/12345" --ttl 30m
+    jvsctl token \
+      --explanation "issues/12345" \
+      --ttl "30m"
 
     # Generate a token with custom audiences
-    jvsctl token --explanation "access production" --audiences "my.service.dev"
+    jvsctl token \
+      --explanation "access production" \
+      --audiences "my.service.dev"
 
     # Generate a breakglass token
-    jvsctl token --explanation "everything is broken" --breakglass
+    jvsctl token \
+      --explanation "everything is broken" \
+      --breakglass
+
+You can set the environment variable JVSCTL_SUBJECT to your email address to
+avoid specifying --subject on each invocation.
 `, "\n"),
 		Args: cobra.ExactArgs(0),
 		RunE: func(cmd *cobra.Command, args []string) error {
@@ -83,7 +94,8 @@ For example:
 	flags := cmd.Flags()
 	flags.StringVarP(&opts.explanation, "explanation", "e", "",
 		"The explanation for the action")
-	cmd.MarkFlagRequired("explanation") //nolint // not expect err
+	flags.StringVarP(&opts.subject, "subject", "s", os.Getenv("JVSCTL_SUBJECT"),
+		"The principal that be making calls with the justification token")
 	flags.StringSliceVar(&opts.audiences, "audiences", []string{justification.DefaultAudience},
 		"The list of audiences for the token")
 	flags.BoolVar(&opts.breakglass, "breakglass", false,
@@ -104,6 +116,10 @@ func runTokenCmd(cmd *cobra.Command, opts *tokenCmdOptions, args []string) error
 	ctx := context.Background()
 	out := cmd.OutOrStdout()
 
+	if opts.explanation == "" {
+		return fmt.Errorf("explanation is required")
+	}
+
 	// breakglass won't require JVS server. Handle that first.
 	if opts.breakglass {
 		fmt.Fprintln(cmd.ErrOrStderr(), "WARNING: In breakglass mode, the justification token is not signed.")
@@ -115,11 +131,7 @@ func runTokenCmd(cmd *cobra.Command, opts *tokenCmdOptions, args []string) error
 		return nil
 	}
 
-	dialOpts, err := dialOpts(opts.config.Insecure)
-	if err != nil {
-		return err
-	}
-	callOpts, err := callOpts(ctx, opts.disableAuthn)
+	dialOpts, err := dialOptions(opts.config.Insecure)
 	if err != nil {
 		return err
 	}
@@ -130,7 +142,13 @@ func runTokenCmd(cmd *cobra.Command, opts *tokenCmdOptions, args []string) error
 	}
 	jvsclient := jvspb.NewJVSServiceClient(conn)
 
+	callOpts, err := callOptions(ctx, opts.disableAuthn)
+	if err != nil {
+		return err
+	}
+
 	req := &jvspb.CreateJustificationRequest{
+		Subject: opts.subject,
 		Justifications: []*jvspb.Justification{{
 			Category: "explanation",
 			Value:    opts.explanation,
@@ -146,7 +164,7 @@ func runTokenCmd(cmd *cobra.Command, opts *tokenCmdOptions, args []string) error
 	return nil
 }
 
-func dialOpts(insecure bool) ([]grpc.DialOption, error) {
+func dialOptions(insecure bool) ([]grpc.DialOption, error) {
 	if insecure {
 		return []grpc.DialOption{grpc.WithTransportCredentials(grpcinsecure.NewCredentials())}, nil
 	}
@@ -163,7 +181,7 @@ func dialOpts(insecure bool) ([]grpc.DialOption, error) {
 	return []grpc.DialOption{grpc.WithTransportCredentials(cred)}, nil
 }
 
-func callOpts(ctx context.Context, disableAuthn bool) ([]grpc.CallOption, error) {
+func callOptions(ctx context.Context, disableAuthn bool) ([]grpc.CallOption, error) {
 	if disableAuthn {
 		return nil, nil
 	}
@@ -199,7 +217,7 @@ func breakglassToken(ctx context.Context, opts *tokenCmdOptions) (string, error)
 		Issuer(Issuer).
 		JwtID(id).
 		NotBefore(now).
-		Subject(Subject).
+		Subject(opts.subject).
 		Build()
 	if err != nil {
 		return "", fmt.Errorf("failed to build breakglass token: %w", err)

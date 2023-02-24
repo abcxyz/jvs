@@ -47,6 +47,7 @@ func TestNewTokenCmd(t *testing.T) {
 		name              string
 		config            *config.CLIConfig
 		args              []string
+		expSubject        string
 		expAudiences      []string
 		expJustifications []*jvspb.Justification
 		expErr            string
@@ -59,7 +60,7 @@ func TestNewTokenCmd(t *testing.T) {
 		{
 			name:   "missing_explanation",
 			args:   nil,
-			expErr: `"explanation" not set`,
+			expErr: `explanation is required`,
 		},
 		{
 			name: "bad_server_response",
@@ -67,7 +68,10 @@ func TestNewTokenCmd(t *testing.T) {
 				Server:   badJVS,
 				Insecure: true,
 			},
-			args:   []string{"-e", "for testing purposes", "--disable-authn"},
+			args: []string{
+				"--explanation=for testing purposes",
+				"--disable-authn",
+			},
 			expErr: "testing server error",
 		},
 		{
@@ -76,7 +80,10 @@ func TestNewTokenCmd(t *testing.T) {
 				Server:   goodJVS,
 				Insecure: true,
 			},
-			args:         []string{"-e=for testing purposes", "--disable-authn"},
+			args: []string{
+				"--explanation=for testing purposes",
+				"--disable-authn",
+			},
 			expAudiences: []string{justification.DefaultAudience},
 			expJustifications: []*jvspb.Justification{
 				{
@@ -86,9 +93,13 @@ func TestNewTokenCmd(t *testing.T) {
 			},
 		},
 		{
-			name:         "breakglass",
-			config:       &config.CLIConfig{},
-			args:         []string{"-e=prod is down", "--breakglass", "--iat=0"},
+			name:   "breakglass",
+			config: &config.CLIConfig{},
+			args: []string{
+				"--explanation=prod is down",
+				"--breakglass",
+				"--iat=0",
+			},
 			expAudiences: []string{justification.DefaultAudience},
 			expJustifications: []*jvspb.Justification{
 				{
@@ -98,9 +109,30 @@ func TestNewTokenCmd(t *testing.T) {
 			},
 		},
 		{
-			name:         "audiences",
-			config:       &config.CLIConfig{},
-			args:         []string{"-e=prod is down", "--breakglass", "--audiences=foo,bar"},
+			name:   "custom_subject",
+			config: &config.CLIConfig{},
+			args: []string{
+				"--explanation=prod is down",
+				"--subject=user@example.com",
+				"--breakglass",
+			},
+			expSubject:   "user@example.com",
+			expAudiences: []string{justification.DefaultAudience},
+			expJustifications: []*jvspb.Justification{
+				{
+					Category: "breakglass",
+					Value:    "prod is down",
+				},
+			},
+		},
+		{
+			name:   "custom_audiences",
+			config: &config.CLIConfig{},
+			args: []string{
+				"--explanation=prod is down",
+				"--breakglass",
+				"--audiences=foo,bar",
+			},
 			expAudiences: []string{"foo", "bar"},
 			expJustifications: []*jvspb.Justification{
 				{
@@ -150,7 +182,7 @@ func TestNewTokenCmd(t *testing.T) {
 			if got, want := token.Issuer(), "jvsctl"; got != want {
 				t.Errorf("iss: expected %q to be %q", got, want)
 			}
-			if got, want := token.Subject(), "jvsctl"; got != want {
+			if got, want := token.Subject(), tc.expSubject; got != want {
 				t.Errorf("sub: expected %q to be %q", got, want)
 			}
 
@@ -171,7 +203,7 @@ type fakeJVS struct {
 	returnErr error
 }
 
-func (j *fakeJVS) CreateJustification(_ context.Context, req *jvspb.CreateJustificationRequest) (*jvspb.CreateJustificationResponse, error) {
+func (j *fakeJVS) CreateJustification(ctx context.Context, req *jvspb.CreateJustificationRequest) (*jvspb.CreateJustificationResponse, error) {
 	if j.returnErr != nil {
 		return nil, j.returnErr
 	}
@@ -184,7 +216,7 @@ func (j *fakeJVS) CreateJustification(_ context.Context, req *jvspb.CreateJustif
 		Issuer(Issuer).
 		JwtID("test-jwt").
 		NotBefore(now).
-		Subject(Subject).
+		Subject(req.Subject).
 		Build()
 	if err != nil {
 		return nil, fmt.Errorf("failed to create token: %w", err)
