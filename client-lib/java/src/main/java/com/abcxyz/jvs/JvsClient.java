@@ -76,7 +76,7 @@ public class JvsClient {
    * This takes a jwt string, converts it to a JWT, and validates the signature against the JWKs
    * endpoint. It also handles breakglass, if breakglass is enabled.
    */
-  public DecodedJWT validateJWT(String tokenStr) throws JwkException {
+  public DecodedJWT validateJWT(String tokenStr, String expectedSubject) throws JwkException {
     DecodedJWT token = JWT.decode(tokenStr);
 
     // Handle breakglass tokens
@@ -98,6 +98,15 @@ public class JvsClient {
       }
       Algorithm algorithm = Algorithm.ECDSA256((ECPublicKey) jwk.getPublicKey(), null);
       algorithm.verify(token);
+
+      if (!expectedSubject.equals(token.getSubject()) && !expectedSubject.isBlank()) {
+        String msg =
+            String.format(
+                "subject %s does not match expected subject %s",
+                token.getSubject(), expectedSubject);
+        log.error(msg);
+        throw new JwkException(msg);
+      }
     } catch (SigningKeyNotFoundException e) {
       log.error("failed to find public key {}", token.getKeyId());
       throw new JwkException("failed to verify token", e);

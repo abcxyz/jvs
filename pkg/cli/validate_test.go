@@ -111,7 +111,7 @@ func TestNewValidateCmd(t *testing.T) {
 		{
 			name:   "missing_token",
 			args:   nil,
-			expErr: `"token" not set`,
+			expErr: `token is required`,
 		},
 		{
 			name: "invalid_token",
@@ -161,6 +161,40 @@ jti    test-jwt
 nbf    1970-01-01 12:00AM UTC
 sub    test-sub
 `,
+		},
+		{
+			name: "with_subject_good",
+			config: &config.CLIConfig{
+				JWKSEndpoint: svr.URL + path,
+			},
+			args: []string{
+				"-t", signedToken,
+				"-s", "test-sub",
+			},
+			expOut: `
+----- Justifications -----
+explanation    test
+foo            bar
+
+----- Claims -----
+aud    [dev.abcxyz.jvs]
+iat    1970-01-01 12:00AM UTC
+iss    jvsctl
+jti    test-jwt
+nbf    1970-01-01 12:00AM UTC
+sub    test-sub
+`,
+		},
+		{
+			name: "with_subject_bad",
+			config: &config.CLIConfig{
+				JWKSEndpoint: svr.URL + path,
+			},
+			args: []string{
+				"-t", signedToken,
+				"-s", "bad-sub",
+			},
+			expErr: `does not match expected subject`,
 		},
 		{
 			name: "from_stdin",
