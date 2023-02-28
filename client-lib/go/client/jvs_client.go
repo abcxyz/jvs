@@ -58,7 +58,7 @@ func NewJVSClient(ctx context.Context, config *JVSConfig) (*JVSClient, error) {
 
 // ValidateJWT takes a jwt string, converts it to a JWT, and validates the
 // signature against the keys in the JWKs endpoint.
-func (j *JVSClient) ValidateJWT(ctx context.Context, jwtStr string) (jwt.Token, error) {
+func (j *JVSClient) ValidateJWT(ctx context.Context, jwtStr, expectedSubject string) (jwt.Token, error) {
 	// Handle breakglass tokens
 	token, err := jvspb.ParseBreakglassToken(jwtStr)
 	if err != nil {
@@ -80,5 +80,10 @@ func (j *JVSClient) ValidateJWT(ctx context.Context, jwtStr string) (jwt.Token, 
 	if err != nil {
 		return nil, fmt.Errorf("failed to verify jwt: %w", err)
 	}
+
+	if got, want := token.Subject(), expectedSubject; got != want && expectedSubject != "" {
+		return nil, fmt.Errorf("subject %q does not match expected subject %q", got, want)
+	}
+
 	return token, nil
 }

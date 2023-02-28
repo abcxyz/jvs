@@ -38,6 +38,9 @@ type validateCmdOptions struct {
 	// format flag to the command.
 	format string
 
+	// subject is the expected subject to validate.
+	subject string
+
 	// token flag to the command.
 	token string
 }
@@ -87,14 +90,19 @@ For example:
 	flags := cmd.Flags()
 	flags.StringVarP(&opts.format, "format", "f", "table",
 		"output format (valid values: table, json, yaml)")
+	flags.StringVarP(&opts.subject, "subject", "s", "",
+		"subject to validate in the token")
 	flags.StringVarP(&opts.token, "token", "t", "",
 		"JVS token that needs validation, can be passed as string or via pipe")
-	cmd.MarkFlagRequired("token") //nolint // not expect err
 	return cmd
 }
 
 func runValidateCmd(cmd *cobra.Command, opts *validateCmdOptions, args []string) error {
 	ctx := context.Background()
+
+	if opts.token == "" {
+		return fmt.Errorf("token is required")
+	}
 
 	jvsclient, err := client.NewJVSClient(ctx, &client.JVSConfig{
 		Version:         "1",
@@ -139,7 +147,7 @@ func runValidateCmd(cmd *cobra.Command, opts *validateCmdOptions, args []string)
 	if token != nil {
 		breakglass = true
 	} else {
-		token, err = jvsclient.ValidateJWT(ctx, opts.token)
+		token, err = jvsclient.ValidateJWT(ctx, opts.token, opts.subject)
 		if err != nil {
 			return fmt.Errorf("failed to validate jwt: %w", err)
 		}

@@ -73,6 +73,7 @@ public class JvsClientTest {
     String token =
         Jwts.builder()
             .setClaims(claims)
+            .setSubject("test_sub")
             .setHeaderParam("kid", keyId)
             .signWith(key1.getPrivate(), SignatureAlgorithm.ES256)
             .compact();
@@ -81,7 +82,7 @@ public class JvsClientTest {
     when(jwk.getPublicKey()).thenReturn(key1.getPublic());
     when(provider.get(keyId)).thenReturn(jwk);
     JvsClient client = new JvsClient(provider, false);
-    DecodedJWT returnVal = client.validateJWT(token);
+    DecodedJWT returnVal = client.validateJWT(token, "test_sub");
     Assertions.assertEquals(claims.get("id"), returnVal.getClaims().get("id").asString());
     Assertions.assertEquals(claims.get("role"), returnVal.getClaims().get("role").asString());
     Assertions.assertEquals(
@@ -100,6 +101,7 @@ public class JvsClientTest {
     String token =
         Jwts.builder()
             .setClaims(claims)
+            .setSubject("test_sub")
             .setHeaderParam("kid", keyId)
             .signWith(key2.getPrivate(), SignatureAlgorithm.ES256)
             .compact();
@@ -108,7 +110,7 @@ public class JvsClientTest {
         .thenThrow(new SigningKeyNotFoundException("", new RuntimeException()));
     JvsClient client = new JvsClient(provider, false);
     JwkException thrown =
-        Assertions.assertThrows(JwkException.class, () -> client.validateJWT(token));
+        Assertions.assertThrows(JwkException.class, () -> client.validateJWT(token, "test_sub"));
     assertThat(thrown.getMessage()).contains("failed to verify token");
   }
 
@@ -128,6 +130,7 @@ public class JvsClientTest {
     String token =
         Jwts.builder()
             .setClaims(claims)
+            .setSubject("test_sub")
             .setHeaderParam("kid", keyId)
             .setHeaderParam(Header.TYPE, Header.JWT_TYPE)
             .signWith(secretKey, SignatureAlgorithm.HS256)
@@ -135,7 +138,7 @@ public class JvsClientTest {
 
     JvsClient client = new JvsClient(provider, false);
     JwkException thrown =
-        Assertions.assertThrows(JwkException.class, () -> client.validateJWT(token));
+        Assertions.assertThrows(JwkException.class, () -> client.validateJWT(token, "test_sub"));
     assertThat(thrown.getMessage()).contains("breakglass is forbidden");
   }
 
@@ -155,13 +158,14 @@ public class JvsClientTest {
     String token =
         Jwts.builder()
             .setClaims(claims)
+            .setSubject("test_sub")
             .setHeaderParam("kid", keyId)
             .setHeaderParam(Header.TYPE, Header.JWT_TYPE)
             .signWith(secretKey, SignatureAlgorithm.HS256)
             .compact();
 
     JvsClient client = new JvsClient(provider, true);
-    DecodedJWT returnVal = client.validateJWT(token);
+    DecodedJWT returnVal = client.validateJWT(token, "test_sub");
     Assertions.assertEquals(claims.get("id"), returnVal.getClaims().get("id").asString());
     Assertions.assertEquals(claims.get("role"), returnVal.getClaims().get("role").asString());
     Assertions.assertEquals(
@@ -185,6 +189,7 @@ public class JvsClientTest {
     String token =
         Jwts.builder()
             .setClaims(claims)
+            .setSubject("test_sub")
             .setHeaderParam("kid", keyId)
             .setHeaderParam(Header.TYPE, Header.JWT_TYPE)
             .signWith(secretKey, SignatureAlgorithm.HS256)
@@ -192,8 +197,34 @@ public class JvsClientTest {
 
     JvsClient client = new JvsClient(provider, true);
     JwkException thrown =
-        Assertions.assertThrows(JwkException.class, () -> client.validateJWT(token));
+        Assertions.assertThrows(JwkException.class, () -> client.validateJWT(token, "test_sub"));
     assertThat(thrown.getMessage())
         .contains("token is breakglass, but is missing breakglass justification");
+  }
+
+  @Test
+  public void testValidateJWT_InvalidSubject() throws Exception {
+    String keyId = "key1";
+
+    Map<String, Object> claims = new HashMap<>();
+    claims.put("id", "jwt-id");
+    claims.put("role", "user");
+    claims.put("created", new Date());
+
+    String token =
+        Jwts.builder()
+            .setClaims(claims)
+            .setSubject("bad_sub")
+            .setHeaderParam("kid", keyId)
+            .signWith(key1.getPrivate(), SignatureAlgorithm.ES256)
+            .compact();
+
+    Jwk jwk = mock(Jwk.class);
+    when(jwk.getPublicKey()).thenReturn(key1.getPublic());
+    when(provider.get(keyId)).thenReturn(jwk);
+    JvsClient client = new JvsClient(provider, true);
+    JwkException thrown =
+        Assertions.assertThrows(JwkException.class, () -> client.validateJWT(token, "test_sub"));
+    assertThat(thrown.getMessage()).contains("does not match expected subject");
   }
 }
