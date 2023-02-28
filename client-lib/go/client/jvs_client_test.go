@@ -101,6 +101,7 @@ func TestValidateJWT(t *testing.T) {
 	tests := []struct {
 		name            string
 		jwt             string
+		sub             string
 		allowBreakglass bool
 		wantErr         string
 		wantToken       jwt.Token
@@ -108,33 +109,46 @@ func TestValidateJWT(t *testing.T) {
 		{
 			name:      "happy_path",
 			jwt:       testSignToken(t, tok, privateKey, keyID),
+			sub:       "test_sub",
 			wantToken: tok,
 		},
 		{
 			name:      "other_key",
 			jwt:       testSignToken(t, tok2, privateKey2, keyID2),
+			sub:       "test_sub",
 			wantToken: tok2,
 		},
 		{
 			name:            "breakglass",
 			jwt:             testSignBreakglassToken(t, breakglassToken),
+			sub:             "test_sub",
 			allowBreakglass: true,
 			wantToken:       breakglassToken,
 		},
 		{
 			name:            "forbid_breakglass",
 			jwt:             testSignBreakglassToken(t, breakglassToken),
+			sub:             "test_sub",
 			allowBreakglass: false,
 			wantErr:         "breakglass is forbidden, denying",
 		},
 		{
 			name:    "invalid",
 			jwt:     testSignToken(t, tok, unregisteredKey, keyID),
+			sub:     "test_sub",
 			wantErr: "failed to verify jwt",
 		},
+		{
+			name:    "bad_subject",
+			jwt:     testSignToken(t, tok, privateKey, keyID),
+			sub:     "bad_sub",
+			wantErr: "does not match expected subject",
+		},
 	}
+
 	for _, tc := range tests {
 		tc := tc
+
 		t.Run(tc.name, func(t *testing.T) {
 			t.Parallel()
 
@@ -147,7 +161,7 @@ func TestValidateJWT(t *testing.T) {
 			if err != nil {
 				t.Fatalf("failed to create JVS client: %v", err)
 			}
-			res, err := client.ValidateJWT(ctx, tc.jwt)
+			res, err := client.ValidateJWT(ctx, tc.jwt, tc.sub)
 
 			if diff := testutil.DiffErrString(err, tc.wantErr); diff != "" {
 				t.Errorf("Unexpected err: %s", diff)
