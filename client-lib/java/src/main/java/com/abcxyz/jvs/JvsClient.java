@@ -99,7 +99,7 @@ public class JvsClient {
       Algorithm algorithm = Algorithm.ECDSA256((ECPublicKey) jwk.getPublicKey(), null);
       algorithm.verify(token);
 
-      if (!expectedSubject.equals(token.getSubject()) && !expectedSubject.equals("")) {
+      if (!expectedSubject.equals(token.getSubject()) && !expectedSubject.isBlank()) {
         String msg =
             String.format(
                 "subject %s does not match expected subject %s",
