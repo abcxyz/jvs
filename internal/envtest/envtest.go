@@ -24,12 +24,18 @@ import (
 	"testing"
 
 	kms "cloud.google.com/go/kms/apiv1"
+	"cloud.google.com/go/kms/apiv1/kmspb"
 	"github.com/abcxyz/jvs/assets"
 	"github.com/abcxyz/jvs/pkg/config"
 	"github.com/abcxyz/jvs/pkg/justification"
+	"github.com/abcxyz/jvs/pkg/jvscrypto"
 	"github.com/abcxyz/jvs/pkg/render"
+	"github.com/abcxyz/jvs/pkg/testutil"
 	"github.com/abcxyz/pkg/cfgloader"
 	"github.com/abcxyz/pkg/logging"
+	pkgtestutil "github.com/abcxyz/pkg/testutil"
+	"google.golang.org/api/option"
+	"google.golang.org/grpc"
 )
 
 // ServerConfigResponse is the response from creating a server config.
@@ -80,7 +86,25 @@ func NewServerConfig(tb testing.TB, port string, allowlist []string, devMode boo
 		tb.Fatal(err)
 	}
 
-	kmsClient, err := kms.NewKeyManagementClient(ctx)
+	key := "projects/[PROJECT]/locations/[LOCATION]/keyRings/[KEY_RING]/cryptoKeys/[CRYPTO_KEY]"
+	version := key + "/cryptoKeyVersions/[VERSION]"
+
+	// Mock KMS.
+	mockKMS := testutil.NewMockKeyManagementServer(key, version, jvscrypto.PrimaryLabelPrefix+"[VERSION]"+"-0")
+
+	serv := grpc.NewServer()
+	kmspb.RegisterKeyManagementServiceServer(serv, mockKMS)
+
+	_, conn := pkgtestutil.FakeGRPCServer(tb, func(s *grpc.Server) {
+		kmspb.RegisterKeyManagementServiceServer(s, mockKMS)
+	})
+
+	opt := option.WithGRPCConn(conn)
+	tb.Cleanup(func() {
+		conn.Close()
+	})
+
+	kmsClient, err := kms.NewKeyManagementClient(ctx, opt)
 	if err != nil {
 		tb.Fatal(err)
 	}
