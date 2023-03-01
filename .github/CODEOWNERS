@@ -1,4 +1,5 @@
+# Default fallback
 *    @abcxyz/breakglass
 
-# infrastructure owns all files
+# products owns all files
 *    @abcxyz/infrastructure-team
