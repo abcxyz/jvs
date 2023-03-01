@@ -23,16 +23,20 @@ import (
 	"strings"
 	"testing"
 
+	kms "cloud.google.com/go/kms/apiv1"
 	"github.com/abcxyz/jvs/assets"
 	"github.com/abcxyz/jvs/pkg/config"
+	"github.com/abcxyz/jvs/pkg/justification"
 	"github.com/abcxyz/jvs/pkg/render"
+	"github.com/abcxyz/pkg/cfgloader"
 	"github.com/abcxyz/pkg/logging"
 )
 
 // ServerConfigResponse is the response from creating a server config.
 type ServerConfigResponse struct {
-	Config   *config.UIServiceConfig
-	Renderer *render.Renderer
+	Config    *config.UIServiceConfig
+	Renderer  *render.Renderer
+	Processor *justification.Processor
 }
 
 // BuildFormRequest builds an http request and http response recorder for the
@@ -64,7 +68,7 @@ func NewServerConfig(tb testing.TB, port string, allowlist []string, devMode boo
 
 	ctx := logging.WithLogger(context.Background(), logging.TestLogger(tb))
 
-	cfg := &config.UIServiceConfig{
+	uiCfg := &config.UIServiceConfig{
 		Port:      port,
 		Allowlist: allowlist,
 		DevMode:   devMode,
@@ -76,8 +80,21 @@ func NewServerConfig(tb testing.TB, port string, allowlist []string, devMode boo
 		tb.Fatal(err)
 	}
 
+	kmsClient, err := kms.NewKeyManagementClient(ctx)
+	if err != nil {
+		tb.Fatal(err)
+	}
+
+	var cfg config.JustificationConfig
+	if err := cfgloader.Load(ctx, &cfg); err != nil {
+		tb.Fatal(err)
+	}
+
+	p := justification.NewProcessor(kmsClient, &cfg)
+
 	return &ServerConfigResponse{
-		Config:   cfg,
-		Renderer: r,
+		Config:    uiCfg,
+		Renderer:  r,
+		Processor: p,
 	}
 }

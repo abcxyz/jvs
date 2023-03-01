@@ -85,7 +85,7 @@ func TestHandlePopup(t *testing.T) {
 
 			ctx := ctx
 			harness := envstest.NewServerConfig(t, "9091", tc.allowlist, true)
-			c := New(harness.Renderer, tc.allowlist)
+			c := New(harness.Renderer, harness.Processor, tc.allowlist)
 
 			w, r := envstest.BuildFormRequest(ctx, t, http.MethodPost, tc.path,
 				&tc.queryParam,
