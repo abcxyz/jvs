@@ -84,11 +84,6 @@ type ErrorDetails struct {
 	Message     string
 }
 
-var (
-	categories = []string{"explanation", "breakglass"}
-	ttls       = []string{"15m", "30m", "1h", "2h", "4h"}
-)
-
 func New(h *render.Renderer, p *justification.Processor, allowlist []string) *Controller {
 	return &Controller{
 		h:         h,
@@ -115,8 +110,8 @@ func (c *Controller) handlePopupGet(w http.ResponseWriter, r *http.Request) {
 	formDetails := getFormDetails(r)
 
 	// set some defaults for the form
-	formDetails.Category = categories[0]
-	formDetails.TTL = ttls[0]
+	formDetails.Category = categories()[0]
+	formDetails.TTL = ttls()[0]
 
 	c.h.RenderHTML(w, "popup.html.tmpl", formDetails)
 }
@@ -243,7 +238,7 @@ func validateLocalIP(originParam string) (bool, error) {
 func validateForm(formDetails *FormDetails) bool {
 	formDetails.Errors = make(map[string]string)
 
-	if !isValidOneOf(formDetails.Category, categories) {
+	if !isValidOneOf(formDetails.Category, categories()) {
 		formDetails.Errors["Category"] = "Category must be selected"
 	}
 
@@ -251,7 +246,7 @@ func validateForm(formDetails *FormDetails) bool {
 		formDetails.Errors["Reason"] = "Reason is required"
 	}
 
-	if !isValidOneOf(formDetails.TTL, ttls) {
+	if !isValidOneOf(formDetails.TTL, ttls()) {
 		formDetails.Errors["TTL"] = "TTL is required"
 	}
 
@@ -287,7 +282,7 @@ func getFormDetails(r *http.Request) *FormDetails {
 					Text: "Breakglass",
 				},
 			},
-			TTLs: ttls,
+			TTLs: ttls(),
 		},
 	}
 }
@@ -300,4 +295,12 @@ func (c *Controller) renderBadRequest(w http.ResponseWriter, m string) {
 		Description: t,
 		Message:     m,
 	})
+}
+
+func ttls() []string {
+	return []string{"15m", "30m", "1h", "2h", "4h"}
+}
+
+func categories() []string {
+	return []string{"explanation", "breakglass"}
 }
