@@ -23,16 +23,26 @@ import (
 	"strings"
 	"testing"
 
+	kms "cloud.google.com/go/kms/apiv1"
+	"cloud.google.com/go/kms/apiv1/kmspb"
 	"github.com/abcxyz/jvs/assets"
 	"github.com/abcxyz/jvs/pkg/config"
+	"github.com/abcxyz/jvs/pkg/justification"
+	"github.com/abcxyz/jvs/pkg/jvscrypto"
 	"github.com/abcxyz/jvs/pkg/render"
+	"github.com/abcxyz/jvs/pkg/testutil"
+	"github.com/abcxyz/pkg/cfgloader"
 	"github.com/abcxyz/pkg/logging"
+	pkgtestutil "github.com/abcxyz/pkg/testutil"
+	"google.golang.org/api/option"
+	"google.golang.org/grpc"
 )
 
 // ServerConfigResponse is the response from creating a server config.
 type ServerConfigResponse struct {
-	Config   *config.UIServiceConfig
-	Renderer *render.Renderer
+	Config    *config.UIServiceConfig
+	Renderer  *render.Renderer
+	Processor *justification.Processor
 }
 
 // BuildFormRequest builds an http request and http response recorder for the
@@ -64,7 +74,7 @@ func NewServerConfig(tb testing.TB, port string, allowlist []string, devMode boo
 
 	ctx := logging.WithLogger(context.Background(), logging.TestLogger(tb))
 
-	cfg := &config.UIServiceConfig{
+	uiCfg := &config.UIServiceConfig{
 		Port:      port,
 		Allowlist: allowlist,
 		DevMode:   devMode,
@@ -76,8 +86,39 @@ func NewServerConfig(tb testing.TB, port string, allowlist []string, devMode boo
 		tb.Fatal(err)
 	}
 
+	key := "projects/[PROJECT]/locations/[LOCATION]/keyRings/[KEY_RING]/cryptoKeys/[CRYPTO_KEY]"
+	version := key + "/cryptoKeyVersions/[VERSION]"
+
+	// Mock KMS.
+	mockKMS := testutil.NewMockKeyManagementServer(key, version, jvscrypto.PrimaryLabelPrefix+"[VERSION]"+"-0")
+
+	serv := grpc.NewServer()
+	kmspb.RegisterKeyManagementServiceServer(serv, mockKMS)
+
+	_, conn := pkgtestutil.FakeGRPCServer(tb, func(s *grpc.Server) {
+		kmspb.RegisterKeyManagementServiceServer(s, mockKMS)
+	})
+
+	opt := option.WithGRPCConn(conn)
+	tb.Cleanup(func() {
+		conn.Close()
+	})
+
+	kmsClient, err := kms.NewKeyManagementClient(ctx, opt)
+	if err != nil {
+		tb.Fatal(err)
+	}
+
+	var cfg config.JustificationConfig
+	if err := cfgloader.Load(ctx, &cfg); err != nil {
+		tb.Fatal(err)
+	}
+
+	p := justification.NewProcessor(kmsClient, &cfg)
+
 	return &ServerConfigResponse{
-		Config:   cfg,
-		Renderer: r,
+		Config:    uiCfg,
+		Renderer:  r,
+		Processor: p,
 	}
 }
