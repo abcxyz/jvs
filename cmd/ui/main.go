@@ -24,8 +24,11 @@ import (
 	"syscall"
 	"time"
 
+	kms "cloud.google.com/go/kms/apiv1"
 	"github.com/abcxyz/jvs/pkg/config"
+	"github.com/abcxyz/jvs/pkg/justification"
 	"github.com/abcxyz/jvs/pkg/ui"
+	"github.com/abcxyz/pkg/cfgloader"
 	"github.com/abcxyz/pkg/logging"
 )
 
@@ -43,19 +46,31 @@ func main() {
 }
 
 func realMain(ctx context.Context) error {
-	cfg, err := config.NewUIConfig(ctx)
+	uiCfg, err := config.NewUIConfig(ctx)
 	if err != nil {
 		return fmt.Errorf("server.NewUIConfig: %w", err)
 	}
 
-	uiServer, err := ui.NewServer(ctx, cfg)
+	kmsClient, err := kms.NewKeyManagementClient(ctx)
+	if err != nil {
+		return fmt.Errorf("failed to setup kms client: %w", err)
+	}
+
+	var cfg config.JustificationConfig
+	if err := cfgloader.Load(ctx, &cfg); err != nil {
+		return fmt.Errorf("failed to load config: %w", err)
+	}
+
+	p := justification.NewProcessor(kmsClient, &cfg)
+
+	uiServer, err := ui.NewServer(ctx, uiCfg, p)
 	if err != nil {
 		return fmt.Errorf("server.NewServer: %w", err)
 	}
 
 	// Create the server and listen in a goroutine.
 	server := &http.Server{
-		Addr:         ":" + cfg.Port,
+		Addr:         ":" + uiCfg.Port,
 		Handler:      uiServer.Routes(),
 		ReadTimeout:  5 * time.Second,
 		WriteTimeout: 1 * time.Second,

@@ -22,6 +22,7 @@ import (
 	"github.com/abcxyz/jvs/assets"
 	"github.com/abcxyz/jvs/pkg/config"
 	"github.com/abcxyz/jvs/pkg/controller"
+	"github.com/abcxyz/jvs/pkg/justification"
 	"github.com/abcxyz/jvs/pkg/render"
 )
 
@@ -32,15 +33,15 @@ type Server struct {
 
 // NewServer creates a new HTTP server implementation that will handle
 // rendering the JVS form using a controller.
-func NewServer(ctx context.Context, cfg *config.UIServiceConfig) (*Server, error) {
+func NewServer(ctx context.Context, uiCfg *config.UIServiceConfig, p *justification.Processor) (*Server, error) {
 	// Create the renderer
-	h, err := render.NewRenderer(ctx, assets.ServerFS(), cfg.DevMode)
+	h, err := render.NewRenderer(ctx, assets.ServerFS(), uiCfg.DevMode)
 	if err != nil {
 		return nil, fmt.Errorf("failed to create renderer: %w", err)
 	}
 
 	return &Server{
-		c: controller.New(h, cfg.Allowlist),
+		c: controller.New(h, p, uiCfg.Allowlist),
 	}, nil
 }
 
