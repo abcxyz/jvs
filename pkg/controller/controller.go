@@ -159,9 +159,7 @@ func (c *Controller) handlePopupPost(w http.ResponseWriter, r *http.Request) {
 				Value:    formDetails.Reason,
 			},
 		},
-		Ttl: &durationpb.Duration{
-			Seconds: int64(dur.Seconds()),
-		},
+		Ttl: durationpb.New(dur),
 	}
 
 	token, err := c.p.CreateToken(context.Background(), formDetails.UserEmail, req)
