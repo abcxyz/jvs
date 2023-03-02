@@ -20,8 +20,8 @@ import (
 	"net"
 	"net/http"
 	"net/url"
-	"strconv"
 	"strings"
+	"time"
 
 	jvspb "github.com/abcxyz/jvs/apis/v0"
 	"github.com/abcxyz/jvs/internal/project"
@@ -51,7 +51,7 @@ type Content struct {
 	ReasonLabel   string
 	TTLLabel      string
 	Categories    []Pair
-	TTLs          []Pair
+	TTLs          []string
 }
 
 // FormDetails represents all the input and content used for the token retrievlal form.
@@ -86,7 +86,7 @@ type ErrorDetails struct {
 
 var (
 	categories = []string{"explanation", "breakglass"}
-	ttls       = []string{"15", "30", "60", "120", "240"}
+	ttls       = []string{"15m", "30m", "1h", "2h", "4h"}
 )
 
 func New(h *render.Renderer, p *justification.Processor, allowlist []string) *Controller {
@@ -146,7 +146,7 @@ func (c *Controller) handlePopupPost(w http.ResponseWriter, r *http.Request) {
 	}
 
 	// 3. Request a token
-	ttl, err := strconv.Atoi(formDetails.TTL)
+	dur, err := time.ParseDuration(formDetails.TTL)
 	if err != nil {
 		c.renderBadRequest(w, err.Error())
 		return
@@ -160,13 +160,14 @@ func (c *Controller) handlePopupPost(w http.ResponseWriter, r *http.Request) {
 			},
 		},
 		Ttl: &durationpb.Duration{
-			Seconds: int64(ttl) * 60,
+			Seconds: int64(dur.Seconds()),
 		},
 	}
 
 	token, err := c.p.CreateToken(context.Background(), formDetails.UserEmail, req)
 	if err != nil {
 		c.renderBadRequest(w, err.Error())
+		return
 	}
 
 	// 4. Redirect to a confirmation page with context, ultimately needed to postMessage back to the client
@@ -288,38 +289,17 @@ func getFormDetails(r *http.Request) *FormDetails {
 					Text: "Breakglass",
 				},
 			},
-			TTLs: []Pair{
-				{
-					Key:  "15",
-					Text: "15m",
-				},
-				{
-					Key:  "30",
-					Text: "30m",
-				},
-				{
-					Key:  "60",
-					Text: "1h",
-				},
-				{
-					Key:  "120",
-					Text: "2h",
-				},
-				{
-					Key:  "240",
-					Text: "4h",
-				},
-			},
+			TTLs: ttls,
 		},
 	}
 }
 
+// Renders a bad request page with a custom message.
 func (c *Controller) renderBadRequest(w http.ResponseWriter, m string) {
 	t := http.StatusText(http.StatusBadRequest)
-	forbiddenDetails := &ErrorDetails{
+	c.h.RenderHTMLStatus(w, http.StatusBadRequest, "400.html.tmpl", &ErrorDetails{
 		PageTitle:   t,
 		Description: t,
 		Message:     m,
-	}
-	c.h.RenderHTMLStatus(w, http.StatusBadRequest, "400.html.tmpl", forbiddenDetails)
+	})
 }

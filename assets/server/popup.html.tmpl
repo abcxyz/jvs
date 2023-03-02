@@ -54,10 +54,10 @@
           <label class="content-label" for="ttl">TTL</label>
           <select class="content-select" id="ttl" name="ttl">
             {{ range $index, $element := .Content.TTLs }}
-            {{ if eq $element.Key $context.TTL }}
-            <option value="{{ $element.Key }}" selected="selected">{{ $element.Text }}</option>
+            {{ if eq $element $context.TTL }}
+            <option value="{{ $element }}" selected="selected">{{ $element }}</option>
             {{ else }}
-            <option value="{{ $element.Key }}">{{ $element.Text }}</option>
+            <option value="{{ $element }}">{{ $element }}</option>
             {{ end }}
             {{ end }}
           </select>
