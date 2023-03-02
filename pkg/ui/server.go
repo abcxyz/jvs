@@ -19,13 +19,11 @@ import (
 	"fmt"
 	"net/http"
 
-	kms "cloud.google.com/go/kms/apiv1"
 	"github.com/abcxyz/jvs/assets"
 	"github.com/abcxyz/jvs/pkg/config"
 	"github.com/abcxyz/jvs/pkg/controller"
 	"github.com/abcxyz/jvs/pkg/justification"
 	"github.com/abcxyz/jvs/pkg/render"
-	"github.com/abcxyz/pkg/cfgloader"
 )
 
 // Server holds the parsed html templates.
@@ -35,24 +33,12 @@ type Server struct {
 
 // NewServer creates a new HTTP server implementation that will handle
 // rendering the JVS form using a controller.
-func NewServer(ctx context.Context, uiCfg *config.UIServiceConfig) (*Server, error) {
+func NewServer(ctx context.Context, uiCfg *config.UIServiceConfig, p *justification.Processor) (*Server, error) {
 	// Create the renderer
 	h, err := render.NewRenderer(ctx, assets.ServerFS(), uiCfg.DevMode)
 	if err != nil {
 		return nil, fmt.Errorf("failed to create renderer: %w", err)
 	}
-
-	kmsClient, err := kms.NewKeyManagementClient(ctx)
-	if err != nil {
-		return nil, fmt.Errorf("failed to setup kms client: %w", err)
-	}
-
-	var cfg config.JustificationConfig
-	if err := cfgloader.Load(ctx, &cfg); err != nil {
-		return nil, fmt.Errorf("failed to load config: %w", err)
-	}
-
-	p := justification.NewProcessor(kmsClient, &cfg)
 
 	return &Server{
 		c: controller.New(h, p, uiCfg.Allowlist),
