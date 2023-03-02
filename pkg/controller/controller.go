@@ -15,20 +15,26 @@
 package controller
 
 import (
+	"context"
 	"fmt"
 	"net"
 	"net/http"
 	"net/url"
 	"strings"
+	"time"
 
+	jvspb "github.com/abcxyz/jvs/apis/v0"
 	"github.com/abcxyz/jvs/internal/project"
+	"github.com/abcxyz/jvs/pkg/justification"
 	"github.com/abcxyz/jvs/pkg/render"
 	"golang.org/x/exp/slices"
+	"google.golang.org/protobuf/types/known/durationpb"
 )
 
 // Controller manages use of the renderer in the http handler.
 type Controller struct {
 	h         *render.Renderer
+	p         *justification.Processor
 	allowlist []string
 }
 
@@ -45,7 +51,7 @@ type Content struct {
 	ReasonLabel   string
 	TTLLabel      string
 	Categories    []Pair
-	TTLs          []Pair
+	TTLs          []string
 }
 
 // FormDetails represents all the input and content used for the token retrievlal form.
@@ -54,6 +60,7 @@ type FormDetails struct {
 	Origin      string
 	PageTitle   string
 	Description string
+	UserEmail   string
 	Content     Content
 	Category    string
 	Reason      string
@@ -77,14 +84,10 @@ type ErrorDetails struct {
 	Message     string
 }
 
-var (
-	categories = []string{"explanation", "breakglass"}
-	ttls       = []string{"15", "30", "60", "120", "240"}
-)
-
-func New(h *render.Renderer, allowlist []string) *Controller {
+func New(h *render.Renderer, p *justification.Processor, allowlist []string) *Controller {
 	return &Controller{
 		h:         h,
+		p:         p,
 		allowlist: allowlist,
 	}
 }
@@ -107,8 +110,8 @@ func (c *Controller) handlePopupGet(w http.ResponseWriter, r *http.Request) {
 	formDetails := getFormDetails(r)
 
 	// set some defaults for the form
-	formDetails.Category = categories[0]
-	formDetails.TTL = ttls[0]
+	formDetails.Category = categories()[0]
+	formDetails.TTL = ttls()[0]
 
 	c.h.RenderHTML(w, "popup.html.tmpl", formDetails)
 }
@@ -127,13 +130,7 @@ func (c *Controller) handlePopupPost(w http.ResponseWriter, r *http.Request) {
 			m = "Unexpected origin provided"
 		}
 
-		t := http.StatusText(http.StatusBadRequest)
-		forbiddenDetails := &ErrorDetails{
-			PageTitle:   t,
-			Description: t,
-			Message:     m,
-		}
-		c.h.RenderHTMLStatus(w, http.StatusBadRequest, "400.html.tmpl", forbiddenDetails)
+		c.renderBadRequest(w, m)
 		return
 	}
 
@@ -143,14 +140,34 @@ func (c *Controller) handlePopupPost(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	// 3. [TODO] Request a token
-	token := "token_from_server"
+	// 3. Request a token
+	dur, err := time.ParseDuration(formDetails.TTL)
+	if err != nil {
+		c.renderBadRequest(w, err.Error())
+		return
+	}
+
+	req := &jvspb.CreateJustificationRequest{
+		Justifications: []*jvspb.Justification{
+			{
+				Category: formDetails.Category,
+				Value:    formDetails.Reason,
+			},
+		},
+		Ttl: durationpb.New(dur),
+	}
+
+	token, err := c.p.CreateToken(context.Background(), formDetails.UserEmail, req)
+	if err != nil {
+		c.renderBadRequest(w, err.Error())
+		return
+	}
 
 	// 4. Redirect to a confirmation page with context, ultimately needed to postMessage back to the client
 	successDetails := &SuccessDetails{
 		PageTitle:   "JVS - Successful token retrieval",
 		Description: "Successful token page",
-		Token:       token,
+		Token:       string(token),
 		Origin:      formDetails.Origin,
 		WindowName:  formDetails.WindowName,
 	}
@@ -221,7 +238,7 @@ func validateLocalIP(originParam string) (bool, error) {
 func validateForm(formDetails *FormDetails) bool {
 	formDetails.Errors = make(map[string]string)
 
-	if !isValidOneOf(formDetails.Category, categories) {
+	if !isValidOneOf(formDetails.Category, categories()) {
 		formDetails.Errors["Category"] = "Category must be selected"
 	}
 
@@ -229,7 +246,7 @@ func validateForm(formDetails *FormDetails) bool {
 		formDetails.Errors["Reason"] = "Reason is required"
 	}
 
-	if !isValidOneOf(formDetails.TTL, ttls) {
+	if !isValidOneOf(formDetails.TTL, ttls()) {
 		formDetails.Errors["TTL"] = "TTL is required"
 	}
 
@@ -246,6 +263,7 @@ func getFormDetails(r *http.Request) *FormDetails {
 		Origin:      r.FormValue("origin"),
 		Category:    r.FormValue("category"),
 		Reason:      r.FormValue("reason"),
+		UserEmail:   r.Header.Get("x-goog-authenticated-user-email"),
 		TTL:         r.FormValue("ttl"),
 		PageTitle:   "JVS - Justification Request System",
 		Description: "Justification Verification System form used for minting tokens.",
@@ -264,28 +282,25 @@ func getFormDetails(r *http.Request) *FormDetails {
 					Text: "Breakglass",
 				},
 			},
-			TTLs: []Pair{
-				{
-					Key:  "15",
-					Text: "15m",
-				},
-				{
-					Key:  "30",
-					Text: "30m",
-				},
-				{
-					Key:  "60",
-					Text: "1h",
-				},
-				{
-					Key:  "120",
-					Text: "2h",
-				},
-				{
-					Key:  "240",
-					Text: "4h",
-				},
-			},
+			TTLs: ttls(),
 		},
 	}
+}
+
+// Renders a bad request page with a custom message.
+func (c *Controller) renderBadRequest(w http.ResponseWriter, m string) {
+	t := http.StatusText(http.StatusBadRequest)
+	c.h.RenderHTMLStatus(w, http.StatusBadRequest, "400.html.tmpl", &ErrorDetails{
+		PageTitle:   t,
+		Description: t,
+		Message:     m,
+	})
+}
+
+func ttls() []string {
+	return []string{"15m", "30m", "1h", "2h", "4h"}
+}
+
+func categories() []string {
+	return []string{"explanation", "breakglass"}
 }

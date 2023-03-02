@@ -85,9 +85,9 @@ func TestHandlePopup(t *testing.T) {
 
 			ctx := ctx
 			harness := envstest.NewServerConfig(t, "9091", tc.allowlist, true)
-			c := New(harness.Renderer, tc.allowlist)
+			c := New(harness.Renderer, harness.Processor, tc.allowlist)
 
-			w, r := envstest.BuildFormRequest(ctx, t, http.MethodPost, tc.path,
+			w, r := envstest.BuildFormRequest(ctx, t, tc.method, tc.path,
 				&tc.queryParam,
 			)
 
@@ -240,8 +240,11 @@ func TestValidateForm(t *testing.T) {
 
 	var cases []*testValidateFormParam
 
-	for i := 0; i < len(categories); i++ {
-		category := categories[i]
+	cats := categories()
+	ttls := ttls()
+
+	for i := 0; i < len(cats); i++ {
+		category := cats[i]
 		for j := 0; j < len(ttls); j++ {
 			ttl := ttls[j]
 			reason := "reason"
@@ -280,7 +283,7 @@ func TestValidateForm(t *testing.T) {
 		{
 			name: "no_input_reason",
 			detail: FormDetails{
-				Category: categories[0],
+				Category: cats[0],
 				Reason:   "",
 				TTL:      ttls[1],
 			},
@@ -289,7 +292,7 @@ func TestValidateForm(t *testing.T) {
 		{
 			name: "no_input_ttl",
 			detail: FormDetails{
-				Category: categories[0],
+				Category: cats[0],
 				Reason:   "reason",
 				TTL:      "",
 			},
