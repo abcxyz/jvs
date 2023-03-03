@@ -21,7 +21,7 @@ import (
 	"net/url"
 	"testing"
 
-	envstest "github.com/abcxyz/jvs/internal/envtest"
+	"github.com/abcxyz/jvs/internal/envtest"
 	"github.com/abcxyz/pkg/testutil"
 	"github.com/google/go-cmp/cmp"
 )
@@ -84,10 +84,10 @@ func TestHandlePopup(t *testing.T) {
 			t.Parallel()
 
 			ctx := ctx
-			harness := envstest.NewServerConfig(t, "9091", tc.allowlist, true)
+			harness := envtest.NewServerConfig(t, "9091", tc.allowlist, true)
 			c := New(harness.Renderer, harness.Processor, tc.allowlist)
 
-			w, r := envstest.BuildFormRequest(ctx, t, tc.method, tc.path,
+			w, r := envtest.BuildFormRequest(ctx, t, tc.method, tc.path,
 				&tc.queryParam,
 			)
 
@@ -95,7 +95,7 @@ func TestHandlePopup(t *testing.T) {
 			handler.ServeHTTP(w, r)
 
 			if got, want := w.Code, tc.wantResCode; got != want {
-				t.Errorf("expected %d to be %d", got, want)
+				t.Errorf("expected %d to be %d:\n\n%s", got, want, w.Body.String())
 			}
 		})
 	}
