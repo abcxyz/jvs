@@ -96,6 +96,28 @@ builds:
       - 'amd64'
       - 'arm64'
 
+  -
+    id: ui
+    main: ./cmd/ui
+    binary: ui
+    mod_timestamp: '{{ .CommitTimestamp }}'
+    flags:
+      - '-a'
+      - '-trimpath'
+    ldflags:
+      - '-s'
+      - '-w'
+      - '-X={{ .ModulePath }}/internal/version.Name=ui'
+      - '-X={{ .ModulePath }}/internal/version.Version={{ .Version }}'
+      - '-X={{ .ModulePath }}/internal/version.Commit={{ .Commit }}'
+      - '-extldflags=-static'
+    goos:
+      - 'darwin'
+      - 'linux'
+      - 'windows'
+    goarch:
+      - 'amd64'
+      - 'arm64'      
 
 dockers:
   -
@@ -221,6 +243,46 @@ dockers:
       - '--label=org.opencontainers.image.title=jvs-public-key'
       - '--label=org.opencontainers.image.version={{ .Version }}'
 
+  -
+    ids:
+    - ui
+    use: 'buildx'
+    goos: 'linux'
+    goarch: 'amd64'
+    image_templates:
+      - '{{ .Env.REGISTRY }}/jvs-ui:{{ .Version }}-amd64'
+    build_flag_templates:
+      - '--build-arg=APP=ui'
+      - '--platform=linux/amd64'
+      - '--pull'
+      - '--label=org.opencontainers.image.created={{ .CommitTimestamp }}'
+      - '--label=org.opencontainers.image.description=JVS UI is a web interface alternative that issues tokens.'
+      - '--label=org.opencontainers.image.licenses=Apache-2.0'
+      - '--label=org.opencontainers.image.name=jvs-ui'
+      - '--label=org.opencontainers.image.revision={{ .FullCommit }}'
+      - '--label=org.opencontainers.image.source={{ .GitURL }}'
+      - '--label=org.opencontainers.image.title=jvs-ui'
+      - '--label=org.opencontainers.image.version={{ .Version }}'
+  -
+    ids:
+    - ui
+    use: 'buildx'
+    goos: 'linux'
+    goarch: 'arm64'
+    image_templates:
+      - '{{ .Env.REGISTRY }}/jvs-ui:{{ .Version }}-arm64'
+    build_flag_templates:
+      - '--build-arg=APP=ui'
+      - '--platform=linux/arm64'
+      - '--pull'
+      - '--label=org.opencontainers.image.created={{ .CommitTimestamp }}'
+      - '--label=org.opencontainers.image.description=JVS UI is a web interface alternative that issues tokens.'
+      - '--label=org.opencontainers.image.licenses=Apache-2.0'
+      - '--label=org.opencontainers.image.name=jvs-ui'
+      - '--label=org.opencontainers.image.revision={{ .FullCommit }}'
+      - '--label=org.opencontainers.image.source={{ .GitURL }}'
+      - '--label=org.opencontainers.image.title=jvs-ui'
+      - '--label=org.opencontainers.image.version={{ .Version }}'
 
 docker_manifests:
   -
@@ -238,6 +300,11 @@ docker_manifests:
     image_templates:
       - '{{ .Env.REGISTRY }}/jvs-public-key:{{ .Version }}-amd64'
       - '{{ .Env.REGISTRY }}/jvs-public-key:{{ .Version }}-arm64'
+  -
+    name_template: '{{ .Env.REGISTRY }}/jvs-ui:{{ .Version }}'
+    image_templates:
+      - '{{ .Env.REGISTRY }}/jvs-ui:{{ .Version }}-amd64'
+      - '{{ .Env.REGISTRY }}/jvs-ui:{{ .Version }}-arm64'
 
 
 # TODO(#144): Follow up on sign.
