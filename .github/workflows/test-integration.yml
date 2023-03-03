@@ -14,6 +14,10 @@ concurrency:
   group: '${{ github.workflow }}-${{ github.head_ref || github.ref }}-test-integration'
   cancel-in-progress: true
 
+env:
+  WIF_PROVIDER: 'projects/1096923323432/locations/global/workloadIdentityPools/github-pool-fd98/providers/github-provider'
+  WIF_SERVICE_ACCOUNT: 'jvs-fd98-ci-sa@jvs-ci-test.iam.gserviceaccount.com'
+
 jobs:
   integration:
     env:
@@ -49,8 +53,8 @@ jobs:
         name: 'Authenticate to Google Cloud'
         uses: 'google-github-actions/auth@ceee102ec2387dd9e844e01b530ccd4ec87ce955' # ratchet:google-github-actions/auth@v0
         with:
-          workload_identity_provider: 'projects/${{ env.PROJECT_NUMBER }}/locations/global/workloadIdentityPools/github-pool/providers/github-provider'
-          service_account: 'gh-access-sa@${{ env.PROJECT_ID }}.iam.gserviceaccount.com'
+          workload_identity_provider: '${{ env.WIF_PROVIDER }}'
+          service_account: '${{ env.WIF_SERVICE_ACCOUNT }}'
 
       - name: 'Run integration tests'
         env:
