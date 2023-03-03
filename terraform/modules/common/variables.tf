@@ -17,38 +17,38 @@ variable "project_id" {
   type        = string
 }
 
-variable "keyring_name" {
+variable "kms_keyring_name" {
   description = "Keyring name."
   type        = string
   default     = "jvs-keyring"
 }
 
-variable "key_location" {
+variable "kms_key_location" {
   description = "The location where kms key will be created."
   type        = string
   default     = "global"
 }
 
-variable "jvs_api_service_name" {
+variable "jvs_api_service_account_name" {
   description = "Name for JVS API service."
   type        = string
   default     = "jvs-api"
 }
 
-variable "jvs_ui_service_name" {
+variable "jvs_ui_service_account_name" {
   description = "Name for JVS UI service."
   type        = string
   default     = "jvs-ui"
 }
 
-variable "jvs_cert_rotator_service_name" {
+variable "jvs_cert_rotator_service_account_name" {
   description = "Name for JVS cert rotator service."
   type        = string
   default     = "jvs-cert-rotator"
 }
 
 
-variable "jvs_public_key_service_name" {
+variable "jvs_public_key_service_account_name" {
   description = "Name for JVS public key service."
   type        = string
   default     = "jvs-public-key"

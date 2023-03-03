@@ -17,11 +17,10 @@ module "api_cloud_run" {
 
   project_id            = var.project_id
   region                = var.region
-  name                  = var.jvs_api_service_name
+  name                  = "jvs-api"
   image                 = var.jvs_api_service_image
   ingress               = var.service_ingress
   service_account_email = var.jvs_api_service_account
-  service_iam           = var.jvs_api_service_iam
   envvars = {
     "KEY" : google_kms_crypto_key.signing_key.id,
   }

@@ -59,7 +59,7 @@ output "jvs_public_key_service_account_email" {
   value       = module.jvs_common.jvs_public_key_service_account_email
 }
 
-output "keyring_id" {
+output "kms_keyring_id" {
   description = "KMS keyring for JVS."
-  value       = module.jvs_common.keyring_id
+  value       = module.jvs_common.kms_keyring_id
 }

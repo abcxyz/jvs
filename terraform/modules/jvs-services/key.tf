@@ -13,8 +13,8 @@
 # limitations under the License.
 
 resource "google_kms_crypto_key" "signing_key" {
-  name     = var.key_name
-  key_ring = var.keyring_id
+  name     = var.kms_key_name
+  key_ring = var.kms_keyring_id
   purpose  = "ASYMMETRIC_SIGN"
 
   version_template {

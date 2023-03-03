@@ -32,6 +32,6 @@ output "jvs_public_key_service_account_email" {
   value       = google_service_account.public_key_acc.email
 }
 
-output "keyring_id" {
+output "kms_keyring_id" {
   value = google_kms_key_ring.keyring.id
 }

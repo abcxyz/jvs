@@ -17,21 +17,14 @@ module "cert_rotator_cloud_run" {
 
   project_id = var.project_id
   region     = var.region
-  name       = var.jvs_cert_rotator_service_name
+  name       = "jvs-cert-rotator"
   image      = var.jvs_cert_rotator_service_image
 
   # Cert rotator is not a user facing service. Ignore the ingress input.
   ingress = "all"
 
   service_account_email = var.jvs_cert_rotator_service_account
-  service_iam           = var.jvs_cert_rotator_service_iam
-  envvars = {
-    "KEY_NAMES" : google_kms_crypto_key.signing_key.id,
-    "KEY_TTL" : var.key_ttl,
-    "GRACE_PERIOD" : var.key_grace_period,
-    "DISABLED_PERIOD" : var.key_disabled_period,
-    "PROPAGATION_DELAY" : var.key_propagation_delay,
-  }
+  envvars               = merge({ "KEY_NAMES" : google_kms_crypto_key.signing_key.id }, var.cert_rotator_envvars)
 }
 
 data "google_compute_default_service_account" "default" {
@@ -40,12 +33,12 @@ data "google_compute_default_service_account" "default" {
 
 resource "google_cloud_scheduler_job" "job" {
   # Don't create scheduler if cadence is zero.
-  count       = var.key_rotation_cadence > 0 ? 1 : 0
+  count       = var.kms_key_rotation_minutes > 0 ? 1 : 0
   name        = "cert-rotation-job"
   project     = var.project_id
   region      = var.region
   description = "Regularly executes the certificate rotator"
-  schedule    = "*/${var.key_rotation_cadence} * * * *"
+  schedule    = "*/${var.kms_key_rotation_minutes} * * * *"
 
   http_target {
     http_method = "POST"

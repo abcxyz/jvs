@@ -15,14 +15,15 @@
  */
 locals {
   github_owner_id = 93787867  # abcxyz
-  github_repo_id  = 479173136 # jvs
+  github_repo_id  = 479173136 # abcxyz/jvs
 }
 
 resource "google_project_service" "services" {
-  project = var.project_id
   for_each = toset([
     "cloudkms.googleapis.com",
   ])
+
+  project            = var.project_id
   service            = each.value
   disable_on_destroy = false
 }
@@ -44,7 +45,7 @@ module "github_ci_infra" {
 }
 
 module "jvs_common" {
-  source       = "../modules/common"
-  project_id   = var.project_id
-  key_location = var.key_location
+  source           = "../modules/common"
+  project_id       = var.project_id
+  kms_key_location = var.kms_key_location
 }

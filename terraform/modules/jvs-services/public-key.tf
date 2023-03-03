@@ -17,13 +17,15 @@ module "public_key_cloud_run" {
 
   project_id            = var.project_id
   region                = var.region
-  name                  = var.jvs_public_key_service_name
+  name                  = "jvs-public-key"
   image                 = var.jvs_public_key_service_image
   ingress               = var.service_ingress
   service_account_email = var.jvs_public_key_service_account
-  service_iam           = var.jvs_public_key_service_iam
-  envvars = {
-    "KEY_NAMES" : google_kms_crypto_key.signing_key.id,
-    "CACHE_TIMEOUT" : var.key_cache_timeout,
+  service_iam = {
+    admins     = []
+    developers = []
+    # Public key service is meant to be public.
+    invokers = ["allUsers"]
   }
+  envvars = merge({ "KEY_NAMES" : google_kms_crypto_key.signing_key.id }, var.public_key_envvars)
 }

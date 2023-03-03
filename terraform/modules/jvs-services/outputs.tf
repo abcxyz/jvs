@@ -31,3 +31,8 @@ output "jvs_public_key_service_url" {
   description = "JVS public key service url."
   value       = module.public_key_cloud_run.url
 }
+
+output "kms_key_id" {
+  description = "KMS key id used for signing."
+  value       = google_kms_crypto_key.signing_key.id
+}
