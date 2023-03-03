@@ -14,48 +14,17 @@
  * limitations under the License.
  */
 locals {
-  github_slug = "abcxyz/jvs"
-}
-
-resource "google_project_service" "serviceusage" {
-  project            = var.project_id
-  service            = "serviceusage.googleapis.com"
-  disable_on_destroy = false
+  github_owner_id = 93787867  # abcxyz
+  github_repo_id  = 479173136 # jvs
 }
 
 resource "google_project_service" "services" {
   project = var.project_id
   for_each = toset([
-    "cloudresourcemanager.googleapis.com",
-    "iamcredentials.googleapis.com",
-    "artifactregistry.googleapis.com",
     "cloudkms.googleapis.com",
   ])
   service            = each.value
   disable_on_destroy = false
-
-  depends_on = [
-    google_project_service.serviceusage,
-  ]
-}
-
-resource "google_artifact_registry_repository" "image_registry" {
-  provider = google-beta
-
-  location      = var.artifact_registry_location
-  project       = var.project_id
-  repository_id = "docker-images"
-  description   = "Container Registry for the images."
-  format        = "DOCKER"
-  depends_on = [
-    google_project_service.services["artifactregistry.googleapis.com"],
-  ]
-}
-
-resource "google_service_account" "gh-access-acc" {
-  project      = var.project_id
-  account_id   = "gh-access-sa"
-  display_name = "GitHub Access Account"
 }
 
 // IAM roles needed to run tests.
@@ -63,26 +32,19 @@ resource "google_project_iam_member" "gh_access_acc_iam" {
   for_each = toset(var.ci_iam_roles)
   project  = var.project_id
   role     = each.key
-  member   = "serviceAccount:${google_service_account.gh-access-acc.email}"
+  member   = module.github_ci_infra.service_account_member
 }
 
-module "workload-identity-federation" {
-  source      = "github.com/abcxyz/pkg//terraform/modules/workload-identity-federation"
-  project_id  = var.project_id
-  github_slug = local.github_slug
+module "github_ci_infra" {
+  source               = "git::https://github.com/abcxyz/terraform-modules.git//modules/github_ci_infra?ref=41836e2b91baa1a7552b41f76fb9a8f261ae7dbe"
+  project_id           = var.project_id
+  name                 = "jvs"
+  github_repository_id = local.github_repo_id
+  github_owner_id      = local.github_owner_id
 }
 
-resource "google_service_account_iam_member" "external_provider_roles" {
-  service_account_id = google_service_account.gh-access-acc.name
-  role               = "roles/iam.workloadIdentityUser"
-  member             = "principalSet://iam.googleapis.com/${module.workload-identity-federation.pool_name}/attribute.repository/${local.github_slug}"
-}
-
-resource "google_kms_key_ring" "keyring" {
-  project  = var.project_id
-  name     = "ci-keyring"
-  location = var.key_location
-  depends_on = [
-    google_project_service.services["cloudkms.googleapis.com"],
-  ]
+module "jvs_common" {
+  source       = "../modules/common"
+  project_id   = var.project_id
+  key_location = var.key_location
 }

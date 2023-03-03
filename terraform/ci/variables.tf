@@ -25,14 +25,16 @@ variable "key_location" {
   description = "The location where kms key will be created."
 }
 
-variable "artifact_registry_location" {
-  type        = string
-  default     = "us"
-  description = "The artifact registry location."
-}
-
 variable "ci_iam_roles" {
-  type        = list(string)
-  default     = []
+  type = list(string)
+  default = [
+    # To deploy and invoke cloud run services.
+    "roles/iam.serviceAccountUser",
+    "roles/run.developer",
+
+    # To operate KMS.
+    "roles/cloudkms.admin",
+    "roles/cloudkms.cryptoOperator",
+  ]
   description = "List of IAM roles needed to run integration tests included in CI/CD."
 }
