@@ -11,8 +11,8 @@ on:
   workflow_call:
 
 env:
-  WIF_PROVIDER: 'projects/1096923323432/locations/global/workloadIdentityPools/github-pool/providers/github-provider'
-  WIF_SERVICE_ACCOUNT: 'gh-access-sa@jvs-ci-test.iam.gserviceaccount.com'
+  WIF_PROVIDER: 'projects/1096923323432/locations/global/workloadIdentityPools/github-pool-fd98/providers/github-provider'
+  WIF_SERVICE_ACCOUNT: 'jvs-fd98-ci-sa@jvs-ci-test.iam.gserviceaccount.com'
 
 concurrency:
   group: '${{ github.workflow }}-${{ github.head_ref || github.ref }}-test-unit'
