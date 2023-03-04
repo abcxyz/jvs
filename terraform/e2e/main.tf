@@ -12,18 +12,6 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-locals {
-  ci_iam_roles = [
-    # To deploy and invoke cloud run services.
-    "roles/iam.serviceAccountUser",
-    "roles/run.developer",
-
-    # To operate KMS.
-    "roles/cloudkms.admin",
-    "roles/cloudkms.cryptoOperator",
-  ]
-}
-
 resource "google_project_service" "services" {
   for_each = toset([
     "cloudkms.googleapis.com",
@@ -36,13 +24,6 @@ resource "google_project_service" "services" {
   project            = var.project_id
   service            = each.value
   disable_on_destroy = false
-}
-
-resource "google_project_iam_member" "ci_service_account_iam" {
-  for_each = toset(local.ci_iam_roles)
-  project  = var.project_id
-  role     = each.key
-  member   = var.ci_service_account_member
 }
 
 # TODO(yolocs): This is not ideal because it's on the project level.

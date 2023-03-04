@@ -23,11 +23,6 @@ variable "region" {
   description = "The default Google Cloud region to deploy resources in (defaults to 'us-central1')."
 }
 
-variable "ci_service_account_member" {
-  description = "The CI service account member."
-  type        = string
-}
-
 variable "jvs_invoker_members" {
   description = "The list of members that can call JVS."
   type        = list(string)
