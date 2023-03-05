@@ -23,7 +23,8 @@ import (
 	"github.com/abcxyz/jvs/pkg/config"
 	"github.com/abcxyz/jvs/pkg/controller"
 	"github.com/abcxyz/jvs/pkg/justification"
-	"github.com/abcxyz/jvs/pkg/render"
+	"github.com/abcxyz/pkg/logging"
+	"github.com/abcxyz/pkg/renderer"
 )
 
 // Server holds the parsed html templates.
@@ -34,8 +35,14 @@ type Server struct {
 // NewServer creates a new HTTP server implementation that will handle
 // rendering the JVS form using a controller.
 func NewServer(ctx context.Context, uiCfg *config.UIServiceConfig, p *justification.Processor) (*Server, error) {
+	logger := logging.FromContext(ctx)
+
 	// Create the renderer
-	h, err := render.NewRenderer(ctx, assets.ServerFS(), uiCfg.DevMode)
+	h, err := renderer.New(ctx, assets.ServerFS(),
+		renderer.WithDebug(uiCfg.DevMode),
+		renderer.WithOnError(func(err error) {
+			logger.Errorw("failed to render", "error", err)
+		}))
 	if err != nil {
 		return nil, fmt.Errorf("failed to create renderer: %w", err)
 	}

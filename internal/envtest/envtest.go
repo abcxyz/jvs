@@ -12,7 +12,7 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-package envstest
+package envtest
 
 import (
 	"context"
@@ -29,10 +29,10 @@ import (
 	"github.com/abcxyz/jvs/pkg/config"
 	"github.com/abcxyz/jvs/pkg/justification"
 	"github.com/abcxyz/jvs/pkg/jvscrypto"
-	"github.com/abcxyz/jvs/pkg/render"
 	"github.com/abcxyz/jvs/pkg/testutil"
 	"github.com/abcxyz/pkg/cfgloader"
 	"github.com/abcxyz/pkg/logging"
+	"github.com/abcxyz/pkg/renderer"
 	pkgtestutil "github.com/abcxyz/pkg/testutil"
 	"google.golang.org/api/option"
 	"google.golang.org/grpc"
@@ -41,7 +41,7 @@ import (
 // ServerConfigResponse is the response from creating a server config.
 type ServerConfigResponse struct {
 	Config    *config.UIServiceConfig
-	Renderer  *render.Renderer
+	Renderer  *renderer.Renderer
 	Processor *justification.Processor
 }
 
@@ -72,7 +72,8 @@ func BuildFormRequest(ctx context.Context, tb testing.TB, meth, pth string, v *u
 func NewServerConfig(tb testing.TB, port string, allowlist []string, devMode bool) *ServerConfigResponse {
 	tb.Helper()
 
-	ctx := logging.WithLogger(context.Background(), logging.TestLogger(tb))
+	logger := logging.TestLogger(tb)
+	ctx := logging.WithLogger(context.Background(), logger)
 
 	uiCfg := &config.UIServiceConfig{
 		Port:      port,
@@ -81,7 +82,11 @@ func NewServerConfig(tb testing.TB, port string, allowlist []string, devMode boo
 	}
 
 	// Create the renderer.
-	r, err := render.NewRenderer(ctx, assets.ServerFS(), true)
+	r, err := renderer.New(ctx, assets.ServerFS(),
+		renderer.WithDebug(true),
+		renderer.WithOnError(func(err error) {
+			logger.Error(err)
+		}))
 	if err != nil {
 		tb.Fatal(err)
 	}
