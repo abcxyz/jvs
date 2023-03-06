@@ -232,7 +232,8 @@ func validateLocalIP(originParam string) (bool, error) {
 		return false, fmt.Errorf("unable to resolve IP Address: %w", err)
 	}
 
-	return net.ParseIP(ipAddr.IP.String()).IsLoopback(), nil
+	parsedIP := net.ParseIP(ipAddr.IP.String())
+	return (parsedIP.IsLoopback() || parsedIP.IsPrivate()), nil
 }
 
 func validateForm(formDetails *FormDetails) bool {
