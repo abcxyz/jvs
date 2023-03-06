@@ -163,8 +163,14 @@ func TestValidateOrigin(t *testing.T) {
 		},
 		{
 			name:      "local_origin",
-			origin:    "localhost",
-			allowlist: []string{"*"},
+			origin:    "http://127.0.0.1",
+			allowlist: []string{"example.com"},
+			wantRes:   true,
+		},
+		{
+			name:      "private_origin",
+			origin:    "http://10.0.0.1",
+			allowlist: []string{"example.com"},
 			wantRes:   true,
 		},
 	}
