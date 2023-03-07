@@ -18,6 +18,7 @@ import (
 	"context"
 	"fmt"
 	"net/http"
+	"net/http/httptest"
 	"net/url"
 	"testing"
 
@@ -86,7 +87,13 @@ func TestHandlePopup(t *testing.T) {
 			c := New(harness.Renderer, harness.Processor, tc.allowlist)
 
 			w, r := envtest.BuildFormRequest(ctx, t, tc.method, tc.path,
-				tc.queryParam, tc.headers)
+				tc.queryParam)
+
+			for key, values := range *tc.headers {
+				for _, value := range values {
+					r.Header.Set(key, value)
+				}
+			}
 
 			handler := c.HandlePopup()
 			handler.ServeHTTP(w, r)
@@ -406,7 +413,9 @@ func TestGetEmail(t *testing.T) {
 		t.Run(tc.name, func(t *testing.T) {
 			t.Parallel()
 
-			gotRes, err := getEmail(tc.email)
+			r := httptest.NewRequest(http.MethodGet, "/popup", nil)
+			r.Header.Set(iapHeaderName, tc.email)
+			gotRes, err := getEmail(r)
 			if diff := testutil.DiffErrString(err, tc.wantErr); diff != "" {
 				t.Errorf("Unexpected err: %s", diff)
 			}

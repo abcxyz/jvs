@@ -84,7 +84,7 @@ type ErrorDetails struct {
 	Message     string
 }
 
-var iapHeaderName = "x-goog-authenticated-user-email"
+const iapHeaderName = "x-goog-authenticated-user-email"
 
 func New(h *renderer.Renderer, p *justification.Processor, allowlist []string) *Controller {
 	return &Controller{
@@ -269,7 +269,7 @@ func isValidOneOf(selection string, options []string) bool {
 }
 
 func getFormDetails(r *http.Request) (*FormDetails, error) {
-	email, err := getEmail(r.Header.Get(iapHeaderName))
+	email, err := getEmail(r)
 	if err != nil {
 		return nil, err
 	}
@@ -313,14 +313,16 @@ func (c *Controller) renderBadRequest(w http.ResponseWriter, m string) {
 	})
 }
 
-func getEmail(iapEmailValue string) (string, error) {
+func getEmail(r *http.Request) (string, error) {
+	iapEmailValue := r.Header.Get(iapHeaderName)
+
 	if iapEmailValue == "" {
 		return "", fmt.Errorf("email header is not valid")
 	}
 
 	split := strings.Split(iapEmailValue, ":")
 	if len(split) != 2 {
-		return "", fmt.Errorf("email value has unexpected format")
+		return "", fmt.Errorf("email value has unexpected format, expected %s:<email>", iapHeaderName)
 	}
 
 	return split[1], nil

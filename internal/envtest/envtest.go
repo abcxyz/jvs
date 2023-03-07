@@ -48,7 +48,7 @@ type ServerConfigResponse struct {
 // BuildFormRequest builds an http request and http response recorder for the
 // given form values (expressed as url.Values). It sets the proper headers and
 // response types to post as a form and expect HTML in return.
-func BuildFormRequest(ctx context.Context, tb testing.TB, meth, pth string, v *url.Values, customHeaders *http.Header) (*httptest.ResponseRecorder, *http.Request) {
+func BuildFormRequest(ctx context.Context, tb testing.TB, meth, pth string, v *url.Values) (*httptest.ResponseRecorder, *http.Request) {
 	tb.Helper()
 
 	var body io.Reader
@@ -65,13 +65,6 @@ func BuildFormRequest(ctx context.Context, tb testing.TB, meth, pth string, v *u
 	req.Header.Set("Accept", "text/html")
 	req.Header.Set("Content-Type", "application/x-www-form-urlencoded")
 	req.Header.Set("Referer", "/back")
-
-	// add customer headers if provided
-	for key, values := range *customHeaders {
-		for _, value := range values {
-			req.Header.Set(key, value)
-		}
-	}
 
 	return httptest.NewRecorder(), req
 }
