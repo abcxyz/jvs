@@ -122,7 +122,8 @@ jobs:
     - name: 'Deploy Cloud Run services'
       run: |-
         # Image tags are without 'v' prefix.
-        DOCKER_TAG=$(echo '${{ github.ref_name }}' | cut -c 2-)
+        DOCKER_TAG="${{ github.ref_name }}"
+        DOCKER_TAG=${DOCKER_TAG#v}"
 
         gcloud run services update ${{ env.DEV_API_SERVICE_NAME }} \
           --project="${{ env.DEV_PROJECT_ID }}" \
