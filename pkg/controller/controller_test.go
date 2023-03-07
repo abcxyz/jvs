@@ -18,6 +18,7 @@ import (
 	"context"
 	"fmt"
 	"net/http"
+	"net/http/httptest"
 	"net/url"
 	"testing"
 
@@ -41,37 +42,35 @@ func TestHandlePopup(t *testing.T) {
 		name        string
 		method      string
 		path        string
-		queryParam  url.Values
+		headers     http.Header
+		queryParam  *url.Values
 		allowlist   []string
 		wantResCode int
 	}{
 		{
-			name:   "success_get",
-			method: http.MethodGet,
-			path:   "/popup",
-			queryParam: url.Values{
-				"origin": {"https://localhost:3000"},
-			},
+			name:        "success_get",
+			method:      http.MethodGet,
+			path:        "/popup",
+			headers:     http.Header{iapHeaderName: []string{"acccounts.google.com:test@email.com"}},
+			queryParam:  &url.Values{"origin": {"https://localhost:3000"}},
 			allowlist:   []string{"*"},
 			wantResCode: http.StatusOK,
 		},
 		{
-			name:   "success_post",
-			method: http.MethodPost,
-			path:   "/popup",
-			queryParam: url.Values{
-				"origin": {"https://localhost:3000"},
-			},
+			name:        "success_post",
+			method:      http.MethodPost,
+			path:        "/popup",
+			headers:     http.Header{iapHeaderName: []string{"acccounts.google.com:test@email.com"}},
+			queryParam:  &url.Values{"origin": {"https://localhost:3000"}},
 			allowlist:   []string{"*"},
 			wantResCode: http.StatusOK,
 		},
 		{
-			name:   "invalid_query_param_attribute",
-			method: http.MethodPost,
-			path:   "/popup",
-			queryParam: url.Values{
-				"foo": {"bar"},
-			},
+			name:        "invalid_query_param_attribute",
+			method:      http.MethodPost,
+			path:        "/popup",
+			headers:     http.Header{},
+			queryParam:  &url.Values{"foo": {"bar"}},
 			allowlist:   []string{},
 			wantResCode: http.StatusBadRequest,
 		},
@@ -88,8 +87,13 @@ func TestHandlePopup(t *testing.T) {
 			c := New(harness.Renderer, harness.Processor, tc.allowlist)
 
 			w, r := envtest.BuildFormRequest(ctx, t, tc.method, tc.path,
-				&tc.queryParam,
-			)
+				tc.queryParam)
+
+			for key, values := range tc.headers {
+				for _, value := range values {
+					r.Header.Set(key, value)
+				}
+			}
 
 			handler := c.HandlePopup()
 			handler.ServeHTTP(w, r)
@@ -372,6 +376,51 @@ func TestIsValidOneOf(t *testing.T) {
 			got := isValidOneOf(tc.selection, tc.options)
 			if diff := cmp.Diff(tc.want, got); diff != "" {
 				t.Errorf("Failed validating (-want,+got):\n%s", diff)
+			}
+		})
+	}
+}
+
+func TestGetEmail(t *testing.T) {
+	t.Parallel()
+
+	cases := []struct {
+		name    string
+		email   string
+		wantRes string
+		wantErr string
+	}{
+		{
+			name:    "empty_email",
+			email:   "",
+			wantErr: "email header is not present",
+		},
+		{
+			name:    "incorrect_format_email",
+			email:   "iap-prefix/test@email.com",
+			wantErr: "email value has unexpected format",
+		},
+		{
+			name:    "happy_path1",
+			email:   iapHeaderName + ":test@email.com",
+			wantRes: "test@email.com",
+		},
+	}
+
+	for _, tc := range cases {
+		tc := tc
+
+		t.Run(tc.name, func(t *testing.T) {
+			t.Parallel()
+
+			r := httptest.NewRequest(http.MethodGet, "/popup", nil)
+			r.Header.Set(iapHeaderName, tc.email)
+			gotRes, err := getEmail(r)
+			if diff := testutil.DiffErrString(err, tc.wantErr); diff != "" {
+				t.Errorf("Unexpected err: %s", diff)
+			}
+			if got, want := gotRes, tc.wantRes; got != want {
+				t.Errorf("email got=%s want=%s", got, want)
 			}
 		})
 	}
