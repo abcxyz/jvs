@@ -317,7 +317,7 @@ func getEmail(r *http.Request) (string, error) {
 	iapEmailValue := r.Header.Get(iapHeaderName)
 
 	if iapEmailValue == "" {
-		return "", fmt.Errorf("email header is not valid")
+		return "", fmt.Errorf("email header is not present")
 	}
 
 	split := strings.Split(iapEmailValue, ":")

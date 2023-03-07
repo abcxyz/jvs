@@ -419,8 +419,8 @@ func TestGetEmail(t *testing.T) {
 			if diff := testutil.DiffErrString(err, tc.wantErr); diff != "" {
 				t.Errorf("Unexpected err: %s", diff)
 			}
-			if gotRes != tc.wantRes {
-				t.Errorf("email got=%s want=%s", gotRes, tc.wantRes)
+			if got, want := gotRes, tc.wantRes; got != want {
+				t.Errorf("email got=%s want=%s", got, want)
 			}
 		})
 	}
