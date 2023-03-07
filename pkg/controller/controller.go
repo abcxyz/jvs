@@ -84,6 +84,8 @@ type ErrorDetails struct {
 	Message     string
 }
 
+const iapHeaderName = "x-goog-authenticated-user-email"
+
 func New(h *renderer.Renderer, p *justification.Processor, allowlist []string) *Controller {
 	return &Controller{
 		h:         h,
@@ -107,7 +109,11 @@ func (c *Controller) HandlePopup() http.Handler {
 
 // handlePopupGet handles the initial page load.
 func (c *Controller) handlePopupGet(w http.ResponseWriter, r *http.Request) {
-	formDetails := getFormDetails(r)
+	formDetails, err := getFormDetails(r)
+	if err != nil {
+		c.renderBadRequest(w, err.Error())
+		return
+	}
 
 	// set some defaults for the form
 	formDetails.Category = categories()[0]
@@ -118,7 +124,11 @@ func (c *Controller) handlePopupGet(w http.ResponseWriter, r *http.Request) {
 
 // handlePopupPost handles form submission.
 func (c *Controller) handlePopupPost(w http.ResponseWriter, r *http.Request) {
-	formDetails := getFormDetails(r)
+	formDetails, err := getFormDetails(r)
+	if err != nil {
+		c.renderBadRequest(w, err.Error())
+		return
+	}
 
 	// 1. Check if the origin is part of the allowlist
 	origin := r.FormValue("origin")
@@ -258,13 +268,18 @@ func isValidOneOf(selection string, options []string) bool {
 	return slices.Contains(options, selection)
 }
 
-func getFormDetails(r *http.Request) *FormDetails {
+func getFormDetails(r *http.Request) (*FormDetails, error) {
+	email, err := getEmail(r)
+	if err != nil {
+		return nil, err
+	}
+
 	return &FormDetails{
 		WindowName:  r.FormValue("windowname"),
 		Origin:      r.FormValue("origin"),
 		Category:    r.FormValue("category"),
 		Reason:      r.FormValue("reason"),
-		UserEmail:   r.Header.Get("x-goog-authenticated-user-email"),
+		UserEmail:   email,
 		TTL:         r.FormValue("ttl"),
 		PageTitle:   "JVS - Justification Request System",
 		Description: "Justification Verification System form used for minting tokens.",
@@ -285,7 +300,7 @@ func getFormDetails(r *http.Request) *FormDetails {
 			},
 			TTLs: ttls(),
 		},
-	}
+	}, nil
 }
 
 // Renders a bad request page with a custom message.
@@ -296,6 +311,21 @@ func (c *Controller) renderBadRequest(w http.ResponseWriter, m string) {
 		Description: t,
 		Message:     m,
 	})
+}
+
+func getEmail(r *http.Request) (string, error) {
+	iapEmailValue := r.Header.Get(iapHeaderName)
+
+	if iapEmailValue == "" {
+		return "", fmt.Errorf("email header is not present")
+	}
+
+	split := strings.Split(iapEmailValue, ":")
+	if len(split) != 2 {
+		return "", fmt.Errorf("email value has unexpected format, expected %s:<email>", iapHeaderName)
+	}
+
+	return split[1], nil
 }
 
 func ttls() []string {

@@ -60,9 +60,12 @@ func BuildFormRequest(ctx context.Context, tb testing.TB, meth, pth string, v *u
 	if err != nil {
 		tb.Fatalf("failed to create request: %v", err)
 	}
+
+	// default headers
 	req.Header.Set("Accept", "text/html")
 	req.Header.Set("Content-Type", "application/x-www-form-urlencoded")
 	req.Header.Set("Referer", "/back")
+
 	return httptest.NewRecorder(), req
 }
 
