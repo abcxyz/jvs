@@ -26,14 +26,14 @@ import (
 	jvspb "github.com/abcxyz/jvs/apis/v0"
 	"github.com/abcxyz/jvs/internal/project"
 	"github.com/abcxyz/jvs/pkg/justification"
-	"github.com/abcxyz/jvs/pkg/render"
+	"github.com/abcxyz/pkg/renderer"
 	"golang.org/x/exp/slices"
 	"google.golang.org/protobuf/types/known/durationpb"
 )
 
 // Controller manages use of the renderer in the http handler.
 type Controller struct {
-	h         *render.Renderer
+	h         *renderer.Renderer
 	p         *justification.Processor
 	allowlist []string
 }
@@ -84,7 +84,7 @@ type ErrorDetails struct {
 	Message     string
 }
 
-func New(h *render.Renderer, p *justification.Processor, allowlist []string) *Controller {
+func New(h *renderer.Renderer, p *justification.Processor, allowlist []string) *Controller {
 	return &Controller{
 		h:         h,
 		p:         p,
@@ -113,7 +113,7 @@ func (c *Controller) handlePopupGet(w http.ResponseWriter, r *http.Request) {
 	formDetails.Category = categories()[0]
 	formDetails.TTL = ttls()[0]
 
-	c.h.RenderHTML(w, "popup.html.tmpl", formDetails)
+	c.h.RenderHTML(w, "popup.html", formDetails)
 }
 
 // handlePopupPost handles form submission.
@@ -136,7 +136,7 @@ func (c *Controller) handlePopupPost(w http.ResponseWriter, r *http.Request) {
 
 	// 2. Validate input
 	if !validateForm(formDetails) {
-		c.h.RenderHTML(w, "popup.html.tmpl", formDetails)
+		c.h.RenderHTML(w, "popup.html", formDetails)
 		return
 	}
 
@@ -171,7 +171,7 @@ func (c *Controller) handlePopupPost(w http.ResponseWriter, r *http.Request) {
 		Origin:      formDetails.Origin,
 		WindowName:  formDetails.WindowName,
 	}
-	c.h.RenderHTML(w, "success.html.tmpl", successDetails)
+	c.h.RenderHTML(w, "success.html", successDetails)
 }
 
 // Checks the origin parameter against all entries in the allow list.
@@ -232,7 +232,8 @@ func validateLocalIP(originParam string) (bool, error) {
 		return false, fmt.Errorf("unable to resolve IP Address: %w", err)
 	}
 
-	return net.ParseIP(ipAddr.IP.String()).IsLoopback(), nil
+	parsedIP := net.ParseIP(ipAddr.IP.String())
+	return (parsedIP.IsLoopback() || parsedIP.IsPrivate()), nil
 }
 
 func validateForm(formDetails *FormDetails) bool {
@@ -290,7 +291,7 @@ func getFormDetails(r *http.Request) *FormDetails {
 // Renders a bad request page with a custom message.
 func (c *Controller) renderBadRequest(w http.ResponseWriter, m string) {
 	t := http.StatusText(http.StatusBadRequest)
-	c.h.RenderHTMLStatus(w, http.StatusBadRequest, "400.html.tmpl", &ErrorDetails{
+	c.h.RenderHTMLStatus(w, http.StatusBadRequest, "400.html", &ErrorDetails{
 		PageTitle:   t,
 		Description: t,
 		Message:     m,
