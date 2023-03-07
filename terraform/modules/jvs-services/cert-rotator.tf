@@ -12,6 +12,12 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+resource "google_project_service" "scheduler_api" {
+  project            = var.project_id
+  service            = "cloudscheduler.googleapis.com"
+  disable_on_destroy = false
+}
+
 module "cert_rotator_cloud_run" {
   source = "git::https://github.com/abcxyz/terraform-modules.git//modules/cloud_run?ref=5445543e21491176528fb5cd7adcb505d9dec5dd"
 
@@ -49,4 +55,8 @@ resource "google_cloud_scheduler_job" "job" {
       service_account_email = data.google_compute_default_service_account.default.email
     }
   }
+
+  depends_on = [
+    google_project_service.scheduler_api,
+  ]
 }
