@@ -42,7 +42,7 @@ func TestHandlePopup(t *testing.T) {
 		name        string
 		method      string
 		path        string
-		headers     *http.Header
+		headers     http.Header
 		queryParam  *url.Values
 		allowlist   []string
 		wantResCode int
@@ -51,7 +51,7 @@ func TestHandlePopup(t *testing.T) {
 			name:        "success_get",
 			method:      http.MethodGet,
 			path:        "/popup",
-			headers:     &http.Header{iapHeaderName: []string{"acccounts.google.com:test@email.com"}},
+			headers:     http.Header{iapHeaderName: []string{"acccounts.google.com:test@email.com"}},
 			queryParam:  &url.Values{"origin": {"https://localhost:3000"}},
 			allowlist:   []string{"*"},
 			wantResCode: http.StatusOK,
@@ -60,7 +60,7 @@ func TestHandlePopup(t *testing.T) {
 			name:        "success_post",
 			method:      http.MethodPost,
 			path:        "/popup",
-			headers:     &http.Header{iapHeaderName: []string{"acccounts.google.com:test@email.com"}},
+			headers:     http.Header{iapHeaderName: []string{"acccounts.google.com:test@email.com"}},
 			queryParam:  &url.Values{"origin": {"https://localhost:3000"}},
 			allowlist:   []string{"*"},
 			wantResCode: http.StatusOK,
@@ -69,7 +69,7 @@ func TestHandlePopup(t *testing.T) {
 			name:        "invalid_query_param_attribute",
 			method:      http.MethodPost,
 			path:        "/popup",
-			headers:     &http.Header{},
+			headers:     http.Header{},
 			queryParam:  &url.Values{"foo": {"bar"}},
 			allowlist:   []string{},
 			wantResCode: http.StatusBadRequest,
@@ -89,7 +89,7 @@ func TestHandlePopup(t *testing.T) {
 			w, r := envtest.BuildFormRequest(ctx, t, tc.method, tc.path,
 				tc.queryParam)
 
-			for key, values := range *tc.headers {
+			for key, values := range tc.headers {
 				for _, value := range values {
 					r.Header.Set(key, value)
 				}
@@ -419,8 +419,8 @@ func TestGetEmail(t *testing.T) {
 			if diff := testutil.DiffErrString(err, tc.wantErr); diff != "" {
 				t.Errorf("Unexpected err: %s", diff)
 			}
-			if diff := cmp.Diff(tc.wantRes, gotRes); diff != "" {
-				t.Errorf("Failed validating (-want,+got):\n%s", diff)
+			if gotRes != tc.wantRes {
+				t.Errorf("email got=%s want=%s", gotRes, tc.wantRes)
 			}
 		})
 	}
