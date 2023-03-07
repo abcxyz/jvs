@@ -393,7 +393,7 @@ func TestGetEmail(t *testing.T) {
 		{
 			name:    "empty_email",
 			email:   "",
-			wantErr: "email header is not valid",
+			wantErr: "email header is not present",
 		},
 		{
 			name:    "incorrect_format_email",
