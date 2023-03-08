@@ -15,7 +15,9 @@
 package v0
 
 import (
+	context "context"
 	"testing"
+	"time"
 
 	"github.com/abcxyz/pkg/testutil"
 	"github.com/google/go-cmp/cmp"
@@ -26,6 +28,8 @@ import (
 
 func TestCreateBreakglassToken(t *testing.T) {
 	t.Parallel()
+
+	ctx := context.Background()
 
 	cases := []struct {
 		name  string
@@ -58,8 +62,12 @@ func TestCreateBreakglassToken(t *testing.T) {
 			}
 
 			// Parse the token and verify the justifications.
-			parsed, err := jwt.ParseString(tokenStr,
-				jwt.WithKey(jwa.HS256, []byte(BreakglassHMACSecret)))
+			parsed, err := jwt.Parse([]byte(tokenStr),
+				jwt.WithContext(ctx),
+				jwt.WithKey(jwa.HS256, []byte(BreakglassHMACSecret)),
+				jwt.WithAcceptableSkew(5*time.Second),
+				WithTypedJustifications(),
+			)
 			if err != nil {
 				t.Fatal(err)
 			}
@@ -85,6 +93,8 @@ func TestCreateBreakglassToken(t *testing.T) {
 
 func TestParseBreakglassToken(t *testing.T) {
 	t.Parallel()
+
+	ctx := context.Background()
 
 	breakglassToken := testTokenBuilder(t, jwt.NewBuilder())
 	if err := SetJustifications(breakglassToken, []*Justification{
@@ -134,7 +144,7 @@ func TestParseBreakglassToken(t *testing.T) {
 		t.Run(tc.name, func(t *testing.T) {
 			t.Parallel()
 
-			_, err := ParseBreakglassToken(tc.tokenStr)
+			_, err := ParseBreakglassToken(ctx, tc.tokenStr)
 			if diff := testutil.DiffErrString(err, tc.err); diff != "" {
 				t.Errorf("Unexpected err: %s", diff)
 			}

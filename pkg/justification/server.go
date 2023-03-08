@@ -18,6 +18,7 @@ import (
 	"context"
 	"fmt"
 	"strings"
+	"time"
 
 	"github.com/lestrrat-go/jwx/v2/jwt"
 	grpcmetadata "google.golang.org/grpc/metadata"
@@ -85,7 +86,9 @@ func extractRequestorFromIncomingContext(ctx context.Context) (string, error) {
 	// We intentionally do not validate or verify the token since the upstream
 	// authentication should have taken care of it. In the case of Cloud Run, the
 	// signature is stripped, so we can't even verify if we wanted.
-	t, err := jwt.ParseInsecure([]byte(raw))
+	t, err := jwt.ParseInsecure([]byte(raw),
+		jwt.WithAcceptableSkew(5*time.Second),
+	)
 	if err != nil {
 		return "", fmt.Errorf("failed to parse incoming jwt: %w", err)
 	}

@@ -285,8 +285,11 @@ func TestCreateToken(t *testing.T) {
 
 			// Parse as a JWT.
 			token, err := jwt.Parse(response,
+				jwt.WithContext(ctx),
 				jwt.WithKey(jwa.ES256, privateKey.Public()),
-				jvspb.WithTypedJustifications())
+				jwt.WithAcceptableSkew(5*time.Second),
+				jvspb.WithTypedJustifications(),
+			)
 			if err != nil {
 				t.Fatal(err)
 			}

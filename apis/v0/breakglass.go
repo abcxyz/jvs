@@ -15,7 +15,9 @@
 package v0
 
 import (
+	context "context"
 	"fmt"
+	"time"
 
 	"github.com/lestrrat-go/jwx/v2/jwa"
 	"github.com/lestrrat-go/jwx/v2/jws"
@@ -61,8 +63,8 @@ func CreateBreakglassToken(token jwt.Token, explanation string) (string, error) 
 // It then inspects the justifications to ensure that one of them is a
 // "breakglass" justification. If successful, it returns the parsed token and
 // the extracted explanation for breakglass.
-func ParseBreakglassToken(tokenStr string) (jwt.Token, error) {
-	message, err := jws.ParseString(tokenStr)
+func ParseBreakglassToken(ctx context.Context, tokenStr string) (jwt.Token, error) {
+	message, err := jws.Parse([]byte(tokenStr))
 	if err != nil {
 		return nil, fmt.Errorf("failed to parse token headers: %w", err)
 	}
@@ -80,9 +82,12 @@ func ParseBreakglassToken(tokenStr string) (jwt.Token, error) {
 		return nil, nil
 	}
 
-	token, err := jwt.ParseString(tokenStr,
+	token, err := jwt.Parse([]byte(tokenStr),
+		jwt.WithContext(ctx),
+		jwt.WithKey(jwa.HS256, []byte(BreakglassHMACSecret)),
+		jwt.WithAcceptableSkew(5*time.Second),
 		WithTypedJustifications(),
-		jwt.WithKey(jwa.HS256, []byte(BreakglassHMACSecret)))
+	)
 	if err != nil {
 		return nil, fmt.Errorf("failed to parse breakglass jwt: %w", err)
 	}

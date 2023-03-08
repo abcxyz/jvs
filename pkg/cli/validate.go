@@ -140,7 +140,7 @@ func runValidateCmd(cmd *cobra.Command, opts *validateCmdOptions, args []string)
 
 	// Validate token
 	breakglass := false
-	token, err := jvspb.ParseBreakglassToken(opts.token)
+	token, err := jvspb.ParseBreakglassToken(ctx, opts.token)
 	if err != nil {
 		return fmt.Errorf("failed to parse breakglass token: %w", err)
 	}
