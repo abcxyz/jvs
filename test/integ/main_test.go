@@ -241,7 +241,7 @@ func TestJVS(t *testing.T) {
 			}
 
 			// Validate message headers - we have to parse the full envelope for this.
-			message, err := jws.ParseString(resp.Token)
+			message, err := jws.Parse([]byte(resp.Token))
 			if err != nil {
 				t.Fatal(err)
 			}
@@ -262,9 +262,12 @@ func TestJVS(t *testing.T) {
 			}
 
 			// Parse as a JWT.
-			token, err := jwt.ParseString(resp.Token,
+			token, err := jwt.Parse([]byte(resp.Token),
+				jwt.WithContext(ctx),
 				jwt.WithKeySet(keySet, jws.WithInferAlgorithmFromKey(true)),
-				jvspb.WithTypedJustifications())
+				jwt.WithAcceptableSkew(5*time.Second),
+				jvspb.WithTypedJustifications(),
+			)
 			if err != nil {
 				t.Fatal(err)
 			}

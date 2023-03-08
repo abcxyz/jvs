@@ -99,11 +99,14 @@ func TestIDTokenFromDefaultTokenSource(t *testing.T) {
 // Set env var MANUAL_TEST=true to run the test.
 func TestFromDefaultCredentials(t *testing.T) {
 	t.Parallel()
+
+	ctx := context.Background()
+
 	if os.Getenv("MANUAL_TEST") == "" {
 		t.Skip("Skip manual test; set env var MANUAL_TEST to enable")
 	}
 
-	ts, err := FromDefaultCredentials(context.Background())
+	ts, err := FromDefaultCredentials(ctx)
 	if err != nil {
 		t.Fatalf("failed to get ID token source: %v", err)
 	}
@@ -113,7 +116,10 @@ func TestFromDefaultCredentials(t *testing.T) {
 		t.Fatalf("failed to get ID token: %v", err)
 	}
 
-	if _, err := jwt.Parse([]byte(tk.AccessToken), jwt.WithVerify(false)); err != nil {
+	if _, err := jwt.ParseInsecure([]byte(tk.AccessToken),
+		jwt.WithContext(ctx),
+		jwt.WithAcceptableSkew(5*time.Second),
+	); err != nil {
 		t.Errorf("%q not a valid ID token: %v", tk.AccessToken, err)
 	}
 }

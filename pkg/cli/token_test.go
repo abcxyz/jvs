@@ -36,6 +36,8 @@ import (
 func TestNewTokenCmd(t *testing.T) {
 	t.Parallel()
 
+	ctx := context.Background()
+
 	goodJVS, _ := testutil.FakeGRPCServer(t, func(s *grpc.Server) {
 		jvspb.RegisterJVSServiceServer(s, &fakeJVS{})
 	})
@@ -159,10 +161,11 @@ func TestNewTokenCmd(t *testing.T) {
 			}
 
 			tokenStr := strings.TrimSpace(stdout)
-			token, err := jwt.ParseString(tokenStr,
-				jwt.WithVerify(false),
-				jwt.WithValidate(false),
-				jvspb.WithTypedJustifications())
+			token, err := jwt.ParseInsecure([]byte(tokenStr),
+				jwt.WithContext(ctx),
+				jwt.WithAcceptableSkew(5*time.Second),
+				jvspb.WithTypedJustifications(),
+			)
 			if err != nil {
 				t.Fatal(err)
 			}
