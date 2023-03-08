@@ -15,7 +15,9 @@
 package v0
 
 import (
+	context "context"
 	"testing"
+	"time"
 	"unsafe"
 
 	"github.com/abcxyz/pkg/testutil"
@@ -195,6 +197,8 @@ func TestClearRequestor(t *testing.T) {
 func TestGetJustifications(t *testing.T) {
 	t.Parallel()
 
+	ctx := context.Background()
+
 	cases := []struct {
 		name   string
 		token  jwt.Token
@@ -242,7 +246,11 @@ func TestGetJustifications(t *testing.T) {
 					t.Fatal(err)
 				}
 
-				parsed, err := jwt.Parse(b, jwt.WithVerify(false))
+				parsed, err := jwt.ParseInsecure(b,
+					jwt.WithContext(ctx),
+					jwt.WithAcceptableSkew(5*time.Second),
+					// WithTypedJustifications(), // explicitly do not use typed claims
+				)
 				if err != nil {
 					t.Fatal(err)
 				}

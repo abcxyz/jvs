@@ -18,6 +18,7 @@ package client
 import (
 	"context"
 	"fmt"
+	"time"
 
 	jvspb "github.com/abcxyz/jvs/apis/v0"
 	"github.com/lestrrat-go/jwx/v2/jwk"
@@ -60,7 +61,7 @@ func NewJVSClient(ctx context.Context, config *JVSConfig) (*JVSClient, error) {
 // signature against the keys in the JWKs endpoint.
 func (j *JVSClient) ValidateJWT(ctx context.Context, jwtStr, expectedSubject string) (jwt.Token, error) {
 	// Handle breakglass tokens
-	token, err := jvspb.ParseBreakglassToken(jwtStr)
+	token, err := jvspb.ParseBreakglassToken(ctx, jwtStr)
 	if err != nil {
 		return nil, fmt.Errorf("failed to parse breakglass token: %w", err)
 	}
@@ -72,10 +73,11 @@ func (j *JVSClient) ValidateJWT(ctx context.Context, jwtStr, expectedSubject str
 	}
 
 	// If we got this far, the token was not breakglass, so parse as normal.
-	token, err = jwt.ParseString(jwtStr,
+	token, err = jwt.Parse([]byte(jwtStr),
 		jwt.WithContext(ctx),
-		jvspb.WithTypedJustifications(),
 		jwt.WithKeySet(j.keys, jws.WithInferAlgorithmFromKey(true)),
+		jwt.WithAcceptableSkew(5*time.Second),
+		jvspb.WithTypedJustifications(),
 	)
 	if err != nil {
 		return nil, fmt.Errorf("failed to verify jwt: %w", err)
