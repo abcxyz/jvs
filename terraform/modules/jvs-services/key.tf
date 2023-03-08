@@ -23,5 +23,10 @@ resource "google_kms_crypto_key" "signing_key" {
 
   lifecycle {
     prevent_destroy = false
+    ignore_changes = [
+      # Ignore label changes since JVS uses the label to determine the primary
+      # key.
+      labels["primary"],
+    ]
   }
 }
