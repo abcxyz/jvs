@@ -2,7 +2,7 @@
 
 **JVS is not an official Google product.**
 
-[JVS UI](../cmd/ui) facilitates the justification verification flow using a UI. It is meant to be an alternative to using `jvsctl` which requires integrating a calling application that is non-customer facing.
+[JVS UI](../cmd/ui) facilitates the justification verification flow using a UI. It is meant to be an alternative to using `jvsctl` and requires integrating a calling application that is non-customer facing to trigger the UI.
 
 ## Environment Variables
 
@@ -50,7 +50,7 @@ The next section will address 1 and 2. The [KMS dependency section](#kms-depende
 
 ## Example calling application
 
-1. To interact with your local JVS UI, you must have a calling application trigger the popup. Set up an npm directory and create run a simple express server. Ensure your `package.json` resembles the following snippet (your dependencies may be more up to date).
+1. To interact with your local JVS UI, you must have a calling application trigger the popup. Set up an npm directory and create a simple express server. Ensure your `package.json` resembles the following snippet (your dependencies may be more up to date).
 
 ```json
 {
@@ -127,7 +127,7 @@ app.listen(port, () => {
 </html>
 ```
 
-5. Create a `helper.js` at the root of the project with the following content. This file is holds the logic for building the request and handling the response from JVS.
+5. Create a `helper.js` at the root of the project with the following content. This file holds the logic for building the request and handling the response from JVS.
 ```javascript
 class Helper {
   popupRef;
@@ -161,7 +161,7 @@ class Helper {
     // parse the response data
     const data = JSON.parse(event.data);
 
-    // only trust valid source variable
+    // only trust a valid source variable
     if (data.source !== this.popupName) {
       throw new Error("invalid popup source");
     }
@@ -219,7 +219,7 @@ class Helper {
 
 7. Before you click the button in the UI to trigger the JVS UI popup, you must provide an anticipated header normally provided by IAP. While running locally there is no IAP instance running so you will need to inject a header of the format `x-goog-authenticated-user-email:<your email here>`.
 
-8. With your header set, click the button and you should not see the JVS UI with your email in the form. Provide a reason and submit the form. If you have a KMS instance running then your popup will automatically close and the token will be available in your calling application. If you dont have KMS set up see the next section. 
+8. With your header set, click the button and you should now see the JVS UI with your email in the form. Provide a reason and submit the form. If you have a KMS instance running then your popup will automatically close and the token will be available in your calling application. If you dont have KMS set up see the next section. 
 
 ## KMS dependency
 
