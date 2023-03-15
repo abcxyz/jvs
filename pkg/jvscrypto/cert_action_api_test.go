@@ -304,7 +304,7 @@ func TestCertificateAction(t *testing.T) {
 				KMSClient: c,
 			}
 
-			gotErr := service.certificateAction(ctx, tc.request)
+			_, gotErr := service.CertificateAction(ctx, tc.request)
 
 			if err != nil {
 				t.Fatal(err)
