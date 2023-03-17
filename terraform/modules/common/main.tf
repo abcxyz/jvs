@@ -17,7 +17,8 @@ resource "google_project_service" "services" {
     "cloudkms.googleapis.com",
   ])
 
-  project            = var.project_id
+  project = var.project_id
+
   service            = each.value
   disable_on_destroy = false
 }
@@ -27,7 +28,8 @@ resource "random_id" "default" {
 }
 
 resource "google_kms_key_ring" "keyring" {
-  project  = var.project_id
+  project = var.project_id
+
   name     = "${var.kms_keyring_name}-${random_id.default.hex}"
   location = var.kms_key_location
   depends_on = [
@@ -36,7 +38,8 @@ resource "google_kms_key_ring" "keyring" {
 }
 
 resource "google_service_account" "api_acc" {
-  project      = var.project_id
+  project = var.project_id
+
   account_id   = var.jvs_api_service_account_name
   display_name = "JVS API Service Account"
 }
@@ -53,7 +56,8 @@ resource "google_kms_key_ring_iam_member" "api_acc_roles" {
 }
 
 resource "google_service_account" "ui_acc" {
-  project      = var.project_id
+  project = var.project_id
+
   account_id   = var.jvs_ui_service_account_name
   display_name = "JVS UI Service Account"
 }
@@ -70,7 +74,8 @@ resource "google_kms_key_ring_iam_member" "ui_acc_roles" {
 }
 
 resource "google_service_account" "rotator_acc" {
-  project      = var.project_id
+  project = var.project_id
+
   account_id   = var.jvs_cert_rotator_service_account_name
   display_name = "Rotator Service Account"
 }
@@ -86,7 +91,8 @@ resource "google_kms_key_ring_iam_member" "rotator_acc_roles" {
 }
 
 resource "google_service_account" "public_key_acc" {
-  project      = var.project_id
+  project = var.project_id
+
   account_id   = var.jvs_public_key_service_account_name
   display_name = "Public Key Hosting Service Account"
 }

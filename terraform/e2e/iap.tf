@@ -13,7 +13,8 @@
 # limitations under the License.
 
 resource "google_iap_brand" "project_brand" {
-  project           = var.project_id
+  project = var.project_id
+
   support_email     = var.iap_support_email
   application_title = "JVS UI"
 
@@ -35,8 +36,9 @@ resource "google_iap_web_iam_member" "member" {
   for_each = toset(var.jvs_invoker_members)
 
   project = var.project_id
-  member  = each.key
-  role    = "roles/iap.httpsResourceAccessor"
+
+  member = each.key
+  role   = "roles/iap.httpsResourceAccessor"
 }
 
 # Allow allUsers to invoke the UI. This is safe because the service is behind
@@ -47,8 +49,9 @@ resource "google_iap_web_iam_member" "member" {
 # Cloud Run is GA, we should change this to grant the IAP SA permission to
 # invoke the Cloud Run service.
 resource "google_cloud_run_service_iam_member" "iap_invoker" {
+  project = var.project_id
+
   location = var.region
-  project  = var.project_id
   service  = module.jvs_services.jvs_ui_service_name
   role     = "roles/run.invoker"
   member   = "allUsers"

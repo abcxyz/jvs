@@ -21,7 +21,8 @@ resource "google_project_service" "services" {
     "iap.googleapis.com",
   ])
 
-  project            = var.project_id
+  project = var.project_id
+
   service            = each.value
   disable_on_destroy = false
 }
@@ -31,8 +32,9 @@ resource "google_project_iam_member" "jvs_invoker_iam" {
   for_each = toset(var.jvs_invoker_members)
 
   project = var.project_id
-  role    = "roles/run.invoker"
-  member  = each.key
+
+  role   = "roles/run.invoker"
+  member = each.key
 }
 
 resource "random_id" "default" {
@@ -42,14 +44,16 @@ resource "random_id" "default" {
 module "jvs_common" {
   source = "../modules/common"
 
-  project_id       = var.project_id
+  project_id = var.project_id
+
   kms_key_location = var.kms_key_location
 }
 
 module "jvs_services" {
   source = "../modules/jvs-services"
 
-  project_id      = var.project_id
+  project_id = var.project_id
+
   region          = var.region
   service_ingress = "internal-and-cloud-load-balancing"
 

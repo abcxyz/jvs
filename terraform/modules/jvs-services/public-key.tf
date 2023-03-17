@@ -15,7 +15,8 @@
 module "public_key_cloud_run" {
   source = "git::https://github.com/abcxyz/terraform-modules.git//modules/cloud_run?ref=5445543e21491176528fb5cd7adcb505d9dec5dd"
 
-  project_id            = var.project_id
+  project_id = var.project_id
+
   region                = var.region
   name                  = "jvs-public-key"
   image                 = var.jvs_public_key_service_image

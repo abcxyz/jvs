@@ -16,6 +16,7 @@
 
 resource "google_monitoring_dashboard" "dashboard" {
   project = var.project_id
+
   dashboard_json = templatefile("${path.module}/dashboard.json", {
     jvs_service_name           = var.jvs_service_name
     cert_rotation_service_name = var.cert_rotation_service_name
