@@ -23,7 +23,8 @@ resource "google_project_service" "services" {
     "cloudkms.googleapis.com",
   ])
 
-  project            = var.project_id
+  project = var.project_id
+
   service            = each.value
   disable_on_destroy = false
 }
@@ -31,21 +32,27 @@ resource "google_project_service" "services" {
 // IAM roles needed to run tests.
 resource "google_project_iam_member" "gh_access_acc_iam" {
   for_each = toset(var.ci_iam_roles)
-  project  = var.project_id
-  role     = each.key
-  member   = module.github_ci_infra.service_account_member
+
+  project = var.project_id
+
+  role   = each.key
+  member = module.github_ci_infra.service_account_member
 }
 
 module "github_ci_infra" {
-  source               = "git::https://github.com/abcxyz/terraform-modules.git//modules/github_ci_infra?ref=41836e2b91baa1a7552b41f76fb9a8f261ae7dbe"
-  project_id           = var.project_id
+  source = "git::https://github.com/abcxyz/terraform-modules.git//modules/github_ci_infra?ref=41836e2b91baa1a7552b41f76fb9a8f261ae7dbe"
+
+  project_id = var.project_id
+
   name                 = "jvs"
   github_repository_id = local.github_repo_id
   github_owner_id      = local.github_owner_id
 }
 
 module "jvs_common" {
-  source           = "../modules/common"
-  project_id       = var.project_id
+  source = "../modules/common"
+
+  project_id = var.project_id
+
   kms_key_location = var.kms_key_location
 }
