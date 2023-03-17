@@ -9,10 +9,18 @@ split the two releases into two config files:
 -   `.goreleaser.docker.yaml` for container image release
 -   `.goreleaser.yaml` (default) for SCM (GitHub) release
 
-## Release Workflow
+## New Release
 
-TODO: Once we add the release workflow, document the most common steps to create
-a new release. It should only include pushing a new tag to remote.
+```sh
+# The version you're going to release.
+REL_VER=v0.0.x
+
+# Tag
+git tag -f -a $REL_VER -m $REL_VER
+
+# Push tag. This will trigger the release workflow.
+git push origin $REL_VER
+```
 
 ## Manually Release Images
 
