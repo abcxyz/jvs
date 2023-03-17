@@ -10,8 +10,8 @@ service
 Audit logs are special logs that record **when** and **who** called **which**
 application and accessed **what** data. And **why** the access was necessary
 (aka. the justification of the data access). JVS is a solution to produce
-verified justifications and in combination with
-[abcxyz/lumberjack](https://github.com/abcxyz/lumberjack) the justifications
+verified justifications, and in combination with
+[abcxyz/lumberjack](https://github.com/abcxyz/lumberjack), the justifications
 could be audit logged.
 
 ## Architecture
