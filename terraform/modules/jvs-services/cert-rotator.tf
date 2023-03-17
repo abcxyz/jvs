@@ -13,7 +13,8 @@
 # limitations under the License.
 
 resource "google_project_service" "scheduler_api" {
-  project            = var.project_id
+  project = var.project_id
+
   service            = "cloudscheduler.googleapis.com"
   disable_on_destroy = false
 }
@@ -22,9 +23,10 @@ module "cert_rotator_cloud_run" {
   source = "git::https://github.com/abcxyz/terraform-modules.git//modules/cloud_run?ref=5445543e21491176528fb5cd7adcb505d9dec5dd"
 
   project_id = var.project_id
-  region     = var.region
-  name       = "jvs-cert-rotator"
-  image      = var.jvs_cert_rotator_service_image
+
+  region = var.region
+  name   = "jvs-cert-rotator"
+  image  = var.jvs_cert_rotator_service_image
 
   # Cert rotator is not a user facing service. Ignore the ingress input.
   ingress = "all"
@@ -39,9 +41,11 @@ data "google_compute_default_service_account" "default" {
 
 resource "google_cloud_scheduler_job" "job" {
   # Don't create scheduler if cadence is zero.
-  count       = var.kms_key_rotation_minutes > 0 ? 1 : 0
+  count = var.kms_key_rotation_minutes > 0 ? 1 : 0
+
+  project = var.project_id
+
   name        = "cert-rotation-job"
-  project     = var.project_id
   region      = var.region
   description = "Regularly executes the certificate rotator"
   schedule    = "*/${var.kms_key_rotation_minutes} * * * *"

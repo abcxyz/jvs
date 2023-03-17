@@ -13,7 +13,8 @@
 # limitations under the License.
 
 resource "google_compute_global_address" "default" {
-  project    = var.project_id
+  project = var.project_id
+
   name       = "jvs-${random_id.default.hex}-address" # 63 character limit
   ip_version = "IPV4"
 
@@ -23,7 +24,8 @@ resource "google_compute_global_address" "default" {
 }
 
 resource "google_compute_global_forwarding_rule" "http" {
-  project               = var.project_id
+  project = var.project_id
+
   name                  = "jvs-${random_id.default.hex}-http" # 63 character limit
   target                = google_compute_target_http_proxy.default.self_link
   ip_address            = google_compute_global_address.default.address
@@ -32,7 +34,8 @@ resource "google_compute_global_forwarding_rule" "http" {
 }
 
 resource "google_compute_global_forwarding_rule" "https" {
-  project               = var.project_id
+  project = var.project_id
+
   name                  = "jvs-${random_id.default.hex}-https" # 63 character limit
   target                = google_compute_target_https_proxy.default.self_link
   ip_address            = google_compute_global_address.default.address
@@ -42,23 +45,24 @@ resource "google_compute_global_forwarding_rule" "https" {
 
 resource "google_compute_managed_ssl_certificate" "default" {
   project = var.project_id
-  name    = "jvs-${random_id.default.hex}-cert" # 63 character limit
+
+  name = "jvs-${random_id.default.hex}-cert" # 63 character limit
 
   managed {
     domains = toset([var.jvs_api_domain, var.jvs_ui_domain])
   }
 
-  lifecycle {
-    create_before_destroy = true
-  }
-
   depends_on = [
     google_project_service.services["compute.googleapis.com"],
   ]
+  lifecycle {
+    create_before_destroy = true
+  }
 }
 
 resource "google_compute_url_map" "default" {
-  project         = var.project_id
+  project = var.project_id
+
   name            = "jvs-${random_id.default.hex}-url-map" # 63 character limit
   default_service = google_compute_backend_service.jvs_api_backend.self_link
 
@@ -90,7 +94,8 @@ resource "google_compute_url_map" "default" {
 
 resource "google_compute_url_map" "https_redirect" {
   project = var.project_id
-  name    = "jvs-${random_id.default.hex}-https-redirect" # 63 character limit
+
+  name = "jvs-${random_id.default.hex}-https-redirect" # 63 character limit
   default_url_redirect {
     https_redirect         = true
     redirect_response_code = "MOVED_PERMANENTLY_DEFAULT"
@@ -104,13 +109,15 @@ resource "google_compute_url_map" "https_redirect" {
 
 resource "google_compute_target_http_proxy" "default" {
   project = var.project_id
-  name    = "jvs-${random_id.default.hex}-http-proxy" # 63 character limit
+
+  name = "jvs-${random_id.default.hex}-http-proxy" # 63 character limit
 
   url_map = google_compute_url_map.https_redirect.self_link
 }
 
 resource "google_compute_target_https_proxy" "default" {
   project = var.project_id
+
   name    = "jvs-${random_id.default.hex}-https-proxy" # 63 character limit
   url_map = google_compute_url_map.default.self_link
 
@@ -118,7 +125,8 @@ resource "google_compute_target_https_proxy" "default" {
 }
 
 resource "google_compute_region_network_endpoint_group" "jvs_api_neg" {
-  project               = var.project_id
+  project = var.project_id
+
   region                = var.region
   name                  = "jvs-api-${random_id.default.hex}-neg" # 63 character limit
   network_endpoint_type = "SERVERLESS"
@@ -133,7 +141,8 @@ resource "google_compute_region_network_endpoint_group" "jvs_api_neg" {
 }
 
 resource "google_compute_backend_service" "jvs_api_backend" {
-  project               = var.project_id
+  project = var.project_id
+
   name                  = "jvs-api-${random_id.default.hex}-backend" # 63 character limit
   load_balancing_scheme = "EXTERNAL"
   description           = "jvs-api backend"
@@ -150,7 +159,8 @@ resource "google_compute_backend_service" "jvs_api_backend" {
 }
 
 resource "google_compute_region_network_endpoint_group" "jvs_ui_neg" {
-  project               = var.project_id
+  project = var.project_id
+
   region                = var.region
   name                  = "jvs-ui-${random_id.default.hex}-neg" # 63 character limit
   network_endpoint_type = "SERVERLESS"
@@ -165,7 +175,8 @@ resource "google_compute_region_network_endpoint_group" "jvs_ui_neg" {
 }
 
 resource "google_compute_backend_service" "jvs_ui_backend" {
-  project               = var.project_id
+  project = var.project_id
+
   name                  = "jvs-ui-${random_id.default.hex}-backend" # 63 character limit
   load_balancing_scheme = "EXTERNAL"
   description           = "jvs-ui backend"
@@ -187,7 +198,8 @@ resource "google_compute_backend_service" "jvs_ui_backend" {
 }
 
 resource "google_compute_region_network_endpoint_group" "jvs_public_key_neg" {
-  project               = var.project_id
+  project = var.project_id
+
   region                = var.region
   name                  = "jvs-public-key-${random_id.default.hex}-neg" # 63 character limit
   network_endpoint_type = "SERVERLESS"
@@ -202,7 +214,8 @@ resource "google_compute_region_network_endpoint_group" "jvs_public_key_neg" {
 }
 
 resource "google_compute_backend_service" "jvs_public_key_backend" {
-  project               = var.project_id
+  project = var.project_id
+
   name                  = "jvs-public-key-${random_id.default.hex}-backend" # 63 character limit
   load_balancing_scheme = "EXTERNAL"
   description           = "jvs-public-key backend"
