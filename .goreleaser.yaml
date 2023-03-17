@@ -116,6 +116,29 @@ builds:
       - 'amd64'
       - 'arm64'
 
+  -
+    id: jvsctl
+    main: ./cmd/jvsctl
+    binary: jvsctl
+    mod_timestamp: '{{ .CommitTimestamp }}'
+    flags:
+      - '-a'
+      - '-trimpath'
+    ldflags:
+      - '-s'
+      - '-w'
+      - '-X={{ .ModulePath }}/internal/version.Name=jvsctl'
+      - '-X={{ .ModulePath }}/internal/version.Version={{ .Version }}'
+      - '-X={{ .ModulePath }}/internal/version.Commit={{ .Commit }}'
+      - '-extldflags=-static'
+    goos:
+      - 'darwin'
+      - 'linux'
+      - 'windows'
+    goarch:
+      - 'amd64'
+      - 'arm64'
+
 archives:
   - format: 'tar.gz'
     name_template: 'jvs_{{ .Version }}_{{ .Os }}_{{ .Arch }}'
