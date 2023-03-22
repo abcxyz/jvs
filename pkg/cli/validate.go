@@ -17,143 +17,157 @@ package cli
 import (
 	"context"
 	"fmt"
-	"io"
 	"strings"
 	"time"
 
 	jvspb "github.com/abcxyz/jvs/apis/v0"
 	"github.com/abcxyz/jvs/client-lib/go/client"
-	"github.com/abcxyz/jvs/pkg/config"
 	"github.com/abcxyz/jvs/pkg/formatter"
-	"github.com/spf13/cobra"
+	"github.com/abcxyz/pkg/cli"
 )
 
 // cacheTimeout is required for creating jvs client via jvs config, it is not really used since cache is expired when CLI exits.
 const cacheTimeout = 5 * time.Minute
 
-// validateCmdOptions holds all the inputs and flags for the validate subcommand.
-type validateCmdOptions struct {
-	config *config.CLIConfig
+var _ cli.Command = (*ValidateCommand)(nil)
 
-	// format flag to the command.
-	format string
+type ValidateCommand struct {
+	cli.BaseCommand
 
-	// subject is the expected subject to validate.
-	subject string
-
-	// token flag to the command.
-	token string
+	flagToken        string
+	flagSubject      string
+	flagJWKSEndpoint string
+	flagFormat       string
 }
 
-// newValidateCmd creates a new subcommand for validating tokens.
-func newValidateCmd(cfg *config.CLIConfig) *cobra.Command {
-	opts := &validateCmdOptions{
-		config: cfg,
-	}
+func (c *ValidateCommand) Desc() string {
+	return `Validate the input token`
+}
 
-	cmd := &cobra.Command{
-		Use:   "validate",
-		Short: "Validate the input token",
-		Long: strings.Trim(`
+func (c *ValidateCommand) Help() string {
+	return strings.Trim(`
 Validate the given justification token and output the justifications and other
 standard claims if it's valid. If the token is invalid, an error will be returned.
 
-For example:
+EXAMPLES
 
     # Validate the justification token string
-    jvsctl validate --token "example token string"
+    jvsctl validate -token "example token string"
 
     # Validate the justification token read from pipe
-    cat token.txt | jvsctl validate --token -
+    cat token.txt | jvsctl validate -token -
 
-    # Output
-    ------BREAKGLASS------
-    false
-
-    ----JUSTIFICATION----
-    explanation  "test"
-
-    ---STANDARD CLAIMS---
-    aud  ["dev.abcxyz.jvs"]
-    iat  "2022-01-01T00:00:00Z"
-    iss  "jvsctl"
-    jti  "test-jwt"
-    nbf  "2022-01-01T00:00:00Z"
-    sub  "jvsctl"
-`, "\n"),
-		Args: cobra.ExactArgs(0),
-		RunE: func(cmd *cobra.Command, args []string) error {
-			return runValidateCmd(cmd, opts, args)
-		},
-	}
-
-	flags := cmd.Flags()
-	flags.StringVarP(&opts.format, "format", "f", "table",
-		"output format (valid values: table, json, yaml)")
-	flags.StringVarP(&opts.subject, "subject", "s", "",
-		"subject to validate in the token")
-	flags.StringVarP(&opts.token, "token", "t", "",
-		"JVS token that needs validation, can be passed as string or via pipe")
-	return cmd
+`+c.Flags().Help(), "\n")
 }
 
-func runValidateCmd(cmd *cobra.Command, opts *validateCmdOptions, args []string) error {
-	ctx := context.Background()
+func (c *ValidateCommand) Flags() *cli.FlagSet {
+	set := cli.NewFlagSet()
 
-	if opts.token == "" {
+	// Command options
+	f := set.NewSection("COMMAND OPTIONS")
+
+	f.StringVar(&cli.StringVar{
+		Name:    "token",
+		Target:  &c.flagToken,
+		Example: "ya29.c...",
+		Usage: `The JVS token that needs to be validated. Set the value to ` +
+			`"-" to read from stdin.`,
+	})
+
+	f.StringVar(&cli.StringVar{
+		Name:    "subject",
+		Target:  &c.flagSubject,
+		Example: "you@example.com",
+		Usage:   `The subject to validate in the token.`,
+	})
+
+	f.StringVar(&cli.StringVar{
+		Name:    "format",
+		Aliases: []string{"f"},
+		Target:  &c.flagFormat,
+		Example: "table",
+		Default: "table",
+		Usage:   `The target output format. Valid values are: table, json, yaml.`,
+	})
+
+	// Server flags
+	f = set.NewSection("SERVER OPTIONS")
+
+	f.StringVar(&cli.StringVar{
+		Name:    "jwks-endpoint",
+		Target:  &c.flagJWKSEndpoint,
+		Example: "https://jvs.example.com:8080/.well-known/jwks",
+		Default: "http://localhost:8080/.well-known/jwks",
+		EnvVar:  "JVSCTL_JWKS_ENDPOINT",
+		Usage: `JVS public key server endpoint including the protocol, ` +
+			`address, port, and .well-known path.`,
+	})
+
+	return set
+}
+
+func (c *ValidateCommand) Run(ctx context.Context, args []string) error {
+	f := c.Flags()
+	if err := f.Parse(args); err != nil {
+		return fmt.Errorf("failed to parse flags: %w", err)
+	}
+	args = f.Args()
+	if len(args) > 0 {
+		return fmt.Errorf("unexpected arguments: %q", args)
+	}
+
+	if c.flagToken == "" {
 		return fmt.Errorf("token is required")
 	}
 
-	jvsclient, err := client.NewJVSClient(ctx, &client.JVSConfig{
-		Version:         "1",
-		JWKSEndpoint:    opts.config.JWKSEndpoint,
-		CacheTimeout:    cacheTimeout,
-		AllowBreakglass: true,
-	})
-	if err != nil {
-		return fmt.Errorf("failed to create jvs client: %w", err)
-	}
-
 	// Compute the formatter
-	var f formatter.Formatter
-	switch v := strings.TrimSpace(strings.ToLower(opts.format)); v {
+	var format formatter.Formatter
+	switch v := strings.TrimSpace(strings.ToLower(c.flagFormat)); v {
 	case "json":
-		f = formatter.NewJSON()
+		format = formatter.NewJSON()
 	case "", "table", "text":
-		f = formatter.NewText()
+		format = formatter.NewText()
 	case "yaml":
-		f = formatter.NewYAML()
+		format = formatter.NewYAML()
 	default:
 		return fmt.Errorf("unknown formatter %q", v)
 	}
 
 	// Read token from stdin
-	if opts.token == "-" {
-		buf, err := io.ReadAll(io.LimitReader(cmd.InOrStdin(), 64*1_000))
-		if err != nil || len(buf) == 0 {
-			fmt.Print("Enter token: ")
-			fmt.Scanf("%s", &opts.token)
-		} else {
-			opts.token = string(buf)
+	if c.flagToken == "-" {
+		token, err := c.Prompt("Enter token: ")
+		if err != nil {
+			return fmt.Errorf("failed to get token from prompt: %w", err)
 		}
+		c.flagToken = token
 	}
 
 	// Validate token
 	breakglass := false
-	token, err := jvspb.ParseBreakglassToken(ctx, opts.token)
+	token, err := jvspb.ParseBreakglassToken(ctx, c.flagToken)
 	if err != nil {
 		return fmt.Errorf("failed to parse breakglass token: %w", err)
 	}
 	if token != nil {
 		breakglass = true
 	} else {
-		token, err = jvsclient.ValidateJWT(ctx, opts.token, opts.subject)
+		jvsclient, err := client.NewJVSClient(ctx, &client.JVSConfig{
+			Version:         "1",
+			JWKSEndpoint:    c.flagJWKSEndpoint,
+			CacheTimeout:    cacheTimeout,
+			AllowBreakglass: true,
+		})
+		if err != nil {
+			return fmt.Errorf("failed to create jvs client: %w", err)
+		}
+
+		token, err = jvsclient.ValidateJWT(ctx, c.flagToken, c.flagSubject)
 		if err != nil {
 			return fmt.Errorf("failed to validate jwt: %w", err)
 		}
 	}
 
-	if err := f.FormatTo(ctx, cmd.OutOrStdout(), token, breakglass); err != nil {
+	if err := format.FormatTo(ctx, c.Stdout(), token, breakglass); err != nil {
 		return fmt.Errorf("failed to format token: %w", err)
 	}
 	return nil

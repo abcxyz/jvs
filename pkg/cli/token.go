@@ -19,13 +19,11 @@ import (
 	"crypto/tls"
 	"crypto/x509"
 	"fmt"
-	"os"
 	"strings"
 	"time"
 
 	"github.com/google/uuid"
 	"github.com/lestrrat-go/jwx/v2/jwt"
-	"github.com/spf13/cobra"
 	"golang.org/x/oauth2"
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/credentials"
@@ -34,131 +32,209 @@ import (
 	"google.golang.org/protobuf/types/known/durationpb"
 
 	jvspb "github.com/abcxyz/jvs/apis/v0"
-	"github.com/abcxyz/jvs/pkg/config"
 	"github.com/abcxyz/jvs/pkg/justification"
+	"github.com/abcxyz/pkg/cli"
 )
 
-// tokenCmdOptions holds all the inputs and flags for the token subcommand.
-type tokenCmdOptions struct {
-	config *config.CLIConfig
+var _ cli.Command = (*TokenCommand)(nil)
 
-	authToken   string
-	subject     string
-	audiences   []string
-	explanation string
-	breakglass  bool
-	ttl         time.Duration
-	issTimeUnix int64
+type TokenCommand struct {
+	cli.BaseCommand
+
+	flagAudiences   []string
+	flagAuthToken   string
+	flagBreakglass  bool
+	flagExplanation string
+	flagSubject     string
+	flagTTL         time.Duration
+
+	// flag Server is the server address.
+	flagServer string
+
+	// flagInsecure controls whether to use insecure grpc transport credentials.
+	flagInsecure bool
+
+	// flagNowUnix is a hidden flag that's used to override the current timestamp
+	// for testing.
+	flagNowUnix int64
 }
 
-// newTokenCmd creates a new subcommand for issuing tokens.
-func newTokenCmd(cfg *config.CLIConfig) *cobra.Command {
-	opts := &tokenCmdOptions{
-		config: cfg,
-	}
+func (c *TokenCommand) Desc() string {
+	return `Generate a justification token`
+}
 
-	cmd := &cobra.Command{
-		Use:   "token",
-		Short: "Generate a justification token",
-		Long: strings.Trim(`
+func (c *TokenCommand) Help() string {
+	return strings.Trim(`
 Generate a new justification token from the given JVS. The output will be the
 token, or any errors that occurred.
 
-For example:
+EXAMPLES
 
     # Generate a token with a 30min ttl
     jvsctl token \
-      --explanation "issues/12345" \
-      --ttl "30m"
+      -explanation "issues/12345" \
+      -ttl "30m"
 
     # Generate a token with custom audiences
     jvsctl token \
-      --explanation "access production" \
-      --audiences "my.service.dev"
+      -explanation "access production" \
+      -audiences "my.service.dev"
 
     # Generate a breakglass token
     jvsctl token \
-      --explanation "everything is broken" \
-      --breakglass
+      -explanation "everything is broken" \
+      -breakglass
 
-You can set the environment variable JVSCTL_SUBJECT to your email address to
-avoid specifying --subject on each invocation.
-`, "\n"),
-		Args: cobra.ExactArgs(0),
-		RunE: func(cmd *cobra.Command, args []string) error {
-			return runTokenCmd(cmd, opts, args)
-		},
-	}
-
-	flags := cmd.Flags()
-	flags.StringVarP(&opts.explanation, "explanation", "e", "",
-		"Explanation for the action")
-	flags.StringVarP(&opts.subject, "subject", "s", os.Getenv("JVSCTL_SUBJECT"),
-		"Principal that will be making calls with the justification token")
-	flags.StringSliceVar(&opts.audiences, "audiences", []string{justification.DefaultAudience},
-		"List of audiences for the token")
-	flags.BoolVar(&opts.breakglass, "breakglass", false,
-		"Make a breakglass token")
-	flags.DurationVar(&opts.ttl, "ttl", 15*time.Minute,
-		"Token lifetime, as a duration")
-	flags.StringVar(&opts.authToken, "auth-token", "",
-		"OIDC token to use for authentication")
-	flags.Int64Var(&opts.issTimeUnix, "iat", time.Now().Unix(),
-		"Hidden flag to specify token issue time")
-	flags.MarkHidden("iat") //nolint // not expect err
-
-	return cmd
+`+c.Flags().Help(), "\n")
 }
 
-func runTokenCmd(cmd *cobra.Command, opts *tokenCmdOptions, args []string) error {
-	ctx := context.Background()
-	out := cmd.OutOrStdout()
+func (c *TokenCommand) Flags() *cli.FlagSet {
+	set := cli.NewFlagSet()
 
-	if opts.explanation == "" {
+	// Command options
+	f := set.NewSection("COMMAND OPTIONS")
+
+	f.StringSliceVar(&cli.StringSliceVar{
+		Name:    "audience",
+		Target:  &c.flagAudiences,
+		Aliases: []string{"aud"},
+		Example: "org.corp.example,net.corp.example",
+		EnvVar:  "JVSCTL_TOKEN_AUDIENCES",
+		Usage: `The list of audiences to include in the generated ` +
+			`justification token.`,
+	})
+
+	f.StringVar(&cli.StringVar{
+		Name:    "auth-token",
+		Target:  &c.flagAuthToken,
+		Example: "ya29.c...",
+		EnvVar:  "JVSCTL_AUTH_TOKEN",
+		Usage:   `An OIDC token to use for authentication.`,
+	})
+
+	f.BoolVar(&cli.BoolVar{
+		Name:    "breakglass",
+		Target:  &c.flagBreakglass,
+		Default: false,
+		Usage:   `Make a breakglass token.`,
+	})
+
+	f.StringVar(&cli.StringVar{
+		Name:    "explanation",
+		Target:  &c.flagExplanation,
+		Aliases: []string{"e"},
+		Example: "Debugging ticket #123",
+		Usage:   `A reason for the action.`,
+	})
+
+	f.StringVar(&cli.StringVar{
+		Name:    "subject",
+		Target:  &c.flagSubject,
+		Example: "you@example.com",
+		EnvVar:  "JVSCTL_TOKEN_SUBJECT",
+		Usage:   `The principal that will be using the token.`,
+	})
+
+	f.DurationVar(&cli.DurationVar{
+		Name:    "ttl",
+		Target:  &c.flagTTL,
+		Example: "5m",
+		Default: 15 * time.Minute,
+		EnvVar:  "JVSCTL_TOKEN_TTL",
+		Usage:   `The token lifetime, as a duration.`,
+	})
+
+	f.Int64Var(&cli.Int64Var{
+		Name:    "now",
+		Target:  &c.flagNowUnix,
+		Default: time.Now().Unix(),
+		Hidden:  true,
+		Usage:   `Current timestamp, in unix seconds.`,
+	})
+
+	// Server flags
+	f = set.NewSection("SERVER OPTIONS")
+
+	f.StringVar(&cli.StringVar{
+		Name:    "server",
+		Target:  &c.flagServer,
+		Example: "https://jvs.example.com:8080",
+		Default: "http://localhost:8080",
+		EnvVar:  "JVSCTL_SERVER_ADDRESS",
+		Usage:   `JVS server address including the protocol, address, and port.`,
+	})
+
+	f.BoolVar(&cli.BoolVar{
+		Name:    "insecure",
+		Target:  &c.flagInsecure,
+		Default: false,
+		Usage:   "Use an insecure grpc connection.",
+	})
+
+	return set
+}
+
+func (c *TokenCommand) Run(ctx context.Context, args []string) error {
+	f := c.Flags()
+	if err := f.Parse(args); err != nil {
+		return fmt.Errorf("failed to parse flags: %w", err)
+	}
+	args = f.Args()
+	if len(args) > 0 {
+		return fmt.Errorf("unexpected arguments: %q", args)
+	}
+
+	if c.flagExplanation == "" {
 		return fmt.Errorf("explanation is required")
 	}
 
+	// Explicitly set this here because, if it's set as a default, there's no way
+	// to remove it.
+	if len(c.flagAudiences) == 0 {
+		c.flagAudiences = []string{justification.DefaultAudience}
+	}
+
 	// breakglass won't require JVS server. Handle that first.
-	if opts.breakglass {
-		fmt.Fprintln(cmd.ErrOrStderr(), "WARNING: In breakglass mode, the justification token is not signed.")
-		tok, err := breakglassToken(ctx, opts)
+	if c.flagBreakglass {
+		fmt.Fprintln(c.Stderr(), "WARNING: In breakglass mode, the justification token is not signed.")
+		tok, err := c.breakglassToken(ctx)
 		if err != nil {
 			return fmt.Errorf("failed to generate breakglass token: %w", err)
 		}
-		fmt.Fprintln(out, tok)
+		fmt.Fprintln(c.Stdout(), tok)
 		return nil
 	}
 
-	dialOpts, err := dialOptions(opts.config.Insecure)
+	dialOpts, err := dialOptions(c.flagInsecure)
 	if err != nil {
 		return err
 	}
 
-	conn, err := grpc.Dial(opts.config.Server, dialOpts...)
+	conn, err := grpc.Dial(c.flagServer, dialOpts...)
 	if err != nil {
 		return fmt.Errorf("failed to connect to JVS service: %w", err)
 	}
 	jvsclient := jvspb.NewJVSServiceClient(conn)
 
-	callOpts, err := callOptions(ctx, opts.authToken)
+	callOpts, err := callOptions(ctx, c.flagAuthToken)
 	if err != nil {
 		return err
 	}
 
 	req := &jvspb.CreateJustificationRequest{
-		Subject: opts.subject,
+		Subject: c.flagSubject,
 		Justifications: []*jvspb.Justification{{
 			Category: "explanation",
-			Value:    opts.explanation,
+			Value:    c.flagExplanation,
 		}},
-		Ttl: durationpb.New(opts.ttl),
+		Ttl: durationpb.New(c.flagTTL),
 	}
 	resp, err := jvsclient.CreateJustification(ctx, req, callOpts...)
 	if err != nil {
 		return fmt.Errorf("failed to create justification: %w", err)
 	}
 
-	fmt.Fprintln(out, resp.Token)
+	fmt.Fprintln(c.Stdout(), resp.Token)
 	return nil
 }
 
@@ -203,25 +279,25 @@ func callOptions(ctx context.Context, authToken string) ([]grpc.CallOption, erro
 
 // breakglassToken creates a new breakglass token from the CLI flags. See
 // [jvspb.CreateBreakglassToken] for more information.
-func breakglassToken(ctx context.Context, opts *tokenCmdOptions) (string, error) {
-	now := time.Unix(opts.issTimeUnix, 0)
+func (c *TokenCommand) breakglassToken(ctx context.Context) (string, error) {
+	now := time.Unix(c.flagNowUnix, 0)
 	id := uuid.New().String()
-	exp := now.Add(opts.ttl)
+	exp := now.Add(c.flagTTL)
 
 	token, err := jwt.NewBuilder().
-		Audience(opts.audiences).
+		Audience(c.flagAudiences).
 		Expiration(exp).
 		IssuedAt(now).
 		Issuer(Issuer).
 		JwtID(id).
 		NotBefore(now).
-		Subject(opts.subject).
+		Subject(c.flagSubject).
 		Build()
 	if err != nil {
 		return "", fmt.Errorf("failed to build breakglass token: %w", err)
 	}
 
-	str, err := jvspb.CreateBreakglassToken(token, opts.explanation)
+	str, err := jvspb.CreateBreakglassToken(token, c.flagExplanation)
 	if err != nil {
 		return "", fmt.Errorf("failed to create breakglass token: %w", err)
 	}

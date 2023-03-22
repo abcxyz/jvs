@@ -15,6 +15,7 @@
 package cli
 
 import (
+	"context"
 	"crypto/ecdsa"
 	"crypto/elliptic"
 	"crypto/rand"
@@ -28,8 +29,8 @@ import (
 	"time"
 
 	jvspb "github.com/abcxyz/jvs/apis/v0"
-	"github.com/abcxyz/jvs/pkg/config"
 	"github.com/abcxyz/jvs/pkg/justification"
+	"github.com/abcxyz/pkg/logging"
 	"github.com/abcxyz/pkg/testutil"
 	"github.com/google/go-cmp/cmp"
 	"github.com/lestrrat-go/jwx/v2/jwa"
@@ -40,6 +41,8 @@ import (
 
 func TestNewValidateCmd(t *testing.T) {
 	t.Parallel()
+
+	ctx := logging.WithLogger(context.Background(), logging.TestLogger(t))
 
 	// Setup jwks server
 	privateKey, err := ecdsa.GenerateKey(elliptic.P256(), rand.Reader)
@@ -69,11 +72,9 @@ func TestNewValidateCmd(t *testing.T) {
 		fmt.Fprintf(w, "%s", j)
 	})
 
-	svr := httptest.NewServer(mux)
-
-	t.Cleanup(func() {
-		svr.Close()
-	})
+	srv := httptest.NewServer(mux)
+	t.Cleanup(func() { srv.Close() })
+	goodJWKSEndpoint := srv.URL + path
 
 	// Build test tokens
 	token := testTokenBuilder(t)
@@ -97,7 +98,6 @@ func TestNewValidateCmd(t *testing.T) {
 
 	cases := []struct {
 		name   string
-		config *config.CLIConfig
 		args   []string
 		stdin  io.Reader
 		expOut string
@@ -106,7 +106,7 @@ func TestNewValidateCmd(t *testing.T) {
 		{
 			name:   "too_many_args",
 			args:   []string{"foo"},
-			expErr: `accepts 0 arg(s)`,
+			expErr: `unexpected arguments: ["foo"]`,
 		},
 		{
 			name:   "missing_token",
@@ -115,18 +115,25 @@ func TestNewValidateCmd(t *testing.T) {
 		},
 		{
 			name: "invalid_token",
-			config: &config.CLIConfig{
-				JWKSEndpoint: svr.URL + path,
+			args: []string{
+				"-token=invalid token",
 			},
-			args:   []string{"-t=invalid token"},
 			expErr: `failed to parse token headers`,
 		},
 		{
-			name: "signed",
-			config: &config.CLIConfig{
-				JWKSEndpoint: svr.URL + path,
+			name: "bad_jwks_endpoint",
+			args: []string{
+				"-token", signedToken,
+				"-jwks-endpoint", srv.URL + "/nope",
 			},
-			args: []string{"-t", signedToken},
+			expErr: `failed to retrieve JVS public keys`,
+		},
+		{
+			name: "signed",
+			args: []string{
+				"-token", signedToken,
+				"-jwks-endpoint", goodJWKSEndpoint,
+			},
 			expOut: `
 ----- Justifications -----
 explanation    test
@@ -143,10 +150,9 @@ sub    test-sub
 		},
 		{
 			name: "breakglass",
-			config: &config.CLIConfig{
-				JWKSEndpoint: svr.URL + path,
+			args: []string{
+				"-token", breakglassToken,
 			},
-			args: []string{"-t", breakglassToken},
 			expOut: `
 Warning! This is a breakglass token.
 
@@ -164,12 +170,10 @@ sub    test-sub
 		},
 		{
 			name: "with_subject_good",
-			config: &config.CLIConfig{
-				JWKSEndpoint: svr.URL + path,
-			},
 			args: []string{
-				"-t", signedToken,
-				"-s", "test-sub",
+				"-token", signedToken,
+				"-subject", "test-sub",
+				"-jwks-endpoint", goodJWKSEndpoint,
 			},
 			expOut: `
 ----- Justifications -----
@@ -187,21 +191,19 @@ sub    test-sub
 		},
 		{
 			name: "with_subject_bad",
-			config: &config.CLIConfig{
-				JWKSEndpoint: svr.URL + path,
-			},
 			args: []string{
-				"-t", signedToken,
-				"-s", "bad-sub",
+				"-token", signedToken,
+				"-subject", "bad-sub",
+				"-jwks-endpoint", goodJWKSEndpoint,
 			},
 			expErr: `does not match expected subject`,
 		},
 		{
 			name: "from_stdin",
-			config: &config.CLIConfig{
-				JWKSEndpoint: svr.URL + path,
+			args: []string{
+				"-token", "-",
+				"-jwks-endpoint", goodJWKSEndpoint,
 			},
-			args:  []string{"-t", "-"},
 			stdin: strings.NewReader(signedToken),
 			expOut: `
 ----- Justifications -----
@@ -219,18 +221,19 @@ sub    test-sub
 		},
 		{
 			name: "json",
-			config: &config.CLIConfig{
-				JWKSEndpoint: svr.URL + path,
+			args: []string{
+				"-token", breakglassToken,
+				"-format", "json",
 			},
-			args:   []string{"-t", breakglassToken, "-f", "json"},
 			expOut: `{"breakglass":true,"justifications":[{"category":"breakglass","value":"prod is down"}],"claims":{"aud":["dev.abcxyz.jvs"],"iat":"1970-01-01T00:00:00Z","iss":"jvsctl","jti":"test-jwt","nbf":"1970-01-01T00:00:00Z","sub":"test-sub"}}`,
 		},
 		{
 			name: "yaml",
-			config: &config.CLIConfig{
-				JWKSEndpoint: svr.URL + path,
+			args: []string{
+				"-token", signedToken,
+				"-jwks-endpoint", goodJWKSEndpoint,
+				"-format", "yaml",
 			},
-			args: []string{"-t", signedToken, "-f", "yaml"},
 			expOut: `
 breakglass: false
 justifications:
@@ -256,16 +259,28 @@ claims:
 		t.Run(tc.name, func(t *testing.T) {
 			t.Parallel()
 
-			cmd := newValidateCmd(tc.config)
-			stdout, _, gotErr := testExecuteCommandStdin(t, cmd, tc.stdin, tc.args...)
-			if diff := testutil.DiffErrString(gotErr, tc.expErr); diff != "" {
-				t.Fatal(diff)
-			}
-			if gotErr != nil {
-				return
+			var cmd ValidateCommand
+			stdin, stdout, _ := cmd.Pipe()
+
+			// Write stdin if given
+			if tc.stdin != nil {
+				if _, err := io.Copy(stdin, tc.stdin); err != nil {
+					t.Fatal(err)
+				}
 			}
 
-			if diff := cmp.Diff(strings.TrimSpace(tc.expOut), strings.TrimSpace(stdout)); diff != "" {
+			args := append([]string{}, tc.args...)
+
+			if err := cmd.Run(ctx, args); err != nil {
+				if diff := testutil.DiffErrString(err, tc.expErr); diff != "" {
+					t.Fatal(diff)
+				}
+				if err != nil {
+					return
+				}
+			}
+
+			if diff := cmp.Diff(strings.TrimSpace(tc.expOut), strings.TrimSpace(stdout.String())); diff != "" {
 				t.Errorf("output: diff (-want, +got):\n%s", diff)
 			}
 		})
