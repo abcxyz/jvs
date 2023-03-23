@@ -45,19 +45,21 @@ func (c *ValidateCommand) Desc() string {
 }
 
 func (c *ValidateCommand) Help() string {
-	return strings.Trim(`
-Validate the given justification token and output the justifications and other
-standard claims if it's valid. If the token is invalid, an error will be returned.
+	return `
+Usage: {{ COMMAND }} [options]
 
-EXAMPLES
+  Validate the given justification token and output the justifications and other
+  standard claims if it's valid. If the token is invalid, an error will be
+  returned.
 
-    # Validate the justification token string
-    jvsctl validate -token "example token string"
+  Validate the justification token string:
 
-    # Validate the justification token read from pipe
-    cat token.txt | jvsctl validate -token -
+      jvsctl validate -token "example token string"
 
-`+c.Flags().Help(), "\n")
+  Validate the justification token read from pipe:
+
+      cat token.txt | jvsctl validate -token -
+`
 }
 
 func (c *ValidateCommand) Flags() *cli.FlagSet {

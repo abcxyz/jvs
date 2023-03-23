@@ -19,7 +19,6 @@ import (
 	"crypto/tls"
 	"crypto/x509"
 	"fmt"
-	"strings"
 	"time"
 
 	"github.com/google/uuid"
@@ -64,28 +63,30 @@ func (c *TokenCommand) Desc() string {
 }
 
 func (c *TokenCommand) Help() string {
-	return strings.Trim(`
-Generate a new justification token from the given JVS. The output will be the
-token, or any errors that occurred.
+	return `
+Usage: {{ COMMAND }} [options]
 
-EXAMPLES
+  Generate a new justification token from the given JVS. The output will be the
+  token, or any errors that occurred.
 
-    # Generate a token with a 30min ttl
-    jvsctl token \
-      -explanation "issues/12345" \
-      -ttl "30m"
+  Generate a token with a 30min ttl:
 
-    # Generate a token with custom audiences
-    jvsctl token \
-      -explanation "access production" \
-      -audiences "my.service.dev"
+      jvsctl token \
+        -explanation "issues/12345" \
+        -ttl "30m"
 
-    # Generate a breakglass token
-    jvsctl token \
-      -explanation "everything is broken" \
-      -breakglass
+  Generate a token with custom audiences:
 
-`+c.Flags().Help(), "\n")
+      jvsctl token \
+        -explanation "access production" \
+        -audiences "my.service.dev"
+
+  Generate a breakglass token:
+
+      jvsctl token \
+        -explanation "everything is broken" \
+        -breakglass
+`
 }
 
 func (c *TokenCommand) Flags() *cli.FlagSet {

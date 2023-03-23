@@ -42,8 +42,8 @@ cloud.google.com/go/storage v1.10.0/go.mod h1:FLPqc6j+Ki4BU591ie1oL6qBQGu2Bl/tZ9
 dmitri.shuralyov.com/gpu/mtl v0.0.0-20190408044501-666a987793e9/go.mod h1:H6x//7gZCb22OMCxBHrMx7a5I7Hp++hsVxbQ4BYO7hU=
 github.com/BurntSushi/toml v0.3.1/go.mod h1:xHWCNGjB5oqiDr8zfno3MHue2Ht5sIBksp03qcyfWMU=
 github.com/BurntSushi/xgb v0.0.0-20160522181843-27f122750802/go.mod h1:IVnqGOEym/WlBOVXweHU+Q+/VP0lqqI8lqeDx9IjBqo=
-github.com/abcxyz/pkg v0.2.1-0.20230322013941-80117ea394ac h1:TlSDzqc8CT5R/wprcyKlhaRwqMrmzs/XPmcPMOxlObU=
-github.com/abcxyz/pkg v0.2.1-0.20230322013941-80117ea394ac/go.mod h1:9x3KtJ6HorqpFPHd0AyS4g72SMsbmvbVoJOno4+mhbg=
+github.com/abcxyz/pkg v0.2.1-0.20230322235918-6c1d69990ca1 h1:Mcjg9qq1iFaMxYlbA6QYi76rWoz4/UT5dfZRQmn6cS4=
+github.com/abcxyz/pkg v0.2.1-0.20230322235918-6c1d69990ca1/go.mod h1:9x3KtJ6HorqpFPHd0AyS4g72SMsbmvbVoJOno4+mhbg=
 github.com/benbjohnson/clock v1.3.0 h1:ip6w0uFQkncKQ979AypyG0ER7mqUSBdKLOgAle/AT8A=
 github.com/benbjohnson/clock v1.3.0/go.mod h1:J11/hYXuz8f4ySSvYwY0FKfm+ezbsZBKZxNJlLklBHA=
 github.com/census-instrumentation/opencensus-proto v0.2.1/go.mod h1:f6KPmirojxKA12rnyqOA5BBL4O983OfeGPqjHWSTneU=
