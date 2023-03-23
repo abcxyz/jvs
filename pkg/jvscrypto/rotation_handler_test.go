@@ -25,6 +25,7 @@ import (
 	kms "cloud.google.com/go/kms/apiv1"
 	"github.com/abcxyz/jvs/pkg/config"
 	"github.com/abcxyz/jvs/pkg/testutil"
+	"github.com/abcxyz/pkg/logging"
 	pkgtestutil "github.com/abcxyz/pkg/testutil"
 	"google.golang.org/protobuf/types/known/fieldmaskpb"
 	"google.golang.org/protobuf/types/known/timestamppb"
@@ -40,7 +41,7 @@ import (
 func TestGetKeyNameFromVersion(t *testing.T) {
 	t.Parallel()
 
-	tests := []struct {
+	cases := []struct {
 		name       string
 		input      string
 		wantOutput string
@@ -65,7 +66,7 @@ func TestGetKeyNameFromVersion(t *testing.T) {
 		},
 	}
 
-	for _, tc := range tests {
+	for _, tc := range cases {
 		tc := tc
 		t.Run(tc.name, func(t *testing.T) {
 			t.Parallel()
@@ -93,6 +94,8 @@ func TestGetKeyNameFromVersion(t *testing.T) {
 func TestDetermineActions(t *testing.T) {
 	t.Parallel()
 
+	ctx := logging.WithLogger(context.Background(), logging.TestLogger(t))
+
 	keyTTL, err := time.ParseDuration("240h") // 10 days
 	if err != nil {
 		t.Error("Couldn't parse key ttl")
@@ -110,15 +113,12 @@ func TestDetermineActions(t *testing.T) {
 		t.Error("Couldn't parse propagation delay")
 	}
 
-	handler := &RotationHandler{
-		KMSClient: nil,
-		CryptoConfig: &config.CryptoConfig{
-			KeyTTL:           keyTTL,
-			GracePeriod:      gracePeriod,
-			DisabledPeriod:   disablePeriod,
-			PropagationDelay: propagationDelay,
-		},
-	}
+	handler := NewRotationHandler(ctx, nil, &config.CryptoConfig{
+		KeyTTL:           keyTTL,
+		GracePeriod:      gracePeriod,
+		DisabledPeriod:   disablePeriod,
+		PropagationDelay: propagationDelay,
+	})
 
 	curTime := time.Unix(100*60*60*24, 0) // 100 days after start
 
@@ -158,7 +158,7 @@ func TestDetermineActions(t *testing.T) {
 		Name:       "oldDestroyedKey",
 	}
 
-	tests := []struct {
+	cases := []struct {
 		name        string
 		versions    []*kmspb.CryptoKeyVersion
 		primary     string
@@ -273,7 +273,7 @@ func TestDetermineActions(t *testing.T) {
 			},
 		},
 	}
-	for _, tc := range tests {
+	for _, tc := range cases {
 		tc := tc
 		t.Run(tc.name, func(t *testing.T) {
 			t.Parallel()
@@ -459,9 +459,12 @@ func TestPerformActions(t *testing.T) {
 
 	for _, tc := range tests {
 		tc := tc
+
 		t.Run(tc.name, func(t *testing.T) {
 			t.Parallel()
-			ctx := context.Background()
+
+			ctx := logging.WithLogger(context.Background(), logging.TestLogger(t))
+
 			mockKeyManagement := testutil.NewMockKeyManagementServer(parent, versionName, tc.priorPrimary)
 			mockKeyManagement.Err = tc.serverErr
 			mockKeyManagement.Resps = append(mockKeyManagement.Resps[:0], &kmspb.CryptoKeyVersion{Name: versionName + "-new"})
@@ -482,47 +485,18 @@ func TestPerformActions(t *testing.T) {
 				t.Fatal(err)
 			}
 
-			handler := &RotationHandler{
-				KMSClient:    c,
-				CryptoConfig: &config.CryptoConfig{},
-			}
+			handler := NewRotationHandler(ctx, c, nil)
 
 			gotErr := handler.performActions(ctx, parent, tc.actions)
-
-			if err != nil {
-				t.Fatal(err)
-			}
-
-			if want, got := tc.expectedRequests, mockKeyManagement.Reqs; !slicesEq(want, got) {
-				t.Errorf("wrong requests %v, want %v", got, want)
-			}
 			if diff := pkgtestutil.DiffErrString(gotErr, tc.wantErr); diff != "" {
 				t.Errorf("Unexpected err: %s", diff)
 			}
-
+			if diff := cmp.Diff(tc.expectedRequests, mockKeyManagement.Reqs, protocmp.Transform()); diff != "" {
+				t.Errorf("wrong requests: diff (-want, +got): %s", diff)
+			}
 			if diff := cmp.Diff(tc.expectedPrimary, mockKeyManagement.Labels["primary"]); diff != "" {
-				t.Errorf("Got diff (-want, +got): %v", diff)
+				t.Errorf("wrong primary: diff (-want, +got): %s", diff)
 			}
 		})
 	}
-}
-
-func slicesEq(a, b []proto.Message) bool {
-	if len(a) != len(b) {
-		return false
-	}
-	for i := range a {
-		found := false
-		for j := range b {
-			if proto.Equal(a[i], b[j]) {
-				found = true
-				b = append(b[:j], b[j+1:]...) // remove from slice
-				break
-			}
-		}
-		if !found {
-			return false
-		}
-	}
-	return true
 }

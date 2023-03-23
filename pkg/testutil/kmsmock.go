@@ -154,6 +154,8 @@ func firstAsCryptoKeyVersion(m proto.Message) (*kmspb.CryptoKeyVersion, error) {
 }
 
 func (s *MockKeyManagementServer) UpdateCryptoKey(ctx context.Context, req *kmspb.UpdateCryptoKeyRequest) (*kmspb.CryptoKey, error) {
+	s.reqMu.Lock()
+	defer s.reqMu.Unlock()
 	s.Reqs = append(s.Reqs, req)
 	s.Labels = req.CryptoKey.Labels
 
