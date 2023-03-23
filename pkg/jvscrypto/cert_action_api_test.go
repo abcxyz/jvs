@@ -75,6 +75,10 @@ func TestCertificateAction(t *testing.T) {
 					Parent:           parent,
 					CryptoKeyVersion: &kmspb.CryptoKeyVersion{},
 				},
+				// Lookup the new version
+				&kmspb.GetCryptoKeyVersionRequest{
+					Name: versionName + "-new",
+				},
 				// Lookup the key again
 				&kmspb.GetCryptoKeyRequest{
 					Name: parent,
@@ -118,6 +122,10 @@ func TestCertificateAction(t *testing.T) {
 				&kmspb.CreateCryptoKeyVersionRequest{
 					Parent:           parent,
 					CryptoKeyVersion: &kmspb.CryptoKeyVersion{},
+				},
+				// Lookup the new version
+				&kmspb.GetCryptoKeyVersionRequest{
+					Name: versionName + "-new",
 				},
 				// Lookup the key again
 				&kmspb.GetCryptoKeyRequest{
@@ -208,6 +216,10 @@ func TestCertificateAction(t *testing.T) {
 					Parent:           parent,
 					CryptoKeyVersion: &kmspb.CryptoKeyVersion{},
 				},
+				// Lookup the new version
+				&kmspb.GetCryptoKeyVersionRequest{
+					Name: versionName + "-new",
+				},
 				// Lookup the key again
 				&kmspb.GetCryptoKeyRequest{
 					Name: parent,
@@ -277,6 +289,10 @@ func TestCertificateAction(t *testing.T) {
 				&kmspb.CreateCryptoKeyVersionRequest{
 					Parent:           parent,
 					CryptoKeyVersion: &kmspb.CryptoKeyVersion{},
+				},
+				// Lookup the new version
+				&kmspb.GetCryptoKeyVersionRequest{
+					Name: versionName + "-new",
 				},
 				// Look up the existing key
 				&kmspb.GetCryptoKeyRequest{
