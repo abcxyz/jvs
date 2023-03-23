@@ -23,6 +23,7 @@ import (
 
 	"github.com/abcxyz/jvs/pkg/config"
 	"github.com/abcxyz/pkg/logging"
+	"github.com/sethvargo/go-retry"
 	"google.golang.org/protobuf/types/known/fieldmaskpb"
 
 	kms "cloud.google.com/go/kms/apiv1"
@@ -387,9 +388,26 @@ func (h *RotationHandler) performCreateNew(ctx context.Context, keyName string) 
 		return nil, fmt.Errorf("key creation failed: %w", err)
 	}
 
-	// TODO(sethvargo): Wait for a key version to be created and enabled.
+	// Wait for a key version to be created and enabled.
+	var ckv *kmspb.CryptoKeyVersion
+	b := retry.WithMaxRetries(5, retry.NewFibonacci(500*time.Millisecond))
+	if err := retry.Do(ctx, b, func(ctx context.Context) error {
+		var err error
+		ckv, err = h.kmsClient.GetCryptoKeyVersion(ctx, &kmspb.GetCryptoKeyVersionRequest{
+			Name: resp.Name,
+		})
+		if err != nil {
+			return fmt.Errorf("failed to get crypto key version: %w", err)
+		}
+		if got, want := ckv.State, kmspb.CryptoKeyVersion_ENABLED; got != want {
+			return retry.RetryableError(fmt.Errorf("expected %s to be %s", got.String(), want.String()))
+		}
+		return nil
+	}); err != nil {
+		return nil, fmt.Errorf("key did not enter ready state: %w", err)
+	}
 
-	return resp, nil
+	return ckv, nil
 }
 
 // GetKeyNameFromVersion converts a key version name to a key name.
