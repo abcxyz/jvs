@@ -20,6 +20,9 @@ import (
 
 // PublicKeyConfig is the config used for public key hosting.
 type PublicKeyConfig struct {
+	// DevMode controls enables more granular debugging in logs.
+	DevMode bool `env:"DEV_MODE,default=false"`
+
 	// TODO: This is intended to be temporary, and will eventually be retrieved from a persistent external datastore
 	// https://github.com/abcxyz/jvs/issues/17
 	// KeyName format: `projects/*/locations/*/keyRings/*/cryptoKeys/*`

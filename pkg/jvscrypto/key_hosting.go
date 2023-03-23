@@ -25,13 +25,27 @@ import (
 	"github.com/abcxyz/jvs/pkg/config"
 	"github.com/abcxyz/pkg/cache"
 	"github.com/abcxyz/pkg/logging"
+	"github.com/abcxyz/pkg/renderer"
 )
 
 // KeyServer provides all valid and active public keys in a JWKS format.
 type KeyServer struct {
-	KMSClient       *kms.KeyManagementClient
-	PublicKeyConfig *config.PublicKeyConfig
-	Cache           *cache.Cache[string]
+	kmsClient *kms.KeyManagementClient
+	config    *config.PublicKeyConfig
+	cache     *cache.Cache[string]
+	h         *renderer.Renderer
+}
+
+// NewKeyServer creates a new server. See [KeyServer] for more information.
+func NewKeyServer(ctx context.Context, kmsClient *kms.KeyManagementClient, cfg *config.PublicKeyConfig, h *renderer.Renderer) *KeyServer {
+	cache := cache.New[string](cfg.CacheTimeout)
+
+	return &KeyServer{
+		kmsClient: kmsClient,
+		config:    cfg,
+		cache:     cache,
+		h:         h,
+	}
 }
 
 const cacheKey = "jwks"
@@ -39,24 +53,26 @@ const cacheKey = "jwks"
 // ServeHTTP returns the public keys in JWK format.
 func (k *KeyServer) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	logger := logging.FromContext(r.Context())
-	val, err := k.Cache.WriteThruLookup(cacheKey, func() (string, error) {
+	val, err := k.cache.WriteThruLookup(cacheKey, func() (string, error) {
 		return k.generateJWKString(r.Context())
 	})
 	if err != nil {
 		logger.Errorw("error generating jwk string", "error", err)
-		http.Error(w, "error generating jwk string", http.StatusInternalServerError)
+		k.h.RenderJSON(w, http.StatusInternalServerError, fmt.Errorf("failed to generate jwks"))
 		return
 	}
+
+	w.Header().Set("content-type", "application/json")
 	fmt.Fprint(w, val)
 }
 
 func (k *KeyServer) generateJWKString(ctx context.Context) (string, error) {
-	keyVersions, err := CryptoKeyVersionsFor(ctx, k.KMSClient, k.PublicKeyConfig.KeyNames)
+	keyVersions, err := CryptoKeyVersionsFor(ctx, k.kmsClient, k.config.KeyNames)
 	if err != nil {
 		return "", fmt.Errorf("failed to list crypto keys: %w", err)
 	}
 
-	publicKeys, err := PublicKeysFor(ctx, k.KMSClient, keyVersions)
+	publicKeys, err := PublicKeysFor(ctx, k.kmsClient, keyVersions)
 	if err != nil {
 		return "", fmt.Errorf("failed to get public keys: %w", err)
 	}
