@@ -52,7 +52,7 @@ import (
 	"github.com/lestrrat-go/jwx/v2/jwt"
 	"github.com/sethvargo/go-retry"
 	"google.golang.org/api/iterator"
-	"google.golang.org/grpc/metadata"
+	grpcmetadata "google.golang.org/grpc/metadata"
 	"google.golang.org/protobuf/types/known/durationpb"
 	"google.golang.org/protobuf/types/known/fieldmaskpb"
 )
@@ -113,7 +113,7 @@ func TestJVS(t *testing.T) {
 
 	tok := testutil.CreateJWT(t, "test_id", "requestor@example.com")
 	validJWT := testutil.SignToken(t, tok, authKey, keyID)
-	ctx = metadata.NewIncomingContext(ctx, metadata.New(map[string]string{
+	ctx = grpcmetadata.NewIncomingContext(ctx, grpcmetadata.New(map[string]string{
 		"authorization": "Bearer " + validJWT,
 	}))
 
@@ -339,10 +339,8 @@ func TestRotator(t *testing.T) {
 	if err := cfg.Validate(); err != nil {
 		t.Fatal(err)
 	}
-	r := &jvscrypto.RotationHandler{
-		KMSClient:    kmsClient,
-		CryptoConfig: cfg,
-	}
+
+	r := jvscrypto.NewRotationHandler(ctx, kmsClient, cfg)
 
 	// Validate we have a single enabled key that is primary.
 	testValidateKeyVersionState(ctx, t, kmsClient, keyName, 1,
@@ -427,10 +425,8 @@ func TestRotator_EdgeCases(t *testing.T) {
 	if err := cfg.Validate(); err != nil {
 		t.Fatal(err)
 	}
-	r := &jvscrypto.RotationHandler{
-		KMSClient:    kmsClient,
-		CryptoConfig: cfg,
-	}
+
+	r := jvscrypto.NewRotationHandler(ctx, kmsClient, cfg)
 
 	time.Sleep(1001 * time.Millisecond) // Wait past the propagation delay.
 
@@ -549,10 +545,8 @@ func TestCertActions(t *testing.T) {
 	if err := cfg.Validate(); err != nil {
 		t.Fatal(err)
 	}
-	r := &jvscrypto.RotationHandler{
-		KMSClient:    kmsClient,
-		CryptoConfig: cfg,
-	}
+
+	r := jvscrypto.NewRotationHandler(ctx, kmsClient, cfg)
 
 	s := &jvscrypto.CertificateActionService{
 		Handler:   r,
@@ -789,10 +783,12 @@ func testValidateKeyVersionState(ctx context.Context, tb testing.TB, kmsClient *
 // Create an asymmetric signing key for use with integration tests.
 func testCreateKey(ctx context.Context, tb testing.TB, kmsClient *kms.KeyManagementClient, keyRing, primaryKeyVersion string) string {
 	tb.Helper()
+
 	u, err := uuid.NewUUID()
 	if err != nil {
-		tb.Fatalf("failed to create uuid : %s", err)
+		tb.Fatalf("failed to create uuid: %s", err)
 	}
+
 	// 'Primary' field will be omitted for keys with purpose other than ENCRYPT_DECRYPT(https://cloud.google.com/kms/docs/reference/rest/v1/projects.locations.keyRings.cryptoKeys).
 	// Therefore, use `Labels` filed to set the primary key version name.
 	labels := map[string]string{jvscrypto.PrimaryKey: jvscrypto.PrimaryLabelPrefix + primaryKeyVersion}
@@ -833,6 +829,7 @@ func testCreateKey(ctx context.Context, tb testing.TB, kmsClient *kms.KeyManagem
 // Destroy all versions within a key in order to clean up tests.
 func testCleanUpKey(ctx context.Context, tb testing.TB, kmsClient *kms.KeyManagementClient, keyName string) {
 	tb.Helper()
+
 	it := kmsClient.ListCryptoKeyVersions(ctx, &kmspb.ListCryptoKeyVersionsRequest{
 		Parent: keyName,
 	})
@@ -845,11 +842,13 @@ func testCleanUpKey(ctx context.Context, tb testing.TB, kmsClient *kms.KeyManage
 		if err != nil {
 			tb.Fatalf("err while reading crypto key version list: %s", err)
 		}
+
 		if ver.State == kmspb.CryptoKeyVersion_DESTROYED ||
 			ver.State == kmspb.CryptoKeyVersion_DESTROY_SCHEDULED {
 			// no need to destroy again
 			continue
 		}
+
 		if _, err := kmsClient.DestroyCryptoKeyVersion(ctx, &kmspb.DestroyCryptoKeyVersionRequest{
 			Name: ver.Name,
 		}); err != nil {
@@ -893,12 +892,13 @@ func testKeySetFromKMS(ctx context.Context, tb testing.TB, kmsClient *kms.KeyMan
 // Create a new KeyVersion for use with integration tests.
 func testCreateKeyVersion(ctx context.Context, tb testing.TB, kmsClient *kms.KeyManagementClient, keyName string) string {
 	tb.Helper()
+
 	ck, err := kmsClient.CreateCryptoKeyVersion(ctx, &kmspb.CreateCryptoKeyVersionRequest{
 		Parent:           keyName,
 		CryptoKeyVersion: &kmspb.CryptoKeyVersion{},
 	})
 	if err != nil {
-		tb.Fatalf("failed to create crypto keyVersion: %s", err)
+		tb.Fatalf("failed to create crypto key version: %s", err)
 	}
 
 	// Wait for a key version to be created and enabled.

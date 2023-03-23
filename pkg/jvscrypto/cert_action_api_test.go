@@ -24,11 +24,13 @@ import (
 	jvspb "github.com/abcxyz/jvs/apis/v0"
 	"github.com/abcxyz/jvs/pkg/config"
 	"github.com/abcxyz/jvs/pkg/testutil"
+	"github.com/abcxyz/pkg/logging"
 	pkgtestutil "github.com/abcxyz/pkg/testutil"
 	"github.com/google/go-cmp/cmp"
 	"google.golang.org/api/option"
 	"google.golang.org/grpc"
 	"google.golang.org/protobuf/proto"
+	"google.golang.org/protobuf/testing/protocmp"
 	"google.golang.org/protobuf/types/known/fieldmaskpb"
 )
 
@@ -39,7 +41,7 @@ func TestCertificateAction(t *testing.T) {
 	versionSuffix := "[VERSION]"
 	versionName := fmt.Sprintf("%s/cryptoKeyVersions/%s", parent, versionSuffix)
 
-	tests := []struct {
+	cases := []struct {
 		name             string
 		request          *jvspb.CertificateActionRequest
 		priorPrimary     string
@@ -60,19 +62,24 @@ func TestCertificateAction(t *testing.T) {
 			},
 			priorPrimary: PrimaryLabelPrefix + versionSuffix,
 			expectedRequests: []proto.Message{
+				// Look up the existing key version
+				&kmspb.GetCryptoKeyVersionRequest{
+					Name: versionName,
+				},
+				// Look up the existing key
+				&kmspb.GetCryptoKeyRequest{
+					Name: parent,
+				},
+				// Create a new key
 				&kmspb.CreateCryptoKeyVersionRequest{
 					Parent:           parent,
 					CryptoKeyVersion: &kmspb.CryptoKeyVersion{},
 				},
+				// Lookup the key again
 				&kmspb.GetCryptoKeyRequest{
 					Name: parent,
 				},
-				&kmspb.GetCryptoKeyVersionRequest{
-					Name: versionName,
-				},
-				&kmspb.GetCryptoKeyRequest{
-					Name: parent,
-				},
+				// Update the primary label
 				&kmspb.UpdateCryptoKeyRequest{
 					CryptoKey: &kmspb.CryptoKey{
 						Labels: map[string]string{PrimaryKey: PrimaryLabelPrefix + versionSuffix + "-new"},
@@ -99,19 +106,24 @@ func TestCertificateAction(t *testing.T) {
 			},
 			priorPrimary: PrimaryLabelPrefix + versionSuffix,
 			expectedRequests: []proto.Message{
+				// Look up the existing key version
+				&kmspb.GetCryptoKeyVersionRequest{
+					Name: versionName,
+				},
+				// Look up the existing key
+				&kmspb.GetCryptoKeyRequest{
+					Name: parent,
+				},
+				// Create a new key
 				&kmspb.CreateCryptoKeyVersionRequest{
 					Parent:           parent,
 					CryptoKeyVersion: &kmspb.CryptoKeyVersion{},
 				},
+				// Lookup the key again
 				&kmspb.GetCryptoKeyRequest{
 					Name: parent,
 				},
-				&kmspb.GetCryptoKeyVersionRequest{
-					Name: versionName,
-				},
-				&kmspb.GetCryptoKeyRequest{
-					Name: parent,
-				},
+				// Update the primary label
 				&kmspb.UpdateCryptoKeyRequest{
 					CryptoKey: &kmspb.CryptoKey{
 						Labels: map[string]string{PrimaryKey: PrimaryLabelPrefix + versionSuffix + "-new"},
@@ -121,6 +133,7 @@ func TestCertificateAction(t *testing.T) {
 						Paths: []string{"labels"},
 					},
 				},
+				// Mark the key as disabled
 				&kmspb.UpdateCryptoKeyVersionRequest{
 					CryptoKeyVersion: &kmspb.CryptoKeyVersion{
 						State: kmspb.CryptoKeyVersion_DISABLED,
@@ -147,12 +160,15 @@ func TestCertificateAction(t *testing.T) {
 			},
 			priorPrimary: PrimaryLabelPrefix + versionSuffix,
 			expectedRequests: []proto.Message{
-				&kmspb.GetCryptoKeyRequest{
-					Name: parent,
-				},
+				// Look up the existing key version
 				&kmspb.GetCryptoKeyVersionRequest{
 					Name: versionName + "2",
 				},
+				// Look up the existing key
+				&kmspb.GetCryptoKeyRequest{
+					Name: parent,
+				},
+				// Mark the key as disabled
 				&kmspb.UpdateCryptoKeyVersionRequest{
 					CryptoKeyVersion: &kmspb.CryptoKeyVersion{
 						State: kmspb.CryptoKeyVersion_DISABLED,
@@ -179,19 +195,24 @@ func TestCertificateAction(t *testing.T) {
 			},
 			priorPrimary: PrimaryLabelPrefix + versionSuffix,
 			expectedRequests: []proto.Message{
+				// Look up the existing key version
+				&kmspb.GetCryptoKeyVersionRequest{
+					Name: versionName,
+				},
+				// Look up the existing key
+				&kmspb.GetCryptoKeyRequest{
+					Name: parent,
+				},
+				// Create a new key
 				&kmspb.CreateCryptoKeyVersionRequest{
 					Parent:           parent,
 					CryptoKeyVersion: &kmspb.CryptoKeyVersion{},
 				},
+				// Lookup the key again
 				&kmspb.GetCryptoKeyRequest{
 					Name: parent,
 				},
-				&kmspb.GetCryptoKeyVersionRequest{
-					Name: versionName,
-				},
-				&kmspb.GetCryptoKeyRequest{
-					Name: parent,
-				},
+				// Update the primary label
 				&kmspb.UpdateCryptoKeyRequest{
 					CryptoKey: &kmspb.CryptoKey{
 						Labels: map[string]string{PrimaryKey: PrimaryLabelPrefix + versionSuffix + "-new"},
@@ -201,6 +222,7 @@ func TestCertificateAction(t *testing.T) {
 						Paths: []string{"labels"},
 					},
 				},
+				// Destroy the old version
 				&kmspb.DestroyCryptoKeyVersionRequest{
 					Name: versionName,
 				},
@@ -225,12 +247,23 @@ func TestCertificateAction(t *testing.T) {
 			},
 			priorPrimary: PrimaryLabelPrefix + versionSuffix,
 			expectedRequests: []proto.Message{
-				&kmspb.GetCryptoKeyRequest{
-					Name: parent,
-				},
+				// Look up the existing key version
 				&kmspb.GetCryptoKeyVersionRequest{
 					Name: versionName + "2",
 				},
+				// Look up the existing key
+				&kmspb.GetCryptoKeyRequest{
+					Name: parent,
+				},
+				// Look up the existing key version
+				&kmspb.GetCryptoKeyVersionRequest{
+					Name: versionName,
+				},
+				// Look up the existing key
+				&kmspb.GetCryptoKeyRequest{
+					Name: parent,
+				},
+				// Mark the key as disabled
 				&kmspb.UpdateCryptoKeyVersionRequest{
 					CryptoKeyVersion: &kmspb.CryptoKeyVersion{
 						State: kmspb.CryptoKeyVersion_DISABLED,
@@ -240,16 +273,12 @@ func TestCertificateAction(t *testing.T) {
 						Paths: []string{"state"},
 					},
 				},
+				// Create a new key
 				&kmspb.CreateCryptoKeyVersionRequest{
 					Parent:           parent,
 					CryptoKeyVersion: &kmspb.CryptoKeyVersion{},
 				},
-				&kmspb.GetCryptoKeyRequest{
-					Name: parent,
-				},
-				&kmspb.GetCryptoKeyVersionRequest{
-					Name: versionName,
-				},
+				// Look up the existing key
 				&kmspb.GetCryptoKeyRequest{
 					Name: parent,
 				},
@@ -269,11 +298,14 @@ func TestCertificateAction(t *testing.T) {
 		},
 	}
 
-	for _, tc := range tests {
+	for _, tc := range cases {
 		tc := tc
+
 		t.Run(tc.name, func(t *testing.T) {
 			t.Parallel()
-			ctx := context.Background()
+
+			ctx := logging.WithLogger(context.Background(), logging.TestLogger(t))
+
 			mockKMS := testutil.NewMockKeyManagementServer(parent, versionName, tc.priorPrimary)
 			mockKMS.Err = tc.serverErr
 
@@ -294,37 +326,20 @@ func TestCertificateAction(t *testing.T) {
 				t.Fatal(err)
 			}
 
-			handler := &RotationHandler{
-				KMSClient:    c,
-				CryptoConfig: &config.CryptoConfig{},
-			}
-
 			service := &CertificateActionService{
-				Handler:   handler,
+				Handler:   NewRotationHandler(ctx, c, &config.CryptoConfig{}),
 				KMSClient: c,
 			}
 
 			_, gotErr := service.CertificateAction(ctx, tc.request)
-
-			if err != nil {
-				t.Fatal(err)
-			}
-
-			if want, got := tc.expectedRequests, mockKMS.Reqs; !slicesEq(want, got) {
-				for _, msg := range got {
-					t.Errorf("got request: %s", msg)
-				}
-				for _, msg := range want {
-					t.Errorf("want request: %s", msg)
-				}
-				t.Errorf("wrong requests %v, want %v", got, want)
-			}
 			if diff := pkgtestutil.DiffErrString(gotErr, tc.wantErr); diff != "" {
 				t.Errorf("Unexpected err: %s", diff)
 			}
-
+			if diff := cmp.Diff(tc.expectedRequests, mockKMS.Reqs, protocmp.Transform()); diff != "" {
+				t.Errorf("wrong requests: diff (-want, +got): %s", diff)
+			}
 			if diff := cmp.Diff(tc.expectedPrimary, mockKMS.Labels["primary"]); diff != "" {
-				t.Errorf("Got diff (-want, +got): %v", diff)
+				t.Errorf("wrong primary: diff (-want, +got): %s", diff)
 			}
 		})
 	}

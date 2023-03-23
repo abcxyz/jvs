@@ -31,7 +31,6 @@ import (
 	"github.com/abcxyz/pkg/cfgloader"
 	"github.com/abcxyz/pkg/gcputil"
 	"github.com/abcxyz/pkg/logging"
-	"github.com/hashicorp/go-multierror"
 )
 
 type server struct {
@@ -40,24 +39,18 @@ type server struct {
 
 // ServeHTTP rotates a single key's versions.
 func (s *server) ServeHTTP(w http.ResponseWriter, r *http.Request) {
-	logger := logging.FromContext(r.Context())
+	ctx := r.Context()
+
+	logger := logging.FromContext(ctx)
 	logger.Infow("received request", "url", r.URL)
 
-	var errs error
-	// TODO: load keys from DB instead. https://github.com/abcxyz/jvs/issues/17
-	for _, key := range s.handler.CryptoConfig.KeyNames {
-		if err := s.handler.RotateKey(r.Context(), key); err != nil {
-			errs = multierror.Append(errs, fmt.Errorf("error while rotating key %s: %w", key, err))
-			continue
-		}
-		logger.Infow("successfully performed actions (if necessary) on key.", "key", key)
-	}
-	if errs != nil {
-		logger.Errorw("ran into errors while rotating keys", "errors", errs)
+	if err := s.handler.RotateKeys(ctx); err != nil {
+		logger.Errorw("ran into errors while rotating keys", "error", err)
 		http.Error(w, "error while rotating keys", http.StatusInternalServerError)
 		return
 	}
-	fmt.Fprint(w, "finished with all keys successfully.\n") // automatically calls `w.WriteHeader(http.StatusOK)`
+
+	fmt.Fprintf(w, "finished with all keys successfully.\n")
 }
 
 func main() {
@@ -102,10 +95,7 @@ func realMain(ctx context.Context) error {
 	mux := http.NewServeMux()
 	mux.Handle("/", logging.HTTPInterceptor(logger, projectID)(
 		&server{
-			handler: &jvscrypto.RotationHandler{
-				KMSClient:    kmsClient,
-				CryptoConfig: &cfg,
-			},
+			handler: jvscrypto.NewRotationHandler(ctx, kmsClient, &cfg),
 		},
 	))
 

@@ -53,7 +53,7 @@ func TestGenerateJWKString(t *testing.T) {
 	key := "projects/[PROJECT]/locations/[LOCATION]/keyRings/[KEY_RING]/cryptoKeys/[CRYPTO_KEY]"
 	versionSuffix := "[VERSION]"
 
-	tests := []struct {
+	cases := []struct {
 		name       string
 		primary    string
 		numKeys    int
@@ -88,7 +88,7 @@ func TestGenerateJWKString(t *testing.T) {
 		},
 	}
 
-	for _, tc := range tests {
+	for _, tc := range cases {
 		tc := tc
 
 		t.Run(tc.name, func(t *testing.T) {
