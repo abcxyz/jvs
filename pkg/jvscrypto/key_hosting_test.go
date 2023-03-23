@@ -28,9 +28,11 @@ import (
 
 	kms "cloud.google.com/go/kms/apiv1"
 	"cloud.google.com/go/kms/apiv1/kmspb"
+	"github.com/abcxyz/jvs/assets"
 	"github.com/abcxyz/jvs/pkg/config"
 	"github.com/abcxyz/jvs/pkg/testutil"
-	"github.com/abcxyz/pkg/cache"
+	"github.com/abcxyz/pkg/logging"
+	"github.com/abcxyz/pkg/renderer"
 	pkgtestutil "github.com/abcxyz/pkg/testutil"
 	"github.com/google/go-cmp/cmp"
 	"google.golang.org/api/option"
@@ -94,7 +96,8 @@ func TestGenerateJWKString(t *testing.T) {
 		t.Run(tc.name, func(t *testing.T) {
 			t.Parallel()
 
-			ctx := context.Background()
+			ctx := logging.WithLogger(context.Background(), logging.TestLogger(t))
+
 			mockKMSServer := testutil.NewMockKeyManagementServer(key, key+"/cryptoKeyVersions/"+versionSuffix, tc.primary)
 			mockKMSServer.PrivateKey = privateKey
 			mockKMSServer.PublicKey = string(pemEncodedPub)
@@ -108,23 +111,25 @@ func TestGenerateJWKString(t *testing.T) {
 				conn.Close()
 			})
 
-			kms, err := kms.NewKeyManagementClient(ctx, clientOpt)
+			kmsClient, err := kms.NewKeyManagementClient(ctx, clientOpt)
 			if err != nil {
 				t.Fatal(err)
 			}
 
-			cache := cache.New[string](5 * time.Minute)
+			h, err := renderer.New(ctx, assets.ServerFS(),
+				renderer.WithDebug(true))
 			if err != nil {
 				t.Fatal(err)
 			}
 
-			ks := &KeyServer{
-				KMSClient:       kms,
-				PublicKeyConfig: &config.PublicKeyConfig{KeyNames: []string{key}},
-				Cache:           cache,
+			cfg := &config.PublicKeyConfig{
+				KeyNames:     []string{key},
+				CacheTimeout: 1 * time.Nanosecond,
 			}
 
-			got, err := ks.generateJWKString(ctx)
+			keyServer := NewKeyServer(ctx, kmsClient, cfg, h)
+
+			got, err := keyServer.generateJWKString(ctx)
 			if diff := pkgtestutil.DiffErrString(err, tc.wantErr); diff != "" {
 				t.Errorf("Unexpected err: %s", diff)
 			}
