@@ -306,7 +306,7 @@ func TestPerformActions(t *testing.T) {
 	versionSuffix := "[VERSION]"
 	versionName := fmt.Sprintf("%s/cryptoKeyVersions/%s", parent, versionSuffix)
 
-	tests := []struct {
+	cases := []struct {
 		name             string
 		actions          []*actionTuple
 		priorPrimary     string
@@ -355,6 +355,9 @@ func TestPerformActions(t *testing.T) {
 				&kmspb.CreateCryptoKeyVersionRequest{
 					Parent:           parent,
 					CryptoKeyVersion: &kmspb.CryptoKeyVersion{},
+				},
+				&kmspb.GetCryptoKeyVersionRequest{
+					Name: versionName + "-new",
 				},
 				&kmspb.GetCryptoKeyRequest{
 					Name: parent,
@@ -431,6 +434,9 @@ func TestPerformActions(t *testing.T) {
 					Parent:           parent,
 					CryptoKeyVersion: &kmspb.CryptoKeyVersion{},
 				},
+				&kmspb.GetCryptoKeyVersionRequest{
+					Name: versionName + "-new",
+				},
 				&kmspb.DestroyCryptoKeyVersionRequest{
 					Name: versionName + "2",
 				},
@@ -457,7 +463,7 @@ func TestPerformActions(t *testing.T) {
 		},
 	}
 
-	for _, tc := range tests {
+	for _, tc := range cases {
 		tc := tc
 
 		t.Run(tc.name, func(t *testing.T) {

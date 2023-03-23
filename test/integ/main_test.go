@@ -22,6 +22,7 @@ import (
 	"crypto/elliptic"
 	"crypto/rand"
 	"crypto/x509"
+	"encoding/hex"
 	"encoding/json"
 	"encoding/pem"
 	"errors"
@@ -46,13 +47,14 @@ import (
 	"github.com/abcxyz/pkg/testutil"
 	"github.com/google/go-cmp/cmp"
 	"github.com/google/go-cmp/cmp/cmpopts"
-	"github.com/google/uuid"
 	"github.com/lestrrat-go/jwx/v2/jwk"
 	"github.com/lestrrat-go/jwx/v2/jws"
 	"github.com/lestrrat-go/jwx/v2/jwt"
 	"github.com/sethvargo/go-retry"
 	"google.golang.org/api/iterator"
+	grpccodes "google.golang.org/grpc/codes"
 	grpcmetadata "google.golang.org/grpc/metadata"
+	grpcstatus "google.golang.org/grpc/status"
 	"google.golang.org/protobuf/types/known/durationpb"
 	"google.golang.org/protobuf/types/known/fieldmaskpb"
 )
@@ -354,7 +356,7 @@ func TestRotator(t *testing.T) {
 			t.Fatalf("err when trying to rotate: %s", err)
 			return
 		}
-		time.Sleep(50 * time.Millisecond) // Reduces chance key will be in "pending generation" state
+
 		// Validate we have created a new key, but haven't set it as primary yet.
 		testValidateKeyVersionState(ctx, t, kmsClient, keyName, 1,
 			map[int]kmspb.CryptoKeyVersion_CryptoKeyVersionState{
@@ -368,6 +370,7 @@ func TestRotator(t *testing.T) {
 		if err := r.RotateKey(ctx, keyName); err != nil {
 			t.Fatalf("err when trying to rotate: %s", err)
 		}
+
 		// Validate our new key has been set to primary
 		testValidateKeyVersionState(ctx, t, kmsClient, keyName, 2,
 			map[int]kmspb.CryptoKeyVersion_CryptoKeyVersionState{
@@ -394,7 +397,7 @@ func TestRotator(t *testing.T) {
 		if err := r.RotateKey(ctx, keyName); err != nil {
 			t.Fatalf("err when trying to rotate: %s", err)
 		}
-		time.Sleep(50 * time.Millisecond) // Reduces chance key will be in "pending generation" state
+
 		// Validate that our old key has been scheduled for destruction, and cycle has started again.
 		testValidateKeyVersionState(ctx, t, kmsClient, keyName, 2,
 			map[int]kmspb.CryptoKeyVersion_CryptoKeyVersionState{
@@ -454,7 +457,7 @@ func TestRotator_EdgeCases(t *testing.T) {
 		if err := r.RotateKey(ctx, keyName); err != nil {
 			t.Fatalf("err when trying to rotate: %s", err)
 		}
-		time.Sleep(50 * time.Millisecond) // Reduces chance key will be in "pending generation" state
+
 		testValidateKeyVersionState(ctx, t, kmsClient, keyName, 2,
 			map[int]kmspb.CryptoKeyVersion_CryptoKeyVersionState{
 				1: kmspb.CryptoKeyVersion_DISABLED,
@@ -496,9 +499,10 @@ func TestPublicKeys(t *testing.T) {
 
 	publicKeys1, publicKeysStr1 := testPublicKeysFromKMS(ctx, t, kmsClient, keyName)
 
-	if len(publicKeys1) != 1 {
-		t.Fatalf("num of key versions in KMS does not match, want %d, got %d", 1, len(publicKeys1))
+	if got, want := len(publicKeys1), 1; got != want {
+		t.Errorf("got %d public keys, expected %d: %#v", got, want, publicKeys1)
 	}
+
 	// test for one key version
 	testValidatePublicKeys(ctx, t, ks, publicKeysStr1)
 
@@ -509,9 +513,10 @@ func TestPublicKeys(t *testing.T) {
 	time.Sleep(10 * time.Second)
 	publicKeys2, publicKeysStr2 := testPublicKeysFromKMS(ctx, t, kmsClient, keyName)
 
-	if len(publicKeys2) != 2 {
-		t.Fatalf("num of key versions in KMS does not match, want %d, got %d", 2, len(publicKeys2))
+	if got, want := len(publicKeys2), 2; got != want {
+		t.Errorf("got %d public keys, expected %d: %#v", got, want, publicKeys2)
 	}
+
 	// test for cache timeout mechanism and multiple key version
 	testValidatePublicKeys(ctx, t, ks, publicKeysStr2)
 	t.Cleanup(func() {
@@ -522,8 +527,9 @@ func TestPublicKeys(t *testing.T) {
 	})
 }
 
-// These tests must be run in sequence, and they have waits in between. Therefore, they cannot
-// be parallelized, and aren't a good fit for table testing.
+// These tests must be run in sequence, and they have waits in between.
+// Therefore, they cannot be parallelized, and aren't a good fit for table
+// testing.
 //
 //nolint:tparallel
 func TestCertActions(t *testing.T) {
@@ -569,7 +575,7 @@ func TestCertActions(t *testing.T) {
 		if _, err := s.CertificateAction(ctx, &jvspb.CertificateActionRequest{Actions: actions}); err != nil {
 			t.Fatalf("err when trying to rotate: %s", err)
 		}
-		time.Sleep(50 * time.Millisecond) // Reduces chance key will be in "pending generation" state
+
 		// Validate we have created a new key, and set it as primary
 		testValidateKeyVersionState(ctx, t, kmsClient, keyName, 2,
 			map[int]kmspb.CryptoKeyVersion_CryptoKeyVersionState{
@@ -590,7 +596,6 @@ func TestCertActions(t *testing.T) {
 		if _, err := s.CertificateAction(ctx, &jvspb.CertificateActionRequest{Actions: actions}); err != nil {
 			t.Fatalf("err when trying to rotate: %s", err)
 		}
-		time.Sleep(50 * time.Millisecond) // Reduces chance key will be in "pending generation" state
 
 		// 1 is not a primary, so calling rotate on it again should do nothing.
 		testValidateKeyVersionState(ctx, t, kmsClient, keyName, 2,
@@ -616,7 +621,6 @@ func TestCertActions(t *testing.T) {
 		if _, err := s.CertificateAction(ctx, &jvspb.CertificateActionRequest{Actions: actions}); err != nil {
 			t.Fatalf("err when trying to disable: %s", err)
 		}
-		time.Sleep(50 * time.Millisecond) // Reduces chance key will be in "pending generation" state
 
 		// Validate we created a new key, and set it to primary, disabled 2 others.
 		testValidateKeyVersionState(ctx, t, kmsClient, keyName, 3,
@@ -643,7 +647,6 @@ func TestCertActions(t *testing.T) {
 		if _, err := s.CertificateAction(ctx, &jvspb.CertificateActionRequest{Actions: actions}); err != nil {
 			t.Fatalf("err when trying to destroy: %s", err)
 		}
-		time.Sleep(50 * time.Millisecond) // Reduces chance key will be in "pending generation" state
 
 		// Validate we created a new key, and scheduled 2&3 for destroying.
 		testValidateKeyVersionState(ctx, t, kmsClient, keyName, 4,
@@ -784,17 +787,14 @@ func testValidateKeyVersionState(ctx context.Context, tb testing.TB, kmsClient *
 func testCreateKey(ctx context.Context, tb testing.TB, kmsClient *kms.KeyManagementClient, keyRing, primaryKeyVersion string) string {
 	tb.Helper()
 
-	u, err := uuid.NewUUID()
-	if err != nil {
-		tb.Fatalf("failed to create uuid: %s", err)
-	}
+	keyName := testKeyName(tb)
 
 	// 'Primary' field will be omitted for keys with purpose other than ENCRYPT_DECRYPT(https://cloud.google.com/kms/docs/reference/rest/v1/projects.locations.keyRings.cryptoKeys).
 	// Therefore, use `Labels` filed to set the primary key version name.
 	labels := map[string]string{jvscrypto.PrimaryKey: jvscrypto.PrimaryLabelPrefix + primaryKeyVersion}
 	ck, err := kmsClient.CreateCryptoKey(ctx, &kmspb.CreateCryptoKeyRequest{
 		Parent:      keyRing,
-		CryptoKeyId: u.String(),
+		CryptoKeyId: keyName,
 		CryptoKey: &kmspb.CryptoKey{
 			Purpose: kmspb.CryptoKey_ASYMMETRIC_SIGN,
 			VersionTemplate: &kmspb.CryptoKeyVersionTemplate{
@@ -802,27 +802,15 @@ func testCreateKey(ctx context.Context, tb testing.TB, kmsClient *kms.KeyManagem
 			},
 			Labels: labels,
 		},
+
+		// Do not create the initial version - we will create one below.
+		SkipInitialVersionCreation: true,
 	})
 	if err != nil {
 		tb.Fatalf("failed to create crypto key: %s", err)
 	}
 
-	// Wait for a key version to be created and enabled.
-	r := retry.NewExponential(100 * time.Millisecond)
-	if err := retry.Do(ctx, retry.WithMaxRetries(10, r), func(ctx context.Context) error {
-		ckv, err := kmsClient.GetCryptoKeyVersion(ctx, &kmspb.GetCryptoKeyVersionRequest{
-			Name: ck.Name + "/cryptoKeyVersions/" + primaryKeyVersion,
-		})
-		if err != nil {
-			return fmt.Errorf("failed to get crypto key version: %w", err)
-		}
-		if ckv.State == kmspb.CryptoKeyVersion_ENABLED {
-			return nil
-		}
-		return errors.New("key is not in ready state")
-	}); err != nil {
-		tb.Fatal("key did not enter ready state")
-	}
+	testCreateKeyVersion(ctx, tb, kmsClient, ck.Name)
 	return ck.Name
 }
 
@@ -852,6 +840,13 @@ func testCleanUpKey(ctx context.Context, tb testing.TB, kmsClient *kms.KeyManage
 		if _, err := kmsClient.DestroyCryptoKeyVersion(ctx, &kmspb.DestroyCryptoKeyVersionRequest{
 			Name: ver.Name,
 		}); err != nil {
+			// Cloud KMS returns the following errors when the key is already
+			// destroyed or does not exist.
+			code := grpcstatus.Code(err)
+			if code == grpccodes.NotFound || code == grpccodes.FailedPrecondition {
+				return
+			}
+
 			tb.Errorf("cleanup: failed to destroy crypto key version %q: %s", ver.Name, err)
 		}
 	}
@@ -902,20 +897,20 @@ func testCreateKeyVersion(ctx context.Context, tb testing.TB, kmsClient *kms.Key
 	}
 
 	// Wait for a key version to be created and enabled.
-	r := retry.NewExponential(100 * time.Millisecond)
-	if err := retry.Do(ctx, retry.WithMaxRetries(10, r), func(ctx context.Context) error {
+	b := retry.WithMaxRetries(5, retry.NewFibonacci(500*time.Millisecond))
+	if err := retry.Do(ctx, b, func(ctx context.Context) error {
 		ckv, err := kmsClient.GetCryptoKeyVersion(ctx, &kmspb.GetCryptoKeyVersionRequest{
 			Name: ck.Name,
 		})
 		if err != nil {
 			return fmt.Errorf("failed to get crypto key version: %w", err)
 		}
-		if ckv.State == kmspb.CryptoKeyVersion_ENABLED {
-			return nil
+		if got, want := ckv.State, kmspb.CryptoKeyVersion_ENABLED; got != want {
+			return retry.RetryableError(fmt.Errorf("expected %s to be %s", got.String(), want.String()))
 		}
-		return errors.New("key is not in ready state")
+		return nil
 	}); err != nil {
-		tb.Fatal("key did not enter ready state")
+		tb.Fatalf("key did not enter ready state: %s", err)
 	}
 	return ck.Name
 }
@@ -965,4 +960,18 @@ func testValidatePublicKeys(ctx context.Context, tb testing.TB, s http.Handler, 
 	if diff := cmp.Diff(expectedPublicKeys, got); diff != "" {
 		tb.Errorf("GotPublicKeys diff (-want, +got): %v", diff)
 	}
+}
+
+// testKeyName creates a name with a semi-predicatable name and a random suffix.
+func testKeyName(tb testing.TB) string {
+	tb.Helper()
+
+	prefix := time.Now().UTC().Format("20060201")
+
+	b := make([]byte, 5)
+	if _, err := rand.Read(b); err != nil {
+		tb.Fatalf("failed to read random bytes: %s", err)
+	}
+
+	return prefix + "-" + hex.EncodeToString(b)
 }
