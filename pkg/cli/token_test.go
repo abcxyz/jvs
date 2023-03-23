@@ -18,13 +18,14 @@ import (
 	"context"
 	"fmt"
 	"reflect"
+	"strconv"
 	"strings"
 	"testing"
 	"time"
 
 	jvspb "github.com/abcxyz/jvs/apis/v0"
-	"github.com/abcxyz/jvs/pkg/config"
 	"github.com/abcxyz/jvs/pkg/justification"
+	"github.com/abcxyz/pkg/logging"
 	"github.com/abcxyz/pkg/testutil"
 	"github.com/google/go-cmp/cmp"
 	"github.com/google/go-cmp/cmp/cmpopts"
@@ -36,7 +37,9 @@ import (
 func TestNewTokenCmd(t *testing.T) {
 	t.Parallel()
 
-	ctx := context.Background()
+	ctx := logging.WithLogger(context.Background(), logging.TestLogger(t))
+
+	now := time.Unix(0, 0).UTC()
 
 	goodJVS, _ := testutil.FakeGRPCServer(t, func(s *grpc.Server) {
 		jvspb.RegisterJVSServiceServer(s, &fakeJVS{})
@@ -47,7 +50,6 @@ func TestNewTokenCmd(t *testing.T) {
 
 	cases := []struct {
 		name              string
-		config            *config.CLIConfig
 		args              []string
 		expSubject        string
 		expAudiences      []string
@@ -57,7 +59,7 @@ func TestNewTokenCmd(t *testing.T) {
 		{
 			name:   "too_many_args",
 			args:   []string{"foo"},
-			expErr: `accepts 0 arg(s)`,
+			expErr: `unexpected arguments: ["foo"]`,
 		},
 		{
 			name:   "missing_explanation",
@@ -66,23 +68,17 @@ func TestNewTokenCmd(t *testing.T) {
 		},
 		{
 			name: "bad_server_response",
-			config: &config.CLIConfig{
-				Server:   badJVS,
-				Insecure: true,
-			},
 			args: []string{
-				"--explanation=for testing purposes",
+				"-explanation", "for testing purposes",
+				"-server", badJVS,
 			},
 			expErr: "testing server error",
 		},
 		{
 			name: "happy_path",
-			config: &config.CLIConfig{
-				Server:   goodJVS,
-				Insecure: true,
-			},
 			args: []string{
-				"--explanation=for testing purposes",
+				"-explanation", "for testing purposes",
+				"-server", goodJVS,
 			},
 			expAudiences: []string{justification.DefaultAudience},
 			expJustifications: []*jvspb.Justification{
@@ -93,12 +89,10 @@ func TestNewTokenCmd(t *testing.T) {
 			},
 		},
 		{
-			name:   "breakglass",
-			config: &config.CLIConfig{},
+			name: "breakglass",
 			args: []string{
-				"--explanation=prod is down",
-				"--breakglass",
-				"--iat=0",
+				"-explanation=prod is down",
+				"-breakglass",
 			},
 			expAudiences: []string{justification.DefaultAudience},
 			expJustifications: []*jvspb.Justification{
@@ -109,12 +103,11 @@ func TestNewTokenCmd(t *testing.T) {
 			},
 		},
 		{
-			name:   "custom_subject",
-			config: &config.CLIConfig{},
+			name: "custom_subject",
 			args: []string{
-				"--explanation=prod is down",
-				"--subject=user@example.com",
-				"--breakglass",
+				"-explanation=prod is down",
+				"-subject=user@example.com",
+				"-breakglass",
 			},
 			expSubject:   "user@example.com",
 			expAudiences: []string{justification.DefaultAudience},
@@ -126,14 +119,14 @@ func TestNewTokenCmd(t *testing.T) {
 			},
 		},
 		{
-			name:   "custom_audiences",
-			config: &config.CLIConfig{},
+			name: "custom_audiences",
 			args: []string{
-				"--explanation=prod is down",
-				"--breakglass",
-				"--audiences=foo,bar",
+				"-explanation=prod is down",
+				"-breakglass",
+				"-audience=foo,bar",
+				"-audience=baz",
 			},
-			expAudiences: []string{"foo", "bar"},
+			expAudiences: []string{"foo", "bar", "baz"},
 			expJustifications: []*jvspb.Justification{
 				{
 					Category: "breakglass",
@@ -149,18 +142,27 @@ func TestNewTokenCmd(t *testing.T) {
 		t.Run(tc.name, func(t *testing.T) {
 			t.Parallel()
 
-			now := time.Unix(0, 0).UTC()
+			var cmd TokenCommand
+			_, stdout, _ := cmd.Pipe()
 
-			cmd := newTokenCmd(tc.config)
-			stdout, _, err := testExecuteCommand(t, cmd, tc.args...)
-			if diff := testutil.DiffErrString(err, tc.expErr); diff != "" {
-				t.Fatal(diff)
-			}
-			if err != nil {
-				return
+			args := append([]string{
+				// Always append insecure for tests.
+				"-insecure",
+
+				// Override timestamp in tests.
+				"-now", strconv.FormatInt(now.Unix(), 10),
+			}, tc.args...)
+
+			if err := cmd.Run(ctx, args); err != nil {
+				if diff := testutil.DiffErrString(err, tc.expErr); diff != "" {
+					t.Fatal(diff)
+				}
+				if err != nil {
+					return
+				}
 			}
 
-			tokenStr := strings.TrimSpace(stdout)
+			tokenStr := strings.TrimSpace(stdout.String())
 			token, err := jwt.ParseInsecure([]byte(tokenStr),
 				jwt.WithContext(ctx),
 				jwt.WithAcceptableSkew(5*time.Second),
