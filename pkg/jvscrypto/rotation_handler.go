@@ -34,8 +34,37 @@ import (
 // RotationHandler handles all necessary rotation actions for asymmetric keys
 // based off a provided configuration.
 type RotationHandler struct {
-	KMSClient    *kms.KeyManagementClient
-	CryptoConfig *config.CryptoConfig
+	kmsClient *kms.KeyManagementClient
+	config    *config.CryptoConfig
+}
+
+// NewRotationHandler creates a handler for rotating keys.
+func NewRotationHandler(ctx context.Context, kmsClient *kms.KeyManagementClient, cfg *config.CryptoConfig) *RotationHandler {
+	if cfg == nil {
+		cfg = &config.CryptoConfig{}
+	}
+
+	return &RotationHandler{
+		kmsClient: kmsClient,
+		config:    cfg,
+	}
+}
+
+// RotateKeys rotates all keys.
+func (h *RotationHandler) RotateKeys(ctx context.Context) error {
+	logger := logging.FromContext(ctx)
+
+	var merr *multierror.Error
+	// TODO: load keys from DB instead. https://github.com/abcxyz/jvs/issues/17
+	for _, key := range h.config.KeyNames {
+		if err := h.RotateKey(ctx, key); err != nil {
+			merr = multierror.Append(merr, fmt.Errorf("failed to rotate key %s: %w", key, err))
+			continue
+		}
+		logger.Infow("successfully rotated (if necessary)", "key", key)
+	}
+
+	return merr.ErrorOrNil()
 }
 
 // RotateKey is called to determine and perform rotation actions on versions for a key.
@@ -49,7 +78,7 @@ func (h *RotationHandler) RotateKey(ctx context.Context, key string) error {
 	}
 
 	// List the Key Versions in the Key
-	it := h.KMSClient.ListCryptoKeyVersions(ctx, listKeysReq)
+	it := h.kmsClient.ListCryptoKeyVersions(ctx, listKeysReq)
 	vers := make([]*kmspb.CryptoKeyVersion, 0)
 	for {
 		ver, err := it.Next()
@@ -63,7 +92,7 @@ func (h *RotationHandler) RotateKey(ctx context.Context, key string) error {
 	}
 
 	// Get any relevant Key Version information from the StateStore
-	primaryName, err := GetPrimary(ctx, h.KMSClient, key)
+	primaryName, err := GetPrimary(ctx, h.kmsClient, key)
 	if err != nil {
 		return fmt.Errorf("failed to determine primary: %w", err)
 	}
@@ -204,7 +233,7 @@ func (h *RotationHandler) actionsForOlderVersions(ctx context.Context, vers []*k
 
 func (h *RotationHandler) shouldDestroy(ctx context.Context, ver *kmspb.CryptoKeyVersion, curTime time.Time) bool {
 	logger := logging.FromContext(ctx)
-	cutoff := curTime.Add(-h.CryptoConfig.DestroyAge())
+	cutoff := curTime.Add(-h.config.DestroyAge())
 	shouldDestroy := ver.CreateTime.AsTime().Before(cutoff)
 	if shouldDestroy {
 		logger.Infow("version created before cutoff date, should destroy.", "version", ver, "cutoff", cutoff)
@@ -216,7 +245,7 @@ func (h *RotationHandler) shouldDestroy(ctx context.Context, ver *kmspb.CryptoKe
 
 func (h *RotationHandler) shouldDisable(ctx context.Context, ver *kmspb.CryptoKeyVersion, curTime time.Time) bool {
 	logger := logging.FromContext(ctx)
-	cutoff := curTime.Add(-h.CryptoConfig.KeyTTL)
+	cutoff := curTime.Add(-h.config.KeyTTL)
 	shouldDisable := ver.CreateTime.AsTime().Before(cutoff)
 	if shouldDisable {
 		logger.Infow("version created before cutoff date, should disable.", "version", ver, "cutoff", cutoff)
@@ -235,7 +264,7 @@ func (h *RotationHandler) shouldRotate(ctx context.Context, primary, newest *kms
 		logger.Debugw("new version already created, no action necessary.", "version", newest)
 		return false
 	}
-	cutoff := curTime.Add(-h.CryptoConfig.RotationAge())
+	cutoff := curTime.Add(-h.config.RotationAge())
 	shouldRotate := primary.CreateTime.AsTime().Before(cutoff)
 	if shouldRotate {
 		logger.Infow("version created before cutoff date, should rotate.", "version", primary, "cutoff", cutoff)
@@ -257,7 +286,7 @@ func (h *RotationHandler) shouldPromote(ctx context.Context, primary, newest *km
 		logger.Infow("primary does not exist, should promote the newest key to primary regardless of propagation delay.", "version", newest)
 		return true
 	}
-	cutoff := curTime.Add(-h.CryptoConfig.PropagationDelay)
+	cutoff := curTime.Add(-h.config.PropagationDelay)
 	canPromote := newest.CreateTime.AsTime().Before(cutoff)
 	if canPromote {
 		logger.Infow("version created before cutoff date, should promote to primary.", "version", newest, "cutoff", cutoff)
@@ -282,7 +311,7 @@ func (h *RotationHandler) performActions(ctx context.Context, keyName string, ac
 				merr = multierror.Append(merr, err)
 			}
 		case ActionPromote:
-			if err := SetPrimary(ctx, h.KMSClient, keyName, action.Version.Name); err != nil {
+			if err := SetPrimary(ctx, h.kmsClient, keyName, action.Version.Name); err != nil {
 				merr = multierror.Append(merr, err)
 			}
 		case ActionCreateNewAndPromote:
@@ -292,7 +321,7 @@ func (h *RotationHandler) performActions(ctx context.Context, keyName string, ac
 				continue
 			}
 			logger.Info("Promoting immediately.")
-			if err := SetPrimary(ctx, h.KMSClient, keyName, newVer.Name); err != nil {
+			if err := SetPrimary(ctx, h.kmsClient, keyName, newVer.Name); err != nil {
 				merr = multierror.Append(merr, err)
 			}
 		case ActionDisable:
@@ -327,7 +356,7 @@ func (h *RotationHandler) performDisable(ctx context.Context, ver *kmspb.CryptoK
 		CryptoKeyVersion: newVerState,
 		UpdateMask:       mask,
 	}
-	if _, err := h.KMSClient.UpdateCryptoKeyVersion(ctx, updateReq); err != nil {
+	if _, err := h.kmsClient.UpdateCryptoKeyVersion(ctx, updateReq); err != nil {
 		return fmt.Errorf("key disable failed: %w", err)
 	}
 	return nil
@@ -339,7 +368,7 @@ func (h *RotationHandler) performDestroy(ctx context.Context, ver *kmspb.CryptoK
 	destroyReq := &kmspb.DestroyCryptoKeyVersionRequest{
 		Name: ver.Name,
 	}
-	if _, err := h.KMSClient.DestroyCryptoKeyVersion(ctx, destroyReq); err != nil {
+	if _, err := h.kmsClient.DestroyCryptoKeyVersion(ctx, destroyReq); err != nil {
 		return fmt.Errorf("key destroy failed: %w", err)
 	}
 	return nil
@@ -353,10 +382,13 @@ func (h *RotationHandler) performCreateNew(ctx context.Context, keyName string) 
 		Parent:           keyName,
 		CryptoKeyVersion: &kmspb.CryptoKeyVersion{},
 	}
-	resp, err := h.KMSClient.CreateCryptoKeyVersion(ctx, createReq)
+	resp, err := h.kmsClient.CreateCryptoKeyVersion(ctx, createReq)
 	if err != nil {
 		return nil, fmt.Errorf("key creation failed: %w", err)
 	}
+
+	// TODO(sethvargo): Wait for a key version to be created and enabled.
+
 	return resp, nil
 }
 
