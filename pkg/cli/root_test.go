@@ -15,141 +15,22 @@
 package cli
 
 import (
-	"bytes"
-	"io"
-	"os"
-	"path/filepath"
 	"strings"
 	"testing"
-
-	"github.com/abcxyz/jvs/pkg/config"
-	"github.com/google/go-cmp/cmp"
-	"github.com/spf13/cobra"
 )
 
-func TestNewRootCmd(t *testing.T) {
+func TestRootCommand_Help(t *testing.T) {
 	t.Parallel()
 
-	configFile := filepath.Join(t.TempDir(), ".jvsctl.yaml")
-	if err := os.WriteFile(configFile, []byte(strings.TrimSpace(`
-server: 1.2.3.4:5678
-insecure: true
-jwks_endpoint: "https://1.2.3.4:8080/.well-known/jwks"
-	`)), 0o600); err != nil {
-		t.Fatal(err)
+	exp := `
+Usage: jvsctl COMMAND
+
+  token       Generate a justification token
+  validate    Validate the input token
+`
+
+	cmd := rootCmd()
+	if got, want := strings.TrimSpace(cmd.Help()), strings.TrimSpace(exp); got != want {
+		t.Errorf("expected\n\n%s\n\nto be\n\n%s\n\n", got, want)
 	}
-	t.Cleanup(func() {
-		if err := os.Remove(configFile); err != nil {
-			t.Error(err)
-		}
-	})
-
-	cases := []struct {
-		name      string
-		args      []string
-		expConfig *config.CLIConfig
-	}{
-		{
-			name: "default_config",
-			expConfig: &config.CLIConfig{
-				Version:      "1",
-				Server:       "127.0.0.1:8080",
-				JWKSEndpoint: "https://127.0.0.1:8080/.well-known/jwks",
-			},
-		},
-		{
-			name: "flag_config",
-			args: []string{"--config", configFile},
-			expConfig: &config.CLIConfig{
-				Version:      "1",
-				Server:       "1.2.3.4:5678",
-				JWKSEndpoint: "https://1.2.3.4:8080/.well-known/jwks",
-				Insecure:     true,
-			},
-		},
-		{
-			name: "flag_server",
-			args: []string{"--server", "1.2.3.4:5678"},
-			expConfig: &config.CLIConfig{
-				Version:      "1",
-				Server:       "1.2.3.4:5678",
-				JWKSEndpoint: "https://1.2.3.4:8080/.well-known/jwks",
-			},
-		},
-		{
-			name: "flag_insecure",
-			args: []string{"--insecure"},
-			expConfig: &config.CLIConfig{
-				Version:      "1",
-				Server:       "127.0.0.1:8080",
-				Insecure:     true,
-				JWKSEndpoint: "https://127.0.0.1:8080/.well-known/jwks",
-			},
-		},
-		{
-			name: "flag_jwks_endpoint",
-			args: []string{"--jwks_endpoint", "https://1.2.3.4:8080/.well-known/jwks"},
-			expConfig: &config.CLIConfig{
-				Version:      "1",
-				Server:       "127.0.0.1:8080",
-				JWKSEndpoint: "https://1.2.3.4:8080/.well-known/jwks",
-			},
-		},
-	}
-
-	for _, tc := range cases {
-		tc := tc
-
-		t.Run(tc.name, func(t *testing.T) {
-			t.Parallel()
-
-			var cfg config.CLIConfig
-			cmd := newRootCmd(&cfg)
-
-			// Add a fake subcommand to invoke for testing. This is required because
-			// the pre/post hooks do not fire on root commands.
-			cmd.AddCommand(&cobra.Command{
-				Use: "testing",
-				Run: func(cmd *cobra.Command, args []string) {},
-			})
-
-			args := append([]string{"testing"}, tc.args...)
-			if _, _, err := testExecuteCommand(t, cmd, args...); err != nil {
-				t.Fatal(err)
-			}
-
-			if diff := cmp.Diff(tc.expConfig, &cfg); diff != "" {
-				t.Errorf("config (-want, +got):\n%s", diff)
-			}
-		})
-	}
-}
-
-// testExecteCommand executes the given cobra command and returns the stdout,
-// stderr, and any execution error. See [testExecuteCommandStdin] for more
-// information.
-func testExecuteCommand(tb testing.TB, cmd *cobra.Command, args ...string) (string, string, error) {
-	tb.Helper()
-	return testExecuteCommandStdin(tb, cmd, nil, args...)
-}
-
-// testExecuteCommandStdin executes the given cobra command with the stdin
-// reader w and returns the stdout, stderr, and any errors that occur during
-// execution. It is safe for concurrent use if and only if the cobra command is
-// safe for concurrent use (e.g. does not read or set global state). The
-// convenience function [testExecuteCommand] exists for calling without stdin.
-func testExecuteCommandStdin(tb testing.TB, cmd *cobra.Command, stdin io.Reader, args ...string) (string, string, error) {
-	tb.Helper()
-
-	var stdout, stderr bytes.Buffer
-	defer stdout.Reset()
-	defer stderr.Reset()
-
-	cmd.SetIn(stdin)
-	cmd.SetOut(&stdout)
-	cmd.SetErr(&stderr)
-	cmd.SetArgs(args)
-
-	err := cmd.Execute()
-	return stdout.String(), stderr.String(), err
 }
