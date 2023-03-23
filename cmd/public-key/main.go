@@ -25,13 +25,14 @@ import (
 	"time"
 
 	kms "cloud.google.com/go/kms/apiv1"
+	"github.com/abcxyz/jvs/assets"
 	"github.com/abcxyz/jvs/internal/version"
 	"github.com/abcxyz/jvs/pkg/config"
 	"github.com/abcxyz/jvs/pkg/jvscrypto"
-	"github.com/abcxyz/pkg/cache"
 	"github.com/abcxyz/pkg/cfgloader"
 	"github.com/abcxyz/pkg/gcputil"
 	"github.com/abcxyz/pkg/logging"
+	"github.com/abcxyz/pkg/renderer"
 )
 
 func main() {
@@ -73,16 +74,20 @@ func realMain(ctx context.Context) error {
 
 	logger.Debugw("loaded configuration", "config", cfg)
 
-	cache := cache.New[string](cfg.CacheTimeout)
+	// Create the renderer
+	h, err := renderer.New(ctx, assets.ServerFS(),
+		renderer.WithDebug(cfg.DevMode),
+		renderer.WithOnError(func(err error) {
+			logger.Errorw("failed to render", "error", err)
+		}))
+	if err != nil {
+		return fmt.Errorf("failed to create renderer: %w", err)
+	}
+
+	keyServer := jvscrypto.NewKeyServer(ctx, kmsClient, &cfg, h)
 
 	mux := http.NewServeMux()
-	mux.Handle("/.well-known/jwks", logging.HTTPInterceptor(logger, projectID)(
-		&jvscrypto.KeyServer{
-			KMSClient:       kmsClient,
-			PublicKeyConfig: &cfg,
-			Cache:           cache,
-		},
-	))
+	mux.Handle("/.well-known/jwks", logging.HTTPInterceptor(logger, projectID)(keyServer))
 
 	// Create the server and listen in a goroutine.
 	logger.Debugw("starting server on port", "port", cfg.Port)

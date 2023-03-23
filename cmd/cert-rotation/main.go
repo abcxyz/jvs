@@ -25,16 +25,19 @@ import (
 	"time"
 
 	kms "cloud.google.com/go/kms/apiv1"
+	"github.com/abcxyz/jvs/assets"
 	"github.com/abcxyz/jvs/internal/version"
 	"github.com/abcxyz/jvs/pkg/config"
 	"github.com/abcxyz/jvs/pkg/jvscrypto"
 	"github.com/abcxyz/pkg/cfgloader"
 	"github.com/abcxyz/pkg/gcputil"
 	"github.com/abcxyz/pkg/logging"
+	"github.com/abcxyz/pkg/renderer"
 )
 
 type server struct {
 	handler *jvscrypto.RotationHandler
+	h       *renderer.Renderer
 }
 
 // ServeHTTP rotates a single key's versions.
@@ -46,11 +49,11 @@ func (s *server) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 
 	if err := s.handler.RotateKeys(ctx); err != nil {
 		logger.Errorw("ran into errors while rotating keys", "error", err)
-		http.Error(w, "error while rotating keys", http.StatusInternalServerError)
+		s.h.RenderJSON(w, http.StatusInternalServerError, err)
 		return
 	}
 
-	fmt.Fprintf(w, "finished with all keys successfully.\n")
+	s.h.RenderJSON(w, http.StatusOK, nil)
 }
 
 func main() {
@@ -79,23 +82,35 @@ func realMain(ctx context.Context) error {
 
 	projectID := gcputil.ProjectID(ctx)
 
+	// Create the client
 	kmsClient, err := kms.NewKeyManagementClient(ctx)
 	if err != nil {
 		return fmt.Errorf("failed to setup kms client: %w", err)
 	}
 	defer kmsClient.Close()
 
+	// Load the config
 	var cfg config.CryptoConfig
 	if err := cfgloader.Load(ctx, &cfg); err != nil {
 		return fmt.Errorf("failed to load config: %w", err)
 	}
-
 	logger.Debugw("loaded configuration", "config", cfg)
+
+	// Create the renderer
+	h, err := renderer.New(ctx, assets.ServerFS(),
+		renderer.WithDebug(cfg.DevMode),
+		renderer.WithOnError(func(err error) {
+			logger.Errorw("failed to render", "error", err)
+		}))
+	if err != nil {
+		return fmt.Errorf("failed to create renderer: %w", err)
+	}
 
 	mux := http.NewServeMux()
 	mux.Handle("/", logging.HTTPInterceptor(logger, projectID)(
 		&server{
 			handler: jvscrypto.NewRotationHandler(ctx, kmsClient, &cfg),
+			h:       h,
 		},
 	))
 

@@ -39,11 +39,12 @@ import (
 	kms "cloud.google.com/go/kms/apiv1"
 	"cloud.google.com/go/kms/apiv1/kmspb"
 	jvspb "github.com/abcxyz/jvs/apis/v0"
+	"github.com/abcxyz/jvs/assets"
 	"github.com/abcxyz/jvs/pkg/config"
 	"github.com/abcxyz/jvs/pkg/justification"
 	"github.com/abcxyz/jvs/pkg/jvscrypto"
-	"github.com/abcxyz/pkg/cache"
 	"github.com/abcxyz/pkg/logging"
+	"github.com/abcxyz/pkg/renderer"
 	"github.com/abcxyz/pkg/testutil"
 	"github.com/google/go-cmp/cmp"
 	"github.com/google/go-cmp/cmp/cmpopts"
@@ -484,18 +485,18 @@ func TestPublicKeys(t *testing.T) {
 	primaryKeyVersion := "1"
 	keyName := testCreateKey(ctx, t, kmsClient, keyRing, primaryKeyVersion)
 
-	publicKeyConfig := &config.PublicKeyConfig{
+	cfg := &config.PublicKeyConfig{
 		KeyNames:     []string{keyName},
 		CacheTimeout: 10 * time.Second,
 	}
 
-	cache := cache.New[string](publicKeyConfig.CacheTimeout)
-
-	ks := &jvscrypto.KeyServer{
-		KMSClient:       kmsClient,
-		PublicKeyConfig: publicKeyConfig,
-		Cache:           cache,
+	h, err := renderer.New(ctx, assets.ServerFS(),
+		renderer.WithDebug(cfg.DevMode))
+	if err != nil {
+		t.Fatal(err)
 	}
+
+	keyServer := jvscrypto.NewKeyServer(ctx, kmsClient, cfg, h)
 
 	publicKeys1, publicKeysStr1 := testPublicKeysFromKMS(ctx, t, kmsClient, keyName)
 
@@ -504,11 +505,11 @@ func TestPublicKeys(t *testing.T) {
 	}
 
 	// test for one key version
-	testValidatePublicKeys(ctx, t, ks, publicKeysStr1)
+	testValidatePublicKeys(ctx, t, keyServer, publicKeysStr1)
 
 	testCreateKeyVersion(ctx, t, kmsClient, keyName)
 	// test for cache mechanism
-	testValidatePublicKeys(ctx, t, ks, publicKeysStr1)
+	testValidatePublicKeys(ctx, t, keyServer, publicKeysStr1)
 	// Wait for the cache timeout
 	time.Sleep(10 * time.Second)
 	publicKeys2, publicKeysStr2 := testPublicKeysFromKMS(ctx, t, kmsClient, keyName)
@@ -518,7 +519,7 @@ func TestPublicKeys(t *testing.T) {
 	}
 
 	// test for cache timeout mechanism and multiple key version
-	testValidatePublicKeys(ctx, t, ks, publicKeysStr2)
+	testValidatePublicKeys(ctx, t, keyServer, publicKeysStr2)
 	t.Cleanup(func() {
 		testCleanUpKey(ctx, t, kmsClient, keyName)
 		if err := kmsClient.Close(); err != nil {

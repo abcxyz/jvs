@@ -27,6 +27,9 @@ var CryptoConfigVersions = NewVersionList("1")
 
 // CryptoConfig is the full jvs config.
 type CryptoConfig struct {
+	// DevMode controls enables more granular debugging in logs.
+	DevMode bool `env:"DEV_MODE,default=false"`
+
 	// Version is the version of the config.
 	Version string `yaml:"version,omitempty" env:"VERSION,overwrite,default=1"`
 
