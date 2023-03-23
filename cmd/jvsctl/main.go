@@ -16,19 +16,26 @@ package main
 
 import (
 	"context"
+	"fmt"
+	"os"
 	"os/signal"
 	"syscall"
 
 	"github.com/abcxyz/jvs/pkg/cli"
-	"github.com/abcxyz/pkg/logging"
 )
 
 func main() {
-	ctx, done := signal.NotifyContext(context.Background(), syscall.SIGINT, syscall.SIGTERM)
+	ctx, done := signal.NotifyContext(context.Background(),
+		syscall.SIGINT, syscall.SIGTERM)
 	defer done()
 
-	logger := logging.NewFromEnv("")
-	ctx = logging.WithLogger(ctx, logger)
+	if err := realMain(ctx); err != nil {
+		done()
+		fmt.Fprintln(os.Stderr, err.Error())
+		os.Exit(1)
+	}
+}
 
-	cli.Execute(ctx)
+func realMain(ctx context.Context) error {
+	return cli.Run(ctx, os.Args[1:]) //nolint:wrapcheck // Want passthrough
 }

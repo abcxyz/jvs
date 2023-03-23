@@ -12,7 +12,7 @@ go install github.com/abcxyz/jvs/cmd/jvsctl
 ```
 
 Or download from a
-[release](https://github.com/abcxyz/lumberjack/releases/tag/v0.0.4).
+[release](https://github.com/abcxyz/jvs/releases).
 
 ## Usage
 
@@ -22,31 +22,29 @@ Run `jvsctl -h` for details of available flags.
 
 ## Config
 
-By default, `jvsctl` expects the config file at `~/.jvsctl/config.yaml`.
-Minimally we need a JVS server address in the config file to mint justification
-tokens.
+The `jvsctl` CLI accepts flags for all its configuration. To avoid repetition,
+some flags can be defined as environment variables. For example, to always use
+the same justification server for minting tokens, add the following to your
+`.bashrc` or `.zshrc` file:
 
-```yaml
-server: example.com:4567
+```shell
+export JVSCTL_SERVER_ADDRESS="https://jvs.corp.internal:8080"
 ```
 
-By default, we will connect to the JVS server securely. When it's not applicable
-(e.g. locally run JVS server for testing), use insecure connection by adding the
-following block in the config:
+Similarly, you can set the endpoint for getting the JWKS for verification:
 
-```yaml
-insecure: true
+```shell
+export JVSCTL_JWKS_ENDPOINT="https://keys.corp.internal:8080/.well-known/jwks"
 ```
 
-JWKS endpoint is also required if you want to validate justification tokens, it
-will default to the server domain + `/.well-known/jwks` if it is not specified.
+For the full list of options that correspond to your release, check the help
+output. Append `-h` to any command or subcommand to see detailed usage
+instructions:
 
-```yaml
-jwks_endpoint: https://example.com/.well-known/jwks
+```shell
+jvsctl -h
+jvsctl token -h
 ```
-
-Alternatively, all of these values could be provided via CLI flags `--server`,
-`--insecure`, and `--jwks_endpoint`.
 
 ## Authentication
 
