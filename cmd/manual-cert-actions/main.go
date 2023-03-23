@@ -76,13 +76,8 @@ func realMain(ctx context.Context) error {
 		return fmt.Errorf("failed to setup kms client: %w", err)
 	}
 
-	handler := &jvscrypto.RotationHandler{
-		KMSClient:    kmsClient,
-		CryptoConfig: &cfg,
-	}
-
 	cas := &jvscrypto.CertificateActionService{
-		Handler:   handler,
+		Handler:   jvscrypto.NewRotationHandler(ctx, kmsClient, &cfg),
 		KMSClient: kmsClient,
 	}
 	jvspb.RegisterCertificateActionServiceServer(s, cas)
