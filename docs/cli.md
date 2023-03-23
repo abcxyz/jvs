@@ -12,7 +12,7 @@ go install github.com/abcxyz/jvs/cmd/jvsctl
 ```
 
 Or download from a
-[release](https://github.com/abcxyz/lumberjack/releases).
+[release](https://github.com/abcxyz/jvs/releases).
 
 ## Usage
 
