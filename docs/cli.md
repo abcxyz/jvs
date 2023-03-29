@@ -28,13 +28,13 @@ the same justification server for minting tokens, add the following to your
 `.bashrc` or `.zshrc` file:
 
 ```shell
-export JVSCTL_SERVER_ADDRESS="https://jvs.corp.internal:8080"
+export JVSCTL_SERVER_ADDRESS="jvs.corp.internal:443"
 ```
 
 Similarly, you can set the endpoint for getting the JWKS for verification:
 
 ```shell
-export JVSCTL_JWKS_ENDPOINT="https://keys.corp.internal:8080/.well-known/jwks"
+export JVSCTL_JWKS_ENDPOINT="https://keys.corp.internal/.well-known/jwks"
 ```
 
 For the full list of options that correspond to your release, check the help
