@@ -1,7 +1,23 @@
-resource "google_monitoring_notification_channel" "basic" {
+/**
+ * Copyright 2023 Google LLC
+ *
+ * Licensed under the Apache License, Version 2.0 (the "License");
+ * you may not use this file except in compliance with the License.
+ * You may obtain a copy of the License at
+ *
+ *      http://www.apache.org/licenses/LICENSE-2.0
+ *
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an "AS IS" BASIS,
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ * See the License for the specific language governing permissions and
+ * limitations under the License.
+ */
+
+resource "google_monitoring_notification_channel" "email_notification_channel" {
   project = var.project_id
 
-  display_name = "owner notification channel"
+  display_name = "jvs alerts email channel"
 
   type = "email"
 
@@ -12,18 +28,20 @@ resource "google_monitoring_notification_channel" "basic" {
   force_delete = false
 }
 
-resource "google_monitoring_alert_policy" "public_key_service_alert" {
+# This alert will trigger if: in a rolling window of 60s,
+# the number of response with 5xx code exceeds 5.
+resource "google_monitoring_alert_policy" "public_key_service_exceed_500_response_threshold" {
   project = var.project_id
 
-  display_name = "Public-Key Service Alert: Too many none-200 response"
+  display_name = "Public-Key Service Alert: Too many 500 responses"
 
-  combiner = "AND"
+  combiner = "OR"
 
   conditions {
-    display_name = "Too many None-200 response"
+    display_name = "Too many 500 responses"
 
     condition_threshold {
-      filter          = "metric.type=\"run.googleapis.com/request_count\" resource.type=\"cloud_run_revision\" resource.label.\"service_name\"=\"${var.public_key_service_name}\" AND metric.label.\"response_code\"!=\"200\""
+      filter          = "metric.type=\"run.googleapis.com/request_count\" resource.type=\"cloud_run_revision\" resource.label.\"service_name\"=\"${var.public_key_service_name}\" AND metric.label.\"response_code\"=monitoring.regex.full_match(\"^5[0-9][0-9]$\")"
       duration        = "0s"
       comparison      = "COMPARISON_GT"
       threshold_value = 5
@@ -36,25 +54,25 @@ resource "google_monitoring_alert_policy" "public_key_service_alert" {
   }
 
   notification_channels = [
-    resource.google_monitoring_notification_channel.basic.name
+    resource.google_monitoring_notification_channel.email_notification_channel.name
   ]
 
-  alert_strategy {
-    auto_close = "604800s"
-  }
+  enabled = var.is_prod_env
 }
 
-resource "google_monitoring_alert_policy" "jvs_service_alert" {
+# This alert will trigger if: in a rolling window of 60s,
+# the number of response with 5xx code exceeds 5.
+resource "google_monitoring_alert_policy" "jvs_service_exceed_500_response_threshold" {
   project = var.project_id
 
-  display_name = "Justification Service Alert: Too many none-200 response"
+  display_name = "Justification Service Alert: Too many 500 response"
 
-  combiner = "AND"
+  combiner = "OR"
 
   conditions {
-    display_name = "too many None-200 response"
+    display_name = "Too many 500 responses"
     condition_threshold {
-      filter          = "metric.type=\"run.googleapis.com/request_count\" resource.type=\"cloud_run_revision\" resource.label.\"service_name\"=\"${var.jvs_service_name}\" AND metric.label.\"response_code\"!=\"200\""
+      filter          = "metric.type=\"run.googleapis.com/request_count\" resource.type=\"cloud_run_revision\" resource.label.\"service_name\"=\"${var.jvs_service_name}\" AND metric.label.\"response_code\"=monitoring.regex.full_match(\"^5[0-9][0-9]$\")"
       duration        = "0s"
       comparison      = "COMPARISON_GT"
       threshold_value = 5
@@ -65,24 +83,25 @@ resource "google_monitoring_alert_policy" "jvs_service_alert" {
     }
   }
   notification_channels = [
-    resource.google_monitoring_notification_channel.basic.name
+    resource.google_monitoring_notification_channel.email_notification_channel.name
   ]
-  alert_strategy {
-    auto_close = "604800s"
-  }
+
+  enabled = var.is_prod_env
 }
 
-resource "google_monitoring_alert_policy" "cert_rotator_alert" {
+# This alert will trigger if: in a rolling window of 60s,
+# the number of response with 5xx code exceeds 5.
+resource "google_monitoring_alert_policy" "cert_rotator_service_exceed_500_response_threshold" {
   project = var.project_id
 
-  display_name = "Cert-Rotator Alert: Too many none-200 response"
+  display_name = "Cert-Rotator Alert: Too many 500 response"
 
-  combiner = "AND"
+  combiner = "OR"
 
   conditions {
-    display_name = "too many None-200 response"
+    display_name = "Too many 500 response"
     condition_threshold {
-      filter          = "metric.type=\"run.googleapis.com/request_count\" resource.type=\"cloud_run_revision\" resource.label.\"service_name\"=\"${var.cert_rotation_service_name}\" AND metric.label.\"response_code\"!=\"200\""
+      filter          = "metric.type=\"run.googleapis.com/request_count\" resource.type=\"cloud_run_revision\" resource.label.\"service_name\"=\"${var.cert_rotation_service_name}\" AND metric.label.\"response_code\"=monitoring.regex.full_match(\"^5[0-9][0-9]$\")"
       duration        = "0s"
       comparison      = "COMPARISON_GT"
       threshold_value = 5
@@ -93,15 +112,15 @@ resource "google_monitoring_alert_policy" "cert_rotator_alert" {
     }
   }
   notification_channels = [
-    resource.google_monitoring_notification_channel.basic.name
+    resource.google_monitoring_notification_channel.email_notification_channel.name
   ]
-  alert_strategy {
-    auto_close = "604800s"
-  }
+
+  enabled = var.is_prod_env
 }
 
-
-resource "google_monitoring_alert_policy" "ui_service_alert" {
+# This alert will trigger if: in a rolling window of 60s,
+# the 95% percentile of latency exceeds 5000ms.
+resource "google_monitoring_alert_policy" "ui_service_exceed_latency_threshold" {
   project = var.project_id
 
   display_name = "UI Service Alert: Latency too high"
@@ -123,10 +142,8 @@ resource "google_monitoring_alert_policy" "ui_service_alert" {
   }
 
   notification_channels = [
-    resource.google_monitoring_notification_channel.basic.name
+    resource.google_monitoring_notification_channel.email_notification_channel.name
   ]
 
-  alert_strategy {
-    auto_close = "604800s"
-  }
+  enabled = var.is_prod_env
 }

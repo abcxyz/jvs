@@ -43,3 +43,8 @@ variable "notification_channel_email" {
   type        = string
   description = "The Email address where alert notifications send to."
 }
+
+variable "is_prod_env" {
+  type        = bool
+  description = "If deploying to a prod environment, true if is prod env, otherwise false."
+}
