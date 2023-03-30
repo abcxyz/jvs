@@ -21,5 +21,6 @@ resource "google_monitoring_dashboard" "dashboard" {
     jvs_service_name           = var.jvs_service_name
     cert_rotation_service_name = var.cert_rotation_service_name
     public_key_service_name    = var.public_key_service_name
+    jvs_ui_service_name        = var.jvs_ui_service_name
   })
 }

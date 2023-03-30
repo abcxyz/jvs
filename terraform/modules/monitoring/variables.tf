@@ -33,3 +33,13 @@ variable "public_key_service_name" {
   type        = string
   description = "The Public Key Cloud Run service to monitor."
 }
+
+variable "jvs_ui_service_name" {
+  type        = string
+  description = "The JVS-UI Cloud Run service to monitor."
+}
+
+variable "notification_channel_email" {
+  type        = string
+  description = "The Email address where alert notifications send to."
+}
