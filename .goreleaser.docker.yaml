@@ -20,7 +20,7 @@ env:
   # Allow override the container registry.
   # Default to the JVS CI container registry.
   - REGISTRY={{ if index .Env "CONTAINER_REGISTRY"  }}{{ .Env.CONTAINER_REGISTRY }}{{ else }}us-docker.pkg.dev/jvs-ci-test/docker-images{{ end }}
-
+  # - REGISTRY=us-west1-docker.pkg.dev/suhongq-test-project/lumberjack
 before:
   hooks:
     - go mod tidy
@@ -117,7 +117,7 @@ builds:
       - 'windows'
     goarch:
       - 'amd64'
-      - 'arm64'      
+      - 'arm64'
 
 dockers:
   -
@@ -127,7 +127,7 @@ dockers:
     goos: 'linux'
     goarch: 'amd64'
     image_templates:
-      - '{{ .Env.REGISTRY }}/jvs-cert-rotation:{{ .Version }}-amd64'
+      - '{{ .Env.REGISTRY }}/jvs-cert-rotation:{{ .Env.DOCKER_TAG }}-amd64'
     build_flag_templates:
       - '--build-arg=APP=cert-rotation'
       - '--platform=linux/amd64'
@@ -147,7 +147,7 @@ dockers:
     goos: 'linux'
     goarch: 'arm64'
     image_templates:
-      - '{{ .Env.REGISTRY }}/jvs-cert-rotation:{{ .Version }}-arm64'
+      - '{{ .Env.REGISTRY }}/jvs-cert-rotation:{{ .Env.DOCKER_TAG }}-arm64'
     build_flag_templates:
       - '--build-arg=APP=cert-rotation'
       - '--platform=linux/arm64'
@@ -168,7 +168,7 @@ dockers:
     goos: 'linux'
     goarch: 'amd64'
     image_templates:
-      - '{{ .Env.REGISTRY }}/jvs-justification:{{ .Version }}-amd64'
+      - '{{ .Env.REGISTRY }}/jvs-justification:{{ .Env.DOCKER_TAG }}-amd64'
     build_flag_templates:
       - '--build-arg=APP=justification'
       - '--platform=linux/amd64'
@@ -188,7 +188,7 @@ dockers:
     goos: 'linux'
     goarch: 'arm64'
     image_templates:
-      - '{{ .Env.REGISTRY }}/jvs-justification:{{ .Version }}-arm64'
+      - '{{ .Env.REGISTRY }}/jvs-justification:{{ .Env.DOCKER_TAG }}-arm64'
     build_flag_templates:
       - '--build-arg=APP=justification'
       - '--platform=linux/arm64'
@@ -209,7 +209,7 @@ dockers:
     goos: 'linux'
     goarch: 'amd64'
     image_templates:
-      - '{{ .Env.REGISTRY }}/jvs-public-key:{{ .Version }}-amd64'
+      - '{{ .Env.REGISTRY }}/jvs-public-key:{{ .Env.DOCKER_TAG }}-amd64'
     build_flag_templates:
       - '--build-arg=APP=public-key'
       - '--platform=linux/amd64'
@@ -229,7 +229,7 @@ dockers:
     goos: 'linux'
     goarch: 'arm64'
     image_templates:
-      - '{{ .Env.REGISTRY }}/jvs-public-key:{{ .Version }}-arm64'
+      - '{{ .Env.REGISTRY }}/jvs-public-key:{{ .Env.DOCKER_TAG }}-arm64'
     build_flag_templates:
       - '--build-arg=APP=public-key'
       - '--platform=linux/arm64'
@@ -250,7 +250,7 @@ dockers:
     goos: 'linux'
     goarch: 'amd64'
     image_templates:
-      - '{{ .Env.REGISTRY }}/jvs-ui:{{ .Version }}-amd64'
+      - '{{ .Env.REGISTRY }}/jvs-ui:{{ .Env.DOCKER_TAG }}-amd64'
     build_flag_templates:
       - '--build-arg=APP=ui'
       - '--platform=linux/amd64'
@@ -270,7 +270,7 @@ dockers:
     goos: 'linux'
     goarch: 'arm64'
     image_templates:
-      - '{{ .Env.REGISTRY }}/jvs-ui:{{ .Version }}-arm64'
+      - '{{ .Env.REGISTRY }}/jvs-ui:{{ .Env.DOCKER_TAG }}-arm64'
     build_flag_templates:
       - '--build-arg=APP=ui'
       - '--platform=linux/arm64'
@@ -286,25 +286,25 @@ dockers:
 
 docker_manifests:
   -
-    name_template: '{{ .Env.REGISTRY }}/jvs-cert-rotation:{{ .Version }}'
+    name_template: '{{ .Env.REGISTRY }}/jvs-cert-rotation:{{ .Env.DOCKER_TAG }}'
     image_templates:
-      - '{{ .Env.REGISTRY }}/jvs-cert-rotation:{{ .Version }}-amd64'
-      - '{{ .Env.REGISTRY }}/jvs-cert-rotation:{{ .Version }}-arm64'
+      - '{{ .Env.REGISTRY }}/jvs-cert-rotation:{{ .Env.DOCKER_TAG }}-amd64'
+      - '{{ .Env.REGISTRY }}/jvs-cert-rotation:{{ .Env.DOCKER_TAG }}-arm64'
   -
-    name_template: '{{ .Env.REGISTRY }}/jvs-justification:{{ .Version }}'
+    name_template: '{{ .Env.REGISTRY }}/jvs-justification:{{ .Env.DOCKER_TAG }}'
     image_templates:
-      - '{{ .Env.REGISTRY }}/jvs-justification:{{ .Version }}-amd64'
-      - '{{ .Env.REGISTRY }}/jvs-justification:{{ .Version }}-arm64'
+      - '{{ .Env.REGISTRY }}/jvs-justification:{{ .Env.DOCKER_TAG }}-amd64'
+      - '{{ .Env.REGISTRY }}/jvs-justification:{{ .Env.DOCKER_TAG }}-arm64'
   -
-    name_template: '{{ .Env.REGISTRY }}/jvs-public-key:{{ .Version }}'
+    name_template: '{{ .Env.REGISTRY }}/jvs-public-key:{{ .Env.DOCKER_TAG }}'
     image_templates:
-      - '{{ .Env.REGISTRY }}/jvs-public-key:{{ .Version }}-amd64'
-      - '{{ .Env.REGISTRY }}/jvs-public-key:{{ .Version }}-arm64'
+      - '{{ .Env.REGISTRY }}/jvs-public-key:{{ .Env.DOCKER_TAG }}-amd64'
+      - '{{ .Env.REGISTRY }}/jvs-public-key:{{ .Env.DOCKER_TAG }}-arm64'
   -
-    name_template: '{{ .Env.REGISTRY }}/jvs-ui:{{ .Version }}'
+    name_template: '{{ .Env.REGISTRY }}/jvs-ui:{{ .Env.DOCKER_TAG }}'
     image_templates:
-      - '{{ .Env.REGISTRY }}/jvs-ui:{{ .Version }}-amd64'
-      - '{{ .Env.REGISTRY }}/jvs-ui:{{ .Version }}-arm64'
+      - '{{ .Env.REGISTRY }}/jvs-ui:{{ .Env.DOCKER_TAG }}-amd64'
+      - '{{ .Env.REGISTRY }}/jvs-ui:{{ .Env.DOCKER_TAG }}-arm64'
 
 
 # TODO(#144): Follow up on sign.
