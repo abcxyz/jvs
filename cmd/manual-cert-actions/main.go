@@ -65,7 +65,7 @@ func realMain(ctx context.Context) error {
 	))
 
 	var cfg config.CryptoConfig
-	if err := cfgloader.Load(ctx, cfg); err != nil {
+	if err := cfgloader.Load(ctx, &cfg); err != nil {
 		return fmt.Errorf("failed to load config: %w", err)
 	}
 
