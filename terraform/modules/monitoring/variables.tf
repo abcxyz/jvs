@@ -47,4 +47,29 @@ variable "notification_channel_email" {
 variable "is_prod_env" {
   type        = bool
   description = "If deploying to a prod environment, true if is prod env, otherwise false."
+  default     = false
+}
+
+variable "cert_rotator_5xx_response_threshold" {
+  type        = number
+  description = "Send alert for Cert-Rotator when the number of response with 5xx code exceeds the threshold"
+  default     = 5
+}
+
+variable "public_key_service_5xx_response_threshold" {
+  type        = number
+  description = "Send alert for Public-Key-Service when the number of response with 5xx code exceeds the threshold"
+  default     = 5
+}
+
+variable "jvs_service_5xx_response_threshold" {
+  type        = number
+  description = "Send alert for Justification-Service when the number of response with 5xx code exceeds the threshold"
+  default     = 5
+}
+
+variable "ui_service_latency_threshold" {
+  type        = number
+  description = "Send alert for UI-Service's latency (in ms) exceed the threshold"
+  default     = 5000
 }
