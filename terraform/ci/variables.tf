@@ -35,6 +35,9 @@ variable "ci_iam_roles" {
     # To operate KMS.
     "roles/cloudkms.admin",
     "roles/cloudkms.cryptoOperator",
+
+    # To read and edit project service during CI.
+    "roles/serviceusage.serviceUsageAdmin",
   ]
   description = "List of IAM roles needed to run integration tests included in CI/CD."
 }
