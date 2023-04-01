@@ -154,6 +154,7 @@ jobs:
       - name: 'Deploy and Run integration tests'
         env:
           BUILD_COMMON: false
+          PROJECT_ID: "jvs-ci-test"
           API_SA: "jvs-api@jvs-ci-test.iam.gserviceaccount.com"
           UI_SA: "jvs-ui@jvs-ci-test.iam.gserviceaccount.com"
           CERT_ROTATOR_SA: "jvs-cert-rotator@jvs-ci-test.iam.gserviceaccount.com"

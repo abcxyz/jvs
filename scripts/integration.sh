@@ -25,14 +25,18 @@ do
    export "$KEY"="$VALUE"
 done
 
-ROOT="$(cd "$(dirname "$0")/.." &>/dev/null; pwd -P)"
-SERVICES_TF_MODULE_DIR="${ROOT}/terraform/modules/jvs-services"
-SERVICES_VAR_FILE="${ROOT}/tmp/jvs_ci.tfvars"
+# ROOT="$(cd "$(dirname "$0")/.." &>/dev/null; pwd -P)"
+# SERVICES_TF_MODULE_DIR="${ROOT}/terraform/modules/jvs-services"
+# SERVICES_VAR_FILE="${ROOT}/tmp/jvs_ci.tfvars"
+SERVICES_TF_MODULE_DIR="./terraform/modules/jvs-services"
+SERVICES_VAR_FILE="/tmp/jvs_ci.tfvars"
 
 if $BUILD_COMMON
 then
-  COMMON_TF_MODULE_DIR="${ROOT}/terraform/modules/common"
-  COMMON_VAR_FILE="${ROOT}/tmp/jvs_common.tfvars"
+  COMMON_TF_MODULE_DIR="./terraform/modules/common"
+  COMMON_VAR_FILE="/tmp/jvs_common.tfvars"
+  # COMMON_TF_MODULE_DIR="${ROOT}/terraform/modules/common"
+  # COMMON_VAR_FILE="${ROOT}/tmp/jvs_common.tfvars"
 
   # touch ${ROOT}/tmp/jvs_common.tfvars
   # echo project_id=\"$PROJECT_ID\" >> $COMMON_VAR_FILE;
@@ -53,7 +57,8 @@ then
   # KMS_KEYRING_ID=$(terraform -chdir=${COMMON_TF_MODULE_DIR} output kms_keyring_id)
 fi
 
-touch ${ROOT}/tmp/jvs_ci.tfvars
+# touch ${ROOT}/tmp/jvs_ci.tfvars
+touch /tmp/jvs_ci.tfvars
 echo project_id=\"$PROJECT_ID\" >> $SERVICES_VAR_FILE;
 echo jvs_api_service_account=\"$API_SA\" >> $SERVICES_VAR_FILE;
 echo jvs_ui_service_account=\"$UI_SA\" >> $SERVICES_VAR_FILE;
