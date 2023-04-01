@@ -15,17 +15,24 @@
 
 set -eEuo pipefail
 
-# docker tag
-export DOCKER_TAG=$(git rev-parse --short HEAD)
+# Set the project where the cloud resources are located.
+export PROJECT_ID="suhongq-test-project"
 
-REGISTRY_HOST=`echo $REGISTRY | awk -F '/' '{ print $1}'`
+# Set REGISTRY to where you want to upload the docker images.
+export REGISTRY="us-west1-docker.pkg.dev/suhongq-test-project/lumberjack"
 
-# goreleaser requires a tag to publish images to container registry.
-# We create a local tag to make it happy.
-git tag -f `date "+%Y%m%d%H%M%S"`
+# Set BUILD_COMMON to true if you need to create cloud run service accounts and
+# KMS keyring.
+export BUILD_COMMON=true
 
-# Configures Docker to authenticate to Artifact Registry hosts.
-gcloud auth configure-docker $REGISTRY_HOST
+# Set below variables if BUILD_COMMON is false.
+export API_SA=
+export UI_SA=
+export CERT_ROTATOR_SA=
+export PUBLIC_KEY_SA=
+export KMS_KEYRING_ID=
 
-# Build docker images.
-goreleaser release -f .goreleaser.docker.yaml --rm-dist
+chmod +x ./scripts/build.sh
+chmod +x ./scripts/integration.sh
+
+./scripts/build.sh && ./scripts/integration.sh

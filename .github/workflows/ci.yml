@@ -11,9 +11,7 @@ on:
   workflow_call:
 
 env:
-  REGISTRY_HOST: 'us-docker.pkg.dev'
-  REGISTRY: 'us-docker.pkg.dev/jvs-ci-test/ci-images'
-  DOCKER_TAG: '${{ github.sha }}'
+
   WIF_PROVIDER: 'projects/1096923323432/locations/global/workloadIdentityPools/github-pool-fd98/providers/github-provider'
   WIF_SERVICE_ACCOUNT: 'jvs-fd98-ci-sa@jvs-ci-test.iam.gserviceaccount.com'
 
@@ -24,24 +22,24 @@ concurrency:
 jobs:
   # Linting jobs - terraform, go, java
   terraform_lint:
-    uses: 'abcxyz/pkg/.github/workflows/terraform-lint.yml@main'
+    uses: 'abcxyz/pkg/.github/workflows/terraform-lint.yml@main' # ratchet:exclude
     with:
       directory: 'terraform'
       terraform_version: '1.2'
 
   go_lint:
-    uses: 'abcxyz/pkg/.github/workflows/go-lint.yml@main'
+    uses: 'abcxyz/pkg/.github/workflows/go-lint.yml@main' # ratchet:exclude
     with:
       go_version: '1.20'
 
   java_lint:
-    uses: 'abcxyz/pkg/.github/workflows/java-lint.yml@main'
+    uses: 'abcxyz/pkg/.github/workflows/java-lint.yml@main' # ratchet:exclude
     with:
       java_version: '11'
 
   # Unit tests - go, java
   go_test:
-    uses: 'abcxyz/pkg/.github/workflows/go-test.yml@main'
+    uses: 'abcxyz/pkg/.github/workflows/go-test.yml@main' # ratchet:exclude
     with:
       go_version: '1.20'
 
@@ -51,20 +49,18 @@ jobs:
       contents: 'read'
       id-token: 'write'
     steps:
-      - uses: 'actions/checkout@v3'
-
+      - uses: 'actions/checkout@8f4b7f84864484a7bf31766abe9204da3cbe65b3' # ratchet:actions/checkout@v3
       # Technically we don't need this step since we don't need anything from Artifact Registry.
       # But the Artifact Registry wagon will keep retrying the authentication and blocking
       # the unit test for a long time (likely a bug). As a result, we add this step to make
       # the wagon happy.
       - name: 'Authenticate to Google Cloud'
-        uses: 'google-github-actions/auth@c4799db9111fba4461e9f9da8732e5057b394f72' # ratchet:google-github-actions/auth@v0
+        uses: 'google-github-actions/auth@ef5d53e30bbcd8d0836f4288f5e50ff3e086997d' # ratchet:google-github-actions/auth@v1
         with:
           workload_identity_provider: '${{ env.WIF_PROVIDER }}'
           service_account: '${{ env.WIF_SERVICE_ACCOUNT }}'
           # The Artifact Registry maven wagon looks for Google Application Default Credentials.
           # https://github.com/GoogleCloudPlatform/artifact-registry-maven-tools
-
       - name: Run test script
         run: |-
           mvn clean test --no-transfer-progress -f client-lib/java
@@ -80,20 +76,21 @@ jobs:
       - 'java_test'
     steps:
       - run: 'echo prechecks complete'
-
-  # Build JVS services and push to artifact registry.
-  build:
-    runs-on: 'ubuntu-latest'
+      
+  # TODO(#158): to be replaced with real service integration test.
+  integration:
+    env:
+      PROJECT_ID: 'jvs-ci-test'
+      PROJECT_NUMBER: '1096923323432'
     permissions:
       contents: 'read'
       id-token: 'write'
-    needs:
-      - 'lint_and_unit'
+    runs-on: 'ubuntu-latest'
     steps:
       - name: 'Checkout'
-        uses: 'actions/checkout@ac593985615ec2ede58e132d2e21d2b1cbd6127c' # ratchet:actions/checkout@v3
+        uses: 'actions/checkout@2541b1294d2704b0964813337f33b291d3f8596b' # ratchet:actions/checkout@v3
       - name: 'Setup Go'
-        uses: 'actions/setup-go@6edd4406fa81c3da01a34fa6f6343087c207a568' # ratchet:actions/setup-go@v3
+        uses: 'actions/setup-go@fcdc43634adb5f7ae75a9d7a9b9361790f7293e2' # ratchet:actions/setup-go@v3
         with:
           go-version: '1.20'
       - id: 'auth'
@@ -102,65 +99,14 @@ jobs:
         with:
           workload_identity_provider: '${{ env.WIF_PROVIDER }}'
           service_account: '${{ env.WIF_SERVICE_ACCOUNT }}'
-          token_format: 'access_token'
-      - name: 'Authenticate to Artifact Registry'
-        uses: 'docker/login-action@f4ef78c080cd8ba55a85445d5b36e214a81df20a' # ratchet:docker/login-action@v2
-        with:
-          username: 'oauth2accesstoken'
-          password: '${{ steps.auth.outputs.access_token }}'
-          registry: '${{ env.REGISTRY_HOST }}'
-      # goreleaser requires a tag to publish images to container registry.
-      # We create a local tag to make it happy.
-      - run: |-
-          git config user.name "${GITHUB_ACTOR}"
-          git config user.email "${GITHUB_ACTOR}@users.noreply.github.com"
-          git tag -f `date "+%Y%m%d%H%M%S"`
-      - name: 'Build the service containers and push to the registry with goreleaser'
-        uses: 'goreleaser/goreleaser-action@f82d6c1c344bcacabba2c841718984797f664a6b' # ratchet:goreleaser/goreleaser-action@v4
-        with:
-          version: 'v1.15.2' # Manually pinned
-          args: 'release -f .goreleaser.docker.yaml --rm-dist --skip-validate'
-
-  # Deploy integration test infrastructure and run integration tests
-  integration:
-    runs-on: 'ubuntu-latest'
-    # needs:
-    #   - 'build'
-    permissions:
-      contents: 'read'
-      id-token: 'write'
-    steps:
-      - uses: 'actions/checkout@ac593985615ec2ede58e132d2e21d2b1cbd6127c' # ratchet:actions/checkout@v3
-      - id: 'auth'
-        uses: 'google-github-actions/auth@ef5d53e30bbcd8d0836f4288f5e50ff3e086997d' # ratchet:google-github-actions/auth@v1
-        with:
-          workload_identity_provider: '${{ env.WIF_PROVIDER }}'
-          service_account: '${{ env.WIF_SERVICE_ACCOUNT }}'
-          token_format: 'access_token'
-      # TODO: Workload Identity doesn't work with GCS Provider.
-      # https://github.com/google-github-actions/auth/issues/89
-      - name: 'Workaround Terraform issue'
-        shell: 'bash'
-        run: |-
-          echo "GOOGLE_OAUTH_ACCESS_TOKEN=${{ steps.auth.outputs.access_token }}" >> $GITHUB_ENV
-      - uses: 'hashicorp/setup-terraform@633666f66e0061ca3b725c73b2ec20cd13a8fdd1' # ratchet:hashicorp/setup-terraform@v2
-        with:
-          terraform_wrapper: false
-      - name: 'Setup Go'
-        uses: 'actions/setup-go@6edd4406fa81c3da01a34fa6f6343087c207a568' # ratchet:actions/setup-go@v3
-        with:
-          go-version: '1.20'
-      - name: 'Deploy and Run integration tests'
+      - name: 'Run integration tests'
         env:
-          BUILD_COMMON: false
-          PROJECT_ID: "jvs-ci-test"
-          API_SA: "jvs-api@jvs-ci-test.iam.gserviceaccount.com"
-          UI_SA: "jvs-ui@jvs-ci-test.iam.gserviceaccount.com"
-          CERT_ROTATOR_SA: "jvs-cert-rotator@jvs-ci-test.iam.gserviceaccount.com"
-          PUBLIC_KEY_SA: "jvs-public-key@jvs-ci-test.iam.gserviceaccount.com"
-          KMS_KEYRING_ID: "projects/jvs-ci-test/locations/global/keyRings/jvs-keyring-156a"
-          API_IMAGE: "${{env.REGISTRY}}/jvs-justification:${{env.DOCKER_TAG}}-amd64"
-          UI_IMAGE: "${{env.REGISTRY}}/jvs-ui:${{env.DOCKER_TAG}}-amd64"
-          CERT_ROTATOR_IMAGE: "${{env.REGISTRY}}/jvs-cert-rotation:${{env.DOCKER_TAG}}-amd64"
-          PUBLIC_KEY_IMAGE: "${{env.REGISTRY}}/jvs-public-key:${{env.DOCKER_TAG}}-amd64"
-        run: ./scripts/integration.sh
+          TEST_INTEGRATION: 'true'
+          TEST_JVS_KMS_KEY_RING: 'projects/${{ env.PROJECT_ID }}/locations/global/keyRings/ci-keyring'
+        run: |-
+          go test \
+            -count=1 \
+            -race \
+            -shuffle=on \
+            -timeout='10m' \
+            ./test/integ/...
