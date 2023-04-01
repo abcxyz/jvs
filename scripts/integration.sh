@@ -73,20 +73,16 @@ echo kms_key_name=\"jvs-key-$RANDOM\" >> $SERVICES_VAR_FILE;
 echo kms_key_rotation_minutes=0 >> $SERVICES_VAR_FILE;
 echo public_key_invokers=[] >> $SERVICES_VAR_FILE;
 
-# terraform -chdir=$SERVICES_TF_MODULE_DIR init
-# terraform -chdir=$SERVICES_TF_MODULE_DIR apply -auto-approve -var-file=$SERVICES_VAR_FILE
+terraform -chdir=$SERVICES_TF_MODULE_DIR init
+terraform -chdir=$SERVICES_TF_MODULE_DIR apply -auto-approve -var-file=$SERVICES_VAR_FILE
 
-# clean_up_services() {
-#   terraform -chdir=$SERVICES_TF_MODULE_DIR destroy -auto-approve -var-file=$SERVICES_VAR_FILE
-# }
+clean_up_services() {
+  terraform -chdir=$SERVICES_TF_MODULE_DIR destroy -auto-approve -var-file=$SERVICES_VAR_FILE
+}
 
-# trap clean_up_services EXIT
+trap clean_up_services EXIT
 
-# export HTTP_ENDPOINTS=$(terraform -chdir=${TF_CI_WITH_SERVER_DIR} output -json instance_addresses)
-# export GRPC_ENDPOINTS=$(terraform -chdir=${TF_CI_WITH_SERVER_DIR} output -json grpc_addresses)
-# BIGQUERY_DATASET_QUERY=${BIGQUERY_DATASET_ID}.audit_abcxyz_data_access
-
-# cd ${ROOT}/test/integration
+# cd ./test/integration
 # go test github.com/abcxyz/jvs/test/integration/testrunner\
 #   -id-token=${ID_TOKEN} \
 #   -project-id=${BACKEND_PROJECT_ID} \
