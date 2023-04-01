@@ -34,23 +34,23 @@ then
   COMMON_TF_MODULE_DIR="${ROOT}/terraform/modules/common"
   COMMON_VAR_FILE="${ROOT}/tmp/jvs_common.tfvars"
 
-  touch ${ROOT}/tmp/jvs_common.tfvars
-  echo project_id=\"$PROJECT_ID\" >> $COMMON_VAR_FILE;
+  # touch ${ROOT}/tmp/jvs_common.tfvars
+  # echo project_id=\"$PROJECT_ID\" >> $COMMON_VAR_FILE;
 
-  terraform -chdir=$COMMON_TF_MODULE_DIR init
-  terraform -chdir=$COMMON_TF_MODULE_DIR apply -auto-approve -var-file=$COMMON_VAR_FILE
+  # terraform -chdir=$COMMON_TF_MODULE_DIR init
+  # terraform -chdir=$COMMON_TF_MODULE_DIR apply -auto-approve -var-file=$COMMON_VAR_FILE
 
-  clean_up_common() {
-    terraform -chdir=$COMMON_TF_MODULE_DIR destroy -auto-approve -var-file=$COMMON_VAR_FILE
-  }
+  # clean_up_common() {
+  #   terraform -chdir=$COMMON_TF_MODULE_DIR destroy -auto-approve -var-file=$COMMON_VAR_FILE
+  # }
 
-  trap clean_up_common EXIT
+  # trap clean_up_common EXIT
 
-  API_SA=$(terraform -chdir=${COMMON_TF_MODULE_DIR} output jvs_api_service_account_email)
-  UI_SA=$(terraform -chdir=${COMMON_TF_MODULE_DIR} output jvs_ui_service_account_email)
-  CERT_ROTATOR_SA=$(terraform -chdir=${COMMON_TF_MODULE_DIR} output jvs_cert_rotator_service_account_email)
-  PUBLIC_KEY_SA=$(terraform -chdir=${COMMON_TF_MODULE_DIR} output jvs_public_key_service_account_email)
-  KMS_KEYRING_ID=$(terraform -chdir=${COMMON_TF_MODULE_DIR} output kms_keyring_id)
+  # API_SA=$(terraform -chdir=${COMMON_TF_MODULE_DIR} output jvs_api_service_account_email)
+  # UI_SA=$(terraform -chdir=${COMMON_TF_MODULE_DIR} output jvs_ui_service_account_email)
+  # CERT_ROTATOR_SA=$(terraform -chdir=${COMMON_TF_MODULE_DIR} output jvs_cert_rotator_service_account_email)
+  # PUBLIC_KEY_SA=$(terraform -chdir=${COMMON_TF_MODULE_DIR} output jvs_public_key_service_account_email)
+  # KMS_KEYRING_ID=$(terraform -chdir=${COMMON_TF_MODULE_DIR} output kms_keyring_id)
 fi
 
 touch ${ROOT}/tmp/jvs_ci.tfvars

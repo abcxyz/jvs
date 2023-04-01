@@ -153,6 +153,7 @@ jobs:
           go-version: '1.20'
       - name: 'Deploy and Run integration tests'
         env:
+          BUILD_COMMON: false
           API_SA: "jvs-api@jvs-ci-test.iam.gserviceaccount.com"
           UI_SA: "jvs-ui@jvs-ci-test.iam.gserviceaccount.com"
           CERT_ROTATOR_SA: "jvs-cert-rotator@jvs-ci-test.iam.gserviceaccount.com"

@@ -120,5 +120,5 @@ variable "ui_envvars" {
 variable "public_key_invokers" {
   description = "Public key service invokers. It is meant to be public, therefore it is allUsers by default."
   type        = list(string)
-  default = ["allUsers"]
+  default     = ["allUsers"]
 }
