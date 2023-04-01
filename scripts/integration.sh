@@ -59,6 +59,7 @@ echo jvs_cert_rotator_service_image=\"${REGISTRY}/jvs-cert-rotation:${DOCKER_TAG
 echo jvs_public_key_service_image=\"${REGISTRY}/jvs-public-key:${DOCKER_TAG}\" >> $SERVICES_VAR_FILE;
 echo kms_keyring_id=\"$KMS_KEYRING_ID\" >> $SERVICES_VAR_FILE;
 echo kms_key_name=\"jvs-key-$RANDOM\" >> $SERVICES_VAR_FILE;
+# Skip cloud scheduler creation.
 echo kms_key_rotation_minutes=0 >> $SERVICES_VAR_FILE;
 echo public_key_invokers=[] >> $SERVICES_VAR_FILE;
 
@@ -71,3 +72,5 @@ clean_up_services() {
 }
 
 trap clean_up_services EXIT
+
+# TODO(#158): add real service integration test.

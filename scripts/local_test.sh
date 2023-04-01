@@ -16,16 +16,17 @@
 set -eEuo pipefail
 
 # Set the project where the cloud resources are located.
-export PROJECT_ID="suhongq-test-project"
+export PROJECT_ID=
 
-# Set REGISTRY to where you want to upload the docker images.
-export REGISTRY="us-west1-docker.pkg.dev/suhongq-test-project/lumberjack"
+# Set REGISTRY to where you want to upload the docker images such as
+# "us-docker.pkg.dev/jvs-ci-test/ci-images"
+export REGISTRY=
 
 # Set BUILD_COMMON to true if you need to create cloud run service accounts and
 # KMS keyring.
 export BUILD_COMMON=true
 
-# Set below variables if BUILD_COMMON is false.
+# Set below variables only if BUILD_COMMON is set to false.
 export API_SA=
 export UI_SA=
 export CERT_ROTATOR_SA=

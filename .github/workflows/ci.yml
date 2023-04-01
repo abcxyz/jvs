@@ -1,3 +1,4 @@
+# TODO(#158): to be replaced with real service integration test.
 name: 'ci'
 
 on:
@@ -11,7 +12,6 @@ on:
   workflow_call:
 
 env:
-
   WIF_PROVIDER: 'projects/1096923323432/locations/global/workloadIdentityPools/github-pool-fd98/providers/github-provider'
   WIF_SERVICE_ACCOUNT: 'jvs-fd98-ci-sa@jvs-ci-test.iam.gserviceaccount.com'
 
@@ -76,8 +76,7 @@ jobs:
       - 'java_test'
     steps:
       - run: 'echo prechecks complete'
-      
-  # TODO(#158): to be replaced with real service integration test.
+
   integration:
     env:
       PROJECT_ID: 'jvs-ci-test'

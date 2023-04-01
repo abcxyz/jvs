@@ -17,10 +17,7 @@ env:
   - 'CGO_ENABLED=0'
   - 'GO111MODULE=on'
   - 'GOPROXY=https://proxy.golang.org,direct'
-  # Allow override the container registry.
-  # Default to the JVS CI container registry.
-  # - REGISTRY={{ if index .Env "CONTAINER_REGISTRY"  }}{{ .Env.CONTAINER_REGISTRY }}{{ else }}us-docker.pkg.dev/jvs-ci-test/ci-images{{ end }}
-  # - REGISTRY=us-west1-docker.pkg.dev/suhongq-test-project/lumberjack
+  
 before:
   hooks:
     - go mod tidy

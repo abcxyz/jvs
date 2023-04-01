@@ -15,7 +15,7 @@
 
 set -eEuo pipefail
 
-# docker tag
+# .goreleaser.docker.yaml and integration.sh read DOCKER_TAG
 export DOCKER_TAG=$(git rev-parse --short HEAD)
 
 REGISTRY_HOST=`echo $REGISTRY | awk -F '/' '{ print $1}'`
