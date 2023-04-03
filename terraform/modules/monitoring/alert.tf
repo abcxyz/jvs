@@ -61,6 +61,38 @@ resource "google_monitoring_alert_policy" "public_key_service_exceed_5xx_respons
 }
 
 # This alert will trigger if: in a rolling window of 60s,
+# the 95% percentile of public key service's 
+# latency exceeds threshold.
+resource "google_monitoring_alert_policy" "public_key_service_exceed_latency_threshold" {
+  project = var.project_id
+
+  display_name = "Public-Key Service: Latency too high"
+
+  combiner = "OR"
+
+  conditions {
+    display_name = "Latency too high"
+    condition_threshold {
+      filter          = "metric.type=\"run.googleapis.com/request_latencies\" resource.type=\"cloud_run_revision\" resource.label.\"service_name\"=\"${var.public_key_service_name}\""
+      duration        = "0s"
+      comparison      = "COMPARISON_GT"
+      threshold_value = var.public_key_service_latency_threshold
+      aggregations {
+        alignment_period   = "60s"
+        per_series_aligner = "ALIGN_PERCENTILE_95"
+      }
+    }
+  }
+
+  notification_channels = [
+    resource.google_monitoring_notification_channel.email_notification_channel.name
+  ]
+
+  enabled = var.is_prod_env
+}
+
+
+# This alert will trigger if: in a rolling window of 60s,
 # the number of response with 5xx code exceeds threshold.
 resource "google_monitoring_alert_policy" "jvs_service_exceed_5xx_response_threshold" {
   project = var.project_id
@@ -90,6 +122,37 @@ resource "google_monitoring_alert_policy" "jvs_service_exceed_5xx_response_thres
 }
 
 # This alert will trigger if: in a rolling window of 60s,
+# the 95% percentile of justification service's 
+# latency exceeds threshold.
+resource "google_monitoring_alert_policy" "jvs_service_exceed_latency_threshold" {
+  project = var.project_id
+
+  display_name = "Justification Service Alert: Latency too high"
+
+  combiner = "OR"
+
+  conditions {
+    display_name = "Latency too high"
+    condition_threshold {
+      filter          = "metric.type=\"run.googleapis.com/request_latencies\" resource.type=\"cloud_run_revision\" resource.label.\"service_name\"=\"${var.jvs_service_name}\""
+      duration        = "0s"
+      comparison      = "COMPARISON_GT"
+      threshold_value = var.jvs_service_latency_threshold
+      aggregations {
+        alignment_period   = "60s"
+        per_series_aligner = "ALIGN_PERCENTILE_95"
+      }
+    }
+  }
+
+  notification_channels = [
+    resource.google_monitoring_notification_channel.email_notification_channel.name
+  ]
+
+  enabled = var.is_prod_env
+}
+
+# This alert will trigger if: in a rolling window of 60s,
 # the number of response with 5xx code exceeds threshold.
 resource "google_monitoring_alert_policy" "cert_rotator_service_exceed_5xx_response_threshold" {
   project = var.project_id
@@ -101,7 +164,7 @@ resource "google_monitoring_alert_policy" "cert_rotator_service_exceed_5xx_respo
   conditions {
     display_name = "Too many 5XX response"
     condition_threshold {
-      filter          = "metric.type=\"run.googleapis.com/request_count\" resource.type=\"cloud_run_revision\" resource.label.\"service_name\"=\"${var.cert_rotation_service_name}\" AND metric.label.\"response_code\"=monitoring.regex.full_match(\"^5[0-9][0-9]$\")"
+      filter          = "metric.type=\"run.googleapis.com/request_count\" resource.type=\"cloud_run_revision\" resource.label.\"service_name\"=\"${var.cert_rotator_service_name}\" AND metric.label.\"response_code\"=monitoring.regex.full_match(\"^5[0-9][0-9]$\")"
       duration        = "0s"
       comparison      = "COMPARISON_GT"
       threshold_value = var.cert_rotator_5xx_response_threshold
@@ -119,7 +182,67 @@ resource "google_monitoring_alert_policy" "cert_rotator_service_exceed_5xx_respo
 }
 
 # This alert will trigger if: in a rolling window of 60s,
-# the 95% percentile of latency exceeds threshold.
+# the 95% percentile of cert_rotator's 
+# latency exceeds threshold.
+resource "google_monitoring_alert_policy" "cert_rotator_latency_threshold" {
+  project = var.project_id
+
+  display_name = "Cert-Rotator Alert: Latency too high"
+
+  combiner = "OR"
+
+  conditions {
+    display_name = "Latency too high"
+    condition_threshold {
+      filter          = "metric.type=\"run.googleapis.com/request_latencies\" resource.type=\"cloud_run_revision\" resource.label.\"service_name\"=\"${var.cert_rotator_service_name}\""
+      duration        = "0s"
+      comparison      = "COMPARISON_GT"
+      threshold_value = var.cert_rotator_latency_threshold
+      aggregations {
+        alignment_period   = "60s"
+        per_series_aligner = "ALIGN_PERCENTILE_95"
+      }
+    }
+  }
+
+  notification_channels = [
+    resource.google_monitoring_notification_channel.email_notification_channel.name
+  ]
+
+  enabled = var.is_prod_env
+}
+
+# This alert will trigger if: in a rolling window of 60s,
+# the number of response with 5xx code exceeds threshold.
+resource "google_monitoring_alert_policy" "ui_service_exceed_5xx_response_threshold" {
+  project = var.project_id
+
+  display_name = "UI Service Alert: Too many 5XX response"
+
+  combiner = "OR"
+
+  conditions {
+    display_name = "Too many 5XX response"
+    condition_threshold {
+      filter          = "metric.type=\"run.googleapis.com/request_count\" resource.type=\"cloud_run_revision\" resource.label.\"service_name\"=\"${var.jvs_ui_service_name}\" AND metric.label.\"response_code\"=monitoring.regex.full_match(\"^5[0-9][0-9]$\")"
+      duration        = "0s"
+      comparison      = "COMPARISON_GT"
+      threshold_value = var.ui_service_5xx_response_threshold
+      aggregations {
+        alignment_period   = "60s"
+        per_series_aligner = "ALIGN_MEAN"
+      }
+    }
+  }
+  notification_channels = [
+    resource.google_monitoring_notification_channel.email_notification_channel.name
+  ]
+
+  enabled = var.is_prod_env
+}
+
+# This alert will trigger if: in a rolling window of 60s,
+# the 95% percentile of UI service's latency exceeds threshold.
 resource "google_monitoring_alert_policy" "ui_service_exceed_latency_threshold" {
   project = var.project_id
 

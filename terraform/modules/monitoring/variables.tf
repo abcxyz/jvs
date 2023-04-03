@@ -24,7 +24,7 @@ variable "jvs_service_name" {
   description = "The Justficaition Verification Cloud Run service to monitor."
 }
 
-variable "cert_rotation_service_name" {
+variable "cert_rotator_service_name" {
   type        = string
   description = "The Cert Rotation Cloud Run service to monitor."
 }
@@ -56,15 +56,39 @@ variable "cert_rotator_5xx_response_threshold" {
   default     = 5
 }
 
+variable "cert_rotator_latency_threshold" {
+  type        = number
+  description = "Send alert when UI-Service's latency (in ms) exceed the threshold"
+  default     = 5000
+}
+
 variable "public_key_service_5xx_response_threshold" {
   type        = number
   description = "Send alert for Public-Key-Service when the number of response with 5xx code exceeds the threshold"
   default     = 5
 }
 
+variable "public_key_service_latency_threshold" {
+  type        = number
+  description = "Send alert for UI-Service's latency (in ms) exceed the threshold"
+  default     = 5000
+}
+
 variable "jvs_service_5xx_response_threshold" {
   type        = number
   description = "Send alert for Justification-Service when the number of response with 5xx code exceeds the threshold"
+  default     = 5
+}
+
+variable "jvs_service_latency_threshold" {
+  type        = number
+  description = "Send alert for UI-Service's latency (in ms) exceed the threshold"
+  default     = 5000
+}
+
+variable "ui_service_5xx_response_threshold" {
+  type        = number
+  description = "Send alert for UI-Service when the number of response with 5xx code exceeds the threshold"
   default     = 5
 }
 
