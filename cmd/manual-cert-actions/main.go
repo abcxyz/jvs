@@ -18,7 +18,6 @@ import (
 	"context"
 	"fmt"
 	"net"
-	"os"
 	"os/signal"
 	"syscall"
 
@@ -64,7 +63,7 @@ func realMain(ctx context.Context) error {
 		otelgrpc.UnaryServerInterceptor(),
 	))
 
-	var cfg config.CryptoConfig
+	var cfg config.CertRotationConfig
 	if err := cfgloader.Load(ctx, cfg); err != nil {
 		return fmt.Errorf("failed to load config: %w", err)
 	}
@@ -83,15 +82,9 @@ func realMain(ctx context.Context) error {
 	jvspb.RegisterCertificateActionServiceServer(s, cas)
 	reflection.Register(s)
 
-	port := os.Getenv("PORT")
-	if port == "" {
-		port = "8080"
-		logger.Debugw("defaulting to port ", "port", port)
-	}
-
-	lis, err := net.Listen("tcp", ":"+port)
+	lis, err := net.Listen("tcp", ":"+cfg.Port)
 	if err != nil {
-		return fmt.Errorf("failed to listen on port %s: %w", port, err)
+		return fmt.Errorf("failed to listen on port %s: %w", cfg.Port, err)
 	}
 
 	// TODO: Do we need a gRPC health check server?
