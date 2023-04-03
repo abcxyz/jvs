@@ -57,7 +57,7 @@ resource "google_monitoring_alert_policy" "public_key_service_exceed_5xx_respons
     resource.google_monitoring_notification_channel.email_notification_channel.name
   ]
 
-  enabled = var.is_prod_env
+  enabled = var.alert_enabled
 }
 
 # This alert will trigger if: in a rolling window of 60s,
@@ -76,7 +76,7 @@ resource "google_monitoring_alert_policy" "public_key_service_exceed_latency_thr
       filter          = "metric.type=\"run.googleapis.com/request_latencies\" resource.type=\"cloud_run_revision\" resource.label.\"service_name\"=\"${var.public_key_service_name}\""
       duration        = "0s"
       comparison      = "COMPARISON_GT"
-      threshold_value = var.public_key_service_latency_threshold
+      threshold_value = var.public_key_service_latency_threshold_ms
       aggregations {
         alignment_period   = "60s"
         per_series_aligner = "ALIGN_PERCENTILE_95"
@@ -88,7 +88,7 @@ resource "google_monitoring_alert_policy" "public_key_service_exceed_latency_thr
     resource.google_monitoring_notification_channel.email_notification_channel.name
   ]
 
-  enabled = var.is_prod_env
+  enabled = var.alert_enabled
 }
 
 
@@ -118,7 +118,7 @@ resource "google_monitoring_alert_policy" "jvs_service_exceed_5xx_response_thres
     resource.google_monitoring_notification_channel.email_notification_channel.name
   ]
 
-  enabled = var.is_prod_env
+  enabled = var.alert_enabled
 }
 
 # This alert will trigger if: in a rolling window of 60s,
@@ -137,7 +137,7 @@ resource "google_monitoring_alert_policy" "jvs_service_exceed_latency_threshold"
       filter          = "metric.type=\"run.googleapis.com/request_latencies\" resource.type=\"cloud_run_revision\" resource.label.\"service_name\"=\"${var.jvs_service_name}\""
       duration        = "0s"
       comparison      = "COMPARISON_GT"
-      threshold_value = var.jvs_service_latency_threshold
+      threshold_value = var.jvs_service_latency_threshold_ms
       aggregations {
         alignment_period   = "60s"
         per_series_aligner = "ALIGN_PERCENTILE_95"
@@ -149,7 +149,7 @@ resource "google_monitoring_alert_policy" "jvs_service_exceed_latency_threshold"
     resource.google_monitoring_notification_channel.email_notification_channel.name
   ]
 
-  enabled = var.is_prod_env
+  enabled = var.alert_enabled
 }
 
 # This alert will trigger if: in a rolling window of 60s,
@@ -178,7 +178,7 @@ resource "google_monitoring_alert_policy" "cert_rotator_service_exceed_5xx_respo
     resource.google_monitoring_notification_channel.email_notification_channel.name
   ]
 
-  enabled = var.is_prod_env
+  enabled = var.alert_enabled
 }
 
 # This alert will trigger if: in a rolling window of 60s,
@@ -197,7 +197,7 @@ resource "google_monitoring_alert_policy" "cert_rotator_latency_threshold" {
       filter          = "metric.type=\"run.googleapis.com/request_latencies\" resource.type=\"cloud_run_revision\" resource.label.\"service_name\"=\"${var.cert_rotator_service_name}\""
       duration        = "0s"
       comparison      = "COMPARISON_GT"
-      threshold_value = var.cert_rotator_latency_threshold
+      threshold_value = var.cert_rotator_latency_threshold_ms
       aggregations {
         alignment_period   = "60s"
         per_series_aligner = "ALIGN_PERCENTILE_95"
@@ -209,7 +209,7 @@ resource "google_monitoring_alert_policy" "cert_rotator_latency_threshold" {
     resource.google_monitoring_notification_channel.email_notification_channel.name
   ]
 
-  enabled = var.is_prod_env
+  enabled = var.alert_enabled
 }
 
 # This alert will trigger if: in a rolling window of 60s,
@@ -238,7 +238,7 @@ resource "google_monitoring_alert_policy" "ui_service_exceed_5xx_response_thresh
     resource.google_monitoring_notification_channel.email_notification_channel.name
   ]
 
-  enabled = var.is_prod_env
+  enabled = var.alert_enabled
 }
 
 # This alert will trigger if: in a rolling window of 60s,
@@ -256,7 +256,7 @@ resource "google_monitoring_alert_policy" "ui_service_exceed_latency_threshold" 
       filter          = "metric.type=\"run.googleapis.com/request_latencies\" resource.type=\"cloud_run_revision\" resource.label.\"service_name\"=\"${var.jvs_ui_service_name}\""
       duration        = "0s"
       comparison      = "COMPARISON_GT"
-      threshold_value = var.ui_service_latency_threshold
+      threshold_value = var.ui_service_latency_threshold_ms
       aggregations {
         alignment_period   = "60s"
         per_series_aligner = "ALIGN_PERCENTILE_95"
@@ -268,5 +268,5 @@ resource "google_monitoring_alert_policy" "ui_service_exceed_latency_threshold" 
     resource.google_monitoring_notification_channel.email_notification_channel.name
   ]
 
-  enabled = var.is_prod_env
+  enabled = var.alert_enabled
 }

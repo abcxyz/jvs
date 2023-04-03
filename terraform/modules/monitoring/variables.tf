@@ -44,9 +44,9 @@ variable "notification_channel_email" {
   description = "The Email address where alert notifications send to."
 }
 
-variable "is_prod_env" {
+variable "alert_enabled" {
   type        = bool
-  description = "If deploying to a prod environment, true if is prod env, otherwise false."
+  description = "Alert enabled is value set to true"
   default     = false
 }
 
@@ -56,7 +56,7 @@ variable "cert_rotator_5xx_response_threshold" {
   default     = 5
 }
 
-variable "cert_rotator_latency_threshold" {
+variable "cert_rotator_latency_threshold_ms" {
   type        = number
   description = "Send alert when UI-Service's latency (in ms) exceed the threshold"
   default     = 5000
@@ -68,7 +68,7 @@ variable "public_key_service_5xx_response_threshold" {
   default     = 5
 }
 
-variable "public_key_service_latency_threshold" {
+variable "public_key_service_latency_threshold_ms" {
   type        = number
   description = "Send alert for UI-Service's latency (in ms) exceed the threshold"
   default     = 5000
@@ -80,7 +80,7 @@ variable "jvs_service_5xx_response_threshold" {
   default     = 5
 }
 
-variable "jvs_service_latency_threshold" {
+variable "jvs_service_latency_threshold_ms" {
   type        = number
   description = "Send alert for UI-Service's latency (in ms) exceed the threshold"
   default     = 5000
@@ -92,7 +92,7 @@ variable "ui_service_5xx_response_threshold" {
   default     = 5
 }
 
-variable "ui_service_latency_threshold" {
+variable "ui_service_latency_threshold_ms" {
   type        = number
   description = "Send alert for UI-Service's latency (in ms) exceed the threshold"
   default     = 5000
