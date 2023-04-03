@@ -19,7 +19,6 @@ import (
 	"errors"
 	"fmt"
 	"net/http"
-	"os"
 	"os/signal"
 	"syscall"
 	"time"
@@ -90,7 +89,7 @@ func realMain(ctx context.Context) error {
 	defer kmsClient.Close()
 
 	// Load the config
-	var cfg config.CryptoConfig
+	var cfg config.CertRotationConfig
 	if err := cfgloader.Load(ctx, &cfg); err != nil {
 		return fmt.Errorf("failed to load config: %w", err)
 	}
@@ -114,16 +113,9 @@ func realMain(ctx context.Context) error {
 		},
 	))
 
-	// Determine port for HTTP service.
-	port := os.Getenv("PORT")
-	if port == "" {
-		port = "8080"
-		logger.Debugw("defaulting to port ", "port", port)
-	}
-
 	// Create the server and listen in a goroutine.
 	server := &http.Server{
-		Addr:              ":" + port,
+		Addr:              ":" + cfg.Port,
 		Handler:           mux,
 		ReadHeaderTimeout: 2 * time.Second,
 	}
