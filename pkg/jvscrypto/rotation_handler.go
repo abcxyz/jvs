@@ -36,13 +36,13 @@ import (
 // based off a provided configuration.
 type RotationHandler struct {
 	kmsClient *kms.KeyManagementClient
-	config    *config.CryptoConfig
+	config    *config.CertRotationConfig
 }
 
 // NewRotationHandler creates a handler for rotating keys.
-func NewRotationHandler(ctx context.Context, kmsClient *kms.KeyManagementClient, cfg *config.CryptoConfig) *RotationHandler {
+func NewRotationHandler(ctx context.Context, kmsClient *kms.KeyManagementClient, cfg *config.CertRotationConfig) *RotationHandler {
 	if cfg == nil {
-		cfg = &config.CryptoConfig{}
+		cfg = &config.CertRotationConfig{}
 	}
 
 	return &RotationHandler{
