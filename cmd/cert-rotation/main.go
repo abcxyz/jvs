@@ -16,12 +16,10 @@ package main
 
 import (
 	"context"
-	"errors"
 	"fmt"
 	"net/http"
 	"os/signal"
 	"syscall"
-	"time"
 
 	kms "cloud.google.com/go/kms/apiv1"
 	"github.com/abcxyz/jvs/assets"
@@ -32,31 +30,12 @@ import (
 	"github.com/abcxyz/pkg/gcputil"
 	"github.com/abcxyz/pkg/logging"
 	"github.com/abcxyz/pkg/renderer"
+	"github.com/abcxyz/pkg/serving"
 )
 
-type server struct {
-	handler *jvscrypto.RotationHandler
-	h       *renderer.Renderer
-}
-
-// ServeHTTP rotates a single key's versions.
-func (s *server) ServeHTTP(w http.ResponseWriter, r *http.Request) {
-	ctx := r.Context()
-
-	logger := logging.FromContext(ctx)
-	logger.Infow("received request", "url", r.URL)
-
-	if err := s.handler.RotateKeys(ctx); err != nil {
-		logger.Errorw("ran into errors while rotating keys", "error", err)
-		s.h.RenderJSON(w, http.StatusInternalServerError, err)
-		return
-	}
-
-	s.h.RenderJSON(w, http.StatusOK, nil)
-}
-
 func main() {
-	ctx, done := signal.NotifyContext(context.Background(), syscall.SIGINT, syscall.SIGTERM)
+	ctx, done := signal.NotifyContext(context.Background(),
+		syscall.SIGINT, syscall.SIGTERM)
 	defer done()
 
 	logger := logging.NewFromEnv("")
@@ -105,42 +84,30 @@ func realMain(ctx context.Context) error {
 		return fmt.Errorf("failed to create renderer: %w", err)
 	}
 
+	// Create the rotation handler
+	rotationHandler := jvscrypto.NewRotationHandler(ctx, kmsClient, &cfg)
+
 	mux := http.NewServeMux()
-	mux.Handle("/", logging.HTTPInterceptor(logger, projectID)(
-		&server{
-			handler: jvscrypto.NewRotationHandler(ctx, kmsClient, &cfg),
-			h:       h,
-		},
-	))
+	mux.Handle("/", http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		ctx := r.Context()
 
-	// Create the server and listen in a goroutine.
-	server := &http.Server{
-		Addr:              ":" + cfg.Port,
-		Handler:           mux,
-		ReadHeaderTimeout: 2 * time.Second,
-	}
-	serverErrCh := make(chan error, 1)
-	go func() {
-		if err := server.ListenAndServe(); err != nil && !errors.Is(err, http.ErrServerClosed) {
-			select {
-			case serverErrCh <- err:
-			default:
-			}
+		logger := logging.FromContext(ctx)
+		logger.Infow("received request", "url", r.URL)
+
+		if err := rotationHandler.RotateKeys(ctx); err != nil {
+			logger.Errorw("ran into errors while rotating keys", "error", err)
+			h.RenderJSON(w, http.StatusInternalServerError, err)
+			return
 		}
-	}()
 
-	// Wait for shutdown signal or error from the listener.
-	select {
-	case err := <-serverErrCh:
-		return fmt.Errorf("error from server listener: %w", err)
-	case <-ctx.Done():
-	}
+		h.RenderJSON(w, http.StatusOK, nil)
+	}))
 
-	// Gracefully shut down the server.
-	shutdownCtx, done := context.WithTimeout(context.Background(), 5*time.Second)
-	defer done()
-	if err := server.Shutdown(shutdownCtx); err != nil {
-		return fmt.Errorf("failed to shutdown server: %w", err)
+	root := logging.HTTPInterceptor(logger, projectID)(mux)
+
+	server, err := serving.New(cfg.Port)
+	if err != nil {
+		return fmt.Errorf("failed to create serving infrastructure: %w", err)
 	}
-	return nil
+	return server.StartHTTPHandler(ctx, root)
 }
