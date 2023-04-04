@@ -15,8 +15,11 @@
 
 set -eEuo pipefail
 
-# .goreleaser.docker.yaml and integration.sh read DOCKER_TAG
-export DOCKER_TAG=$(git rev-parse --short HEAD)
+# Set DOCKER_TAG if it is not set. Both .goreleaser.docker.yaml and
+# integration.sh read DOCKER_TAG.
+if [ -z "$DOCKER_TAG"]; then
+  export DOCKER_TAG=$(git rev-parse HEAD)
+fi
 
 REGISTRY_HOST=`echo $REGISTRY | awk -F '/' '{ print $1}'`
 
