@@ -20,7 +20,8 @@ SERVICES_VAR_FILE="/tmp/jvs_ci.tfvars"
 
 # If BUILD_COMMON is true, build common cloud infra including cloud run service
 # accounts and KMS keyring.
-if $BUILD_COMMON then
+if $BUILD_COMMON
+then
   COMMON_TF_MODULE_DIR="./terraform/modules/common"
   COMMON_VAR_FILE="/tmp/jvs_common.tfvars"
   COMMON_TF_MODULE_DIR="./terraform/modules/common"
