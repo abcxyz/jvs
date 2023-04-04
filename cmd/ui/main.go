@@ -16,13 +16,10 @@ package main
 
 import (
 	"context"
-	"errors"
 	"fmt"
 	"log"
-	"net/http"
 	"os/signal"
 	"syscall"
-	"time"
 
 	kms "cloud.google.com/go/kms/apiv1"
 	"github.com/abcxyz/jvs/pkg/config"
@@ -30,10 +27,12 @@ import (
 	"github.com/abcxyz/jvs/pkg/ui"
 	"github.com/abcxyz/pkg/cfgloader"
 	"github.com/abcxyz/pkg/logging"
+	"github.com/abcxyz/pkg/serving"
 )
 
 func main() {
-	ctx, done := signal.NotifyContext(context.Background(), syscall.SIGINT, syscall.SIGTERM)
+	ctx, done := signal.NotifyContext(context.Background(),
+		syscall.SIGINT, syscall.SIGTERM)
 	defer done()
 
 	logger := logging.NewFromEnv("")
@@ -68,39 +67,9 @@ func realMain(ctx context.Context) error {
 		return fmt.Errorf("server.NewServer: %w", err)
 	}
 
-	// Create the server and listen in a goroutine.
-	server := &http.Server{
-		Addr:         ":" + uiCfg.Port,
-		Handler:      uiServer.Routes(),
-		ReadTimeout:  5 * time.Second,
-		WriteTimeout: 1 * time.Second,
-		IdleTimeout:  15 * time.Second,
+	server, err := serving.New(cfg.Port)
+	if err != nil {
+		return fmt.Errorf("failed to create serving infrastructure: %w", err)
 	}
-
-	serverErrCh := make(chan error, 1)
-	go func() {
-		if err := server.ListenAndServe(); err != nil && !errors.Is(err, http.ErrServerClosed) {
-			select {
-			case serverErrCh <- err:
-			default:
-			}
-		}
-	}()
-
-	// Wait for shutdown signal or error from the listener.
-	select {
-	case err := <-serverErrCh:
-		return fmt.Errorf("error from server listener: %w", err)
-	case <-ctx.Done():
-	}
-
-	// Gracefully shut down the server.
-	shutdownCtx, done := context.WithTimeout(context.Background(), 5*time.Second)
-	defer done()
-
-	if err := server.Shutdown(shutdownCtx); err != nil {
-		return fmt.Errorf("failed to shutdown server: %w", err)
-	}
-
-	return nil
+	return server.StartHTTPHandler(ctx, uiServer.Routes())
 }

@@ -30,7 +30,7 @@ variable "ci_iam_roles" {
   default = [
     # To deploy and invoke cloud run services.
     "roles/iam.serviceAccountUser",
-    "roles/run.developer",
+    "roles/run.admin",
 
     # To operate KMS.
     "roles/cloudkms.admin",
@@ -38,6 +38,9 @@ variable "ci_iam_roles" {
 
     # To read and edit project service during CI.
     "roles/serviceusage.serviceUsageAdmin",
+
+    # To set project IAM policies.
+    "roles/resourcemanager.projectIamAdmin",
   ]
   description = "List of IAM roles needed to run integration tests included in CI/CD."
 }
