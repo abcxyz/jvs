@@ -17,7 +17,6 @@ package main
 import (
 	"context"
 	"fmt"
-	"net"
 	"os/signal"
 	"syscall"
 
@@ -29,14 +28,15 @@ import (
 	"github.com/abcxyz/pkg/cfgloader"
 	"github.com/abcxyz/pkg/gcputil"
 	"github.com/abcxyz/pkg/logging"
+	"github.com/abcxyz/pkg/serving"
 	"go.opentelemetry.io/contrib/instrumentation/google.golang.org/grpc/otelgrpc"
-	"golang.org/x/sync/errgroup"
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/reflection"
 )
 
 func main() {
-	ctx, done := signal.NotifyContext(context.Background(), syscall.SIGINT, syscall.SIGTERM)
+	ctx, done := signal.NotifyContext(context.Background(),
+		syscall.SIGINT, syscall.SIGTERM)
 	defer done()
 
 	logger := logging.NewFromEnv("")
@@ -58,7 +58,7 @@ func realMain(ctx context.Context) error {
 
 	projectID := gcputil.ProjectID(ctx)
 
-	s := grpc.NewServer(grpc.ChainUnaryInterceptor(
+	grpcServer := grpc.NewServer(grpc.ChainUnaryInterceptor(
 		logging.GRPCUnaryInterceptor(logger, projectID),
 		otelgrpc.UnaryServerInterceptor(),
 	))
@@ -77,31 +77,12 @@ func realMain(ctx context.Context) error {
 
 	p := justification.NewProcessor(kmsClient, &cfg)
 	jvsAgent := justification.NewJVSAgent(p)
-	jvspb.RegisterJVSServiceServer(s, jvsAgent)
-	reflection.Register(s)
+	jvspb.RegisterJVSServiceServer(grpcServer, jvsAgent)
+	reflection.Register(grpcServer)
 
-	lis, err := net.Listen("tcp", ":"+cfg.Port)
+	server, err := serving.New(cfg.Port)
 	if err != nil {
-		return fmt.Errorf("failed to listen on port %s: %w", cfg.Port, err)
+		return fmt.Errorf("failed to create serving infrastructure: %w", err)
 	}
-
-	// TODO: Do we need a gRPC health check server?
-	// https://github.com/grpc/grpc/blob/master/doc/health-checking.md
-	g, ctx := errgroup.WithContext(ctx)
-	g.Go(func() error {
-		logger.Debugw("server listening at", "address", lis.Addr())
-		if err := s.Serve(lis); err != nil {
-			return fmt.Errorf("server failed to listen: %w", err)
-		}
-		return nil
-	})
-
-	// Either we have received a TERM signal or errgroup has encountered an err.
-	<-ctx.Done()
-	s.GracefulStop()
-
-	if err := g.Wait(); err != nil {
-		return fmt.Errorf("error running server: %w", err)
-	}
-	return nil
+	return server.StartGRPC(ctx, grpcServer)
 }
