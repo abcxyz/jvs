@@ -8,7 +8,7 @@ by abcxyz/jvs
 ## Installation
 
 ```sh
-go install github.com/abcxyz/jvs/cmd/jvsctl
+go install github.com/abcxyz/jvs/cmd/jvsctl@latest
 ```
 
 Or download from a

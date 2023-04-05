@@ -1,8 +1,14 @@
-# TODO(#158): replace current ci with real service integration test.
 name: 'integration'
 
 on:
+  push:
+    branches:
+      - 'main'
+  pull_request:
+    branches:
+      - 'main'
   workflow_dispatch:
+  workflow_call:
 
 env:
   REGISTRY_HOST: 'us-docker.pkg.dev'
@@ -169,11 +175,23 @@ jobs:
         id: 'tf_apply'
         run: |-
           terraform -chdir=${{ env.TF_MODULE_DIR}} apply -auto-approve -var-file=${{ env.TFVAR_FILE }};
+
+          echo "INTEG_TEST_API_URL=$(terraform -chdir=${{ env.TF_MODULE_DIR}} output -raw jvs_api_service_url)" >> $GITHUB_ENV;
+          echo "INTEG_TEST_UI_URL=$(terraform -chdir=${{ env.TF_MODULE_DIR}} output -raw jvs_ui_service_url)" >> $GITHUB_ENV;
+          echo "INTEG_TEST_PUBLIC_KEY_URL=$(terraform -chdir=${{ env.TF_MODULE_DIR}} output -raw jvs_public_key_service_url)" >> $GITHUB_ENV;
+          echo "INTEG_TEST_CERT_ROTATOR_URL=$(terraform -chdir=${{ env.TF_MODULE_DIR}} output -raw jvs_cert_rotator_service_url)" >> $GITHUB_ENV;
       - name: 'Setup Go'
         uses: 'actions/setup-go@4d34df0c2316fe8122ab82dc22947d607c0c91f9' # ratchet:actions/setup-go@v4
         with:
           go-version: '1.20'
-      # TODO(#158): add integration test
+      - name: 'Install jvsctl'
+        run: |
+          go install github.com/abcxyz/jvs/cmd/jvsctl@latest
+      - name: 'Run tests'
+        env:
+          TEST_INTEGRATION: 'true'
+        run: |-
+          go test ./test/integration -timeout=15m
       - name: 'Cleanup the infrastructure'
         if: always()
         run: |-
