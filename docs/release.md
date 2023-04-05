@@ -43,5 +43,5 @@ git tag -f -a v0.0.0-$(git rev-parse --short HEAD)
 # Use goreleaser to build the images.
 # It should in the end push all the images to the given container registry.
 # All the images will be tagged with the git tag given earlier.
-goreleaser release -f .goreleaser.docker.yaml --rm-dist
+goreleaser release -f .goreleaser.docker.yaml --clean
 ```

@@ -26,7 +26,7 @@ module "public_key_cloud_run" {
     admins     = []
     developers = []
     # Public key service is meant to be public.
-    invokers = var.public_key_invokers
+    invokers = ["allUsers"]
   }
   envvars = merge({ "KEY_NAMES" : google_kms_crypto_key.signing_key.id }, var.public_key_envvars)
 }
