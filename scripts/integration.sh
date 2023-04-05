@@ -28,10 +28,6 @@ then
   COMMON_VAR_FILE="/tmp/jvs_common.tfvars"
 
   touch /tmp/jvs_common.tfvars
-  echo project_id=\"$PROJECT_ID\" >> $COMMON_VAR_FILE;
-
-  terraform -chdir=$COMMON_TF_MODULE_DIR init
-  terraform -chdir=$COMMON_TF_MODULE_DIR apply -auto-approve -var-file=$COMMON_VAR_FILE
 
   clean_up_common() {
     terraform -chdir=$COMMON_TF_MODULE_DIR destroy -auto-approve -var-file=$COMMON_VAR_FILE
@@ -39,6 +35,11 @@ then
   }
 
   trap clean_up_common EXIT
+
+  echo project_id=\"$PROJECT_ID\" >> $COMMON_VAR_FILE;
+
+  terraform -chdir=$COMMON_TF_MODULE_DIR init
+  terraform -chdir=$COMMON_TF_MODULE_DIR apply -auto-approve -var-file=$COMMON_VAR_FILE
 
   API_SA=$(terraform -chdir=${COMMON_TF_MODULE_DIR} output -raw jvs_api_service_account_email)
   UI_SA=$(terraform -chdir=${COMMON_TF_MODULE_DIR} output -raw jvs_ui_service_account_email)
@@ -48,6 +49,14 @@ then
 fi
 
 touch /tmp/jvs_ci.tfvars
+
+clean_up_services() {
+  terraform -chdir=$SERVICES_TF_MODULE_DIR destroy -auto-approve -var-file=$SERVICES_VAR_FILE
+  rm $SERVICES_VAR_FILE
+}
+
+trap clean_up_services EXIT
+
 echo project_id=\"$PROJECT_ID\" >> $SERVICES_VAR_FILE;
 echo jvs_api_service_account=\"$API_SA\" >> $SERVICES_VAR_FILE;
 echo jvs_ui_service_account=\"$UI_SA\" >> $SERVICES_VAR_FILE;
@@ -65,12 +74,5 @@ echo public_key_invokers=[] >> $SERVICES_VAR_FILE;
 
 terraform -chdir=$SERVICES_TF_MODULE_DIR init
 terraform -chdir=$SERVICES_TF_MODULE_DIR apply -auto-approve -var-file=$SERVICES_VAR_FILE
-
-clean_up_services() {
-  terraform -chdir=$SERVICES_TF_MODULE_DIR destroy -auto-approve -var-file=$SERVICES_VAR_FILE
-  rm $SERVICES_VAR_FILE
-}
-
-trap clean_up_services EXIT
 
 # TODO(#158): add real service integration test.
