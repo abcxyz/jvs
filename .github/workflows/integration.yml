@@ -118,7 +118,7 @@ jobs:
         uses: 'goreleaser/goreleaser-action@f82d6c1c344bcacabba2c841718984797f664a6b' # ratchet:goreleaser/goreleaser-action@v4
         with:
           version: 'v1.16.2' # Manually pinned
-          args: 'release -f .goreleaser.docker.yaml --clean --skip-validate'
+          args: 'release -f .goreleaser.docker.yaml --clean --skip-validate --snapshot'
 
   # Deploy integration test infrastructure and run integration tests
   integration:
