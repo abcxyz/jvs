@@ -117,7 +117,30 @@ builds:
       - 'windows'
     goarch:
       - 'amd64'
-      - 'arm64'      
+      - 'arm64'
+
+  -
+    id: jvsctl
+    main: ./cmd/jvsctl
+    binary: jvsctl
+    mod_timestamp: '{{ .CommitTimestamp }}'
+    flags:
+      - '-a'
+      - '-trimpath'
+    ldflags:
+      - '-s'
+      - '-w'
+      - '-X={{ .ModulePath }}/internal/version.Name=ui'
+      - '-X={{ .ModulePath }}/internal/version.Version={{ .Version }}'
+      - '-X={{ .ModulePath }}/internal/version.Commit={{ .Commit }}'
+      - '-extldflags=-static'
+    goos:
+      - 'darwin'
+      - 'linux'
+      - 'windows'
+    goarch:
+      - 'amd64'
+      - 'arm64'
 
 dockers:
   -
@@ -282,6 +305,29 @@ dockers:
       - '--label=org.opencontainers.image.revision={{ .FullCommit }}'
       - '--label=org.opencontainers.image.source={{ .GitURL }}'
       - '--label=org.opencontainers.image.title=jvs-ui'
+      - '--label=org.opencontainers.image.version={{ .Version }}'
+
+  -
+    ids:
+    - jvsctl
+    use: 'buildx'
+    goos: 'linux'
+    goarch: 'amd64'
+    image_templates:
+      - '{{ .Env.REGISTRY }}/prober:{{ .Version }}-amd64'
+    dockerfile: ./pkg/prober/prober.dockerfile
+    extra_files:
+    - ./pkg/prober/prober.sh
+    build_flag_templates:
+      - '--platform=linux/amd64'
+      - '--pull'
+      - '--label=org.opencontainers.image.created={{ .CommitTimestamp }}'
+      - '--label=org.opencontainers.image.description=jvsctl.'
+      - '--label=org.opencontainers.image.licenses=Apache-2.0'
+      - '--label=org.opencontainers.image.name=jvsctl'
+      - '--label=org.opencontainers.image.revision={{ .FullCommit }}'
+      - '--label=org.opencontainers.image.source={{ .GitURL }}'
+      - '--label=org.opencontainers.image.title=jvsctl'
       - '--label=org.opencontainers.image.version={{ .Version }}'
 
 docker_manifests:
