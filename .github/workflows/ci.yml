@@ -68,7 +68,6 @@ jobs:
   integration:
     env:
       PROJECT_ID: 'jvs-ci-test'
-      PROJECT_NUMBER: '1096923323432'
     permissions:
       contents: 'read'
       id-token: 'write'
