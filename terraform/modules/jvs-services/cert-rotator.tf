@@ -12,14 +12,6 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-# resource "google_project_service" "compute" {
-#   project = var.project_id
-
-#   service                    = "compute.googleapis.com"
-#   disable_on_destroy         = false
-#   disable_dependent_services = false
-# }
-
 resource "google_project_service" "scheduler_api" {
   project = var.project_id
 
