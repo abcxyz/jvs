@@ -15,7 +15,7 @@ env:
   REGISTRY_HOST: 'us-docker.pkg.dev'
   REGISTRY: 'us-docker.pkg.dev/jvs-ci-test/ci-images'
   # DOCKER_TAG: '${{ github.sha }}'
-  DOCKER_TAG: '0.0.4'
+  DOCKER_TAG: '6a756be773f0f6b79db68976c56ddb3c354d008c'
   WIF_PROVIDER: 'projects/1096923323432/locations/global/workloadIdentityPools/github-pool-fd98/providers/github-provider'
   WIF_SERVICE_ACCOUNT: 'jvs-fd98-ci-sa@jvs-ci-test.iam.gserviceaccount.com'
 
