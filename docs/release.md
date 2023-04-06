@@ -29,7 +29,7 @@ Or if you want to build/push images for local development.
 ```sh
 # By default we use JVS CI container registry for the images.
 # To override, set the following env var.
-# REGISTRY=us-docker.pkg.dev/my-project/images
+# CONTAINER_REGISTRY=us-docker.pkg.dev/my-project/images
 
 # goreleaser expects a "clean" repo to release so commit any local changes if
 # needed.
