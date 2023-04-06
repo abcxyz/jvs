@@ -65,6 +65,7 @@ jobs:
         run: |-
           mvn clean test --no-transfer-progress -f client-lib/java
 
+  # To be removed entirely when TODO(#158) is completed.
   integration:
     env:
       PROJECT_ID: 'jvs-ci-test'
