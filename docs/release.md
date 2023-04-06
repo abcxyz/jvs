@@ -27,9 +27,8 @@ git push origin $REL_VER
 Or if you want to build/push images for local development.
 
 ```sh
-# Set the container registry and tag for the images, for example:
+# Set the container registry for the images, for example:
 CONTAINER_REGISTRY=us-docker.pkg.dev/my-project/images
-DOCKER_TAG=mytag
 
 # goreleaser expects a "clean" repo to release so commit any local changes if
 # needed.
@@ -39,6 +38,9 @@ git add . && git commit -m "local changes"
 # The tag must be a semantic version https://semver.org/
 # DON'T push the tag if you're not releasing.
 git tag -f -a v0.0.0-$(git rev-parse --short HEAD)
+
+# goreleaser will tag the image with the git tag, optionally, override it by:
+DOCKER_TAG=mytag
 
 # Use goreleaser to build the images.
 # It should in the end push all the images to the given container registry.
