@@ -12,13 +12,13 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-resource "google_project_service" "compute" {
-  project = var.project_id
+# resource "google_project_service" "compute" {
+#   project = var.project_id
 
-  service                    = "compute.googleapis.com"
-  disable_on_destroy         = false
-  disable_dependent_services = false
-}
+#   service                    = "compute.googleapis.com"
+#   disable_on_destroy         = false
+#   disable_dependent_services = false
+# }
 
 resource "google_project_service" "scheduler_api" {
   project = var.project_id
@@ -46,9 +46,9 @@ module "cert_rotator_cloud_run" {
 data "google_compute_default_service_account" "default" {
   project = var.project_id
 
-  depends_on = [
-    google_project_service.compute
-  ]
+  # depends_on = [
+  #   google_project_service.compute
+  # ]
 }
 
 resource "google_cloud_scheduler_job" "job" {
