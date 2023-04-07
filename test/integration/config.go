@@ -23,11 +23,11 @@ import (
 )
 
 type config struct {
-	ApiURL         string `env:"INTEG_TEST_API_URL,required"`
-	UiURL          string `env:"INTEG_TEST_UI_URL,required"`
+	APIURL         string `env:"INTEG_TEST_API_URL,required"`
+	UIURL          string `env:"INTEG_TEST_UI_URL,required"`
 	PublicKeyURL   string `env:"INTEG_TEST_PUBLIC_KEY_URL,required"`
 	CertRotatorURL string `env:"INTEG_TEST_CERT_ROTATOR_URL,required"`
-	ApiServer      string
+	APISERVER      string
 	JwksEndpoint   string
 }
 
@@ -36,7 +36,7 @@ func newTestConfig(ctx context.Context) (*config, error) {
 	if err := envconfig.ProcessWith(ctx, &c, envconfig.OsLookuper()); err != nil {
 		return nil, fmt.Errorf("failed to process environment: %w", err)
 	}
-	c.ApiServer = fmt.Sprint(strings.Split(c.ApiURL, "https://")[1], ":443")
+	c.APISERVER = fmt.Sprint(strings.Split(c.APIURL, "https://")[1], ":443")
 	c.JwksEndpoint = fmt.Sprint(c.PublicKeyURL, "/.well-known/jwks")
 	return &c, nil
 }

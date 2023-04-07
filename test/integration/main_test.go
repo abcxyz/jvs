@@ -24,10 +24,8 @@ import (
 	"testing"
 )
 
-var (
-	// Global integration test config.
-	cfg *config
-)
+// Global integration test config.
+var cfg *config
 
 func TestMain(m *testing.M) {
 	os.Exit(func() int {
@@ -50,13 +48,13 @@ func TestMain(m *testing.M) {
 	}())
 }
 
-// Test justification api and public key service.
-func TestApi(t *testing.T) {
+// Test justification API and public key service.
+func TestAPI(t *testing.T) {
 	t.Parallel()
 
 	cases := []struct {
-		name string
-		args []string
+		name    string
+		args    []string
 		wantOut string
 		wantErr string
 	}{
@@ -65,7 +63,7 @@ func TestApi(t *testing.T) {
 			args: []string{
 				"token",
 				"-explanation=test",
-				"-server", cfg.ApiServer,
+				"-server", cfg.APISERVER,
 			},
 			wantOut: `
 ----- Justifications -----
@@ -109,7 +107,7 @@ sub    test-sub
 				"token",
 				"-explanation=test",
 				"-ttl=1ns",
-				"-server", cfg.ApiServer,
+				"-server", cfg.APISERVER,
 			},
 			wantErr: "error",
 		},
@@ -121,8 +119,7 @@ sub    test-sub
 		t.Run(tc.name, func(t *testing.T) {
 			t.Parallel()
 
-
-			token, err := exec.Command("jvsctl", tc.args...).Output()
+			token, err := exec.Command("jvsctl", tc.args...).Output() // #nosec G204
 			if err != nil {
 				t.Errorf("Process(%+v) failed to create token: %v", tc.name, err)
 			}
@@ -130,7 +127,7 @@ sub    test-sub
 				"jvsctl", "validate",
 				"-t", string(token),
 				"-jwks_endpoint", cfg.JwksEndpoint,
-			).Output()
+			).Output() // #nosec G204
 			if err != nil {
 				t.Errorf("Process(%+v) failed to validate token: %v", tc.name, err)
 			}
@@ -147,7 +144,14 @@ sub    test-sub
 func TestCertRotator(t *testing.T) {
 	t.Parallel()
 
-  resp, err := http.Get(cfg.CertRotatorURL)
+	ctx := context.Background()
+	req, err := http.NewRequestWithContext(ctx, "GET", cfg.CertRotatorURL, nil)
+	if err != nil {
+		t.Fatalf("Failed to create cert rotator request: (%+v)", err)
+	}
+
+	client := &http.Client{}
+	resp, err := client.Do(req)
 	if err != nil {
 		t.Errorf("Test cert rotator got err: (%+v)", err)
 	}
