@@ -315,9 +315,9 @@ dockers:
     goarch: 'amd64'
     image_templates:
       - '{{ .Env.REGISTRY }}/prober:{{ .Version }}-amd64'
-    dockerfile: ./pkg/prober/prober.dockerfile
+    dockerfile: ./prober/prober.dockerfile
     extra_files:
-    - ./pkg/prober/prober.sh
+    - ./prober/prober.sh
     build_flag_templates:
       - '--platform=linux/amd64'
       - '--pull'
