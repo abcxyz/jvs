@@ -10,6 +10,8 @@ COPY ./prober/prober.sh /prober.sh
 #
 # USER nobody
 
-# Run the web service on container startup.
+# Run the bash script on container startup.
 
-ENTRYPOINT ["/prober.sh"]
+RUN chmod +x /prober.sh
+
+ENTRYPOINT ["./prober.sh"]
