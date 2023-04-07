@@ -318,12 +318,12 @@ dockers:
       - '--platform=linux/amd64'
       - '--pull'
       - '--label=org.opencontainers.image.created={{ .CommitTimestamp }}'
-      - '--label=org.opencontainers.image.description=jvsctl.'
+      - '--label=org.opencontainers.image.description=Prober service for jvs'
       - '--label=org.opencontainers.image.licenses=Apache-2.0'
-      - '--label=org.opencontainers.image.name=jvsctl'
+      - '--label=org.opencontainers.image.name=prober'
       - '--label=org.opencontainers.image.revision={{ .FullCommit }}'
       - '--label=org.opencontainers.image.source={{ .GitURL }}'
-      - '--label=org.opencontainers.image.title=jvsctl'
+      - '--label=org.opencontainers.image.title=prober'
       - '--label=org.opencontainers.image.version={{ .Version }}'
 
 docker_manifests:
