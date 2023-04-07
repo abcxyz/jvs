@@ -126,7 +126,7 @@ builds:
     ldflags:
       - '-s'
       - '-w'
-      - '-X={{ .ModulePath }}/internal/version.Name=ui'
+      - '-X={{ .ModulePath }}/internal/version.Name=jvsctl'
       - '-X={{ .ModulePath }}/internal/version.Version={{ .Version }}'
       - '-X={{ .ModulePath }}/internal/version.Commit={{ .Commit }}'
       - '-extldflags=-static'
@@ -310,7 +310,30 @@ dockers:
     goos: 'linux'
     goarch: 'amd64'
     image_templates:
-      - '{{ .Env.REGISTRY }}/prober:{{ .Version }}-amd64'
+      - '{{ .Env.CONTAINER_REGISTRY }}/prober:{{ if index .Env "DOCKER_TAG"  }}{{ .Env.DOCKER_TAG }}{{ else }}{{ .Version }}{{ end }}-amd64'
+    dockerfile: ./prober/prober.dockerfile
+    extra_files:
+    - ./prober/prober.sh
+    build_flag_templates:
+      - '--platform=linux/amd64'
+      - '--pull'
+      - '--label=org.opencontainers.image.created={{ .CommitTimestamp }}'
+      - '--label=org.opencontainers.image.description=Prober service for jvs'
+      - '--label=org.opencontainers.image.licenses=Apache-2.0'
+      - '--label=org.opencontainers.image.name=prober'
+      - '--label=org.opencontainers.image.revision={{ .FullCommit }}'
+      - '--label=org.opencontainers.image.source={{ .GitURL }}'
+      - '--label=org.opencontainers.image.title=prober'
+      - '--label=org.opencontainers.image.version={{ .Version }}'
+
+  -
+    ids:
+    - jvsctl
+    use: 'buildx'
+    goos: 'linux'
+    goarch: 'arm64'
+    image_templates:
+      - '{{ .Env.CONTAINER_REGISTRY }}/prober:{{ if index .Env "DOCKER_TAG"  }}{{ .Env.DOCKER_TAG }}{{ else }}{{ .Version }}{{ end }}-arm64'
     dockerfile: ./prober/prober.dockerfile
     extra_files:
     - ./prober/prober.sh

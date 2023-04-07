@@ -1,4 +1,4 @@
-
+# Base image that supports bash
 FROM cgr.dev/chainguard/bash:latest
 
 COPY jvsctl /jvsctl
