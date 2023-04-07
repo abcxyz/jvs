@@ -17,10 +17,6 @@ env:
   - 'CGO_ENABLED=0'
   - 'GO111MODULE=on'
   - 'GOPROXY=https://proxy.golang.org,direct'
-  # Allow override the container registry.
-  # Default to the JVS CI container registry.
-  - REGISTRY={{ if index .Env "CONTAINER_REGISTRY"  }}{{ .Env.CONTAINER_REGISTRY }}{{ else }}us-docker.pkg.dev/jvs-ci-test/docker-images{{ end }}
-
 before:
   hooks:
     - go mod tidy
@@ -117,7 +113,7 @@ builds:
       - 'windows'
     goarch:
       - 'amd64'
-      - 'arm64'      
+      - 'arm64'
 
 dockers:
   -
@@ -127,7 +123,7 @@ dockers:
     goos: 'linux'
     goarch: 'amd64'
     image_templates:
-      - '{{ .Env.REGISTRY }}/jvs-cert-rotation:{{ .Version }}-amd64'
+      - '{{ .Env.CONTAINER_REGISTRY }}/jvs-cert-rotation:{{ if index .Env "DOCKER_TAG"  }}{{ .Env.DOCKER_TAG }}{{ else }}{{ .Version }}{{ end }}-amd64'
     build_flag_templates:
       - '--build-arg=APP=cert-rotation'
       - '--platform=linux/amd64'
@@ -147,7 +143,7 @@ dockers:
     goos: 'linux'
     goarch: 'arm64'
     image_templates:
-      - '{{ .Env.REGISTRY }}/jvs-cert-rotation:{{ .Version }}-arm64'
+      - '{{ .Env.CONTAINER_REGISTRY }}/jvs-cert-rotation:{{ if index .Env "DOCKER_TAG"  }}{{ .Env.DOCKER_TAG }}{{ else }}{{ .Version }}{{ end }}-arm64'
     build_flag_templates:
       - '--build-arg=APP=cert-rotation'
       - '--platform=linux/arm64'
@@ -168,7 +164,7 @@ dockers:
     goos: 'linux'
     goarch: 'amd64'
     image_templates:
-      - '{{ .Env.REGISTRY }}/jvs-justification:{{ .Version }}-amd64'
+      - '{{ .Env.CONTAINER_REGISTRY }}/jvs-justification:{{ if index .Env "DOCKER_TAG"  }}{{ .Env.DOCKER_TAG }}{{ else }}{{ .Version }}{{ end }}-amd64'
     build_flag_templates:
       - '--build-arg=APP=justification'
       - '--platform=linux/amd64'
@@ -188,7 +184,7 @@ dockers:
     goos: 'linux'
     goarch: 'arm64'
     image_templates:
-      - '{{ .Env.REGISTRY }}/jvs-justification:{{ .Version }}-arm64'
+      - '{{ .Env.CONTAINER_REGISTRY }}/jvs-justification:{{ if index .Env "DOCKER_TAG"  }}{{ .Env.DOCKER_TAG }}{{ else }}{{ .Version }}{{ end }}-arm64'
     build_flag_templates:
       - '--build-arg=APP=justification'
       - '--platform=linux/arm64'
@@ -209,7 +205,7 @@ dockers:
     goos: 'linux'
     goarch: 'amd64'
     image_templates:
-      - '{{ .Env.REGISTRY }}/jvs-public-key:{{ .Version }}-amd64'
+      - '{{ .Env.CONTAINER_REGISTRY }}/jvs-public-key:{{ if index .Env "DOCKER_TAG"  }}{{ .Env.DOCKER_TAG }}{{ else }}{{ .Version }}{{ end }}-amd64'
     build_flag_templates:
       - '--build-arg=APP=public-key'
       - '--platform=linux/amd64'
@@ -229,7 +225,7 @@ dockers:
     goos: 'linux'
     goarch: 'arm64'
     image_templates:
-      - '{{ .Env.REGISTRY }}/jvs-public-key:{{ .Version }}-arm64'
+      - '{{ .Env.CONTAINER_REGISTRY }}/jvs-public-key:{{ if index .Env "DOCKER_TAG"  }}{{ .Env.DOCKER_TAG }}{{ else }}{{ .Version }}{{ end }}-arm64'
     build_flag_templates:
       - '--build-arg=APP=public-key'
       - '--platform=linux/arm64'
@@ -250,7 +246,7 @@ dockers:
     goos: 'linux'
     goarch: 'amd64'
     image_templates:
-      - '{{ .Env.REGISTRY }}/jvs-ui:{{ .Version }}-amd64'
+      - '{{ .Env.CONTAINER_REGISTRY }}/jvs-ui:{{ if index .Env "DOCKER_TAG"  }}{{ .Env.DOCKER_TAG }}{{ else }}{{ .Version }}{{ end }}-amd64'
     build_flag_templates:
       - '--build-arg=APP=ui'
       - '--platform=linux/amd64'
@@ -270,7 +266,7 @@ dockers:
     goos: 'linux'
     goarch: 'arm64'
     image_templates:
-      - '{{ .Env.REGISTRY }}/jvs-ui:{{ .Version }}-arm64'
+      - '{{ .Env.CONTAINER_REGISTRY }}/jvs-ui:{{ if index .Env "DOCKER_TAG"  }}{{ .Env.DOCKER_TAG }}{{ else }}{{ .Version }}{{ end }}-arm64'
     build_flag_templates:
       - '--build-arg=APP=ui'
       - '--platform=linux/arm64'
@@ -286,25 +282,25 @@ dockers:
 
 docker_manifests:
   -
-    name_template: '{{ .Env.REGISTRY }}/jvs-cert-rotation:{{ .Version }}'
+    name_template: '{{ .Env.CONTAINER_REGISTRY }}/jvs-cert-rotation:{{ if index .Env "DOCKER_TAG"  }}{{ .Env.DOCKER_TAG }}{{ else }}{{ .Version }}{{ end }}'
     image_templates:
-      - '{{ .Env.REGISTRY }}/jvs-cert-rotation:{{ .Version }}-amd64'
-      - '{{ .Env.REGISTRY }}/jvs-cert-rotation:{{ .Version }}-arm64'
+      - '{{ .Env.CONTAINER_REGISTRY }}/jvs-cert-rotation:{{ if index .Env "DOCKER_TAG"  }}{{ .Env.DOCKER_TAG }}{{ else }}{{ .Version }}{{ end }}-amd64'
+      - '{{ .Env.CONTAINER_REGISTRY }}/jvs-cert-rotation:{{ if index .Env "DOCKER_TAG"  }}{{ .Env.DOCKER_TAG }}{{ else }}{{ .Version }}{{ end }}-arm64'
   -
-    name_template: '{{ .Env.REGISTRY }}/jvs-justification:{{ .Version }}'
+    name_template: '{{ .Env.CONTAINER_REGISTRY }}/jvs-justification:{{ if index .Env "DOCKER_TAG"  }}{{ .Env.DOCKER_TAG }}{{ else }}{{ .Version }}{{ end }}'
     image_templates:
-      - '{{ .Env.REGISTRY }}/jvs-justification:{{ .Version }}-amd64'
-      - '{{ .Env.REGISTRY }}/jvs-justification:{{ .Version }}-arm64'
+      - '{{ .Env.CONTAINER_REGISTRY }}/jvs-justification:{{ if index .Env "DOCKER_TAG"  }}{{ .Env.DOCKER_TAG }}{{ else }}{{ .Version }}{{ end }}-amd64'
+      - '{{ .Env.CONTAINER_REGISTRY }}/jvs-justification:{{ if index .Env "DOCKER_TAG"  }}{{ .Env.DOCKER_TAG }}{{ else }}{{ .Version }}{{ end }}-arm64'
   -
-    name_template: '{{ .Env.REGISTRY }}/jvs-public-key:{{ .Version }}'
+    name_template: '{{ .Env.CONTAINER_REGISTRY }}/jvs-public-key:{{ if index .Env "DOCKER_TAG"  }}{{ .Env.DOCKER_TAG }}{{ else }}{{ .Version }}{{ end }}'
     image_templates:
-      - '{{ .Env.REGISTRY }}/jvs-public-key:{{ .Version }}-amd64'
-      - '{{ .Env.REGISTRY }}/jvs-public-key:{{ .Version }}-arm64'
+      - '{{ .Env.CONTAINER_REGISTRY }}/jvs-public-key:{{ if index .Env "DOCKER_TAG"  }}{{ .Env.DOCKER_TAG }}{{ else }}{{ .Version }}{{ end }}-amd64'
+      - '{{ .Env.CONTAINER_REGISTRY }}/jvs-public-key:{{ if index .Env "DOCKER_TAG"  }}{{ .Env.DOCKER_TAG }}{{ else }}{{ .Version }}{{ end }}-arm64'
   -
-    name_template: '{{ .Env.REGISTRY }}/jvs-ui:{{ .Version }}'
+    name_template: '{{ .Env.CONTAINER_REGISTRY }}/jvs-ui:{{ if index .Env "DOCKER_TAG"  }}{{ .Env.DOCKER_TAG }}{{ else }}{{ .Version }}{{ end }}'
     image_templates:
-      - '{{ .Env.REGISTRY }}/jvs-ui:{{ .Version }}-amd64'
-      - '{{ .Env.REGISTRY }}/jvs-ui:{{ .Version }}-arm64'
+      - '{{ .Env.CONTAINER_REGISTRY }}/jvs-ui:{{ if index .Env "DOCKER_TAG"  }}{{ .Env.DOCKER_TAG }}{{ else }}{{ .Version }}{{ end }}-amd64'
+      - '{{ .Env.CONTAINER_REGISTRY }}/jvs-ui:{{ if index .Env "DOCKER_TAG"  }}{{ .Env.DOCKER_TAG }}{{ else }}{{ .Version }}{{ end }}-arm64'
 
 
 # TODO(#144): Follow up on sign.

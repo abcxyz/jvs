@@ -27,9 +27,8 @@ git push origin $REL_VER
 Or if you want to build/push images for local development.
 
 ```sh
-# By default we use JVS CI container registry for the images.
-# To override, set the following env var.
-# CONTAINER_REGISTRY=us-docker.pkg.dev/my-project/images
+# Set the container registry for the images, for example:
+CONTAINER_REGISTRY=us-docker.pkg.dev/my-project/images
 
 # goreleaser expects a "clean" repo to release so commit any local changes if
 # needed.
@@ -40,8 +39,11 @@ git add . && git commit -m "local changes"
 # DON'T push the tag if you're not releasing.
 git tag -f -a v0.0.0-$(git rev-parse --short HEAD)
 
+# goreleaser will tag the image with the git tag, optionally, override it by:
+DOCKER_TAG=mytag
+
 # Use goreleaser to build the images.
 # It should in the end push all the images to the given container registry.
 # All the images will be tagged with the git tag given earlier.
-goreleaser release -f .goreleaser.docker.yaml --rm-dist
+goreleaser release -f .goreleaser.docker.yaml --clean
 ```
