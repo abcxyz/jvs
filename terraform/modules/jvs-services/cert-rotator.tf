@@ -36,6 +36,9 @@ module "cert_rotator_cloud_run" {
 }
 
 data "google_compute_default_service_account" "default" {
+  # Don't need compute service account if cloud scheduler is not created.
+  count = var.kms_key_rotation_minutes > 0 ? 1 : 0
+
   project = var.project_id
 }
 
@@ -56,7 +59,7 @@ resource "google_cloud_scheduler_job" "job" {
 
     oidc_token {
       # TODO(yolocs): Shouldn't use the default service account.
-      service_account_email = data.google_compute_default_service_account.default.email
+      service_account_email = data.google_compute_default_service_account.default[0].email
     }
   }
 
