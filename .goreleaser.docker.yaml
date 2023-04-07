@@ -17,6 +17,7 @@ env:
   - 'CGO_ENABLED=0'
   - 'GO111MODULE=on'
   - 'GOPROXY=https://proxy.golang.org,direct'
+  - CONTAINER_REGISTRY=us-west1-docker.pkg.dev/tycho-qinhang-jvs-dev-0a9a/prober
 before:
   hooks:
     - go mod tidy
@@ -318,12 +319,12 @@ dockers:
       - '--platform=linux/amd64'
       - '--pull'
       - '--label=org.opencontainers.image.created={{ .CommitTimestamp }}'
-      - '--label=org.opencontainers.image.description=Prober service for jvs'
+      - '--label=org.opencontainers.image.description=Prober for jvs'
       - '--label=org.opencontainers.image.licenses=Apache-2.0'
-      - '--label=org.opencontainers.image.name=prober'
+      - '--label=org.opencontainers.image.name=jvs-prober'
       - '--label=org.opencontainers.image.revision={{ .FullCommit }}'
       - '--label=org.opencontainers.image.source={{ .GitURL }}'
-      - '--label=org.opencontainers.image.title=prober'
+      - '--label=org.opencontainers.image.title=jvs-prober'
       - '--label=org.opencontainers.image.version={{ .Version }}'
 
   -
@@ -341,12 +342,12 @@ dockers:
       - '--platform=linux/amd64'
       - '--pull'
       - '--label=org.opencontainers.image.created={{ .CommitTimestamp }}'
-      - '--label=org.opencontainers.image.description=Prober service for jvs'
+      - '--label=org.opencontainers.image.description=Prober for jvs'
       - '--label=org.opencontainers.image.licenses=Apache-2.0'
-      - '--label=org.opencontainers.image.name=prober'
+      - '--label=org.opencontainers.image.name=jvs-prober'
       - '--label=org.opencontainers.image.revision={{ .FullCommit }}'
       - '--label=org.opencontainers.image.source={{ .GitURL }}'
-      - '--label=org.opencontainers.image.title=prober'
+      - '--label=org.opencontainers.image.title=jvs-prober'
       - '--label=org.opencontainers.image.version={{ .Version }}'
 
 docker_manifests:
