@@ -112,7 +112,7 @@ jobs:
       - run: |-
           git config user.name "${GITHUB_ACTOR}"
           git config user.email "${GITHUB_ACTOR}@users.noreply.github.com"
-          git tag -f ${{ env.DOCKER_TAG }}
+          git tag -f -a v0.0.0-ci -m "CI run"
       - name: 'Build the service containers and push to the registry with goreleaser'
         uses: 'goreleaser/goreleaser-action@f82d6c1c344bcacabba2c841718984797f664a6b' # ratchet:goreleaser/goreleaser-action@v4
         with:
