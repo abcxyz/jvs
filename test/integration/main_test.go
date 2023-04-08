@@ -16,6 +16,7 @@ package integration
 
 import (
 	"context"
+	"fmt"
 	"log"
 	"net/http"
 	"os"
@@ -44,6 +45,13 @@ func TestMain(m *testing.M) {
 			return 2
 		}
 		cfg = c
+
+		log.Printf("main, cert rotator url: (%+v)", cfg.CertRotatorURL)
+		log.Printf("main, api server: (%+v)", cfg.APISERVER)
+		log.Printf("main, jwks endpoint: (%+v)", cfg.JwksEndpoint)
+		log.Printf("main, api url: (%+v)", cfg.APIURL)
+		log.Printf("main, jwks url: (%+v)", cfg.PublicKeyURL)
+		log.Printf("main, ui url: (%+v)", cfg.UIURL)
 		return m.Run()
 	}())
 }
@@ -52,6 +60,8 @@ func TestMain(m *testing.M) {
 func TestAPI(t *testing.T) {
 	t.Parallel()
 
+	t.Logf("api server: (%+v)", cfg.APISERVER)
+	t.Logf("jwks endpoint: (%+v)", cfg.JwksEndpoint)
 	cases := []struct {
 		name    string
 		args    []string
@@ -64,6 +74,7 @@ func TestAPI(t *testing.T) {
 				"token",
 				"-explanation=test",
 				"-server", cfg.APISERVER,
+				"-auth-token", cfg.AuthToken,
 			},
 			wantOut: `
 ----- Justifications -----
@@ -108,6 +119,7 @@ sub    test-sub
 				"-explanation=test",
 				"-ttl=1ns",
 				"-server", cfg.APISERVER,
+				"-auth-token", cfg.AuthToken,
 			},
 			wantErr: "error",
 		},
@@ -144,12 +156,14 @@ sub    test-sub
 func TestCertRotator(t *testing.T) {
 	t.Parallel()
 
+	t.Logf("cert rotator url: (%+v)", cfg.CertRotatorURL)
 	ctx := context.Background()
 	req, err := http.NewRequestWithContext(ctx, "GET", cfg.CertRotatorURL, nil)
 	if err != nil {
 		t.Fatalf("Failed to create cert rotator request: (%+v)", err)
 	}
 
+	req.Header.Set("Authorization", fmt.Sprint("Bear ", cfg.AuthToken))
 	client := &http.Client{}
 	resp, err := client.Do(req)
 	if err != nil {

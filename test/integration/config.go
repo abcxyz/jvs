@@ -23,6 +23,7 @@ import (
 )
 
 type config struct {
+	AuthToken      string `env:"INTEG_TEAT_AUTH_TOKEN,required"`
 	APIURL         string `env:"INTEG_TEST_API_URL,required"`
 	UIURL          string `env:"INTEG_TEST_UI_URL,required"`
 	PublicKeyURL   string `env:"INTEG_TEST_PUBLIC_KEY_URL,required"`

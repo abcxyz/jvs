@@ -180,6 +180,14 @@ jobs:
           echo "INTEG_TEST_UI_URL=$(terraform -chdir=${{ env.TF_MODULE_DIR}} output -raw jvs_ui_service_url)" >> $GITHUB_ENV;
           echo "INTEG_TEST_PUBLIC_KEY_URL=$(terraform -chdir=${{ env.TF_MODULE_DIR}} output -raw jvs_public_key_service_url)" >> $GITHUB_ENV;
           echo "INTEG_TEST_CERT_ROTATOR_URL=$(terraform -chdir=${{ env.TF_MODULE_DIR}} output -raw jvs_cert_rotator_service_url)" >> $GITHUB_ENV;
+      - id: 'id'
+        name: 'Authenticate to Google Cloud'
+        uses: 'google-github-actions/auth@ef5d53e30bbcd8d0836f4288f5e50ff3e086997d' # ratchet:google-github-actions/auth@v1
+        with:
+          workload_identity_provider: '${{ env.WIF_PROVIDER }}'
+          service_account: '${{ env.WIF_SERVICE_ACCOUNT }}'
+          token_format: 'access_token'
+          id_token_audience: '${{ env.WIF_SERVICE_ACCOUNT }}'
       - name: 'Setup Go'
         uses: 'actions/setup-go@4d34df0c2316fe8122ab82dc22947d607c0c91f9' # ratchet:actions/setup-go@v4
         with:
@@ -190,6 +198,7 @@ jobs:
       - name: 'Run tests'
         env:
           TEST_INTEGRATION: 'true'
+          INTEG_TEAT_AUTH_TOKEN: ${{ steps.id.outputs.id_token }}
         run: |-
           go test ./test/integration -timeout=15m
       - name: 'Cleanup the infrastructure'
