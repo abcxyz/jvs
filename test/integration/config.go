@@ -23,13 +23,14 @@ import (
 )
 
 type config struct {
-	AuthToken      string `env:"INTEG_TEAT_AUTH_TOKEN,required"`
-	APIURL         string `env:"INTEG_TEST_API_URL,required"`
-	UIURL          string `env:"INTEG_TEST_UI_URL,required"`
-	PublicKeyURL   string `env:"INTEG_TEST_PUBLIC_KEY_URL,required"`
-	CertRotatorURL string `env:"INTEG_TEST_CERT_ROTATOR_URL,required"`
-	APISERVER      string
-	JwksEndpoint   string
+	APIAuthToken         string `env:"INTEG_TEST_CERT_TOTATOER_AUTH_TOKEN,required"`
+	CertRotatorAuthToken string `env:"INTEG_TEST_CERT_TOTATOER_AUTH_TOKEN,required"`
+	APIURL               string `env:"INTEG_TEST_JVS_API_URL,required"`
+	UIURL                string `env:"INTEG_TEST_JVS_UI_URL,required"`
+	PublicKeyURL         string `env:"INTEG_TEST_PUBLIC_KEY_URL,required"`
+	CertRotatorURL       string `env:"INTEG_TEST_CERT_ROTATOR_URL,required"`
+	APISERVER            string
+	JwksEndpoint         string
 }
 
 func newTestConfig(ctx context.Context) (*config, error) {

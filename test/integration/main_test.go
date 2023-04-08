@@ -74,7 +74,7 @@ func TestAPI(t *testing.T) {
 				"token",
 				"-explanation=test",
 				"-server", cfg.APISERVER,
-				"-auth-token", cfg.AuthToken,
+				"-auth-token", cfg.APIAuthToken,
 			},
 			wantOut: `
 ----- Justifications -----
@@ -119,7 +119,7 @@ sub    test-sub
 				"-explanation=test",
 				"-ttl=1ns",
 				"-server", cfg.APISERVER,
-				"-auth-token", cfg.AuthToken,
+				"-auth-token", cfg.APIAuthToken,
 			},
 			wantErr: "error",
 		},
@@ -163,7 +163,7 @@ func TestCertRotator(t *testing.T) {
 		t.Fatalf("Failed to create cert rotator request: (%+v)", err)
 	}
 
-	req.Header.Set("Authorization", fmt.Sprint("Bear ", cfg.AuthToken))
+	req.Header.Set("Authorization", fmt.Sprint("Bear ", cfg.CertRotatorAuthToken))
 	client := &http.Client{}
 	resp, err := client.Do(req)
 	if err != nil {
