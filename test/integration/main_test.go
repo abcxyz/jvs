@@ -52,6 +52,10 @@ func TestMain(m *testing.M) {
 		log.Printf("main, api url: (%+v)", cfg.APIURL)
 		log.Printf("main, jwks url: (%+v)", cfg.PublicKeyURL)
 		log.Printf("main, ui url: (%+v)", cfg.UIURL)
+
+		log.Printf("main, cert rotator auth: (%+v)", cfg.CertRotatorAuthToken)
+		log.Printf("main, api auth: (%+v)", cfg.APIAuthToken)
+
 		return m.Run()
 	}())
 }
@@ -163,7 +167,7 @@ func TestCertRotator(t *testing.T) {
 		t.Fatalf("Failed to create cert rotator request: (%+v)", err)
 	}
 
-	req.Header.Set("Authorization", fmt.Sprint("Bear ", cfg.CertRotatorAuthToken))
+	req.Header.Set("Authorization", fmt.Sprint("Bearer ", cfg.CertRotatorAuthToken))
 	client := &http.Client{}
 	resp, err := client.Do(req)
 	if err != nil {
