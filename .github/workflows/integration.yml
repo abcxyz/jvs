@@ -181,15 +181,16 @@ jobs:
           echo "INTEG_TEST_JVS_UI_URL=$(terraform -chdir=${{ env.TF_MODULE_DIR}} output -raw jvs_ui_service_url)" >> $GITHUB_ENV;
           echo "INTEG_TEST_PUBLIC_KEY_URL=$(terraform -chdir=${{ env.TF_MODULE_DIR}} output -raw jvs_public_key_service_url)" >> $GITHUB_ENV;
           echo "INTEG_TEST_CERT_ROTATOR_URL=$(terraform -chdir=${{ env.TF_MODULE_DIR}} output -raw jvs_cert_rotator_service_url)" >> $GITHUB_ENV;
-      # - id: 'cert-rotator-auth-id'
-      #   name: 'Authenticate to Cert Rotator'
-      #   uses: 'google-github-actions/auth@ef5d53e30bbcd8d0836f4288f5e50ff3e086997d' # ratchet:google-github-actions/auth@v1
-      #   with:
-      #     workload_identity_provider: '${{ env.WIF_PROVIDER }}'
-      #     service_account: '${{ env.WIF_SERVICE_ACCOUNT }}'
-      #     token_format: 'id_token'
-      #     id_token_audience: ${{ env.INTEG_TEST_CERT_ROTATOR_URL }}
-      #     id_token_include_email: true
+      - id: 'cert-rotator-auth-id'
+        name: 'Authenticate to Cert Rotator'
+        uses: 'google-github-actions/auth@ef5d53e30bbcd8d0836f4288f5e50ff3e086997d' # ratchet:google-github-actions/auth@v1
+        with:
+          workload_identity_provider: '${{ env.WIF_PROVIDER }}'
+          service_account: '${{ env.WIF_SERVICE_ACCOUNT }}'
+          token_format: 'id_token'
+          id_token_audience: ${{ env.INTEG_TEST_CERT_ROTATOR_URL }}
+          id_token_include_email: true
+          create_credentials_file: false
       - id: 'jvs-api-auth-token'
         name: 'Authenticate to JVS API service'
         uses: 'google-github-actions/auth@ef5d53e30bbcd8d0836f4288f5e50ff3e086997d' # ratchet:google-github-actions/auth@v1
@@ -199,6 +200,7 @@ jobs:
           token_format: 'id_token'
           id_token_audience: ${{ env.INTEG_TEST_JVS_API_URL }}
           id_token_include_email: true
+          create_credentials_file: false
       - name: 'Setup Go'
         uses: 'actions/setup-go@4d34df0c2316fe8122ab82dc22947d607c0c91f9' # ratchet:actions/setup-go@v4
         with:
@@ -209,7 +211,7 @@ jobs:
       - name: 'Run tests'
         env:
           TEST_INTEGRATION: 'true'
-          INTEG_TEST_CERT_TOTATOER_AUTH_TOKEN: ${{ steps.jvs-api-auth-token.outputs.id_token }}
+          INTEG_TEST_CERT_TOTATOER_AUTH_TOKEN: ${{ steps.cert-rotator-auth-id.outputs.id_token }}
           INTEG_TEST_JVS_API_AUTH_TOKEN: ${{ steps.jvs-api-auth-token.outputs.id_token }}
         run: |-
           go test ./test/integration -timeout=15m
