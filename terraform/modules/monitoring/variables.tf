@@ -46,54 +46,98 @@ variable "notification_channel_email" {
 
 variable "alert_enabled" {
   type        = bool
-  description = "Alert enabled is value set to true"
+  description = "Alert enabled is value set to true."
   default     = false
 }
 
 variable "cert_rotator_5xx_response_threshold" {
   type        = number
-  description = "Send alert for Cert-Rotator when the number of response with 5xx code exceeds the threshold"
+  description = "Send alert for Cert-Rotator when the number of response with 5xx code exceeds the threshold."
   default     = 5
 }
 
 variable "cert_rotator_latency_threshold_ms" {
   type        = number
-  description = "Send alert when UI-Service's latency (in ms) exceed the threshold"
+  description = "Send alert when UI-Service's latency (in ms) exceed the threshold."
   default     = 5000
 }
 
 variable "public_key_service_5xx_response_threshold" {
   type        = number
-  description = "Send alert for Public-Key-Service when the number of response with 5xx code exceeds the threshold"
+  description = "Send alert for Public-Key-Service when the number of response with 5xx code exceeds the threshold."
   default     = 5
 }
 
 variable "public_key_service_latency_threshold_ms" {
   type        = number
-  description = "Send alert for UI-Service's latency (in ms) exceed the threshold"
+  description = "Send alert for UI-Service's latency (in ms) exceed the threshold."
   default     = 5000
 }
 
 variable "jvs_service_5xx_response_threshold" {
   type        = number
-  description = "Send alert for Justification-Service when the number of response with 5xx code exceeds the threshold"
+  description = "Send alert for Justification-Service when the number of response with 5xx code exceeds the threshold."
   default     = 5
 }
 
 variable "jvs_service_latency_threshold_ms" {
   type        = number
-  description = "Send alert for UI-Service's latency (in ms) exceed the threshold"
+  description = "Send alert for UI-Service's latency (in ms) exceed the threshold."
   default     = 5000
 }
 
 variable "ui_service_5xx_response_threshold" {
   type        = number
-  description = "Send alert for UI-Service when the number of response with 5xx code exceeds the threshold"
+  description = "Send alert for UI-Service when the number of response with 5xx code exceeds the threshold."
   default     = 5
 }
 
 variable "ui_service_latency_threshold_ms" {
   type        = number
-  description = "Send alert for UI-Service's latency (in ms) exceed the threshold"
+  description = "Send alert for UI-Service's latency (in ms) exceed the threshold."
   default     = 5000
+}
+
+variable "jvs_prober_image" {
+  type        = string
+  description = "docker image for jvs-prober."
+}
+
+variable "jvs_service_address" {
+  type        = string
+  description = "jvs service address."
+}
+
+variable "jvs_jwks_endpoint" {
+  type        = string
+  description = "jvs public key service address."
+}
+
+variable "jvs_audience" {
+  type        = string
+  description = "The cloud run url for jvs api service or app address."
+}
+
+variable "prober_scheduler" {
+  type        = string
+  description = "How often the prober service should be triggered, default is every minute. Learn more at: https://cloud.google.com/scheduler/docs/configuring/cron-job-schedules?&_ga=2.26495481.-578386315.1680561063#defining_the_job_schedule."
+  default     = "* * * * *"
+}
+
+variable "prober_alert_enabled" {
+  type        = bool
+  description = "True is prober alert is enabled, otherwise False"
+  default     = false
+}
+
+variable "prober_alert_align_window_size_in_seconds" {
+  type        = string
+  description = "The sliding window size for counting failed prober job runs. Format example: 600s."
+  default     = "600s"
+}
+
+variable "prober_alert_threshold" {
+  type        = number
+  description = "Send alert for Prober-Service when the number of failed prober runs exceeds the threshold."
+  default     = 8
 }
