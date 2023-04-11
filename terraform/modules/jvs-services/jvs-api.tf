@@ -17,12 +17,17 @@ module "api_cloud_run" {
 
   project_id = var.project_id
 
-  region                = var.region
-  name                  = "jvs-api"
-  image                 = var.jvs_api_service_image
-  ingress               = var.service_ingress
+  region = var.region
+  name   = "jvs-api"
+  image  = var.jvs_container_image
+  args   = ["api", "server"]
+
+  ingress = var.service_ingress
+
   service_account_email = var.jvs_api_service_account
-  envvars = {
+
+  envvars = merge({
+    "PROJECT_ID" : var.project_id
     "KEY" : google_kms_crypto_key.signing_key.id,
-  }
+  }, var.api_envvars)
 }

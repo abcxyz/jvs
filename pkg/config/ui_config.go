@@ -25,8 +25,11 @@ import (
 // UIServiceConfig defines the set over environment variables required
 // for running this application.
 type UIServiceConfig struct {
+	// ProjectID is the Google Cloud project ID.
+	ProjectID string `env:"PROJECT_ID"`
+
 	Port      string   `env:"PORT,default=9091"`
-	Allowlist []string `env:"ALLOWLIST,delimiter=;,required"`
+	Allowlist []string `env:"ALLOWLIST,required"`
 	DevMode   bool     `env:"DEV_MODE,default=false"`
 }
 

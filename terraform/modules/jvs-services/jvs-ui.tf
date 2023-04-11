@@ -17,10 +17,17 @@ module "ui_cloud_run" {
 
   project_id = var.project_id
 
-  region                = var.region
-  name                  = "jvs-ui"
-  image                 = var.jvs_ui_service_image
-  ingress               = var.service_ingress
+  region = var.region
+  name   = "jvs-ui"
+  image  = var.jvs_container_image
+  args   = ["ui", "server"]
+
+  ingress = var.service_ingress
+
   service_account_email = var.jvs_ui_service_account
-  envvars               = merge({ "KEY" : google_kms_crypto_key.signing_key.id }, var.ui_envvars)
+
+  envvars = merge({
+    "PROJECT_ID" : var.project_id
+    "KEY" : google_kms_crypto_key.signing_key.id
+  }, var.ui_envvars)
 }

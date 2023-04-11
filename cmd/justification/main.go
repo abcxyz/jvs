@@ -17,21 +17,12 @@ package main
 import (
 	"context"
 	"fmt"
+	"os"
 	"os/signal"
 	"syscall"
 
-	kms "cloud.google.com/go/kms/apiv1"
-	jvspb "github.com/abcxyz/jvs/apis/v0"
-	"github.com/abcxyz/jvs/internal/version"
-	"github.com/abcxyz/jvs/pkg/config"
-	"github.com/abcxyz/jvs/pkg/justification"
-	"github.com/abcxyz/pkg/cfgloader"
-	"github.com/abcxyz/pkg/gcputil"
+	"github.com/abcxyz/jvs/pkg/cli"
 	"github.com/abcxyz/pkg/logging"
-	"github.com/abcxyz/pkg/serving"
-	"go.opentelemetry.io/contrib/instrumentation/google.golang.org/grpc/otelgrpc"
-	"google.golang.org/grpc"
-	"google.golang.org/grpc/reflection"
 )
 
 func main() {
@@ -42,47 +33,15 @@ func main() {
 	logger := logging.NewFromEnv("")
 	ctx = logging.WithLogger(ctx, logger)
 
-	if err := realMain(ctx); err != nil {
+	fmt.Fprintf(os.Stderr, "WARNING! The justification binary is deprecated. "+
+		"Please use `jvsctl api server` instead. This binary will be "+
+		"removed in a future release.\n\n")
+
+	args := os.Args[1:]
+	args = append([]string{"api", "server"}, args...)
+	if err := cli.Run(ctx, args); err != nil {
 		done()
-		logger.Fatal(err)
+		fmt.Fprintln(os.Stderr, err.Error())
+		os.Exit(1)
 	}
-	logger.Info("successful shutdown")
-}
-
-func realMain(ctx context.Context) error {
-	logger := logging.FromContext(ctx)
-	logger.Debugw("server starting",
-		"name", version.Name,
-		"commit", version.Commit,
-		"version", version.Version)
-
-	projectID := gcputil.ProjectID(ctx)
-
-	grpcServer := grpc.NewServer(grpc.ChainUnaryInterceptor(
-		logging.GRPCUnaryInterceptor(logger, projectID),
-		otelgrpc.UnaryServerInterceptor(),
-	))
-
-	var cfg config.JustificationConfig
-	if err := cfgloader.Load(ctx, &cfg); err != nil {
-		return fmt.Errorf("failed to load config: %w", err)
-	}
-
-	logger.Debugw("computed configuration", "config", cfg)
-
-	kmsClient, err := kms.NewKeyManagementClient(ctx)
-	if err != nil {
-		return fmt.Errorf("failed to setup kms client: %w", err)
-	}
-
-	p := justification.NewProcessor(kmsClient, &cfg)
-	jvsAgent := justification.NewJVSAgent(p)
-	jvspb.RegisterJVSServiceServer(grpcServer, jvsAgent)
-	reflection.Register(grpcServer)
-
-	server, err := serving.New(cfg.Port)
-	if err != nil {
-		return fmt.Errorf("failed to create serving infrastructure: %w", err)
-	}
-	return server.StartGRPC(ctx, grpcServer)
 }

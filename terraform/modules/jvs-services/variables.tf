@@ -34,10 +34,9 @@ variable "jvs_api_service_account" {
   type        = string
 }
 
-variable "jvs_api_service_image" {
-  description = "Container image for JVS API service."
+variable "jvs_container_image" {
+  description = "Container image for the jvsctl CLI and server entrypoints."
   type        = string
-  default     = "gcr.io/cloudrun/hello:latest"
 }
 
 variable "jvs_ui_service_account" {
@@ -45,32 +44,14 @@ variable "jvs_ui_service_account" {
   type        = string
 }
 
-variable "jvs_ui_service_image" {
-  description = "Container image for JVS UI service."
-  type        = string
-  default     = "gcr.io/cloudrun/hello:latest"
-}
-
 variable "jvs_cert_rotator_service_account" {
   description = "Service account for JVS cert rotator service."
   type        = string
 }
 
-variable "jvs_cert_rotator_service_image" {
-  description = "Container image for JVS cert rotator service."
-  type        = string
-  default     = "gcr.io/cloudrun/hello:latest"
-}
-
 variable "jvs_public_key_service_account" {
   description = "Service account for JVS public key service."
   type        = string
-}
-
-variable "jvs_public_key_service_image" {
-  description = "Container image for JVS public key service."
-  type        = string
-  default     = "gcr.io/cloudrun/hello:latest"
 }
 
 variable "kms_keyring_id" {
@@ -87,6 +68,12 @@ variable "kms_key_rotation_minutes" {
   type        = number
   default     = 5
   description = "Cadence (expressed in minutes) to run the certificate rotator on. If set to 0, key rotation won't be scheduled."
+}
+
+variable "api_envvars" {
+  description = "Env vars for JVS API service."
+  type        = map(string)
+  default     = {}
 }
 
 variable "cert_rotator_envvars" {

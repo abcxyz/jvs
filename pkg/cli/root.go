@@ -17,9 +17,11 @@ package cli
 
 import (
 	"context"
+	"net/http"
 
 	"github.com/abcxyz/jvs/internal/version"
 	"github.com/abcxyz/pkg/cli"
+	"github.com/abcxyz/pkg/renderer"
 )
 
 const (
@@ -33,8 +35,52 @@ var rootCmd = func() cli.Command {
 		Name:    "jvsctl",
 		Version: version.HumanVersion,
 		Commands: map[string]cli.CommandFactory{
+			"api": func() cli.Command {
+				return &cli.RootCommand{
+					Name:        "api",
+					Description: "Perform API operations",
+					Commands: map[string]cli.CommandFactory{
+						"server": func() cli.Command {
+							return &APIServerCommand{}
+						},
+					},
+				}
+			},
+			"public-key": func() cli.Command {
+				return &cli.RootCommand{
+					Name:        "public-key",
+					Description: "Perform public-key operations",
+					Commands: map[string]cli.CommandFactory{
+						"server": func() cli.Command {
+							return &PublicKeyServerCommand{}
+						},
+					},
+				}
+			},
+			"rotation": func() cli.Command {
+				return &cli.RootCommand{
+					Name:        "rotation",
+					Description: "Perform rotation operations",
+					Commands: map[string]cli.CommandFactory{
+						"server": func() cli.Command {
+							return &RotationServerCommand{}
+						},
+					},
+				}
+			},
 			"token": func() cli.Command {
 				return &TokenCommand{}
+			},
+			"ui": func() cli.Command {
+				return &cli.RootCommand{
+					Name:        "ui",
+					Description: "Perform ui operations",
+					Commands: map[string]cli.CommandFactory{
+						"server": func() cli.Command {
+							return &UIServerCommand{}
+						},
+					},
+				}
 			},
 			"validate": func() cli.Command {
 				return &ValidateCommand{}
@@ -46,4 +92,12 @@ var rootCmd = func() cli.Command {
 // Run executes the CLI.
 func Run(ctx context.Context, args []string) error {
 	return rootCmd().Run(ctx, args) //nolint:wrapcheck // Want passthrough
+}
+
+// handleHealth is an HTTP handler that returns a health response. It's a stub
+// for a more rigorous health check.
+func handleHealth(h *renderer.Renderer) http.Handler {
+	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		h.RenderJSON(w, http.StatusOK, nil)
+	})
 }

@@ -15,11 +15,17 @@
 package config
 
 import (
+	"fmt"
 	"time"
+
+	"github.com/hashicorp/go-multierror"
 )
 
 // PublicKeyConfig is the config used for public key hosting.
 type PublicKeyConfig struct {
+	// ProjectID is the Google Cloud project ID.
+	ProjectID string `env:"PROJECT_ID"`
+
 	// DevMode controls enables more granular debugging in logs.
 	DevMode bool `env:"DEV_MODE,default=false"`
 
@@ -28,6 +34,16 @@ type PublicKeyConfig struct {
 	// KeyName format: `projects/*/locations/*/keyRings/*/cryptoKeys/*`
 	// https://pkg.go.dev/google.golang.org/genproto/googleapis/cloud/kms/v1#PublicKeyKey
 	KeyNames     []string      `yaml:"key_names,omitempty" env:"KEY_NAMES,overwrite"`
-	CacheTimeout time.Duration `yaml:"cache_timeout" env:"CACHE_TIMEOUT"`
 	Port         string        `env:"PORT,default=8080"`
+	CacheTimeout time.Duration `yaml:"cache_timeout" env:"CACHE_TIMEOUT, default=5m"`
+}
+
+func (c *PublicKeyConfig) Validate() error {
+	var err *multierror.Error
+
+	if got := c.CacheTimeout; got <= 0 {
+		err = multierror.Append(err, fmt.Errorf("cache_timeout must be a positive duration, got %q", got))
+	}
+
+	return err.ErrorOrNil()
 }

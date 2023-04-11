@@ -17,17 +17,12 @@ package main
 import (
 	"context"
 	"fmt"
-	"log"
+	"os"
 	"os/signal"
 	"syscall"
 
-	kms "cloud.google.com/go/kms/apiv1"
-	"github.com/abcxyz/jvs/pkg/config"
-	"github.com/abcxyz/jvs/pkg/justification"
-	"github.com/abcxyz/jvs/pkg/ui"
-	"github.com/abcxyz/pkg/cfgloader"
+	"github.com/abcxyz/jvs/pkg/cli"
 	"github.com/abcxyz/pkg/logging"
-	"github.com/abcxyz/pkg/serving"
 )
 
 func main() {
@@ -38,38 +33,15 @@ func main() {
 	logger := logging.NewFromEnv("")
 	ctx = logging.WithLogger(ctx, logger)
 
-	if err := realMain(ctx); err != nil {
+	fmt.Fprintf(os.Stderr, "WARNING! The ui binary is deprecated. Please use "+
+		"`jvsctl ui server` instead. This binary will be removed in a future "+
+		"release.\n\n")
+
+	args := os.Args[1:]
+	args = append([]string{"ui", "server"}, args...)
+	if err := cli.Run(ctx, args); err != nil {
 		done()
-		log.Fatal(err)
+		fmt.Fprintln(os.Stderr, err.Error())
+		os.Exit(1)
 	}
-}
-
-func realMain(ctx context.Context) error {
-	uiCfg, err := config.NewUIConfig(ctx)
-	if err != nil {
-		return fmt.Errorf("server.NewUIConfig: %w", err)
-	}
-
-	kmsClient, err := kms.NewKeyManagementClient(ctx)
-	if err != nil {
-		return fmt.Errorf("failed to setup kms client: %w", err)
-	}
-
-	var cfg config.JustificationConfig
-	if err := cfgloader.Load(ctx, &cfg); err != nil {
-		return fmt.Errorf("failed to load config: %w", err)
-	}
-
-	p := justification.NewProcessor(kmsClient, &cfg)
-
-	uiServer, err := ui.NewServer(ctx, uiCfg, p)
-	if err != nil {
-		return fmt.Errorf("server.NewServer: %w", err)
-	}
-
-	server, err := serving.New(cfg.Port)
-	if err != nil {
-		return fmt.Errorf("failed to create serving infrastructure: %w", err)
-	}
-	return server.StartHTTPHandler(ctx, uiServer.Routes())
 }

@@ -4,7 +4,7 @@ go 1.20
 
 require (
 	cloud.google.com/go/kms v1.10.0
-	github.com/abcxyz/pkg v0.3.1-0.20230403234508-0b2a72b944bc
+	github.com/abcxyz/pkg v0.3.1-0.20230410233528-b90ad9f6be6c
 	github.com/google/go-cmp v0.5.9
 	github.com/google/uuid v1.3.0
 	github.com/hashicorp/go-multierror v1.1.1

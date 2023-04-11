@@ -94,6 +94,12 @@ func New(h *renderer.Renderer, p *justification.Processor, allowlist []string) *
 	}
 }
 
+func (c *Controller) HandleHealth() http.Handler {
+	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		c.h.RenderJSON(w, http.StatusOK, nil)
+	})
+}
+
 func (c *Controller) HandlePopup() http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		switch r.Method {

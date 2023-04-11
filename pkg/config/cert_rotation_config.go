@@ -21,6 +21,9 @@ import "github.com/hashicorp/go-multierror"
 type CertRotationConfig struct {
 	*CryptoConfig
 
+	// ProjectID is the Google Cloud project ID.
+	ProjectID string `env:"PROJECT_ID"`
+
 	// DevMode controls enables more granular debugging in logs.
 	DevMode bool `env:"DEV_MODE,default=false"`
 

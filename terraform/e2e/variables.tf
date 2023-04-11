@@ -50,26 +50,7 @@ variable "kms_key_location" {
   description = "The location where kms key will be created."
 }
 
-variable "jvs_api_service_image" {
-  description = "Container image for JVS API service."
+variable "jvs_container_image" {
+  description = "Container image for the jvsctl CLI and server entrypoints."
   type        = string
-  default     = "gcr.io/cloudrun/hello:latest"
-}
-
-variable "jvs_ui_service_image" {
-  description = "Container image for JVS UI service."
-  type        = string
-  default     = "gcr.io/cloudrun/hello:latest"
-}
-
-variable "jvs_cert_rotator_service_image" {
-  description = "Container image for JVS cert rotator service."
-  type        = string
-  default     = "gcr.io/cloudrun/hello:latest"
-}
-
-variable "jvs_public_key_service_image" {
-  description = "Container image for JVS public key service."
-  type        = string
-  default     = "gcr.io/cloudrun/hello:latest"
 }
