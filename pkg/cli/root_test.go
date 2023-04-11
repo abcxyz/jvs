@@ -25,8 +25,12 @@ func TestRootCommand_Help(t *testing.T) {
 	exp := `
 Usage: jvsctl COMMAND
 
-  token       Generate a justification token
-  validate    Validate the input token
+  api           Perform API operations
+  public-key    Perform public-key operations
+  rotation      Perform rotation operations
+  token         Generate a justification token
+  ui            Perform ui operations
+  validate      Validate the input token
 `
 
 	cmd := rootCmd()

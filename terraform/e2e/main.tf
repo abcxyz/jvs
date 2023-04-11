@@ -62,10 +62,7 @@ module "jvs_services" {
   jvs_cert_rotator_service_account = module.jvs_common.jvs_cert_rotator_service_account_email
   jvs_public_key_service_account   = module.jvs_common.jvs_public_key_service_account_email
 
-  jvs_api_service_image          = var.jvs_api_service_image
-  jvs_ui_service_image           = var.jvs_ui_service_image
-  jvs_cert_rotator_service_image = var.jvs_cert_rotator_service_image
-  jvs_public_key_service_image   = var.jvs_public_key_service_image
+  jvs_container_image = var.jvs_container_image
 
   kms_keyring_id = module.jvs_common.kms_keyring_id
   kms_key_name   = "signing-${random_id.default.hex}"

@@ -26,13 +26,18 @@ module "cert_rotator_cloud_run" {
 
   region = var.region
   name   = "jvs-cert-rotator"
-  image  = var.jvs_cert_rotator_service_image
+  image  = var.jvs_container_image
+  args   = ["rotation", "server"]
 
   # Cert rotator is not a user facing service. Ignore the ingress input.
   ingress = "all"
 
   service_account_email = var.jvs_cert_rotator_service_account
-  envvars               = merge({ "KEY_NAMES" : google_kms_crypto_key.signing_key.id }, var.cert_rotator_envvars)
+
+  envvars = merge({
+    "PROJECT_ID" : var.project_id
+    "KEY_NAMES" : google_kms_crypto_key.signing_key.id
+  }, var.cert_rotator_envvars)
 }
 
 data "google_compute_default_service_account" "default" {

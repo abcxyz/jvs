@@ -17,21 +17,12 @@ package main
 import (
 	"context"
 	"fmt"
-	"log"
-	"net/http"
+	"os"
 	"os/signal"
 	"syscall"
 
-	kms "cloud.google.com/go/kms/apiv1"
-	"github.com/abcxyz/jvs/assets"
-	"github.com/abcxyz/jvs/internal/version"
-	"github.com/abcxyz/jvs/pkg/config"
-	"github.com/abcxyz/jvs/pkg/jvscrypto"
-	"github.com/abcxyz/pkg/cfgloader"
-	"github.com/abcxyz/pkg/gcputil"
+	"github.com/abcxyz/jvs/pkg/cli"
 	"github.com/abcxyz/pkg/logging"
-	"github.com/abcxyz/pkg/renderer"
-	"github.com/abcxyz/pkg/serving"
 )
 
 func main() {
@@ -42,56 +33,15 @@ func main() {
 	logger := logging.NewFromEnv("")
 	ctx = logging.WithLogger(ctx, logger)
 
-	if err := realMain(ctx); err != nil {
+	fmt.Fprintf(os.Stderr, "WARNING! The public-key binary is deprecated. "+
+		"Please use `jvsctl public-key server` instead. This binary will be "+
+		"removed in a future release.\n\n")
+
+	args := os.Args[1:]
+	args = append([]string{"public-key", "server"}, args...)
+	if err := cli.Run(ctx, args); err != nil {
 		done()
-		log.Fatal(err)
+		fmt.Fprintln(os.Stderr, err.Error())
+		os.Exit(1)
 	}
-}
-
-// realMain creates an HTTP server for use with hosting public certs.
-// This server supports graceful stopping and cancellation by:
-//   - using a cancellable context
-//   - listening to incoming requests in a goroutine.
-func realMain(ctx context.Context) error {
-	logger := logging.FromContext(ctx)
-	logger.Debugw("server starting",
-		"name", version.Name,
-		"commit", version.Commit,
-		"version", version.Version)
-
-	projectID := gcputil.ProjectID(ctx)
-
-	kmsClient, err := kms.NewKeyManagementClient(ctx)
-	if err != nil {
-		return fmt.Errorf("failed to setup kms client: %w", err)
-	}
-	defer kmsClient.Close()
-
-	var cfg config.PublicKeyConfig
-	if err := cfgloader.Load(ctx, &cfg); err != nil {
-		return fmt.Errorf("failed to load config: %w", err)
-	}
-
-	logger.Debugw("loaded configuration", "config", cfg)
-
-	// Create the renderer
-	h, err := renderer.New(ctx, assets.ServerFS(),
-		renderer.WithDebug(cfg.DevMode),
-		renderer.WithOnError(func(err error) {
-			logger.Errorw("failed to render", "error", err)
-		}))
-	if err != nil {
-		return fmt.Errorf("failed to create renderer: %w", err)
-	}
-
-	keyServer := jvscrypto.NewKeyServer(ctx, kmsClient, &cfg, h)
-
-	mux := http.NewServeMux()
-	mux.Handle("/.well-known/jwks", logging.HTTPInterceptor(logger, projectID)(keyServer))
-
-	server, err := serving.New(cfg.Port)
-	if err != nil {
-		return fmt.Errorf("failed to create serving infrastructure: %w", err)
-	}
-	return server.StartHTTPHandler(ctx, mux)
 }

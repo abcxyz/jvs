@@ -128,19 +128,19 @@ jobs:
         gcloud run services update ${{ env.DEV_API_SERVICE_NAME }} \
           --project="${{ env.DEV_PROJECT_ID }}" \
           --region="${{ env.DEV_REGION }}" \
-          --image="${{ env.CONTAINER_REGISTRY }}/jvs-justification:${DOCKER_TAG}-amd64"
+          --image="${{ env.CONTAINER_REGISTRY }}/jvsctl:${DOCKER_TAG}-amd64"
 
         gcloud run services update ${{ env.DEV_UI_SERVICE_NAME }} \
           --project="${{ env.DEV_PROJECT_ID }}" \
           --region="${{ env.DEV_REGION }}" \
-          --image="${{ env.CONTAINER_REGISTRY }}/jvs-ui:${DOCKER_TAG}-amd64"
+          --image="${{ env.CONTAINER_REGISTRY }}/jvsctl:${DOCKER_TAG}-amd64"
 
         gcloud run services update ${{ env.DEV_CERT_ROTATOR_SERVICE_NAME }} \
           --project="${{ env.DEV_PROJECT_ID }}" \
           --region="${{ env.DEV_REGION }}" \
-          --image="${{ env.CONTAINER_REGISTRY }}/jvs-cert-rotation:${DOCKER_TAG}-amd64"
+          --image="${{ env.CONTAINER_REGISTRY }}/jvsctl:${DOCKER_TAG}-amd64"
 
         gcloud run services update ${{ env.DEV_PUBLIC_KEY_SERVICE_NAME }} \
           --project="${{ env.DEV_PROJECT_ID }}" \
           --region="${{ env.DEV_REGION }}" \
-          --image="${{ env.CONTAINER_REGISTRY }}/jvs-public-key:${DOCKER_TAG}-amd64"
+          --image="${{ env.CONTAINER_REGISTRY }}/jvsctl:${DOCKER_TAG}-amd64"
