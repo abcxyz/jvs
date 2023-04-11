@@ -156,10 +156,7 @@ jobs:
           echo jvs_ui_service_account=\"${{ env.INTEG_TEST_UI_SA }}\" >> ${VAR_FILE};
           echo jvs_cert_rotator_service_account=\"${{ env.INTEG_TEST_CERT_ROTATOR_SA}}\" >> ${VAR_FILE};
           echo jvs_public_key_service_account=\"${{ env.INTEG_TEST_PUBLIC_KEY_SA }}\" >> ${VAR_FILE};
-          echo jvs_api_service_image=\"${{ env.CONTAINER_REGISTRY }}/jvs-justification:${{ env.DOCKER_TAG }}-amd64\" >> ${VAR_FILE};
-          echo jvs_ui_service_image=\"${{ env.CONTAINER_REGISTRY }}/jvs-ui:${{ env.DOCKER_TAG }}-amd64\" >> ${VAR_FILE};
-          echo jvs_cert_rotator_service_image=\"${{ env.CONTAINER_REGISTRY }}/jvs-cert-rotation:${{ env.DOCKER_TAG }}-amd64\" >> ${VAR_FILE};
-          echo jvs_public_key_service_image=\"${{ env.CONTAINER_REGISTRY }}/jvs-public-key:${{ env.DOCKER_TAG }}-amd64\">> ${VAR_FILE};
+          echo jvs_container_image=\"${{ env.CONTAINER_REGISTRY }}/jvsctl:${{ env.DOCKER_TAG }}-amd64\" >> ${VAR_FILE};
           echo kms_keyring_id=\"${{ env.INTEG_TEST_KMS_KEYRING_ID }}\" >> ${VAR_FILE};
           echo kms_key_name=\"jvs-key-$RANDOM\" >> ${VAR_FILE};
           echo kms_key_rotation_minutes=0 >> ${VAR_FILE};

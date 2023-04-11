@@ -29,6 +29,9 @@ var JustificationConfigVersions = NewVersionList("1")
 
 // JustificationConfig is the full jvs config.
 type JustificationConfig struct {
+	// ProjectID is the Google Cloud project ID.
+	ProjectID string `env:"PROJECT_ID"`
+
 	// Version is the version of the config.
 	Version string `yaml:"version,omitempty" env:"VERSION,overwrite,default=1"`
 

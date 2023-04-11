@@ -20,18 +20,20 @@ could be audit logged.
 
 JVS consists of the following components:
 
-*   [Justification API service](./cmd/justification): Verify justifications and
-    mint short-lived justification tokens. Find more about the API
-    [here](./docs/apis.md).
-*   [CLI](./cmd/jvsctl): A CLI `jvsctl` to request justification tokens from the
-    Justification API service as well as validate justification tokens. Find
-    more about the CLI [here](./docs/cli.md).
-*   [Web UI](./cmd/ui): Support requesting justification tokens from web pages.
-    Find more about the web UI and flow [here](./docs/web-ui.md).
-*   [Public Key service](./cmd/public-key): Standard
+*   **Justification API service**: Verify justifications and mint short-lived
+    justification tokens. Find more about the API [here](./docs/apis.md).
+
+*   **jvsctl CLI**: This is the primary interface into the JVS and server
+    components. Find more about the CLI [here](./docs/cli.md).
+
+*   **Web UI**: Support requesting justification tokens from web pages. Find
+    more about the web UI and flow [here](./docs/web-ui.md).
+
+*   **Public Key service**:
     [JWKs](https://auth0.com/docs/secure/tokens/json-web-tokens/json-web-key-sets)
     endpoint for retrieving public keys to validate justification tokens.
-*   [Cert Rotator service](./cmd/cert-rotation): Rotate signing keys stored in
+
+*   **Cert Rotator service**: Rotate signing keys stored in
     [Cloud KMS](https://cloud.google.com/security-key-management). Triggered by
     [Cloud Scheduler](https://cloud.google.com/scheduler).
 
@@ -86,10 +88,7 @@ module "jvs" {
 
   iap_support_email = "support@example.com"
 
-  jvs_api_service_image          = "us-docker.pkg.dev/abcxyz-artifacts/docker-images/jvs-justification:0.0.3-amd64"
-  jvs_ui_service_image           = "us-docker.pkg.dev/abcxyz-artifacts/docker-images/jvs-ui:0.0.3-amd64"
-  jvs_cert_rotator_service_image = "us-docker.pkg.dev/abcxyz-artifacts/docker-images/jvs-cert-rotation:0.0.3-amd64"
-  jvs_public_key_service_image   = "us-docker.pkg.dev/abcxyz-artifacts/docker-images/jvs-public-key:0.0.3-amd64"
+  jvs_container_image = "us-docker.pkg.dev/abcxyz-artifacts/docker-images/jvsctl:0.0.4-amd64"
 }
 ```
 

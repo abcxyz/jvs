@@ -34,7 +34,7 @@ import (
 	"google.golang.org/grpc"
 )
 
-func TestNewTokenCmd(t *testing.T) {
+func TestTokenCommand(t *testing.T) {
 	t.Parallel()
 
 	ctx := logging.WithLogger(context.Background(), logging.TestLogger(t))

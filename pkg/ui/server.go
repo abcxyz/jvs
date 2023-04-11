@@ -29,7 +29,8 @@ import (
 
 // Server holds the parsed html templates.
 type Server struct {
-	c *controller.Controller
+	c      *controller.Controller
+	config *config.UIServiceConfig
 }
 
 // NewServer creates a new HTTP server implementation that will handle
@@ -48,17 +49,26 @@ func NewServer(ctx context.Context, uiCfg *config.UIServiceConfig, p *justificat
 	}
 
 	return &Server{
-		c: controller.New(h, p, uiCfg.Allowlist),
+		c:      controller.New(h, p, uiCfg.Allowlist),
+		config: uiCfg,
 	}, nil
 }
 
 // Routes creates a ServeMux of all of the routes that
 // this Router supports.
-func (s *Server) Routes() http.Handler {
+func (s *Server) Routes(ctx context.Context) http.Handler {
+	logger := logging.FromContext(ctx)
+
 	staticFS := assets.ServerStaticFS()
-	mux := http.NewServeMux()
 	fileServer := http.FileServer(http.FS(staticFS))
+
+	mux := http.NewServeMux()
+	mux.Handle("/healthz", s.c.HandleHealth())
 	mux.Handle("/static/", http.StripPrefix("/static/", fileServer))
 	mux.Handle("/popup", s.c.HandlePopup())
-	return mux
+
+	// Middleware
+	root := logging.HTTPInterceptor(logger, s.config.ProjectID)(mux)
+
+	return root
 }

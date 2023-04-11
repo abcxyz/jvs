@@ -77,7 +77,7 @@ func TestNewConfig(t *testing.T) {
 		{
 			name: "asterisks_in_allowlist",
 			envs: map[string]string{
-				"ALLOWLIST": "example.com;*",
+				"ALLOWLIST": "example.com, *",
 			},
 			wantConfig: nil,
 			wantErr:    "asterisk(*) must be exclusive, no other domains allowed",
@@ -95,7 +95,7 @@ func TestNewConfig(t *testing.T) {
 		{
 			name: "multiple_domains",
 			envs: map[string]string{
-				"ALLOWLIST": "subdomain.foo.com;*.example.com",
+				"ALLOWLIST": "subdomain.foo.com, *.example.com",
 			},
 			wantConfig: &UIServiceConfig{
 				Port:      "9091",
