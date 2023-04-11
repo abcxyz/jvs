@@ -159,8 +159,8 @@ func (c *TokenCommand) Flags() *cli.FlagSet {
 	f.StringVar(&cli.StringVar{
 		Name:    "server",
 		Target:  &c.flagServer,
-		Example: "https://jvs.example.com:8080",
-		Default: "http://localhost:8080",
+		Example: "jvs.example.com:443",
+		Default: "localhost:8080",
 		EnvVar:  "JVSCTL_SERVER_ADDRESS",
 		Usage:   `JVS server address including the protocol, address, and port.`,
 	})
