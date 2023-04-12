@@ -40,19 +40,3 @@ resource "google_iap_web_iam_member" "member" {
   member = each.key
   role   = "roles/iap.httpsResourceAccessor"
 }
-
-# Allow allUsers to invoke the UI. This is safe because the service is behind
-# GCLB + IAP and only allows internal + load balancer ingress.
-#
-# Per https://cloud.google.com/iap/docs/enabling-cloud-run#known_limitations,
-# Cloud Run must have allUsers as the invoker to be fronted by IAP. Once IAP for
-# Cloud Run is GA, we should change this to grant the IAP SA permission to
-# invoke the Cloud Run service.
-resource "google_cloud_run_service_iam_member" "iap_invoker" {
-  project = var.project_id
-
-  location = var.region
-  service  = module.jvs_services.jvs_ui_service_name
-  role     = "roles/run.invoker"
-  member   = "allUsers"
-}
