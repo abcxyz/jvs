@@ -25,6 +25,12 @@ module "ui_cloud_run" {
   ingress = var.service_ingress
 
   service_account_email = var.jvs_ui_service_account
+  service_iam = {
+    admins     = []
+    developers = []
+    # To work with IAP, Cloud Run needs the allow the IAP service account to invoke it.
+    invokers = var.jvs_ui_iap_service_account == "" ? [] : ["serviceAccount:${var.jvs_ui_iap_service_account}"]
+  }
 
   envvars = merge({
     "PROJECT_ID" : var.project_id
