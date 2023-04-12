@@ -18,9 +18,9 @@ import (
 	"context"
 	"testing"
 
+	"github.com/abcxyz/pkg/cli"
 	"github.com/abcxyz/pkg/logging"
 	"github.com/abcxyz/pkg/testutil"
-	"github.com/sethvargo/go-envconfig"
 	"google.golang.org/api/option"
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/credentials/insecure"
@@ -41,10 +41,11 @@ func TestAPIServerCommand(t *testing.T) {
 		{
 			name:   "too_many_args",
 			args:   []string{"foo"},
+			env:    map[string]string{},
 			expErr: `unexpected arguments: ["foo"]`,
 		},
 		{
-			name: "unset_config",
+			name: "invalid_config",
 			env: map[string]string{
 				"SIGNER_CACHE_TIMEOUT": "-5m",
 			},
@@ -53,10 +54,7 @@ func TestAPIServerCommand(t *testing.T) {
 		{
 			name: "starts",
 			env: map[string]string{
-				"KEY_TTL":           "5m",
-				"GRACE_PERIOD":      "10m",
-				"DISABLED_PERIOD":   "5m",
-				"PROPAGATION_DELAY": "5m",
+				"KEY": "projects/[JVS_PROJECT]/locations/global/keyRings/[JVS_KEYRING]/cryptoKeys/[JVS_KEY]",
 			},
 		},
 	}
@@ -71,13 +69,10 @@ func TestAPIServerCommand(t *testing.T) {
 			defer done()
 
 			var cmd APIServerCommand
-			cmd.testLookuper = envconfig.MultiLookuper(
-				envconfig.MapLookuper(tc.env),
-				envconfig.MapLookuper(map[string]string{
-					// Make the test choose a random port.
-					"PORT": "0",
-				}),
-			)
+
+			// Make the test choose a random port.
+			tc.env["PORT"] = "0"
+			cmd.testFlagSetOpts = []cli.Option{cli.WithLookupEnv(cli.MapLookuper(tc.env))}
 			cmd.testKMSClientOptions = []option.ClientOption{
 				// Disable auth lookup in these tests, since we don't actually call KMS.
 				option.WithoutAuthentication(),

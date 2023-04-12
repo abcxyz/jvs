@@ -19,24 +19,21 @@ import (
 	"fmt"
 	"time"
 
+	"github.com/abcxyz/pkg/cli"
 	"github.com/abcxyz/pkg/timeutil"
 	"github.com/hashicorp/go-multierror"
 )
-
-// JustificationConfigVersions is the list of allowed versions for the
-// JustificationConfig.
-var JustificationConfigVersions = NewVersionList("1")
 
 // JustificationConfig is the full jvs config.
 type JustificationConfig struct {
 	// ProjectID is the Google Cloud project ID.
 	ProjectID string `env:"PROJECT_ID"`
 
-	// Version is the version of the config.
-	Version string `yaml:"version,omitempty" env:"VERSION,overwrite,default=1"`
-
 	// Service configuration.
 	Port string `yaml:"port,omitempty" env:"PORT,overwrite,default=8080"`
+
+	// DevMode enables more granular debugging in logs.
+	DevMode bool `env:"DEV_MODE,default=false"`
 
 	// KeyName format: `projects/*/locations/*/keyRings/*/cryptoKeys/*`
 	// https://pkg.go.dev/google.golang.org/genproto/googleapis/cloud/kms/v1#CryptoKey
@@ -61,11 +58,6 @@ type JustificationConfig struct {
 func (cfg *JustificationConfig) Validate() error {
 	var err *multierror.Error
 
-	if !JustificationConfigVersions.Contains(cfg.Version) {
-		err = multierror.Append(err, fmt.Errorf("version %q is invalid, valid versions are: %q",
-			cfg.Version, JustificationConfigVersions.List()))
-	}
-
 	if cfg.SignerCacheTimeout <= 0 {
 		err = multierror.Append(err, fmt.Errorf("cache timeout must be a positive duration, got %s",
 			cfg.SignerCacheTimeout))
@@ -77,4 +69,79 @@ func (cfg *JustificationConfig) Validate() error {
 	}
 
 	return err.ErrorOrNil()
+}
+
+// ToFlags returns a [cli.FlagSet] that is bound to the config.
+func (cfg *JustificationConfig) ToFlags(opts ...cli.Option) *cli.FlagSet {
+	set := cli.NewFlagSet(opts...)
+
+	// Command options
+	f := set.NewSection("COMMON SERVER OPTIONS")
+
+	f.StringVar(&cli.StringVar{
+		Name:   "project-id",
+		Target: &cfg.ProjectID,
+		EnvVar: "PROJECT_ID",
+		Usage:  `Google Cloud project ID.`,
+	})
+
+	f.BoolVar(&cli.BoolVar{
+		Name:    "dev-mode",
+		Target:  &cfg.DevMode,
+		EnvVar:  "DEV_MODE",
+		Default: false,
+		Usage:   "Set to true to enable more granular debugging in logs",
+	})
+
+	f.StringVar(&cli.StringVar{
+		Name:    "port",
+		Target:  &cfg.Port,
+		EnvVar:  "PORT",
+		Default: "8080",
+		Usage:   `The port the server listens to.`,
+	})
+
+	f = set.NewSection("API OPTIONS")
+
+	f.StringVar(&cli.StringVar{
+		Name:    "key-name",
+		Target:  &cfg.KeyName,
+		EnvVar:  "KEY",
+		Example: "projects/[JVS_PROJECT]/locations/global/keyRings/[JVS_KEYRING]/cryptoKeys/[JVS_KEY]",
+		Usage:   `The KMS key for signing JVS tokens.`,
+	})
+
+	f.StringVar(&cli.StringVar{
+		Name:    "issuer",
+		Target:  &cfg.Issuer,
+		EnvVar:  "ISSUER",
+		Default: "jvs.abcxyz.dev",
+		Usage:   `The value to set to the issuer claim when signing JVS tokens.`,
+	})
+
+	f.DurationVar(&cli.DurationVar{
+		Name:    "signer-cache-timeout",
+		Target:  &cfg.SignerCacheTimeout,
+		EnvVar:  "SIGNER_CACHE_TIMEOUT",
+		Default: 5 * time.Minute,
+		Usage:   "The duration that keys stay in cache before being revoked.",
+	})
+
+	f.DurationVar(&cli.DurationVar{
+		Name:    "default-ttl",
+		Target:  &cfg.DefaultTTL,
+		EnvVar:  "DEFAULT_TTL",
+		Default: 15 * time.Minute,
+		Usage:   "The default TTL for JVS tokens if not specified in the request.",
+	})
+
+	f.DurationVar(&cli.DurationVar{
+		Name:    "max-ttl",
+		Target:  &cfg.MaxTTL,
+		EnvVar:  "MAX_TTL",
+		Default: 4 * time.Hour,
+		Usage:   "The maximum TTL that a token can have.",
+	})
+
+	return set
 }

@@ -153,7 +153,6 @@ func TestValidateJWT(t *testing.T) {
 			t.Parallel()
 
 			client, err := NewJVSClient(ctx, &JVSConfig{
-				Version:         "1",
 				JWKSEndpoint:    svr.URL + path,
 				CacheTimeout:    5 * time.Minute,
 				AllowBreakglass: tc.allowBreakglass,

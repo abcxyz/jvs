@@ -23,11 +23,9 @@ import (
 	"github.com/abcxyz/jvs/internal/version"
 	"github.com/abcxyz/jvs/pkg/config"
 	"github.com/abcxyz/jvs/pkg/justification"
-	"github.com/abcxyz/pkg/cfgloader"
 	"github.com/abcxyz/pkg/cli"
 	"github.com/abcxyz/pkg/logging"
 	"github.com/abcxyz/pkg/serving"
-	"github.com/sethvargo/go-envconfig"
 	"go.opentelemetry.io/contrib/instrumentation/google.golang.org/grpc/otelgrpc"
 	"google.golang.org/api/option"
 	"google.golang.org/grpc"
@@ -41,8 +39,10 @@ var _ cli.Command = (*APIServerCommand)(nil)
 type APIServerCommand struct {
 	cli.BaseCommand
 
-	// testLookuper overrides the lookuper. It is only used for testing.
-	testLookuper envconfig.Lookuper
+	cfg *config.JustificationConfig
+
+	// testFlagSetOpts is only used for testing.
+	testFlagSetOpts []cli.Option
 
 	// testKMSClientOptions are KMS client options to override during testing.
 	testKMSClientOptions []option.ClientOption
@@ -61,8 +61,8 @@ Usage: {{ COMMAND }} [options]
 }
 
 func (c *APIServerCommand) Flags() *cli.FlagSet {
-	set := cli.NewFlagSet()
-	return set
+	c.cfg = &config.JustificationConfig{}
+	return c.cfg.ToFlags(c.testFlagSetOpts...)
 }
 
 func (c *APIServerCommand) Run(ctx context.Context, args []string) error {
@@ -93,11 +93,10 @@ func (c *APIServerCommand) RunUnstarted(ctx context.Context, args []string) (*se
 		"commit", version.Commit,
 		"version", version.Version)
 
-	var cfg config.JustificationConfig
-	if err := cfgloader.Load(ctx, &cfg, cfgloader.WithLookuper(c.testLookuper)); err != nil {
-		return nil, nil, closer, fmt.Errorf("failed to load config: %w", err)
+	if err := c.cfg.Validate(); err != nil {
+		return nil, nil, closer, fmt.Errorf("invalid configuration: %w", err)
 	}
-	logger.Debugw("computed configuration", "config", cfg)
+	logger.Debugw("loaded configuration", "config", c.cfg)
 
 	kmsClient, err := kms.NewKeyManagementClient(ctx, c.testKMSClientOptions...)
 	if err != nil {
@@ -110,7 +109,7 @@ func (c *APIServerCommand) RunUnstarted(ctx context.Context, args []string) (*se
 	}
 
 	grpcServer := grpc.NewServer(grpc.ChainUnaryInterceptor(
-		logging.GRPCUnaryInterceptor(logger, cfg.ProjectID),
+		logging.GRPCUnaryInterceptor(logger, c.cfg.ProjectID),
 		otelgrpc.UnaryServerInterceptor(),
 	))
 
@@ -119,12 +118,12 @@ func (c *APIServerCommand) RunUnstarted(ctx context.Context, args []string) (*se
 	hs.SetServingStatus("", healthpb.HealthCheckResponse_SERVING)
 	healthpb.RegisterHealthServer(grpcServer, hs)
 
-	p := justification.NewProcessor(kmsClient, &cfg)
+	p := justification.NewProcessor(kmsClient, c.cfg)
 	jvsAgent := justification.NewJVSAgent(p)
 	jvspb.RegisterJVSServiceServer(grpcServer, jvsAgent)
 	reflection.Register(grpcServer)
 
-	server, err := serving.New(cfg.Port)
+	server, err := serving.New(c.cfg.Port)
 	if err != nil {
 		return nil, nil, closer, fmt.Errorf("failed to create serving infrastructure: %w", err)
 	}

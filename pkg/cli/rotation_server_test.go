@@ -21,9 +21,9 @@ import (
 	"testing"
 	"time"
 
+	"github.com/abcxyz/pkg/cli"
 	"github.com/abcxyz/pkg/logging"
 	"github.com/abcxyz/pkg/testutil"
-	"github.com/sethvargo/go-envconfig"
 	"google.golang.org/api/option"
 )
 
@@ -41,12 +41,16 @@ func TestRotationServerCommand(t *testing.T) {
 		{
 			name:   "too_many_args",
 			args:   []string{"foo"},
+			env:    map[string]string{},
 			expErr: `unexpected arguments: ["foo"]`,
 		},
 		{
-			name:   "unset_config",
-			env:    map[string]string{},
-			expErr: `must be a positive duration`,
+			name: "invalid_config",
+			env: map[string]string{
+				"PROPAGATION_DELAY": "10m",
+				"GRACE_PERIOD":      "5m",
+			},
+			expErr: `must be less than grace period`,
 		},
 		{
 			name: "starts",
@@ -69,13 +73,10 @@ func TestRotationServerCommand(t *testing.T) {
 			defer done()
 
 			var cmd RotationServerCommand
-			cmd.testLookuper = envconfig.MultiLookuper(
-				envconfig.MapLookuper(tc.env),
-				envconfig.MapLookuper(map[string]string{
-					// Make the test choose a random port.
-					"PORT": "0",
-				}),
-			)
+
+			// Make the test choose a random port.
+			tc.env["PORT"] = "0"
+			cmd.testFlagSetOpts = []cli.Option{cli.WithLookupEnv(cli.MapLookuper(tc.env))}
 			cmd.testKMSClientOptions = []option.ClientOption{
 				// Disable auth lookup in these tests, since we don't actually call KMS.
 				option.WithoutAuthentication(),

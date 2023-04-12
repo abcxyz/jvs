@@ -17,6 +17,7 @@ package config
 import (
 	"context"
 	"testing"
+	"time"
 
 	"github.com/abcxyz/pkg/testutil"
 	"github.com/google/go-cmp/cmp"
@@ -40,36 +41,19 @@ func TestNewConfig(t *testing.T) {
 				"ALLOWLIST": "example.com",
 			},
 			wantConfig: &UIServiceConfig{
-				Port:      "9091",
-				Allowlist: []string{"example.com"},
-				DevMode:   false,
-			},
-		},
-		{
-			name: "override_port",
-			envs: map[string]string{
-				"PORT":      "1010",
-				"ALLOWLIST": "example.com",
-			},
-			wantConfig: &UIServiceConfig{
-				Port:      "1010",
+				JustificationConfig: &JustificationConfig{
+					Port:               "8080",
+					SignerCacheTimeout: 5 * time.Minute,
+					Issuer:             "jvs.abcxyz.dev",
+					DefaultTTL:         15 * time.Minute,
+					MaxTTL:             4 * time.Hour,
+					DevMode:            false,
+				},
 				Allowlist: []string{"example.com"},
 			},
 		},
 		{
-			name: "dev_mode_on",
-			envs: map[string]string{
-				"DEV_MODE":  "true",
-				"ALLOWLIST": "example.com",
-			},
-			wantConfig: &UIServiceConfig{
-				Port:      "9091",
-				DevMode:   true,
-				Allowlist: []string{"example.com"},
-			},
-		},
-		{
-			name:       "no_port_no_allowlist",
+			name:       "no_allowlist",
 			envs:       map[string]string{},
 			wantConfig: nil,
 			wantErr:    "failed to parse server config:",
@@ -88,7 +72,14 @@ func TestNewConfig(t *testing.T) {
 				"ALLOWLIST": "*",
 			},
 			wantConfig: &UIServiceConfig{
-				Port:      "9091",
+				JustificationConfig: &JustificationConfig{
+					Port:               "8080",
+					SignerCacheTimeout: 5 * time.Minute,
+					Issuer:             "jvs.abcxyz.dev",
+					DefaultTTL:         15 * time.Minute,
+					MaxTTL:             4 * time.Hour,
+					DevMode:            false,
+				},
 				Allowlist: []string{"*"},
 			},
 		},
@@ -98,7 +89,14 @@ func TestNewConfig(t *testing.T) {
 				"ALLOWLIST": "subdomain.foo.com, *.example.com",
 			},
 			wantConfig: &UIServiceConfig{
-				Port:      "9091",
+				JustificationConfig: &JustificationConfig{
+					Port:               "8080",
+					SignerCacheTimeout: 5 * time.Minute,
+					Issuer:             "jvs.abcxyz.dev",
+					DefaultTTL:         15 * time.Minute,
+					MaxTTL:             4 * time.Hour,
+					DevMode:            false,
+				},
 				Allowlist: []string{"subdomain.foo.com", "*.example.com"},
 			},
 		},

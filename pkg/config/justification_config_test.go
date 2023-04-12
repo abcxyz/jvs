@@ -37,7 +37,6 @@ func TestJustificationConfig_Defaults(t *testing.T) {
 	}
 
 	want := &JustificationConfig{
-		Version:            "1",
 		Port:               "8080",
 		SignerCacheTimeout: 5 * time.Minute,
 		Issuer:             "jvs.abcxyz.dev",
@@ -65,7 +64,6 @@ func TestLoadJustificationConfig(t *testing.T) {
 			name: "all_values_specified",
 			cfg: `
 port: 123
-version: 1
 signer_cache_timeout: 1m
 issuer: jvs
 default_ttl: 5m
@@ -73,7 +71,6 @@ max_ttl: 30m
 `,
 			wantConfig: &JustificationConfig{
 				Port:               "123",
-				Version:            "1",
 				SignerCacheTimeout: 1 * time.Minute,
 				Issuer:             "jvs",
 				DefaultTTL:         5 * time.Minute,
@@ -85,20 +82,12 @@ max_ttl: 30m
 			cfg:  ``,
 			wantConfig: &JustificationConfig{
 				Port:               "8080",
-				Version:            "1",
 				SignerCacheTimeout: 5 * time.Minute,
 				Issuer:             "jvs.abcxyz.dev",
 				DefaultTTL:         15 * time.Minute,
 				MaxTTL:             4 * time.Hour,
+				DevMode:            false,
 			},
-		},
-		{
-			name: "wrong_version",
-			cfg: `
-version: 255
-`,
-			wantConfig: nil,
-			wantErr:    `version "255" is invalid, valid versions are:`,
 		},
 		{
 			name: "invalid_signer_cache_timeout",
@@ -120,7 +109,6 @@ max_ttl: 30m
 		{
 			name: "all_values_specified_env_override",
 			cfg: `
-version: 1
 port: 8080
 signer_cache_timeout: 1m
 issuer: jvs
@@ -128,20 +116,20 @@ default_ttl: 15m
 max_ttl: 1h
 `,
 			envs: map[string]string{
-				"VERSION":              "1",
 				"PORT":                 "tcp",
 				"SIGNER_CACHE_TIMEOUT": "2m",
 				"ISSUER":               "other",
 				"DEFAULT_TTL":          "30m",
 				"MAX_TTL":              "2h",
+				"DEV_MODE":             "true",
 			},
 			wantConfig: &JustificationConfig{
-				Version:            "1",
 				Port:               "tcp",
 				SignerCacheTimeout: 2 * time.Minute,
 				Issuer:             "other",
 				DefaultTTL:         30 * time.Minute,
 				MaxTTL:             2 * time.Hour,
+				DevMode:            true,
 			},
 		},
 	}

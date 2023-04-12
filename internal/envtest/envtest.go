@@ -79,9 +79,14 @@ func NewServerConfig(tb testing.TB, port string, allowlist []string, devMode boo
 	ctx := logging.WithLogger(context.Background(), logger)
 
 	uiCfg := &config.UIServiceConfig{
-		Port:      port,
+		JustificationConfig: &config.JustificationConfig{
+			Port:    port,
+			DevMode: devMode,
+		},
 		Allowlist: allowlist,
-		DevMode:   devMode,
+	}
+	if err := cfgloader.Load(ctx, uiCfg); err != nil {
+		tb.Fatal(err)
 	}
 
 	// Create the renderer.
@@ -117,12 +122,7 @@ func NewServerConfig(tb testing.TB, port string, allowlist []string, devMode boo
 		tb.Fatal(err)
 	}
 
-	var cfg config.JustificationConfig
-	if err := cfgloader.Load(ctx, &cfg); err != nil {
-		tb.Fatal(err)
-	}
-
-	p := justification.NewProcessor(kmsClient, &cfg)
+	p := justification.NewProcessor(kmsClient, uiCfg.JustificationConfig)
 
 	return &ServerConfigResponse{
 		Config:    uiCfg,

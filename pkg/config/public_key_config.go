@@ -18,6 +18,7 @@ import (
 	"fmt"
 	"time"
 
+	"github.com/abcxyz/pkg/cli"
 	"github.com/hashicorp/go-multierror"
 )
 
@@ -38,12 +39,63 @@ type PublicKeyConfig struct {
 	CacheTimeout time.Duration `yaml:"cache_timeout" env:"CACHE_TIMEOUT, default=5m"`
 }
 
-func (c *PublicKeyConfig) Validate() error {
+func (cfg *PublicKeyConfig) Validate() error {
 	var err *multierror.Error
 
-	if got := c.CacheTimeout; got <= 0 {
+	if got := cfg.CacheTimeout; got <= 0 {
 		err = multierror.Append(err, fmt.Errorf("cache_timeout must be a positive duration, got %q", got))
 	}
 
 	return err.ErrorOrNil()
+}
+
+// ToFlags returns a [cli.FlagSet] that is bound to the config.
+func (cfg *PublicKeyConfig) ToFlags(opts ...cli.Option) *cli.FlagSet {
+	set := cli.NewFlagSet(opts...)
+
+	// Command options
+	f := set.NewSection("COMMON SERVER OPTIONS")
+
+	f.StringVar(&cli.StringVar{
+		Name:   "project-id",
+		Target: &cfg.ProjectID,
+		EnvVar: "PROJECT_ID",
+		Usage:  `Google Cloud project ID.`,
+	})
+
+	f.BoolVar(&cli.BoolVar{
+		Name:    "dev-mode",
+		Target:  &cfg.DevMode,
+		EnvVar:  "DEV_MODE",
+		Default: false,
+		Usage:   "Set to true to enable more granular debugging in logs",
+	})
+
+	f.StringVar(&cli.StringVar{
+		Name:    "port",
+		Target:  &cfg.Port,
+		EnvVar:  "PORT",
+		Default: "8080",
+		Usage:   `The port the server listens to.`,
+	})
+
+	f = set.NewSection("KEY OPTIONS")
+
+	f.StringSliceVar(&cli.StringSliceVar{
+		Name:    "key-names",
+		Target:  &cfg.KeyNames,
+		EnvVar:  "KEY_NAMES",
+		Example: "projects/[JVS_PROJECT]/locations/global/keyRings/[JVS_KEYRING]/cryptoKeys/[JVS_KEY]",
+		Usage:   "List of KMS key names",
+	})
+
+	f.DurationVar(&cli.DurationVar{
+		Name:    "cache-timeout",
+		Target:  &cfg.CacheTimeout,
+		EnvVar:  "CACHE_TIMEOUT",
+		Default: 5 * time.Minute,
+		Usage:   "The duration that a KMS key will be cached.",
+	})
+
+	return set
 }

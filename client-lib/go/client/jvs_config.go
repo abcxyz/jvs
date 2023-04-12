@@ -19,19 +19,13 @@ import (
 	"fmt"
 	"time"
 
-	"github.com/abcxyz/jvs/pkg/config"
 	"github.com/hashicorp/go-multierror"
 	"github.com/sethvargo/go-envconfig"
 	"gopkg.in/yaml.v3"
 )
 
-var versions = config.NewVersionList("1")
-
 // JVSConfig is the jvs client configuration.
 type JVSConfig struct {
-	// Version is the version of the config.
-	Version string `yaml:"version,omitempty" env:"VERSION,overwrite,default=1"`
-
 	// JWKSEndpoint is the full path (including protocol and port) to the JWKS
 	// endpoint on a JVS server (e.g. https://jvs.corp:8080/.well-known/jwks).
 	JWKSEndpoint string `yaml:"endpoint,omitempty" env:"ENDPOINT,overwrite"`
@@ -46,10 +40,6 @@ type JVSConfig struct {
 // Validate checks if the config is valid.
 func (cfg *JVSConfig) Validate() error {
 	var merr *multierror.Error
-	if !versions.Contains(cfg.Version) {
-		merr = multierror.Append(merr, fmt.Errorf("version %q is invalid, valid versions are: %q",
-			cfg.Version, versions.List()))
-	}
 	if cfg.JWKSEndpoint == "" {
 		merr = multierror.Append(merr, fmt.Errorf("endpoint must be set"))
 	}
