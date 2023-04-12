@@ -67,3 +67,19 @@ module "jvs_services" {
   kms_keyring_id = module.jvs_common.kms_keyring_id
   kms_key_name   = "signing-${random_id.default.hex}"
 }
+
+module "jvs_monitoring" {
+  source = "../modules/monitoring"
+
+  project_id = var.project_id
+
+  jvs_service_name               = module.jvs_services.jvs_api_service_name
+  cert_rotator_service_name      = module.jvs_services.jvs_cert_rotator_service_name
+  public_key_service_name        = module.jvs_services.jvs_public_key_service_name
+  jvs_ui_service_name            = module.jvs_services.jvs_ui_service_name
+  notification_channel_email     = var.notification_channel_email
+  prober_jvs_api_address         = join(":", [substr(module.jvs_services.jvs_api_service_url, 8, -1), "443"])
+  prober_jvs_public_key_endpoint = join("/", [module.jvs_services.jvs_public_key_service_url, ".well-known", "jwks"])
+  jvs_prober_image               = var.jvs_prober_image
+  prober_audience                = var.prober_audience
+}
