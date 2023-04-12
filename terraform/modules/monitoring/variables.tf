@@ -100,28 +100,28 @@ variable "ui_service_latency_threshold_ms" {
 
 variable "jvs_prober_image" {
   type        = string
-  description = "docker image for jvs-prober."
+  description = "docker image for jvs-prober"
 }
 
-variable "jvs_service_address" {
+variable "prober_jvs_api_address" {
   type        = string
-  description = "jvs service address."
+  description = "jvs service address"
 }
 
-variable "jvs_jwks_endpoint" {
+variable "prober_jvs_public_key_endpoint" {
   type        = string
-  description = "jvs public key service address."
+  description = "jvs public key service address"
 }
 
-variable "jvs_audience" {
+variable "prober_audience" {
   type        = string
   description = "The cloud run url for jvs api service or app address."
 }
 
 variable "prober_scheduler" {
   type        = string
-  description = "How often the prober service should be triggered, default is every minute. Learn more at: https://cloud.google.com/scheduler/docs/configuring/cron-job-schedules?&_ga=2.26495481.-578386315.1680561063#defining_the_job_schedule."
-  default     = "* * * * *"
+  description = "How often the prober service should be triggered, default is every 10 minutes. Learn more at: https://cloud.google.com/scheduler/docs/configuring/cron-job-schedules?&_ga=2.26495481.-578386315.1680561063#defining_the_job_schedule."
+  default     = "*/10 * * * *"
 }
 
 variable "prober_alert_enabled" {
@@ -133,11 +133,11 @@ variable "prober_alert_enabled" {
 variable "prober_alert_align_window_size_in_seconds" {
   type        = string
   description = "The sliding window size for counting failed prober job runs. Format example: 600s."
-  default     = "600s"
+  default     = "3600s"
 }
 
 variable "prober_alert_threshold" {
   type        = number
   description = "Send alert for Prober-Service when the number of failed prober runs exceeds the threshold."
-  default     = 8
+  default     = 4
 }

@@ -31,17 +31,17 @@ resource "google_cloud_run_v2_job" "jvs_prober" {
 
         env {
           name  = "JVSCTL_SERVER_ADDRESS"
-          value = var.jvs_service_address
+          value = var.prober_jvs_api_address
         }
 
         env {
           name  = "JVSCTL_JWKS_ENDPOINT"
-          value = var.jvs_jwks_endpoint
+          value = var.prober_jvs_public_key_endpoint
         }
 
         env {
           name  = "AUDIENCE"
-          value = var.jvs_audience
+          value = var.prober_audience
         }
       }
     }
@@ -63,12 +63,15 @@ resource "google_service_account" "prober_service_account" {
   display_name = "Prober Service Account"
 }
 
-# Grant jvs-prober cloud run invoker role.
-resource "google_project_iam_member" "cloudrun_invoker" {
-  project = var.project_id
+#Grant jvs-prober cloud run invoker role.
+resource "google_cloud_run_v2_job_iam_member" "cloudrun_invoker" {
+  project = resource.google_cloud_run_v2_job.jvs_prober.project
 
+  location = resource.google_cloud_run_v2_job.jvs_prober.location
+
+  name   = resource.google_cloud_run_v2_job.jvs_prober.name
   role   = "roles/run.invoker"
-  member = google_service_account.prober_service_account.member
+  member = resource.google_service_account.prober_service_account.member
 }
 
 # This is the scheduler for triggering jvs-prober cloud run job
