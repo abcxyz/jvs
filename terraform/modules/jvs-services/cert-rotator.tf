@@ -36,7 +36,7 @@ module "cert_rotator_cloud_run" {
 
   envvars = merge({
     "PROJECT_ID" : var.project_id
-    "KEY_NAMES" : google_kms_crypto_key.signing_key.id
+    "JVS_KEY_NAMES" : google_kms_crypto_key.signing_key.id
   }, var.cert_rotator_envvars)
 }
 

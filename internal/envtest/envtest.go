@@ -78,10 +78,20 @@ func NewServerConfig(tb testing.TB, port string, allowlist []string, devMode boo
 	logger := logging.TestLogger(tb)
 	ctx := logging.WithLogger(context.Background(), logger)
 
+	key := "projects/[PROJECT]/locations/[LOCATION]/keyRings/[KEY_RING]/cryptoKeys/[CRYPTO_KEY]"
+	version := key + "/cryptoKeyVersions/[VERSION]"
+
 	uiCfg := &config.UIServiceConfig{
-		Port:      port,
+		JustificationConfig: &config.JustificationConfig{
+			ProjectID: "example-project",
+			KeyName:   key,
+			Port:      port,
+			DevMode:   devMode,
+		},
 		Allowlist: allowlist,
-		DevMode:   devMode,
+	}
+	if err := cfgloader.Load(ctx, uiCfg); err != nil {
+		tb.Fatal(err)
 	}
 
 	// Create the renderer.
@@ -93,9 +103,6 @@ func NewServerConfig(tb testing.TB, port string, allowlist []string, devMode boo
 	if err != nil {
 		tb.Fatal(err)
 	}
-
-	key := "projects/[PROJECT]/locations/[LOCATION]/keyRings/[KEY_RING]/cryptoKeys/[CRYPTO_KEY]"
-	version := key + "/cryptoKeyVersions/[VERSION]"
 
 	// Mock KMS.
 	mockKMS := testutil.NewMockKeyManagementServer(key, version, jvscrypto.PrimaryLabelPrefix+"[VERSION]"+"-0")
@@ -117,12 +124,7 @@ func NewServerConfig(tb testing.TB, port string, allowlist []string, devMode boo
 		tb.Fatal(err)
 	}
 
-	var cfg config.JustificationConfig
-	if err := cfgloader.Load(ctx, &cfg); err != nil {
-		tb.Fatal(err)
-	}
-
-	p := justification.NewProcessor(kmsClient, &cfg)
+	p := justification.NewProcessor(kmsClient, uiCfg.JustificationConfig)
 
 	return &ServerConfigResponse{
 		Config:    uiCfg,

@@ -80,10 +80,10 @@ variable "cert_rotator_envvars" {
   description = "Env vars for JVS cert rotator service."
   type        = map(string)
   default = {
-    "KEY_TTL" : "10m",
-    "GRACE_PERIOD" : "5m",
-    "DISABLED_PERIOD" : "5m",
-    "PROPAGATION_DELAY" : "2m",
+    "JVS_ROTATION_KEY_TTL" : "10m",
+    "JVS_ROTATION_GRACE_PERIOD" : "5m",
+    "JVS_ROTATION_DISABLED_PERIOD" : "5m",
+    "JVS_ROTATION_PROPAGATION_DELAY" : "2m",
   }
 }
 
@@ -91,7 +91,7 @@ variable "public_key_envvars" {
   description = "Env vars for JVS public key service."
   type        = map(string)
   default = {
-    "CACHE_TIMEOUT" : "10m",
+    "JVS_PUBLIC_KEY_CACHE_TIMEOUT" : "10m",
   }
 }
 
@@ -99,7 +99,7 @@ variable "ui_envvars" {
   description = "Env vars for JVS UI service."
   type        = map(string)
   default = {
-    "DEV_MODE"  = "false",
-    "ALLOWLIST" = "*",
+    "DEV_MODE"         = "false",
+    "JVS_UI_ALLOWLIST" = "*",
   }
 }

@@ -21,6 +21,7 @@ import (
 	"testing"
 	"time"
 
+	"github.com/abcxyz/pkg/cli"
 	"github.com/abcxyz/pkg/logging"
 	"github.com/abcxyz/pkg/testutil"
 	"github.com/sethvargo/go-envconfig"
@@ -46,12 +47,16 @@ func TestPublicKeyServerCommand(t *testing.T) {
 		{
 			name: "invalid_config",
 			env: map[string]string{
-				"CACHE_TIMEOUT": "-5s",
+				"JVS_PUBLIC_KEY_CACHE_TIMEOUT": "-5s",
 			},
 			expErr: `must be a positive duration`,
 		},
 		{
 			name: "starts",
+			env: map[string]string{
+				"PROJECT_ID":    "example-project",
+				"JVS_KEY_NAMES": "fake/key",
+			},
 		},
 	}
 
@@ -65,13 +70,13 @@ func TestPublicKeyServerCommand(t *testing.T) {
 			defer done()
 
 			var cmd PublicKeyServerCommand
-			cmd.testLookuper = envconfig.MultiLookuper(
+			cmd.testFlagSetOpts = []cli.Option{cli.WithLookupEnv(envconfig.MultiLookuper(
 				envconfig.MapLookuper(tc.env),
 				envconfig.MapLookuper(map[string]string{
 					// Make the test choose a random port.
 					"PORT": "0",
 				}),
-			)
+			).Lookup)}
 			cmd.testKMSClientOptions = []option.ClientOption{
 				// Disable auth lookup in these tests, since we don't actually call KMS.
 				option.WithoutAuthentication(),

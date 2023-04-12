@@ -71,7 +71,7 @@ func TestHandlePopup(t *testing.T) {
 			path:        "/popup",
 			headers:     http.Header{},
 			queryParam:  &url.Values{"foo": {"bar"}},
-			allowlist:   []string{},
+			allowlist:   []string{"*"},
 			wantResCode: http.StatusBadRequest,
 		},
 	}

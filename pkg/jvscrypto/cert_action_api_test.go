@@ -343,9 +343,7 @@ func TestCertificateAction(t *testing.T) {
 			}
 
 			service := &CertificateActionService{
-				Handler: NewRotationHandler(ctx, c, &config.CertRotationConfig{
-					CryptoConfig: &config.CryptoConfig{},
-				}),
+				Handler:   NewRotationHandler(ctx, c, &config.CertRotationConfig{}),
 				KMSClient: c,
 			}
 

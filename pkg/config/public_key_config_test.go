@@ -15,67 +15,125 @@
 package config
 
 import (
-	"bytes"
-	"context"
 	"testing"
 	"time"
 
-	"github.com/abcxyz/pkg/cfgloader"
+	"github.com/abcxyz/pkg/cli"
+	"github.com/abcxyz/pkg/testutil"
 	"github.com/google/go-cmp/cmp"
 	"github.com/sethvargo/go-envconfig"
 )
 
-func TestLoadPublicKeyConfig(t *testing.T) {
+func TestPublicKeyConfig_ToFlags(t *testing.T) {
 	t.Parallel()
-	ctx := context.Background()
 
-	envs := make(map[string]string)
-	envs["PORT"] = "123"
-	envs["CACHE_TIMEOUT"] = "5m"
-	envs["KEY_NAMES"] = "key1,key2"
-
-	lookuper := envconfig.MapLookuper(envs)
-	content := bytes.NewBufferString("").Bytes()
-	gotConfig := &PublicKeyConfig{}
-	err := cfgloader.Load(ctx, gotConfig,
-		cfgloader.WithLookuper(lookuper), cfgloader.WithYAML(content))
-	if err != nil {
-		t.Fatal(err)
+	cases := []struct {
+		name       string
+		envs       map[string]string
+		wantConfig *PublicKeyConfig
+	}{
+		{
+			name: "all_values_specified",
+			envs: map[string]string{
+				"PROJECT_ID":                   "example-project",
+				"DEV_MODE":                     "true",
+				"PORT":                         "0",
+				"JVS_KEY_NAMES":                "fake/key",
+				"JVS_PUBLIC_KEY_CACHE_TIMEOUT": "10m",
+			},
+			wantConfig: &PublicKeyConfig{
+				ProjectID:    "example-project",
+				DevMode:      true,
+				Port:         "0",
+				KeyNames:     []string{"fake/key"},
+				CacheTimeout: 10 * time.Minute,
+			},
+		},
+		{
+			name: "default_values",
+			wantConfig: &PublicKeyConfig{
+				Port:         "8080",
+				CacheTimeout: 5 * time.Minute,
+			},
+		},
 	}
 
-	wantConfig := &PublicKeyConfig{
-		KeyNames:     []string{"key1", "key2"},
-		CacheTimeout: 5 * time.Minute,
-		Port:         "123",
-	}
-	if diff := cmp.Diff(wantConfig, gotConfig); diff != "" {
-		t.Errorf("Config unexpected diff (-want,+got):\n%s", diff)
+	for _, tc := range cases {
+		tc := tc
+
+		t.Run(tc.name, func(t *testing.T) {
+			t.Parallel()
+
+			gotConfig := &PublicKeyConfig{}
+			set := cli.NewFlagSet(cli.WithLookupEnv(envconfig.MapLookuper(tc.envs).Lookup))
+			set = gotConfig.ToFlags(set)
+			if err := set.Parse([]string{}); err != nil {
+				t.Errorf("unexpected flag set parse error: %v", err)
+			}
+			if diff := cmp.Diff(tc.wantConfig, gotConfig); diff != "" {
+				t.Errorf("Config unexpected diff (-want,+got):\n%s", diff)
+			}
+		})
 	}
 }
 
-func TestLoadPublicKeyConfig_Default(t *testing.T) {
+func TestPublicKeyConfig_Validate(t *testing.T) {
 	t.Parallel()
-	ctx := context.Background()
 
-	envs := make(map[string]string)
-	envs["KEY_NAMES"] = "key1,key2"
-	envs["CACHE_TIMEOUT"] = "5m"
-
-	lookuper := envconfig.MapLookuper(envs)
-	content := bytes.NewBufferString("").Bytes()
-	gotConfig := &PublicKeyConfig{}
-	err := cfgloader.Load(ctx, gotConfig,
-		cfgloader.WithLookuper(lookuper), cfgloader.WithYAML(content))
-	if err != nil {
-		t.Fatal(err)
+	cases := []struct {
+		name    string
+		cfg     *PublicKeyConfig
+		wantErr string
+	}{
+		{
+			name: "valid",
+			cfg: &PublicKeyConfig{
+				ProjectID:    "example-project",
+				Port:         "8080",
+				KeyNames:     []string{"fake/key"},
+				CacheTimeout: 5 * time.Minute,
+			},
+		},
+		{
+			name: "empty_project",
+			cfg: &PublicKeyConfig{
+				Port:         "8080",
+				KeyNames:     []string{"fake/key"},
+				CacheTimeout: 5 * time.Minute,
+			},
+			wantErr: "empty ProjectID",
+		},
+		{
+			name: "empty_key_names",
+			cfg: &PublicKeyConfig{
+				ProjectID:    "example-project",
+				Port:         "8080",
+				CacheTimeout: 5 * time.Minute,
+			},
+			wantErr: "empty KeyNames",
+		},
+		{
+			name: "invalid_cache_timeout",
+			cfg: &PublicKeyConfig{
+				ProjectID:    "example-project",
+				Port:         "8080",
+				KeyNames:     []string{"fake/key"},
+				CacheTimeout: -5 * time.Minute,
+			},
+			wantErr: "cache_timeout must be a positive duration",
+		},
 	}
 
-	wantConfig := &PublicKeyConfig{
-		KeyNames:     []string{"key1", "key2"},
-		CacheTimeout: 5 * time.Minute,
-		Port:         "8080",
-	}
-	if diff := cmp.Diff(wantConfig, gotConfig); diff != "" {
-		t.Errorf("Config unexpected diff (-want,+got):\n%s", diff)
+	for _, tc := range cases {
+		tc := tc
+
+		t.Run(tc.name, func(t *testing.T) {
+			t.Parallel()
+
+			err := tc.cfg.Validate()
+			if diff := testutil.DiffErrString(err, tc.wantErr); diff != "" {
+				t.Errorf("Unexpected err: %s", diff)
+			}
+		})
 	}
 }

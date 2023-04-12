@@ -154,7 +154,6 @@ func (c *ValidateCommand) Run(ctx context.Context, args []string) error {
 		breakglass = true
 	} else {
 		jvsclient, err := client.NewJVSClient(ctx, &client.JVSConfig{
-			Version:         "1",
 			JWKSEndpoint:    c.flagJWKSEndpoint,
 			CacheTimeout:    cacheTimeout,
 			AllowBreakglass: true,

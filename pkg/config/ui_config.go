@@ -15,52 +15,62 @@
 package config
 
 import (
-	"context"
 	"fmt"
 
-	"github.com/abcxyz/pkg/cfgloader"
-	"github.com/sethvargo/go-envconfig"
+	"github.com/abcxyz/pkg/cli"
+	"github.com/hashicorp/go-multierror"
 )
 
 // UIServiceConfig defines the set over environment variables required
 // for running this application.
 type UIServiceConfig struct {
-	// ProjectID is the Google Cloud project ID.
-	ProjectID string `env:"PROJECT_ID"`
+	*JustificationConfig
 
-	Port      string   `env:"PORT,default=9091"`
-	Allowlist []string `env:"ALLOWLIST,required"`
-	DevMode   bool     `env:"DEV_MODE,default=false"`
-}
-
-// NewUIConfig creates a new UIServiceConfig from environment variables.
-func NewUIConfig(ctx context.Context) (*UIServiceConfig, error) {
-	return newUIConfig(ctx, envconfig.OsLookuper())
-}
-
-func newUIConfig(ctx context.Context, lu envconfig.Lookuper) (*UIServiceConfig, error) {
-	var cfg UIServiceConfig
-	if err := cfgloader.Load(ctx, &cfg, cfgloader.WithLookuper(lu)); err != nil {
-		return nil, fmt.Errorf("failed to parse server config: %w", err)
-	}
-
-	return &cfg, nil
+	Allowlist []string `env:"JVS_UI_ALLOWLIST,required"`
 }
 
 // Validate checks if the config is valid.
 func (cfg *UIServiceConfig) Validate() error {
-	// edge case, exclusive asterisk(*)
-	if len(cfg.Allowlist) == 1 && cfg.Allowlist[0] == "*" {
-		return nil
+	var merr *multierror.Error
+
+	if err := cfg.JustificationConfig.Validate(); err != nil {
+		merr = multierror.Append(merr, err)
 	}
 
-	// confirm no asterisks if muiltiple values provided
-	// i.e. ["example.com" "*"] is invalid
-	for _, e := range cfg.Allowlist {
-		if e == "*" {
-			return fmt.Errorf("asterisk(*) must be exclusive, no other domains allowed")
+	if len(cfg.Allowlist) == 0 {
+		merr = multierror.Append(merr, fmt.Errorf("empty Allowlist"))
+	}
+
+	// edge case, exclusive asterisk(*)
+	if !(len(cfg.Allowlist) == 1 && cfg.Allowlist[0] == "*") {
+		// confirm no asterisks if muiltiple values provided
+		// i.e. ["example.com" "*"] is invalid
+		for _, e := range cfg.Allowlist {
+			if e == "*" {
+				merr = multierror.Append(merr,
+					fmt.Errorf("asterisk(*) must be exclusive, no other domains allowed"))
+			}
 		}
 	}
 
-	return nil
+	return merr.ErrorOrNil()
+}
+
+// ToFlags binds the config to the give [cli.FlagSet] and returns it.
+func (cfg *UIServiceConfig) ToFlags(set *cli.FlagSet) *cli.FlagSet {
+	if cfg.JustificationConfig == nil {
+		cfg.JustificationConfig = &JustificationConfig{}
+	}
+	set = cfg.JustificationConfig.ToFlags(set)
+
+	f := set.NewSection("UI OPTIONS")
+	f.StringSliceVar(&cli.StringSliceVar{
+		Name:    "allowlist",
+		Target:  &cfg.Allowlist,
+		EnvVar:  "JVS_UI_ALLOWLIST",
+		Example: "example.com,*.foo.bar",
+		Usage:   "List of allowed domains.",
+	})
+
+	return set
 }
