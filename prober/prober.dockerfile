@@ -4,7 +4,6 @@ FROM cgr.dev/chainguard/bash:latest
 COPY jvsctl /jvsctl
 
 COPY ./prober/prober.sh /prober.sh
-RUN chmod +x /prober.sh
 
 # Run the bash script on container startup.
 ENTRYPOINT ["./prober.sh"]
