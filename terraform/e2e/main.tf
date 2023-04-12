@@ -78,8 +78,8 @@ module "jvs_monitoring" {
   public_key_service_name        = module.jvs_services.jvs_public_key_service_name
   jvs_ui_service_name            = module.jvs_services.jvs_ui_service_name
   notification_channel_email     = var.notification_channel_email
-  prober_jvs_api_address         = join(":", [substr(module.jvs_services.jvs_api_service_url, 8, -1), "443"])
-  prober_jvs_public_key_endpoint = join("/", [module.jvs_services.jvs_public_key_service_url, ".well-known", "jwks"])
+  prober_jvs_api_address         = "${var.jvs_api_domain}:443"
+  prober_jvs_public_key_endpoint = "${var.jvs_api_domain}/.well-known/jwks"
   jvs_prober_image               = var.jvs_prober_image
   prober_audience                = var.prober_audience
 }
