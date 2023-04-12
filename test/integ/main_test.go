@@ -88,6 +88,7 @@ func TestJVS(t *testing.T) {
 	})
 
 	cfg := &config.JustificationConfig{
+		ProjectID:          os.Getenv("PROJECT_ID"),
 		KeyName:            keyName,
 		Issuer:             "ci-test",
 		SignerCacheTimeout: 1 * time.Nanosecond, // no caching
@@ -331,6 +332,7 @@ func TestRotator(t *testing.T) {
 	kmsClient, keyName := testSetupRotator(ctx, t)
 
 	cfg := &config.CertRotationConfig{
+		ProjectID:        os.Getenv("PROJECT_ID"),
 		KeyTTL:           7 * time.Second,
 		GracePeriod:      2 * time.Second, // rotate after 5 seconds
 		PropagationDelay: time.Second,
@@ -417,6 +419,7 @@ func TestRotator_EdgeCases(t *testing.T) {
 	kmsClient, keyName := testSetupRotator(ctx, t)
 
 	cfg := &config.CertRotationConfig{
+		ProjectID:        os.Getenv("PROJECT_ID"),
 		KeyTTL:           99 * time.Hour,
 		GracePeriod:      time.Second,
 		PropagationDelay: time.Second,
@@ -483,6 +486,7 @@ func TestPublicKeys(t *testing.T) {
 	keyName := testCreateKey(ctx, t, kmsClient, keyRing, primaryKeyVersion)
 
 	cfg := &config.PublicKeyConfig{
+		ProjectID:    os.Getenv("PROJECT_ID"),
 		KeyNames:     []string{keyName},
 		CacheTimeout: 10 * time.Second,
 	}
@@ -539,6 +543,7 @@ func TestCertActions(t *testing.T) {
 	kmsClient, keyName := testSetupRotator(ctx, t)
 
 	cfg := &config.CertRotationConfig{
+		ProjectID:        os.Getenv("PROJECT_ID"),
 		KeyTTL:           7 * time.Second,
 		GracePeriod:      2 * time.Second, // rotate after 5 seconds
 		PropagationDelay: time.Second,
