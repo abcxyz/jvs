@@ -48,16 +48,16 @@ func TestUIServerCommand(t *testing.T) {
 			name: "invalid_config",
 			env: map[string]string{
 				"PROJECT_ID": "example-project",
-				"KEY":        "fake/key",
+				"JVS_KEY":    "fake/key",
 			},
 			expErr: `empty Allowlist`,
 		},
 		{
 			name: "starts",
 			env: map[string]string{
-				"PROJECT_ID": "example-project",
-				"KEY":        "fake/key",
-				"ALLOWLIST":  "example.com,*.foo.bar",
+				"PROJECT_ID":       "example-project",
+				"JVS_KEY":          "fake/key",
+				"JVS_UI_ALLOWLIST": "example.com,*.foo.bar",
 			},
 		},
 	}

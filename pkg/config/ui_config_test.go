@@ -35,15 +35,15 @@ func TestUIServiceConfig_ToFlags(t *testing.T) {
 		{
 			name: "all_values_specified",
 			envs: map[string]string{
-				"PROJECT_ID":           "example-project",
-				"DEV_MODE":             "true",
-				"PORT":                 "0",
-				"KEY":                  "fake/key",
-				"SIGNER_CACHE_TIMEOUT": "10m",
-				"ISSUER":               "example.com",
-				"DEFAULT_TTL":          "30m",
-				"MAX_TTL":              "8h",
-				"ALLOWLIST":            "example.com,*.foo.bar",
+				"PROJECT_ID":                   "example-project",
+				"DEV_MODE":                     "true",
+				"PORT":                         "0",
+				"JVS_KEY":                      "fake/key",
+				"JVS_API_SIGNER_CACHE_TIMEOUT": "10m",
+				"JVS_API_ISSUER":               "example.com",
+				"JVS_API_DEFAULT_TTL":          "30m",
+				"JVS_API_MAX_TTL":              "8h",
+				"JVS_UI_ALLOWLIST":             "example.com,*.foo.bar",
 			},
 			wantConfig: &UIServiceConfig{
 				JustificationConfig: &JustificationConfig{

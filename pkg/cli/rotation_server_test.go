@@ -47,16 +47,16 @@ func TestRotationServerCommand(t *testing.T) {
 		{
 			name: "invalid_config",
 			env: map[string]string{
-				"PROPAGATION_DELAY": "10m",
-				"GRACE_PERIOD":      "5m",
+				"JVS_ROTATION_PROPAGATION_DELAY": "10m",
+				"JVS_ROTATION_GRACE_PERIOD":      "5m",
 			},
 			expErr: `must be less than grace period`,
 		},
 		{
 			name: "starts",
 			env: map[string]string{
-				"PROJECT_ID": "example-project",
-				"KEY_NAMES":  "fake/key",
+				"PROJECT_ID":    "example-project",
+				"JVS_KEY_NAMES": "fake/key",
 			},
 		},
 	}

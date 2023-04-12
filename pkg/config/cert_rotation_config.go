@@ -36,22 +36,20 @@ type CertRotationConfig struct {
 
 	// -- Crypto variables --
 	// KeyTTL is the length of time that we expect a key to be valid for.
-	KeyTTL time.Duration `yaml:"key_ttl,omitempty" env:"KEY_TTL,overwrite"`
+	KeyTTL time.Duration `env:"JVS_ROTATION_KEY_TTL,overwrite"`
 
 	// GracePeriod is a length of time between when we rotate the key and when an old Key Version is no longer valid and available
-	GracePeriod time.Duration `yaml:"grace_period,omitempty" env:"GRACE_PERIOD,overwrite"`
+	GracePeriod time.Duration `env:"JVS_ROTATION_GRACE_PERIOD,overwrite"`
 
 	// PropagationDelay is the time that it takes for a change in the key in KMS to be reflected in the client.
-	PropagationDelay time.Duration `yaml:"propagation_delay,omitempty" env:"PROPAGATION_DELAY,overwrite"`
+	PropagationDelay time.Duration `env:"JVS_ROTATION_PROPAGATION_DELAY,overwrite"`
 
 	// DisabledPeriod is a time between when the key is disabled, and when we delete the key.
-	DisabledPeriod time.Duration `yaml:"disabled_period,omitempty" env:"DISABLED_PERIOD,overwrite"`
+	DisabledPeriod time.Duration `env:"JVS_ROTATION_DISABLED_PERIOD,overwrite"`
 
-	// TODO: This is intended to be temporary, and will eventually be retrieved from a persistent external datastore
-	// https://github.com/abcxyz/jvs/issues/17
 	// KeyName format: `projects/*/locations/*/keyRings/*/cryptoKeys/*`
 	// https://pkg.go.dev/google.golang.org/genproto/googleapis/cloud/kms/v1#CryptoKey
-	KeyNames []string `yaml:"key_names,omitempty" env:"KEY_NAMES,overwrite"`
+	KeyNames []string `env:"JVS_KEY_NAMES,overwrite"`
 }
 
 // Validate checks if the config is valid.
@@ -133,7 +131,7 @@ func (cfg *CertRotationConfig) ToFlags(set *cli.FlagSet) *cli.FlagSet {
 	f.DurationVar(&cli.DurationVar{
 		Name:    "key-ttl",
 		Target:  &cfg.KeyTTL,
-		EnvVar:  "KEY_TTL",
+		EnvVar:  "JVS_ROTATION_KEY_TTL",
 		Default: 10 * time.Minute,
 		Usage:   "The time that a key will be valid for.",
 	})
@@ -141,7 +139,7 @@ func (cfg *CertRotationConfig) ToFlags(set *cli.FlagSet) *cli.FlagSet {
 	f.DurationVar(&cli.DurationVar{
 		Name:    "grace-period",
 		Target:  &cfg.GracePeriod,
-		EnvVar:  "GRACE_PERIOD",
+		EnvVar:  "JVS_ROTATION_GRACE_PERIOD",
 		Default: 5 * time.Minute,
 		Usage:   "The time between when we rotate the key and when the old key version is no longer available.",
 	})
@@ -149,7 +147,7 @@ func (cfg *CertRotationConfig) ToFlags(set *cli.FlagSet) *cli.FlagSet {
 	f.DurationVar(&cli.DurationVar{
 		Name:    "propagation-delay",
 		Target:  &cfg.PropagationDelay,
-		EnvVar:  "PROPAGATION_DELAY",
+		EnvVar:  "JVS_ROTATION_PROPAGATION_DELAY",
 		Default: 5 * time.Minute,
 		Usage:   "The time that it takes for a key change to be reflected in the client.",
 	})
@@ -157,7 +155,7 @@ func (cfg *CertRotationConfig) ToFlags(set *cli.FlagSet) *cli.FlagSet {
 	f.DurationVar(&cli.DurationVar{
 		Name:    "disable-period",
 		Target:  &cfg.DisabledPeriod,
-		EnvVar:  "DISABLED_PERIOD",
+		EnvVar:  "JVS_ROTATION_DISABLED_PERIOD",
 		Default: 2 * time.Minute,
 		Usage:   "The time between when the key is disabled and when we delete the key.",
 	})
@@ -165,7 +163,7 @@ func (cfg *CertRotationConfig) ToFlags(set *cli.FlagSet) *cli.FlagSet {
 	f.StringSliceVar(&cli.StringSliceVar{
 		Name:    "key-names",
 		Target:  &cfg.KeyNames,
-		EnvVar:  "KEY_NAMES",
+		EnvVar:  "JVS_KEY_NAMES",
 		Example: "projects/[JVS_PROJECT]/locations/global/keyRings/[JVS_KEYRING]/cryptoKeys/[JVS_KEY]",
 		Usage:   "List of KMS key names",
 	})

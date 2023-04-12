@@ -35,11 +35,11 @@ func TestPublicKeyConfig_ToFlags(t *testing.T) {
 		{
 			name: "all_values_specified",
 			envs: map[string]string{
-				"PROJECT_ID":    "example-project",
-				"DEV_MODE":      "true",
-				"PORT":          "0",
-				"KEY_NAMES":     "fake/key",
-				"CACHE_TIMEOUT": "10m",
+				"PROJECT_ID":                   "example-project",
+				"DEV_MODE":                     "true",
+				"PORT":                         "0",
+				"JVS_KEY_NAMES":                "fake/key",
+				"JVS_PUBLIC_KEY_CACHE_TIMEOUT": "10m",
 			},
 			wantConfig: &PublicKeyConfig{
 				ProjectID:    "example-project",

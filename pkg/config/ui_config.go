@@ -26,7 +26,7 @@ import (
 type UIServiceConfig struct {
 	*JustificationConfig
 
-	Allowlist []string `env:"ALLOWLIST,required"`
+	Allowlist []string `env:"JVS_UI_ALLOWLIST,required"`
 }
 
 // Validate checks if the config is valid.
@@ -67,7 +67,7 @@ func (cfg *UIServiceConfig) ToFlags(set *cli.FlagSet) *cli.FlagSet {
 	f.StringSliceVar(&cli.StringSliceVar{
 		Name:    "allowlist",
 		Target:  &cfg.Allowlist,
-		EnvVar:  "ALLOWLIST",
+		EnvVar:  "JVS_UI_ALLOWLIST",
 		Example: "example.com,*.foo.bar",
 		Usage:   "List of allowed domains.",
 	})

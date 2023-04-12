@@ -47,7 +47,7 @@ func TestAPIServerCommand(t *testing.T) {
 		{
 			name: "invalid_config",
 			env: map[string]string{
-				"SIGNER_CACHE_TIMEOUT": "-5m",
+				"JVS_API_SIGNER_CACHE_TIMEOUT": "-5m",
 			},
 			expErr: `must be a positive duration`,
 		},
@@ -55,7 +55,7 @@ func TestAPIServerCommand(t *testing.T) {
 			name: "starts",
 			env: map[string]string{
 				"PROJECT_ID": "example-project",
-				"KEY":        "projects/[JVS_PROJECT]/locations/global/keyRings/[JVS_KEYRING]/cryptoKeys/[JVS_KEY]",
+				"JVS_KEY":    "projects/[JVS_PROJECT]/locations/global/keyRings/[JVS_KEYRING]/cryptoKeys/[JVS_KEY]",
 			},
 		},
 	}

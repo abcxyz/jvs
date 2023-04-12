@@ -37,21 +37,21 @@ type JustificationConfig struct {
 
 	// KeyName format: `projects/*/locations/*/keyRings/*/cryptoKeys/*`
 	// https://pkg.go.dev/google.golang.org/genproto/googleapis/cloud/kms/v1#CryptoKey
-	KeyName string `yaml:"key,omitempty" env:"KEY,overwrite"`
+	KeyName string `env:"JVS_KEY,overwrite"`
 
 	// SignerCacheTimeout is the duration that keys stay in cache before being revoked.
-	SignerCacheTimeout time.Duration `yaml:"signer_cache_timeout" env:"SIGNER_CACHE_TIMEOUT,overwrite,default=5m"`
+	SignerCacheTimeout time.Duration `env:"JVS_API_SIGNER_CACHE_TIMEOUT,overwrite,default=5m"`
 
 	// Issuer will be used to set the issuer field when signing JWTs
-	Issuer string `yaml:"issuer" env:"ISSUER,overwrite,default=jvs.abcxyz.dev"`
+	Issuer string `env:"JVS_API_ISSUER,overwrite,default=jvs.abcxyz.dev"`
 
 	// DefaultTTL sets the default TTL for JVS tokens that do not explicitly
 	// request a TTL. MaxTTL is the system-configured maximum TTL that a token can
 	// request.
 	//
 	// The DefaultTTL must be less than or equal to MaxTTL.
-	DefaultTTL time.Duration `yaml:"default_ttl" env:"DEFAULT_TTL,overwrite,default=15m"`
-	MaxTTL     time.Duration `yaml:"max_ttl" env:"MAX_TTL,overwrite,default=4h"`
+	DefaultTTL time.Duration `env:"JVS_API_DEFAULT_TTL,overwrite,default=15m"`
+	MaxTTL     time.Duration `env:"JVS_API_MAX_TTL,overwrite,default=4h"`
 }
 
 // Validate checks if the config is valid.
@@ -111,7 +111,7 @@ func (cfg *JustificationConfig) ToFlags(set *cli.FlagSet) *cli.FlagSet {
 	f.StringVar(&cli.StringVar{
 		Name:    "key-name",
 		Target:  &cfg.KeyName,
-		EnvVar:  "KEY",
+		EnvVar:  "JVS_KEY",
 		Example: "projects/[JVS_PROJECT]/locations/global/keyRings/[JVS_KEYRING]/cryptoKeys/[JVS_KEY]",
 		Usage:   `The KMS key for signing JVS tokens.`,
 	})
@@ -119,7 +119,7 @@ func (cfg *JustificationConfig) ToFlags(set *cli.FlagSet) *cli.FlagSet {
 	f.StringVar(&cli.StringVar{
 		Name:    "issuer",
 		Target:  &cfg.Issuer,
-		EnvVar:  "ISSUER",
+		EnvVar:  "JVS_API_ISSUER",
 		Default: "jvs.abcxyz.dev",
 		Usage:   `The value to set to the issuer claim when signing JVS tokens.`,
 	})
@@ -127,7 +127,7 @@ func (cfg *JustificationConfig) ToFlags(set *cli.FlagSet) *cli.FlagSet {
 	f.DurationVar(&cli.DurationVar{
 		Name:    "signer-cache-timeout",
 		Target:  &cfg.SignerCacheTimeout,
-		EnvVar:  "SIGNER_CACHE_TIMEOUT",
+		EnvVar:  "JVS_API_SIGNER_CACHE_TIMEOUT",
 		Default: 5 * time.Minute,
 		Usage:   "The duration that keys stay in cache before being revoked.",
 	})
@@ -135,7 +135,7 @@ func (cfg *JustificationConfig) ToFlags(set *cli.FlagSet) *cli.FlagSet {
 	f.DurationVar(&cli.DurationVar{
 		Name:    "default-ttl",
 		Target:  &cfg.DefaultTTL,
-		EnvVar:  "DEFAULT_TTL",
+		EnvVar:  "JVS_API_DEFAULT_TTL",
 		Default: 15 * time.Minute,
 		Usage:   "The default TTL for JVS tokens if not specified in the request.",
 	})
@@ -143,7 +143,7 @@ func (cfg *JustificationConfig) ToFlags(set *cli.FlagSet) *cli.FlagSet {
 	f.DurationVar(&cli.DurationVar{
 		Name:    "max-ttl",
 		Target:  &cfg.MaxTTL,
-		EnvVar:  "MAX_TTL",
+		EnvVar:  "JVS_API_MAX_TTL",
 		Default: 4 * time.Hour,
 		Usage:   "The maximum TTL that a token can have.",
 	})

@@ -35,14 +35,14 @@ func TestCertRotationConfig_ToFlags(t *testing.T) {
 		{
 			name: "all_values_specified",
 			envs: map[string]string{
-				"PROJECT_ID":        "example-project",
-				"DEV_MODE":          "true",
-				"PORT":              "0",
-				"KEY_TTL":           "15m",
-				"GRACE_PERIOD":      "10m",
-				"PROPAGATION_DELAY": "10m",
-				"DISABLED_PERIOD":   "3m",
-				"KEY_NAMES":         "fake/key",
+				"PROJECT_ID":                     "example-project",
+				"DEV_MODE":                       "true",
+				"PORT":                           "0",
+				"JVS_ROTATION_KEY_TTL":           "15m",
+				"JVS_ROTATION_GRACE_PERIOD":      "10m",
+				"JVS_ROTATION_PROPAGATION_DELAY": "10m",
+				"JVS_ROTATION_DISABLED_PERIOD":   "3m",
+				"JVS_KEY_NAMES":                  "fake/key",
 			},
 			wantConfig: &CertRotationConfig{
 				ProjectID:        "example-project",

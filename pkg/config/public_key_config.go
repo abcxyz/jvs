@@ -30,13 +30,12 @@ type PublicKeyConfig struct {
 	// DevMode controls enables more granular debugging in logs.
 	DevMode bool `env:"DEV_MODE,default=false"`
 
-	// TODO: This is intended to be temporary, and will eventually be retrieved from a persistent external datastore
-	// https://github.com/abcxyz/jvs/issues/17
-	// KeyName format: `projects/*/locations/*/keyRings/*/cryptoKeys/*`
+	Port string `env:"PORT,default=8080"`
+
+	// KeyNames format: `projects/*/locations/*/keyRings/*/cryptoKeys/*`
 	// https://pkg.go.dev/google.golang.org/genproto/googleapis/cloud/kms/v1#PublicKeyKey
-	KeyNames     []string      `yaml:"key_names,omitempty" env:"KEY_NAMES,overwrite"`
-	Port         string        `env:"PORT,default=8080"`
-	CacheTimeout time.Duration `yaml:"cache_timeout" env:"CACHE_TIMEOUT, default=5m"`
+	KeyNames     []string      `env:"JVS_KEY_NAMES,overwrite"`
+	CacheTimeout time.Duration `env:"JVS_PUBLIC_KEY_CACHE_TIMEOUT, default=5m"`
 }
 
 func (cfg *PublicKeyConfig) Validate() error {
@@ -90,7 +89,7 @@ func (cfg *PublicKeyConfig) ToFlags(set *cli.FlagSet) *cli.FlagSet {
 	f.StringSliceVar(&cli.StringSliceVar{
 		Name:    "key-names",
 		Target:  &cfg.KeyNames,
-		EnvVar:  "KEY_NAMES",
+		EnvVar:  "JVS_KEY_NAMES",
 		Example: "projects/[JVS_PROJECT]/locations/global/keyRings/[JVS_KEYRING]/cryptoKeys/[JVS_KEY]",
 		Usage:   "List of KMS key names",
 	})
@@ -98,7 +97,7 @@ func (cfg *PublicKeyConfig) ToFlags(set *cli.FlagSet) *cli.FlagSet {
 	f.DurationVar(&cli.DurationVar{
 		Name:    "cache-timeout",
 		Target:  &cfg.CacheTimeout,
-		EnvVar:  "CACHE_TIMEOUT",
+		EnvVar:  "JVS_PUBLIC_KEY_CACHE_TIMEOUT",
 		Default: 5 * time.Minute,
 		Usage:   "The duration that a KMS key will be cached.",
 	})
