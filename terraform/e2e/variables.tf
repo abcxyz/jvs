@@ -54,3 +54,18 @@ variable "jvs_container_image" {
   description = "Container image for the jvsctl CLI and server entrypoints."
   type        = string
 }
+
+variable "notification_channel_email" {
+  type        = string
+  description = "The Email address where alert notifications send to."
+}
+
+variable "jvs_prober_image" {
+  type        = string
+  description = "docker image for jvs-prober"
+}
+
+variable "prober_audience" {
+  type        = string
+  description = "The cloud run url for jvs api service or app address."
+}
