@@ -44,6 +44,12 @@ variable "jvs_ui_service_account" {
   type        = string
 }
 
+variable "jvs_ui_iap_service_account" {
+  description = "The IAP service account to invoke the JVS UI service."
+  type        = string
+  default     = ""
+}
+
 variable "jvs_cert_rotator_service_account" {
   description = "Service account for JVS cert rotator service."
   type        = string

@@ -49,6 +49,10 @@ module "jvs_common" {
   kms_key_location = var.kms_key_location
 }
 
+data "google_project" "project" {
+  project_id = var.project_id
+}
+
 module "jvs_services" {
   source = "../modules/jvs-services"
 
@@ -61,6 +65,9 @@ module "jvs_services" {
   jvs_ui_service_account           = module.jvs_common.jvs_ui_service_account_email
   jvs_cert_rotator_service_account = module.jvs_common.jvs_cert_rotator_service_account_email
   jvs_public_key_service_account   = module.jvs_common.jvs_public_key_service_account_email
+
+  # https://cloud.google.com/iap/docs/enabling-cloud-run#enabling
+  jvs_ui_iap_service_account = "service-${data.google_project.project.number}@gcp-sa-iap.iam.gserviceaccount.com"
 
   jvs_container_image = var.jvs_container_image
 
