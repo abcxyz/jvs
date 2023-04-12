@@ -21,6 +21,7 @@ import (
 	"testing"
 	"time"
 
+	"github.com/abcxyz/pkg/cli"
 	"github.com/abcxyz/pkg/logging"
 	"github.com/abcxyz/pkg/testutil"
 	"github.com/sethvargo/go-envconfig"
@@ -44,14 +45,19 @@ func TestUIServerCommand(t *testing.T) {
 			expErr: `unexpected arguments: ["foo"]`,
 		},
 		{
-			name:   "unset_config",
-			env:    map[string]string{},
-			expErr: `missing required value`,
+			name: "invalid_config",
+			env: map[string]string{
+				"PROJECT_ID": "example-project",
+				"JVS_KEY":    "fake/key",
+			},
+			expErr: `empty Allowlist`,
 		},
 		{
 			name: "starts",
 			env: map[string]string{
-				"ALLOWLIST": "foo, bar",
+				"PROJECT_ID":       "example-project",
+				"JVS_KEY":          "fake/key",
+				"JVS_UI_ALLOWLIST": "example.com,*.foo.bar",
 			},
 		},
 	}
@@ -66,13 +72,13 @@ func TestUIServerCommand(t *testing.T) {
 			defer done()
 
 			var cmd UIServerCommand
-			cmd.testLookuper = envconfig.MultiLookuper(
+			cmd.testFlagSetOpts = []cli.Option{cli.WithLookupEnv(envconfig.MultiLookuper(
 				envconfig.MapLookuper(tc.env),
 				envconfig.MapLookuper(map[string]string{
 					// Make the test choose a random port.
 					"PORT": "0",
 				}),
-			)
+			).Lookup)}
 			cmd.testKMSClientOptions = []option.ClientOption{
 				// Disable auth lookup in these tests, since we don't actually call KMS.
 				option.WithoutAuthentication(),

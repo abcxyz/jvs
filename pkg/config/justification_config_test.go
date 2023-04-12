@@ -15,77 +15,91 @@
 package config
 
 import (
-	"bytes"
-	"context"
 	"testing"
 	"time"
 
-	"github.com/abcxyz/pkg/cfgloader"
+	"github.com/abcxyz/pkg/cli"
 	"github.com/abcxyz/pkg/testutil"
 	"github.com/google/go-cmp/cmp"
 	"github.com/sethvargo/go-envconfig"
 )
 
-func TestJustificationConfig_Defaults(t *testing.T) {
+func TestJustificationConfig_ToFlags(t *testing.T) {
 	t.Parallel()
 
-	ctx := context.Background()
-
-	var justificationConfig JustificationConfig
-	if err := envconfig.ProcessWith(ctx, &justificationConfig, envconfig.MapLookuper(nil)); err != nil {
-		t.Fatal(err)
-	}
-
-	want := &JustificationConfig{
-		Version:            "1",
-		Port:               "8080",
-		SignerCacheTimeout: 5 * time.Minute,
-		Issuer:             "jvs.abcxyz.dev",
-		DefaultTTL:         15 * time.Minute,
-		MaxTTL:             4 * time.Hour,
-	}
-
-	if diff := cmp.Diff(want, &justificationConfig); diff != "" {
-		t.Errorf("config with defaults (-want, +got):\n%s", diff)
-	}
-}
-
-func TestLoadJustificationConfig(t *testing.T) {
-	t.Parallel()
-	ctx := context.Background()
-
-	tests := []struct {
+	cases := []struct {
 		name       string
-		cfg        string
 		envs       map[string]string
 		wantConfig *JustificationConfig
-		wantErr    string
 	}{
 		{
 			name: "all_values_specified",
-			cfg: `
-port: 123
-version: 1
-signer_cache_timeout: 1m
-issuer: jvs
-default_ttl: 5m
-max_ttl: 30m
-`,
+			envs: map[string]string{
+				"PROJECT_ID":                   "example-project",
+				"DEV_MODE":                     "true",
+				"PORT":                         "0",
+				"JVS_KEY":                      "fake/key",
+				"JVS_API_SIGNER_CACHE_TIMEOUT": "10m",
+				"JVS_API_ISSUER":               "example.com",
+				"JVS_API_DEFAULT_TTL":          "30m",
+				"JVS_API_MAX_TTL":              "8h",
+			},
 			wantConfig: &JustificationConfig{
-				Port:               "123",
-				Version:            "1",
-				SignerCacheTimeout: 1 * time.Minute,
-				Issuer:             "jvs",
-				DefaultTTL:         5 * time.Minute,
-				MaxTTL:             30 * time.Minute,
+				ProjectID:          "example-project",
+				DevMode:            true,
+				Port:               "0",
+				KeyName:            "fake/key",
+				SignerCacheTimeout: 10 * time.Minute,
+				Issuer:             "example.com",
+				DefaultTTL:         30 * time.Minute,
+				MaxTTL:             8 * time.Hour,
 			},
 		},
 		{
-			name: "test_default",
-			cfg:  ``,
+			name: "default_values",
 			wantConfig: &JustificationConfig{
 				Port:               "8080",
-				Version:            "1",
+				SignerCacheTimeout: 5 * time.Minute,
+				Issuer:             "jvs.abcxyz.dev",
+				DefaultTTL:         15 * time.Minute,
+				MaxTTL:             4 * time.Hour,
+			},
+		},
+	}
+
+	for _, tc := range cases {
+		tc := tc
+
+		t.Run(tc.name, func(t *testing.T) {
+			t.Parallel()
+
+			gotConfig := &JustificationConfig{}
+			set := cli.NewFlagSet(cli.WithLookupEnv(envconfig.MapLookuper(tc.envs).Lookup))
+			set = gotConfig.ToFlags(set)
+			if err := set.Parse([]string{}); err != nil {
+				t.Errorf("unexpected flag set parse error: %v", err)
+			}
+			if diff := cmp.Diff(tc.wantConfig, gotConfig); diff != "" {
+				t.Errorf("Config unexpected diff (-want,+got):\n%s", diff)
+			}
+		})
+	}
+}
+
+func TestJustificationConfig_Validate(t *testing.T) {
+	t.Parallel()
+
+	cases := []struct {
+		name    string
+		cfg     *JustificationConfig
+		wantErr string
+	}{
+		{
+			name: "valid",
+			cfg: &JustificationConfig{
+				ProjectID:          "example-project",
+				Port:               "8080",
+				KeyName:            "fake/key",
 				SignerCacheTimeout: 5 * time.Minute,
 				Issuer:             "jvs.abcxyz.dev",
 				DefaultTTL:         15 * time.Minute,
@@ -93,78 +107,66 @@ max_ttl: 30m
 			},
 		},
 		{
-			name: "wrong_version",
-			cfg: `
-version: 255
-`,
-			wantConfig: nil,
-			wantErr:    `version "255" is invalid, valid versions are:`,
-		},
-		{
-			name: "invalid_signer_cache_timeout",
-			cfg: `
-signer_cache_timeout: -1m
-`,
-			wantConfig: nil,
-			wantErr:    `cache timeout must be a positive duration, got -1m0s`,
-		},
-		{
-			name: "default_ttl_greater_than_max_ttl",
-			cfg: `
-default_ttl: 1h
-max_ttl: 30m
-`,
-			wantConfig: nil,
-			wantErr:    `default ttl (1h) must be less than or equal to the max ttl (30m)`,
-		},
-		{
-			name: "all_values_specified_env_override",
-			cfg: `
-version: 1
-port: 8080
-signer_cache_timeout: 1m
-issuer: jvs
-default_ttl: 15m
-max_ttl: 1h
-`,
-			envs: map[string]string{
-				"VERSION":              "1",
-				"PORT":                 "tcp",
-				"SIGNER_CACHE_TIMEOUT": "2m",
-				"ISSUER":               "other",
-				"DEFAULT_TTL":          "30m",
-				"MAX_TTL":              "2h",
+			name: "empty_project",
+			cfg: &JustificationConfig{
+				Port:               "8080",
+				KeyName:            "fake/key",
+				SignerCacheTimeout: 5 * time.Minute,
+				Issuer:             "jvs.abcxyz.dev",
+				DefaultTTL:         15 * time.Minute,
+				MaxTTL:             4 * time.Hour,
 			},
-			wantConfig: &JustificationConfig{
-				Version:            "1",
-				Port:               "tcp",
-				SignerCacheTimeout: 2 * time.Minute,
-				Issuer:             "other",
-				DefaultTTL:         30 * time.Minute,
-				MaxTTL:             2 * time.Hour,
+			wantErr: "empty ProjectID",
+		},
+		{
+			name: "empty_key_name",
+			cfg: &JustificationConfig{
+				ProjectID:          "example-project",
+				Port:               "8080",
+				SignerCacheTimeout: 5 * time.Minute,
+				Issuer:             "jvs.abcxyz.dev",
+				DefaultTTL:         15 * time.Minute,
+				MaxTTL:             4 * time.Hour,
 			},
+			wantErr: "empty KeyName",
+		},
+		{
+			name: "invalid_cache_timeout",
+			cfg: &JustificationConfig{
+				ProjectID:          "example-project",
+				Port:               "8080",
+				KeyName:            "fake/key",
+				SignerCacheTimeout: -5 * time.Minute,
+				Issuer:             "jvs.abcxyz.dev",
+				DefaultTTL:         15 * time.Minute,
+				MaxTTL:             4 * time.Hour,
+			},
+			wantErr: "cache timeout must be a positive duration",
+		},
+		{
+			name: "invalid_default_ttl",
+			cfg: &JustificationConfig{
+				ProjectID:          "example-project",
+				Port:               "8080",
+				KeyName:            "fake/key",
+				SignerCacheTimeout: 5 * time.Minute,
+				Issuer:             "jvs.abcxyz.dev",
+				DefaultTTL:         15 * time.Minute,
+				MaxTTL:             10 * time.Minute,
+			},
+			wantErr: "must be less than or equal to the max ttl",
 		},
 	}
 
-	for _, tc := range tests {
+	for _, tc := range cases {
 		tc := tc
 
 		t.Run(tc.name, func(t *testing.T) {
 			t.Parallel()
 
-			lookuper := envconfig.MapLookuper(tc.envs)
-			content := bytes.NewBufferString(tc.cfg).Bytes()
-			gotConfig := &JustificationConfig{}
-			err := cfgloader.Load(ctx, gotConfig,
-				cfgloader.WithLookuper(lookuper), cfgloader.WithYAML(content))
+			err := tc.cfg.Validate()
 			if diff := testutil.DiffErrString(err, tc.wantErr); diff != "" {
 				t.Errorf("Unexpected err: %s", diff)
-			}
-			if err != nil {
-				return
-			}
-			if diff := cmp.Diff(tc.wantConfig, gotConfig); diff != "" {
-				t.Errorf("Config unexpected diff (-want,+got):\n%s", diff)
 			}
 		})
 	}

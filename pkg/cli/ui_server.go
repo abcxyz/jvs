@@ -24,11 +24,9 @@ import (
 	"github.com/abcxyz/jvs/pkg/config"
 	"github.com/abcxyz/jvs/pkg/justification"
 	"github.com/abcxyz/jvs/pkg/ui"
-	"github.com/abcxyz/pkg/cfgloader"
 	"github.com/abcxyz/pkg/cli"
 	"github.com/abcxyz/pkg/logging"
 	"github.com/abcxyz/pkg/serving"
-	"github.com/sethvargo/go-envconfig"
 	"google.golang.org/api/option"
 )
 
@@ -37,8 +35,10 @@ var _ cli.Command = (*UIServerCommand)(nil)
 type UIServerCommand struct {
 	cli.BaseCommand
 
-	// testLookuper overrides the lookuper. It is only used for testing.
-	testLookuper envconfig.Lookuper
+	cfg *config.UIServiceConfig
+
+	// testFlagSetOpts is only used for testing.
+	testFlagSetOpts []cli.Option
 
 	// testKMSClientOptions are KMS client options to override during testing.
 	testKMSClientOptions []option.ClientOption
@@ -57,8 +57,9 @@ Usage: {{ COMMAND }} [options]
 }
 
 func (c *UIServerCommand) Flags() *cli.FlagSet {
-	set := cli.NewFlagSet()
-	return set
+	c.cfg = &config.UIServiceConfig{}
+	set := cli.NewFlagSet(c.testFlagSetOpts...)
+	return c.cfg.ToFlags(set)
 }
 
 func (c *UIServerCommand) Run(ctx context.Context, args []string) error {
@@ -89,17 +90,10 @@ func (c *UIServerCommand) RunUnstarted(ctx context.Context, args []string) (*ser
 		"commit", version.Commit,
 		"version", version.Version)
 
-	var uiCfg config.UIServiceConfig
-	if err := cfgloader.Load(ctx, &uiCfg, cfgloader.WithLookuper(c.testLookuper)); err != nil {
-		return nil, nil, closer, fmt.Errorf("failed to load config: %w", err)
+	if err := c.cfg.Validate(); err != nil {
+		return nil, nil, closer, fmt.Errorf("invalid configuration: %w", err)
 	}
-	logger.Debugw("loaded ui configuration", "config", uiCfg)
-
-	var jvsCfg config.JustificationConfig
-	if err := cfgloader.Load(ctx, &jvsCfg); err != nil {
-		return nil, nil, closer, fmt.Errorf("failed to load config: %w", err)
-	}
-	logger.Debugw("loaded jvs configuration", "config", uiCfg)
+	logger.Debugw("loaded configuration", "config", c.cfg)
 
 	kmsClient, err := kms.NewKeyManagementClient(ctx, c.testKMSClientOptions...)
 	if err != nil {
@@ -111,15 +105,15 @@ func (c *UIServerCommand) RunUnstarted(ctx context.Context, args []string) (*ser
 		}
 	}
 
-	p := justification.NewProcessor(kmsClient, &jvsCfg)
+	p := justification.NewProcessor(kmsClient, c.cfg.JustificationConfig)
 
-	uiServer, err := ui.NewServer(ctx, &uiCfg, p)
+	uiServer, err := ui.NewServer(ctx, c.cfg, p)
 	if err != nil {
 		return nil, nil, closer, fmt.Errorf("failed to create ui server: %w", err)
 	}
 	mux := uiServer.Routes(ctx)
 
-	server, err := serving.New(jvsCfg.Port)
+	server, err := serving.New(c.cfg.Port)
 	if err != nil {
 		return nil, nil, closer, fmt.Errorf("failed to create serving infrastructure: %w", err)
 	}

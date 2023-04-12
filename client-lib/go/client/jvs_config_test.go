@@ -45,7 +45,6 @@ cache_timeout: 1m
 allow_breakglass: true
 `,
 			wantConfig: &JVSConfig{
-				Version:         "1",
 				JWKSEndpoint:    "https://jvs.corp:8080/.well-known/jwks",
 				CacheTimeout:    time.Minute,
 				AllowBreakglass: true,
@@ -57,22 +56,10 @@ allow_breakglass: true
 endpoint: https://jvs.corp:8080/.well-known/jwks
 `,
 			wantConfig: &JVSConfig{
-				Version:         "1",
 				JWKSEndpoint:    "https://jvs.corp:8080/.well-known/jwks",
 				CacheTimeout:    5 * time.Minute,
 				AllowBreakglass: false,
 			},
-		},
-		{
-			name: "test_wrong_version",
-			cfg: `
-version: 255
-endpoint: https://jvs.corp:8080/.well-known/jwks
-cache_timeout: 1m
-allow_breakglass: true
-`,
-			wantConfig: nil,
-			wantErr:    `version "255" is invalid, valid versions are:`,
 		},
 		{
 			name: "test_invalid_timeout",
@@ -100,7 +87,6 @@ allow_breakglass: false
 				"ALLOW_BREAKGLASS": "true",
 			},
 			wantConfig: &JVSConfig{
-				Version:         "1",
 				JWKSEndpoint:    "other.net:443",
 				CacheTimeout:    2 * time.Minute,
 				AllowBreakglass: true,

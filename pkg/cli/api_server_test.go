@@ -18,6 +18,7 @@ import (
 	"context"
 	"testing"
 
+	"github.com/abcxyz/pkg/cli"
 	"github.com/abcxyz/pkg/logging"
 	"github.com/abcxyz/pkg/testutil"
 	"github.com/sethvargo/go-envconfig"
@@ -44,19 +45,17 @@ func TestAPIServerCommand(t *testing.T) {
 			expErr: `unexpected arguments: ["foo"]`,
 		},
 		{
-			name: "unset_config",
+			name: "invalid_config",
 			env: map[string]string{
-				"SIGNER_CACHE_TIMEOUT": "-5m",
+				"JVS_API_SIGNER_CACHE_TIMEOUT": "-5m",
 			},
 			expErr: `must be a positive duration`,
 		},
 		{
 			name: "starts",
 			env: map[string]string{
-				"KEY_TTL":           "5m",
-				"GRACE_PERIOD":      "10m",
-				"DISABLED_PERIOD":   "5m",
-				"PROPAGATION_DELAY": "5m",
+				"PROJECT_ID": "example-project",
+				"JVS_KEY":    "projects/[JVS_PROJECT]/locations/global/keyRings/[JVS_KEYRING]/cryptoKeys/[JVS_KEY]",
 			},
 		},
 	}
@@ -71,13 +70,13 @@ func TestAPIServerCommand(t *testing.T) {
 			defer done()
 
 			var cmd APIServerCommand
-			cmd.testLookuper = envconfig.MultiLookuper(
+			cmd.testFlagSetOpts = []cli.Option{cli.WithLookupEnv(envconfig.MultiLookuper(
 				envconfig.MapLookuper(tc.env),
 				envconfig.MapLookuper(map[string]string{
 					// Make the test choose a random port.
 					"PORT": "0",
 				}),
-			)
+			).Lookup)}
 			cmd.testKMSClientOptions = []option.ClientOption{
 				// Disable auth lookup in these tests, since we don't actually call KMS.
 				option.WithoutAuthentication(),

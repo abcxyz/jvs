@@ -24,12 +24,10 @@ import (
 	"github.com/abcxyz/jvs/internal/version"
 	"github.com/abcxyz/jvs/pkg/config"
 	"github.com/abcxyz/jvs/pkg/jvscrypto"
-	"github.com/abcxyz/pkg/cfgloader"
 	"github.com/abcxyz/pkg/cli"
 	"github.com/abcxyz/pkg/logging"
 	"github.com/abcxyz/pkg/renderer"
 	"github.com/abcxyz/pkg/serving"
-	"github.com/sethvargo/go-envconfig"
 	"google.golang.org/api/option"
 )
 
@@ -38,8 +36,10 @@ var _ cli.Command = (*RotationServerCommand)(nil)
 type RotationServerCommand struct {
 	cli.BaseCommand
 
-	// testLookuper overrides the lookuper. It is only used for testing.
-	testLookuper envconfig.Lookuper
+	cfg *config.CertRotationConfig
+
+	// testFlagSetOpts is only used for testing.
+	testFlagSetOpts []cli.Option
 
 	// testKMSClientOptions are KMS client options to override during testing.
 	testKMSClientOptions []option.ClientOption
@@ -58,8 +58,9 @@ Usage: {{ COMMAND }} [options]
 }
 
 func (c *RotationServerCommand) Flags() *cli.FlagSet {
-	set := cli.NewFlagSet()
-	return set
+	c.cfg = &config.CertRotationConfig{}
+	set := cli.NewFlagSet(c.testFlagSetOpts...)
+	return c.cfg.ToFlags(set)
 }
 
 func (c *RotationServerCommand) Run(ctx context.Context, args []string) error {
@@ -90,6 +91,11 @@ func (c *RotationServerCommand) RunUnstarted(ctx context.Context, args []string)
 		"commit", version.Commit,
 		"version", version.Version)
 
+	if err := c.cfg.Validate(); err != nil {
+		return nil, nil, closer, fmt.Errorf("invalid configuration: %w", err)
+	}
+	logger.Debugw("loaded configuration", "config", c.cfg)
+
 	// Create the client
 	kmsClient, err := kms.NewKeyManagementClient(ctx, c.testKMSClientOptions...)
 	if err != nil {
@@ -101,16 +107,9 @@ func (c *RotationServerCommand) RunUnstarted(ctx context.Context, args []string)
 		}
 	}
 
-	// Load the config
-	var cfg config.CertRotationConfig
-	if err := cfgloader.Load(ctx, &cfg, cfgloader.WithLookuper(c.testLookuper)); err != nil {
-		return nil, nil, closer, fmt.Errorf("failed to load config: %w", err)
-	}
-	logger.Debugw("loaded configuration", "config", cfg)
-
 	// Create the renderer
 	h, err := renderer.New(ctx, assets.ServerFS(),
-		renderer.WithDebug(cfg.DevMode),
+		renderer.WithDebug(c.cfg.DevMode),
 		renderer.WithOnError(func(err error) {
 			logger.Errorw("failed to render", "error", err)
 		}))
@@ -119,7 +118,7 @@ func (c *RotationServerCommand) RunUnstarted(ctx context.Context, args []string)
 	}
 
 	// Create the rotation handler
-	rotationHandler := jvscrypto.NewRotationHandler(ctx, kmsClient, &cfg)
+	rotationHandler := jvscrypto.NewRotationHandler(ctx, kmsClient, c.cfg)
 
 	mux := http.NewServeMux()
 	mux.Handle("/healthz", handleHealth(h))
@@ -138,9 +137,9 @@ func (c *RotationServerCommand) RunUnstarted(ctx context.Context, args []string)
 		h.RenderJSON(w, http.StatusOK, nil)
 	}))
 
-	root := logging.HTTPInterceptor(logger, cfg.ProjectID)(mux)
+	root := logging.HTTPInterceptor(logger, c.cfg.ProjectID)(mux)
 
-	server, err := serving.New(cfg.Port)
+	server, err := serving.New(c.cfg.Port)
 	if err != nil {
 		return nil, nil, closer, fmt.Errorf("failed to create serving infrastructure: %w", err)
 	}

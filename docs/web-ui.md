@@ -6,7 +6,7 @@
 
 ## Environment Variables
 
-The UI has the following environment variables: `PORT`, `ALLOWLIST`, and `DEV_MODE`
+The UI has the following environment variables: `PORT`, `JVS_UI_ALLOWLIST`, and `DEV_MODE`
 
 ```shell
 ## default is 9091
@@ -20,17 +20,17 @@ DEV_MODE="true"
 
 ```shell
 ## A semi-colon separated string denoting the allowed domains and/or subdomains. This field is required.
-ALLOWLIST="example.com, foo.bar.com"
+JVS_UI_ALLOWLIST="example.com, foo.bar.com"
 
 ## To allow all domain do the following
-ALLOWLIST="*"
+JVS_UI_ALLOWLIST="*"
 ```
 
 Setting `DEV_MODE` to `true` will automatically reload any html files without having to restart the UI server and also bypass any IP validation built within the service. If your calling application is running locally you will be able to bypass the validation without having to set this variable.
 
 ## Run the JVS UI locally
 
-Set your `ALLOWLIST` env variable to `*` because this environment variable must be set to run the UI. Run the following command from the root directory and access the UI at the port you defined above.
+Set your `JVS_UI_ALLOWLIST` env variable to `*` because this environment variable must be set to run the UI. Run the following command from the root directory and access the UI at the port you defined above.
 
 ```shell
 go run cmd/ui/main.go
@@ -144,7 +144,7 @@ class Helper {
     this.popupUrl.searchParams.set("mode", encodeURIComponent("popup"));
 
     // tells the JVS which origin should receive the response, for non local development this value should
-    // exist in the ALLOWLIST for the JVS UI instance you are running
+    // exist in the JVS_UI_ALLOWLIST for the JVS UI instance you are running
     this.popupUrl.searchParams.set(
       "origin",
       encodeURIComponent(window.location.origin)

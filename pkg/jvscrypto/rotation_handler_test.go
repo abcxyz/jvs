@@ -114,12 +114,10 @@ func TestDetermineActions(t *testing.T) {
 	}
 
 	handler := NewRotationHandler(ctx, nil, &config.CertRotationConfig{
-		CryptoConfig: &config.CryptoConfig{
-			KeyTTL:           keyTTL,
-			GracePeriod:      gracePeriod,
-			DisabledPeriod:   disablePeriod,
-			PropagationDelay: propagationDelay,
-		},
+		KeyTTL:           keyTTL,
+		GracePeriod:      gracePeriod,
+		DisabledPeriod:   disablePeriod,
+		PropagationDelay: propagationDelay,
 	})
 
 	curTime := time.Unix(100*60*60*24, 0) // 100 days after start
