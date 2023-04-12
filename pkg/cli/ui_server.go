@@ -57,10 +57,9 @@ Usage: {{ COMMAND }} [options]
 }
 
 func (c *UIServerCommand) Flags() *cli.FlagSet {
-	c.cfg = &config.UIServiceConfig{
-		JustificationConfig: &config.JustificationConfig{},
-	}
-	return c.cfg.ToFlags(c.testFlagSetOpts...)
+	c.cfg = &config.UIServiceConfig{}
+	set := cli.NewFlagSet(c.testFlagSetOpts...)
+	return c.cfg.ToFlags(set)
 }
 
 func (c *UIServerCommand) Run(ctx context.Context, args []string) error {

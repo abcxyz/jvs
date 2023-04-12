@@ -59,7 +59,8 @@ Usage: {{ COMMAND }} [options]
 
 func (c *PublicKeyServerCommand) Flags() *cli.FlagSet {
 	c.cfg = &config.PublicKeyConfig{}
-	return c.cfg.ToFlags(c.testFlagSetOpts...)
+	set := cli.NewFlagSet(c.testFlagSetOpts...)
+	return c.cfg.ToFlags(set)
 }
 
 func (c *PublicKeyServerCommand) Run(ctx context.Context, args []string) error {

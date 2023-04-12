@@ -62,7 +62,8 @@ Usage: {{ COMMAND }} [options]
 
 func (c *APIServerCommand) Flags() *cli.FlagSet {
 	c.cfg = &config.JustificationConfig{}
-	return c.cfg.ToFlags(c.testFlagSetOpts...)
+	set := cli.NewFlagSet(c.testFlagSetOpts...)
+	return c.cfg.ToFlags(set)
 }
 
 func (c *APIServerCommand) Run(ctx context.Context, args []string) error {

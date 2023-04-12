@@ -59,7 +59,8 @@ Usage: {{ COMMAND }} [options]
 
 func (c *RotationServerCommand) Flags() *cli.FlagSet {
 	c.cfg = &config.CertRotationConfig{}
-	return c.cfg.ToFlags(c.testFlagSetOpts...)
+	set := cli.NewFlagSet(c.testFlagSetOpts...)
+	return c.cfg.ToFlags(set)
 }
 
 func (c *RotationServerCommand) Run(ctx context.Context, args []string) error {

@@ -15,13 +15,10 @@
 package config
 
 import (
-	"context"
 	"fmt"
 
-	"github.com/abcxyz/pkg/cfgloader"
 	"github.com/abcxyz/pkg/cli"
 	"github.com/hashicorp/go-multierror"
-	"github.com/sethvargo/go-envconfig"
 )
 
 // UIServiceConfig defines the set over environment variables required
@@ -30,20 +27,6 @@ type UIServiceConfig struct {
 	*JustificationConfig
 
 	Allowlist []string `env:"ALLOWLIST,required"`
-}
-
-// NewUIConfig creates a new UIServiceConfig from environment variables.
-func NewUIConfig(ctx context.Context) (*UIServiceConfig, error) {
-	return newUIConfig(ctx, envconfig.OsLookuper())
-}
-
-func newUIConfig(ctx context.Context, lu envconfig.Lookuper) (*UIServiceConfig, error) {
-	var cfg UIServiceConfig
-	if err := cfgloader.Load(ctx, &cfg, cfgloader.WithLookuper(lu)); err != nil {
-		return nil, fmt.Errorf("failed to parse server config: %w", err)
-	}
-
-	return &cfg, nil
 }
 
 // Validate checks if the config is valid.
@@ -55,7 +38,7 @@ func (cfg *UIServiceConfig) Validate() error {
 	}
 
 	if len(cfg.Allowlist) == 0 {
-		merr = multierror.Append(merr, fmt.Errorf("allowlist is required"))
+		merr = multierror.Append(merr, fmt.Errorf("empty Allowlist"))
 	}
 
 	// edge case, exclusive asterisk(*)
@@ -73,9 +56,12 @@ func (cfg *UIServiceConfig) Validate() error {
 	return merr.ErrorOrNil()
 }
 
-// ToFlags returns a [cli.FlagSet] that is bound to the config.
-func (cfg *UIServiceConfig) ToFlags(opts ...cli.Option) *cli.FlagSet {
-	set := cfg.JustificationConfig.ToFlags(opts...)
+// ToFlags binds the config to the give [cli.FlagSet] and returns it.
+func (cfg *UIServiceConfig) ToFlags(set *cli.FlagSet) *cli.FlagSet {
+	if cfg.JustificationConfig == nil {
+		cfg.JustificationConfig = &JustificationConfig{}
+	}
+	set = cfg.JustificationConfig.ToFlags(set)
 
 	f := set.NewSection("UI OPTIONS")
 	f.StringSliceVar(&cli.StringSliceVar{

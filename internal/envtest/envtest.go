@@ -78,10 +78,15 @@ func NewServerConfig(tb testing.TB, port string, allowlist []string, devMode boo
 	logger := logging.TestLogger(tb)
 	ctx := logging.WithLogger(context.Background(), logger)
 
+	key := "projects/[PROJECT]/locations/[LOCATION]/keyRings/[KEY_RING]/cryptoKeys/[CRYPTO_KEY]"
+	version := key + "/cryptoKeyVersions/[VERSION]"
+
 	uiCfg := &config.UIServiceConfig{
 		JustificationConfig: &config.JustificationConfig{
-			Port:    port,
-			DevMode: devMode,
+			ProjectID: "example-project",
+			KeyName:   key,
+			Port:      port,
+			DevMode:   devMode,
 		},
 		Allowlist: allowlist,
 	}
@@ -98,9 +103,6 @@ func NewServerConfig(tb testing.TB, port string, allowlist []string, devMode boo
 	if err != nil {
 		tb.Fatal(err)
 	}
-
-	key := "projects/[PROJECT]/locations/[LOCATION]/keyRings/[KEY_RING]/cryptoKeys/[CRYPTO_KEY]"
-	version := key + "/cryptoKeyVersions/[VERSION]"
 
 	// Mock KMS.
 	mockKMS := testutil.NewMockKeyManagementServer(key, version, jvscrypto.PrimaryLabelPrefix+"[VERSION]"+"-0")

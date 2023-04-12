@@ -24,6 +24,7 @@ import (
 	"github.com/abcxyz/pkg/cli"
 	"github.com/abcxyz/pkg/logging"
 	"github.com/abcxyz/pkg/testutil"
+	"github.com/sethvargo/go-envconfig"
 	"google.golang.org/api/option"
 )
 
@@ -41,7 +42,6 @@ func TestPublicKeyServerCommand(t *testing.T) {
 		{
 			name:   "too_many_args",
 			args:   []string{"foo"},
-			env:    map[string]string{},
 			expErr: `unexpected arguments: ["foo"]`,
 		},
 		{
@@ -53,7 +53,10 @@ func TestPublicKeyServerCommand(t *testing.T) {
 		},
 		{
 			name: "starts",
-			env:  map[string]string{},
+			env: map[string]string{
+				"PROJECT_ID": "example-project",
+				"KEY_NAMES":  "fake/key",
+			},
 		},
 	}
 
@@ -67,10 +70,13 @@ func TestPublicKeyServerCommand(t *testing.T) {
 			defer done()
 
 			var cmd PublicKeyServerCommand
-
-			// Make the test choose a random port.
-			tc.env["PORT"] = "0"
-			cmd.testFlagSetOpts = []cli.Option{cli.WithLookupEnv(cli.MapLookuper(tc.env))}
+			cmd.testFlagSetOpts = []cli.Option{cli.WithLookupEnv(envconfig.MultiLookuper(
+				envconfig.MapLookuper(tc.env),
+				envconfig.MapLookuper(map[string]string{
+					// Make the test choose a random port.
+					"PORT": "0",
+				}),
+			).Lookup)}
 			cmd.testKMSClientOptions = []option.ClientOption{
 				// Disable auth lookup in these tests, since we don't actually call KMS.
 				option.WithoutAuthentication(),

@@ -40,19 +40,25 @@ type PublicKeyConfig struct {
 }
 
 func (cfg *PublicKeyConfig) Validate() error {
-	var err *multierror.Error
+	var merr *multierror.Error
 
-	if got := cfg.CacheTimeout; got <= 0 {
-		err = multierror.Append(err, fmt.Errorf("cache_timeout must be a positive duration, got %q", got))
+	if cfg.ProjectID == "" {
+		merr = multierror.Append(merr, fmt.Errorf("empty ProjectID"))
 	}
 
-	return err.ErrorOrNil()
+	if len(cfg.KeyNames) == 0 {
+		merr = multierror.Append(merr, fmt.Errorf("empty KeyNames"))
+	}
+
+	if got := cfg.CacheTimeout; got <= 0 {
+		merr = multierror.Append(merr, fmt.Errorf("cache_timeout must be a positive duration, got %q", got))
+	}
+
+	return merr.ErrorOrNil()
 }
 
-// ToFlags returns a [cli.FlagSet] that is bound to the config.
-func (cfg *PublicKeyConfig) ToFlags(opts ...cli.Option) *cli.FlagSet {
-	set := cli.NewFlagSet(opts...)
-
+// ToFlags binds the config to the give [cli.FlagSet] and returns it.
+func (cfg *PublicKeyConfig) ToFlags(set *cli.FlagSet) *cli.FlagSet {
 	// Command options
 	f := set.NewSection("COMMON SERVER OPTIONS")
 
@@ -64,7 +70,7 @@ func (cfg *PublicKeyConfig) ToFlags(opts ...cli.Option) *cli.FlagSet {
 	})
 
 	f.BoolVar(&cli.BoolVar{
-		Name:    "dev-mode",
+		Name:    "dev",
 		Target:  &cfg.DevMode,
 		EnvVar:  "DEV_MODE",
 		Default: false,

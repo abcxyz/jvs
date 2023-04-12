@@ -56,26 +56,31 @@ type JustificationConfig struct {
 
 // Validate checks if the config is valid.
 func (cfg *JustificationConfig) Validate() error {
-	var err *multierror.Error
+	var merr *multierror.Error
 
-	if cfg.SignerCacheTimeout <= 0 {
-		err = multierror.Append(err, fmt.Errorf("cache timeout must be a positive duration, got %s",
-			cfg.SignerCacheTimeout))
+	if cfg.ProjectID == "" {
+		merr = multierror.Append(merr, fmt.Errorf("empty ProjectID"))
+	}
+
+	if cfg.KeyName == "" {
+		merr = multierror.Append(merr, fmt.Errorf("empty KeyName"))
+	}
+
+	if got := cfg.SignerCacheTimeout; got <= 0 {
+		merr = multierror.Append(merr, fmt.Errorf("cache timeout must be a positive duration, got %s",
+			got))
 	}
 
 	if def, max := cfg.DefaultTTL, cfg.MaxTTL; def > max {
-		err = multierror.Append(err, fmt.Errorf("default ttl (%s) must be less than or equal to the max ttl (%s)",
+		merr = multierror.Append(merr, fmt.Errorf("default ttl (%s) must be less than or equal to the max ttl (%s)",
 			timeutil.HumanDuration(def), timeutil.HumanDuration(max)))
 	}
 
-	return err.ErrorOrNil()
+	return merr.ErrorOrNil()
 }
 
-// ToFlags returns a [cli.FlagSet] that is bound to the config.
-func (cfg *JustificationConfig) ToFlags(opts ...cli.Option) *cli.FlagSet {
-	set := cli.NewFlagSet(opts...)
-
-	// Command options
+// ToFlags binds the config to the give [cli.FlagSet] and returns it.
+func (cfg *JustificationConfig) ToFlags(set *cli.FlagSet) *cli.FlagSet {
 	f := set.NewSection("COMMON SERVER OPTIONS")
 
 	f.StringVar(&cli.StringVar{
@@ -86,7 +91,7 @@ func (cfg *JustificationConfig) ToFlags(opts ...cli.Option) *cli.FlagSet {
 	})
 
 	f.BoolVar(&cli.BoolVar{
-		Name:    "dev-mode",
+		Name:    "dev",
 		Target:  &cfg.DevMode,
 		EnvVar:  "DEV_MODE",
 		Default: false,
