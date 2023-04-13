@@ -44,6 +44,7 @@ resource "google_cloud_run_v2_job" "jvs_prober" {
           value = var.prober_audience
         }
       }
+      service_account = resource.google_service_account.prober_service_account.email
     }
   }
 
@@ -63,13 +64,10 @@ resource "google_service_account" "prober_service_account" {
   display_name = "Prober Service Account"
 }
 
-#Grant jvs-prober cloud run invoker role.
-resource "google_cloud_run_v2_job_iam_member" "cloudrun_invoker" {
-  project = resource.google_cloud_run_v2_job.jvs_prober.project
+# #Grant jvs-prober cloud run invoker role.
+resource "google_project_iam_member" "cloudrun_invoker" {
+  project = var.project_id
 
-  location = resource.google_cloud_run_v2_job.jvs_prober.location
-
-  name   = resource.google_cloud_run_v2_job.jvs_prober.name
   role   = "roles/run.invoker"
   member = resource.google_service_account.prober_service_account.member
 }
