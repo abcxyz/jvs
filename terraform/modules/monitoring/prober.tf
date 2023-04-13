@@ -64,7 +64,7 @@ resource "google_service_account" "prober_service_account" {
   display_name = "Prober Service Account"
 }
 
-# #Grant jvs-prober cloud run invoker role.
+# Grant jvs-prober cloud run invoker role.
 resource "google_project_iam_member" "cloudrun_invoker" {
   project = var.project_id
 
