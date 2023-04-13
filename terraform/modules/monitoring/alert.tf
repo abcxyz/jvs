@@ -14,6 +14,17 @@
  * limitations under the License.
  */
 
+resource "google_project_service" "services" {
+  for_each = toset([
+    "monitoring.googleapis.com",
+  ])
+
+  project = var.project_id
+
+  service            = each.value
+  disable_on_destroy = false
+}
+
 resource "google_monitoring_notification_channel" "email_notification_channel" {
   project = var.project_id
 
@@ -26,6 +37,10 @@ resource "google_monitoring_notification_channel" "email_notification_channel" {
   }
 
   force_delete = false
+
+  depends_on = [
+    google_project_service.services["monitoring.googleapis.com"],
+  ]
 }
 
 # This alert will trigger if: in a rolling window of 60s,
