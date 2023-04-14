@@ -67,7 +67,7 @@ module "jvs_services" {
   jvs_public_key_service_account   = module.jvs_common.jvs_public_key_service_account_email
 
   # https://cloud.google.com/iap/docs/enabling-cloud-run#enabling
-  jvs_ui_iap_service_account = "service-${data.google_project.project.number}@gcp-sa-iap.iam.gserviceaccount.com"
+  jvs_ui_iap_service_account = google_project_service_identity.iap_sa.email
 
   jvs_container_image = var.jvs_container_image
 
