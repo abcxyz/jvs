@@ -6,22 +6,23 @@
 
 [Prober](../prober/) is a bash script that uses [jvsctl](../cmd/jvsctl/) to request and validate tokens. 
 
-In each prober job, the prober will request and validate a token with jvs service. The job will be treated as a success only if te following requirement is met.
-- 1. A token is successfully requested.
-- 2. The same token is validated successfully.
+In each prober job, the prober will request and validate a token with jvs service. The job will be treated as a success only if the following requirement is met.
+  1. Request a token successfully.
+  2. Validate the token successfully.
 
-By default, prober will be deployed using [GCP's cloud run job](https://cloud.google.com/run/docs/create-jobs), and use [cloud scheduler](https://cloud.google.com/scheduler/docs/overview) to trigger the cloud run job on a user defined frequency.
+The prober will be deployed using [GCP's cloud run job](https://cloud.google.com/run/docs/create-jobs), and use [cloud scheduler](https://cloud.google.com/scheduler/docs/overview) to trigger the cloud run job on a user defined frequency.
 
 ## Monitoring and Alert Policy
 
-We monitor JVS's UI-Service, API-Service, Cert-Rotator and Public-Key Service using metrics provided by [native cloud run monitoring metrics](https://cloud.google.com/monitoring/api/metrics_gcp#gcp-run), the selected metrics are:
+We monitor all JVS services with [native cloud run monitoring metrics](https://cloud.google.com/monitoring/api/metrics_gcp#gcp-run) and alert based on the following metrics:
 
 -  Request Count 
 -  Request Latency
 
 And we also create alert policy for each JVS service on the above two metrics.
 
-We also created alert policies base on cloud run job result for prober service. The default policy is: In a sliding window of 60 minutes, if the number of failed prober cloud run job exceeds 4, a alert will be sent.
+Similarly, we alert base on cloud run job execution metrics for prober service.
+See alert policies in [prober.tf](../terraform/modules/monitoring/prober.tf).
 
 ## Installation
 
@@ -45,7 +46,7 @@ module "jvs_monitoring" {
 }
 ```
 
-By default, alering is disabled, you are enable it by setting the following variables:
+By default, alering is disabled, you can enable it by setting the following variables:
 ```
 alert_enabled        = true
 prober_alert_enabled = true
