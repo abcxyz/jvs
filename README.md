@@ -88,7 +88,7 @@ module "jvs" {
 
   iap_support_email = "support@example.com"
 
-  jvs_container_image = "us-docker.pkg.dev/abcxyz-artifacts/docker-images/jvsctl:0.0.4-amd64"
+  jvs_container_image = "us-docker.pkg.dev/abcxyz-artifacts/docker-images/jvsctl:0.0.5-amd64"
 }
 ```
 
