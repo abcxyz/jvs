@@ -46,10 +46,9 @@ module "jvs_monitoring" {
 }
 ```
 
-By default, alering is disabled, you can enable it by setting the following variables:
+By default, alering is disabled, you can enable alerting for cloud run services and prober by setting the following variables:
 ```
 alert_enabled        = true
-prober_alert_enabled = true
 
 ```
 
