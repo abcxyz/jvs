@@ -46,7 +46,7 @@ variable "notification_channel_email" {
 
 variable "alert_enabled" {
   type        = bool
-  description = "Alert enabled is value set to true."
+  description = "True if alerts are enabled, otherwise false."
   default     = false
 }
 
@@ -122,12 +122,6 @@ variable "prober_scheduler" {
   type        = string
   description = "How often the prober service should be triggered, default is every 10 minutes. Learn more at: https://cloud.google.com/scheduler/docs/configuring/cron-job-schedules?&_ga=2.26495481.-578386315.1680561063#defining_the_job_schedule."
   default     = "*/10 * * * *"
-}
-
-variable "prober_alert_enabled" {
-  type        = bool
-  description = "True is prober alert is enabled, otherwise False"
-  default     = false
 }
 
 variable "prober_alert_align_window_size_in_seconds" {

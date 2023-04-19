@@ -131,5 +131,5 @@ resource "google_monitoring_alert_policy" "prober_service_failed_number_exceed_t
     resource.google_monitoring_notification_channel.email_notification_channel.name
   ]
 
-  enabled = var.prober_alert_enabled
+  enabled = var.alert_enabled
 }
