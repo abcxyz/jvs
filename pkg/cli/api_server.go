@@ -24,13 +24,12 @@ import (
 	"github.com/abcxyz/jvs/pkg/config"
 	"github.com/abcxyz/jvs/pkg/justification"
 	"github.com/abcxyz/pkg/cli"
+	"github.com/abcxyz/pkg/healthcheck"
 	"github.com/abcxyz/pkg/logging"
 	"github.com/abcxyz/pkg/serving"
 	"go.opentelemetry.io/contrib/instrumentation/google.golang.org/grpc/otelgrpc"
 	"google.golang.org/api/option"
 	"google.golang.org/grpc"
-	"google.golang.org/grpc/health"
-	healthpb "google.golang.org/grpc/health/grpc_health_v1"
 	"google.golang.org/grpc/reflection"
 )
 
@@ -115,9 +114,7 @@ func (c *APIServerCommand) RunUnstarted(ctx context.Context, args []string) (*se
 	))
 
 	// Create basic health check
-	hs := health.NewServer()
-	hs.SetServingStatus("", healthpb.HealthCheckResponse_SERVING)
-	healthpb.RegisterHealthServer(grpcServer, hs)
+	healthcheck.RegisterGRPCHealthCheck(grpcServer)
 
 	p := justification.NewProcessor(kmsClient, c.cfg)
 	jvsAgent := justification.NewJVSAgent(p)

@@ -17,11 +17,9 @@ package cli
 
 import (
 	"context"
-	"net/http"
 
 	"github.com/abcxyz/jvs/internal/version"
 	"github.com/abcxyz/pkg/cli"
-	"github.com/abcxyz/pkg/renderer"
 )
 
 const (
@@ -92,12 +90,4 @@ var rootCmd = func() cli.Command {
 // Run executes the CLI.
 func Run(ctx context.Context, args []string) error {
 	return rootCmd().Run(ctx, args) //nolint:wrapcheck // Want passthrough
-}
-
-// handleHealth is an HTTP handler that returns a health response. It's a stub
-// for a more rigorous health check.
-func handleHealth(h *renderer.Renderer) http.Handler {
-	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		h.RenderJSON(w, http.StatusOK, nil)
-	})
 }
