@@ -25,6 +25,7 @@ import (
 	"github.com/abcxyz/jvs/pkg/config"
 	"github.com/abcxyz/jvs/pkg/jvscrypto"
 	"github.com/abcxyz/pkg/cli"
+	"github.com/abcxyz/pkg/healthcheck"
 	"github.com/abcxyz/pkg/logging"
 	"github.com/abcxyz/pkg/renderer"
 	"github.com/abcxyz/pkg/serving"
@@ -121,7 +122,7 @@ func (c *RotationServerCommand) RunUnstarted(ctx context.Context, args []string)
 	rotationHandler := jvscrypto.NewRotationHandler(ctx, kmsClient, c.cfg)
 
 	mux := http.NewServeMux()
-	mux.Handle("/healthz", handleHealth(h))
+	mux.Handle("/healthz", healthcheck.HandleHTTPHealthCheck())
 	mux.Handle("/", http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		ctx := r.Context()
 
