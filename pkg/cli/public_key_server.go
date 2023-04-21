@@ -25,6 +25,7 @@ import (
 	"github.com/abcxyz/jvs/pkg/config"
 	"github.com/abcxyz/jvs/pkg/jvscrypto"
 	"github.com/abcxyz/pkg/cli"
+	"github.com/abcxyz/pkg/healthcheck"
 	"github.com/abcxyz/pkg/logging"
 	"github.com/abcxyz/pkg/renderer"
 	"github.com/abcxyz/pkg/serving"
@@ -119,7 +120,7 @@ func (c *PublicKeyServerCommand) RunUnstarted(ctx context.Context, args []string
 	keyServer := jvscrypto.NewKeyServer(ctx, kmsClient, c.cfg, h)
 
 	mux := http.NewServeMux()
-	mux.Handle("/healthz", handleHealth(h))
+	mux.Handle("/healthz", healthcheck.HandleHTTPHealthCheck())
 	mux.Handle("/.well-known/jwks", keyServer)
 
 	root := logging.HTTPInterceptor(logger, c.cfg.ProjectID)(mux)
