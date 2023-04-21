@@ -132,6 +132,6 @@ variable "prober_alert_align_window_size_in_seconds" {
 
 variable "prober_alert_threshold" {
   type        = number
-  description = "Send alert for Prober-Service when the number of failed prober runs exceeds the threshold."
-  default     = 4
+  description = "Send alert for Prober-Service when the number of succeeded prober runs below the threshold."
+  default     = 5
 }
