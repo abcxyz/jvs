@@ -71,19 +71,19 @@ Usage: {{ COMMAND }} [options]
 
   Generate a token with a 30min ttl:
 
-      jvsctl token \
+      jvsctl token create \
         -explanation "issues/12345" \
         -ttl "30m"
 
   Generate a token with custom audiences:
 
-      jvsctl token \
+      jvsctl token create \
         -explanation "access production" \
         -audiences "my.service.dev"
 
   Generate a breakglass token:
 
-      jvsctl token \
+      jvsctl token create \
         -explanation "everything is broken" \
         -breakglass
 `

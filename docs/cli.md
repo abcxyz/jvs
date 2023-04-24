@@ -54,5 +54,5 @@ If you installed JVS using the provided Terraform module as described in the
 authentication. E.g.
 
 ```sh
-jvsctl token --auth-token $(gcloud auth print-identity-token) -e "just testing"
+jvsctl token validate --auth-token $(gcloud auth print-identity-token) -e "just testing"
 ```

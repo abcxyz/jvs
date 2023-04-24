@@ -28,9 +28,8 @@ Usage: jvsctl COMMAND
   api           Perform API operations
   public-key    Perform public-key operations
   rotation      Perform rotation operations
-  token         Generate a justification token
+  token         Perform token operations
   ui            Perform ui operations
-  validate      Validate the input token
 `
 
 	cmd := rootCmd()

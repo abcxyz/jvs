@@ -69,7 +69,18 @@ var rootCmd = func() cli.Command {
 				}
 			},
 			"token": func() cli.Command {
-				return &TokenCommand{}
+				return &cli.RootCommand{
+					Name:        "token",
+					Description: "Perform token operations",
+					Commands: map[string]cli.CommandFactory{
+						"create": func() cli.Command {
+							return &TokenCommand{}
+						},
+						"validate": func() cli.Command {
+							return &ValidateCommand{}
+						},
+					},
+				}
 			},
 			"ui": func() cli.Command {
 				return &cli.RootCommand{
@@ -81,9 +92,6 @@ var rootCmd = func() cli.Command {
 						},
 					},
 				}
-			},
-			"validate": func() cli.Command {
-				return &ValidateCommand{}
 			},
 		},
 	}
