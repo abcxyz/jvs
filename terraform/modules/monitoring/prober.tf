@@ -100,7 +100,7 @@ resource "google_cloud_scheduler_job" "job" {
 }
 
 # This alert will trigger if: in a user defined rolling window size, the number
-# # of failed jvs-prober cloud job runs exceed the user defined threshold.
+# of succeeded jvs-prober cloud job runs below the user defined threshold.
 resource "google_monitoring_alert_policy" "prober_service_failed_number_exceed_threshold" {
   project = var.project_id
 
@@ -112,14 +112,14 @@ resource "google_monitoring_alert_policy" "prober_service_failed_number_exceed_t
   # 1. The metric is completed_execution_count
   # 2. The metrics is applied to jvs-prober
   # 3. Only count on failed jobs.
-  # 4. When the failed jobs exceed the threshold,
-  #    alert will be triggered.
+  # 4. When the number of succeeded jobs below
+  #    the threshold, alert will be triggered.
   conditions {
     display_name = "Too many failed JVS probes"
     condition_threshold {
-      filter          = "metric.type=\"run.googleapis.com/job/completed_execution_count\" resource.type=\"cloud_run_job\" resource.label.\"job_name\"=\"${resource.google_cloud_run_v2_job.jvs_prober.name}\" AND metric.label.\"result\"=\"failed\""
+      filter          = "metric.type=\"run.googleapis.com/job/completed_execution_count\" resource.type=\"cloud_run_job\" resource.label.\"job_name\"=\"${resource.google_cloud_run_v2_job.jvs_prober.name}\" AND metric.label.\"result\"=\"succeeded\""
       duration        = "0s"
-      comparison      = "COMPARISON_GT"
+      comparison      = "COMPARISON_LT"
       threshold_value = var.prober_alert_threshold
       aggregations {
         alignment_period   = var.prober_alert_align_window_size_in_seconds
