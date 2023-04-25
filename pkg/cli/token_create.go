@@ -35,9 +35,9 @@ import (
 	"github.com/abcxyz/pkg/cli"
 )
 
-var _ cli.Command = (*TokenCommand)(nil)
+var _ cli.Command = (*TokenCreateCommand)(nil)
 
-type TokenCommand struct {
+type TokenCreateCommand struct {
 	cli.BaseCommand
 
 	flagAudiences   []string
@@ -58,11 +58,11 @@ type TokenCommand struct {
 	flagNowUnix int64
 }
 
-func (c *TokenCommand) Desc() string {
+func (c *TokenCreateCommand) Desc() string {
 	return `Generate a justification token`
 }
 
-func (c *TokenCommand) Help() string {
+func (c *TokenCreateCommand) Help() string {
 	return `
 Usage: {{ COMMAND }} [options]
 
@@ -89,7 +89,7 @@ Usage: {{ COMMAND }} [options]
 `
 }
 
-func (c *TokenCommand) Flags() *cli.FlagSet {
+func (c *TokenCreateCommand) Flags() *cli.FlagSet {
 	set := cli.NewFlagSet()
 
 	// Command options
@@ -175,7 +175,7 @@ func (c *TokenCommand) Flags() *cli.FlagSet {
 	return set
 }
 
-func (c *TokenCommand) Run(ctx context.Context, args []string) error {
+func (c *TokenCreateCommand) Run(ctx context.Context, args []string) error {
 	f := c.Flags()
 	if err := f.Parse(args); err != nil {
 		return fmt.Errorf("failed to parse flags: %w", err)
@@ -280,7 +280,7 @@ func callOptions(ctx context.Context, authToken string) ([]grpc.CallOption, erro
 
 // breakglassToken creates a new breakglass token from the CLI flags. See
 // [jvspb.CreateBreakglassToken] for more information.
-func (c *TokenCommand) breakglassToken(ctx context.Context) (string, error) {
+func (c *TokenCreateCommand) breakglassToken(ctx context.Context) (string, error) {
 	now := time.Unix(c.flagNowUnix, 0)
 	id := uuid.New().String()
 	exp := now.Add(c.flagTTL)

@@ -29,9 +29,9 @@ import (
 // cacheTimeout is required for creating jvs client via jvs config, it is not really used since cache is expired when CLI exits.
 const cacheTimeout = 5 * time.Minute
 
-var _ cli.Command = (*ValidateCommand)(nil)
+var _ cli.Command = (*TokenValidateCommand)(nil)
 
-type ValidateCommand struct {
+type TokenValidateCommand struct {
 	cli.BaseCommand
 
 	flagToken        string
@@ -40,11 +40,11 @@ type ValidateCommand struct {
 	flagFormat       string
 }
 
-func (c *ValidateCommand) Desc() string {
+func (c *TokenValidateCommand) Desc() string {
 	return `Validate the input token`
 }
 
-func (c *ValidateCommand) Help() string {
+func (c *TokenValidateCommand) Help() string {
 	return `
 Usage: {{ COMMAND }} [options]
 
@@ -62,7 +62,7 @@ Usage: {{ COMMAND }} [options]
 `
 }
 
-func (c *ValidateCommand) Flags() *cli.FlagSet {
+func (c *TokenValidateCommand) Flags() *cli.FlagSet {
 	set := cli.NewFlagSet()
 
 	// Command options
@@ -108,7 +108,7 @@ func (c *ValidateCommand) Flags() *cli.FlagSet {
 	return set
 }
 
-func (c *ValidateCommand) Run(ctx context.Context, args []string) error {
+func (c *TokenValidateCommand) Run(ctx context.Context, args []string) error {
 	f := c.Flags()
 	if err := f.Parse(args); err != nil {
 		return fmt.Errorf("failed to parse flags: %w", err)
