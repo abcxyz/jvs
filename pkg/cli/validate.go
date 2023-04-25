@@ -54,7 +54,7 @@ Usage: {{ COMMAND }} [options]
 
   Validate the justification token string:
 
-      jvsctl validate -token "example token string"
+      jvsctl token validate -token "example token string"
 
   Validate the justification token read from pipe:
 
