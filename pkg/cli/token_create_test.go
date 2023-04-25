@@ -34,7 +34,7 @@ import (
 	"google.golang.org/grpc"
 )
 
-func TestTokenCommand(t *testing.T) {
+func TestTokenCreateCommand(t *testing.T) {
 	t.Parallel()
 
 	ctx := logging.WithLogger(context.Background(), logging.TestLogger(t))
@@ -142,7 +142,7 @@ func TestTokenCommand(t *testing.T) {
 		t.Run(tc.name, func(t *testing.T) {
 			t.Parallel()
 
-			var cmd TokenCommand
+			var cmd TokenCreateCommand
 			_, stdout, _ := cmd.Pipe()
 
 			args := append([]string{

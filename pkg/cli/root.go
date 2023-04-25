@@ -72,10 +72,10 @@ var rootCmd = func() cli.Command {
 					Description: "Perform token operations",
 					Commands: map[string]cli.CommandFactory{
 						"create": func() cli.Command {
-							return &TokenCommand{}
+							return &TokenCreateCommand{}
 						},
 						"validate": func() cli.Command {
-							return &ValidateCommand{}
+							return &TokenValidateCommand{}
 						},
 					},
 				}
