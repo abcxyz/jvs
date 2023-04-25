@@ -259,7 +259,7 @@ claims:
 		t.Run(tc.name, func(t *testing.T) {
 			t.Parallel()
 
-			var cmd ValidateCommand
+			var cmd TokenValidateCommand
 			stdin, stdout, _ := cmd.Pipe()
 
 			// Write stdin if given
