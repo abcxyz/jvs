@@ -1,3 +1,4 @@
+# test
 name: 'integration'
 
 on:
@@ -211,7 +212,7 @@ jobs:
       - name: 'Run tests'
         env:
           TEST_INTEGRATION: 'true'
-          INTEG_TEST_CERT_TOTATOER_AUTH_TOKEN: ${{ steps.cert-rotator-auth-id.outputs.id_token }}
+          INTEG_TEST_CERT_TOTATOR_AUTH_TOKEN: ${{ steps.cert-rotator-auth-id.outputs.id_token }}
           INTEG_TEST_JVS_API_AUTH_TOKEN: ${{ steps.jvs-api-auth-token.outputs.id_token }}
         run: |-
           go test ./test/integration -timeout=15m

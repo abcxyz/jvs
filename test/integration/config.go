@@ -23,8 +23,8 @@ import (
 )
 
 type config struct {
-	APIAuthToken         string `env:"INTEG_TEST_CERT_TOTATOER_AUTH_TOKEN,required"`
-	CertRotatorAuthToken string `env:"INTEG_TEST_CERT_TOTATOER_AUTH_TOKEN,required"`
+	APIAuthToken         string `env:"INTEG_TEST_JVS_API_AUTH_TOKEN,required"`
+	CertRotatorAuthToken string `env:"INTEG_TEST_CERT_TOTATOR_AUTH_TOKEN,required"`
 	APIURL               string `env:"INTEG_TEST_JVS_API_URL,required"`
 	UIURL                string `env:"INTEG_TEST_JVS_UI_URL,required"`
 	PublicKeyURL         string `env:"INTEG_TEST_PUBLIC_KEY_URL,required"`
