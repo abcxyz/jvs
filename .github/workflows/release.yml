@@ -116,7 +116,7 @@ jobs:
       with:
         workload_identity_provider: '${{ env.WIF_PROVIDER }}'
         service_account: '${{ env.WIF_SERVICE_ACCOUNT }}'
-    - name: 'Deploy Cloud Run services'
+    - name: 'Deploy Cloud Run services and update prober job'
       run: |-
         # Image tags are without 'v' prefix.
         DOCKER_TAG="${{ github.ref_name }}"
@@ -126,3 +126,9 @@ jobs:
           --project="${{ env.DEV_PROJECT_ID }}" \
           --region="${{ env.DEV_REGION }}" \
           --image="${{ env.CONTAINER_REGISTRY }}/jvsctl:${DOCKER_TAG}-amd64"
+
+        # Update Prober job.
+        gcloud run jobs update jvs-prober \
+          --project="${{ env.DEV_PROJECT_ID }}" \
+          --region="${{ env.DEV_REGION }}" \
+          --image="${{ env.CONTAINER_REGISTRY }}/jvs-prober:${DOCKER_TAG}-amd64"
