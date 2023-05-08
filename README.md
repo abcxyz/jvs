@@ -89,6 +89,15 @@ module "jvs" {
   iap_support_email = "support@example.com"
 
   jvs_container_image = "us-docker.pkg.dev/abcxyz-artifacts/docker-images/jvsctl:0.0.5-amd64"
+
+
+  # Specify the Email address where alert notifications send to.
+  notification_channel_email = "foo@example.com"
+
+  jvs_prober_image = "us-docker.pkg.dev/abcxyz-artifacts/docker-images/jvs-prober:0.0.5-amd64"
+
+  # The cloud run url for jvs api service or app address.
+  prober_audience = "https://example-api-jvs-cloud-run.run.app"
 }
 ```
 
