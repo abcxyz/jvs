@@ -128,7 +128,7 @@ jobs:
           --image="${{ env.CONTAINER_REGISTRY }}/jvsctl:${DOCKER_TAG}-amd64"
 
 
-  deploy-dev-job:
+  deploy-dev-prober:
     needs: ['github-release']
     runs-on: 'ubuntu-latest'
     permissions:
