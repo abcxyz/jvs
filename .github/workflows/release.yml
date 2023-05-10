@@ -101,7 +101,7 @@ jobs:
           GITHUB_TOKEN: '${{ secrets.GITHUB_TOKEN }}'
 
 
-  deploy-dev:
+  deploy-dev-services:
     needs: ['github-release']
     runs-on: 'ubuntu-latest'
     permissions:
@@ -126,3 +126,28 @@ jobs:
           --project="${{ env.DEV_PROJECT_ID }}" \
           --region="${{ env.DEV_REGION }}" \
           --image="${{ env.CONTAINER_REGISTRY }}/jvsctl:${DOCKER_TAG}-amd64"
+
+
+  deploy-dev-prober:
+    needs: ['github-release']
+    runs-on: 'ubuntu-latest'
+    permissions:
+      contents: 'read'
+      id-token: 'write'
+    steps:
+    - name: 'Authenticate to Google Cloud'
+      uses: 'google-github-actions/auth@c4799db9111fba4461e9f9da8732e5057b394f72' # ratchet:google-github-actions/auth@v0
+      with:
+        workload_identity_provider: '${{ env.WIF_PROVIDER }}'
+        service_account: '${{ env.WIF_SERVICE_ACCOUNT }}'
+    - name: 'Update prober job'
+      run: |-
+        # Image tags are without 'v' prefix.
+        DOCKER_TAG="${{ github.ref_name }}"
+        DOCKER_TAG="${DOCKER_TAG#v}"
+
+        # Update Prober job.
+        gcloud run jobs update jvs-prober \
+          --project="${{ env.DEV_PROJECT_ID }}" \
+          --region="${{ env.DEV_REGION }}" \
+          --image="${{ env.CONTAINER_REGISTRY }}/jvs-prober:${DOCKER_TAG}-amd64"
