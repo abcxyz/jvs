@@ -2,7 +2,9 @@
 
 **JVS is not an official Google product.**
 
-[JVS UI](../cmd/ui) facilitates the justification verification flow using a UI. It is meant to be an alternative to using `jvsctl` and requires integrating a calling application that is non-customer facing to trigger the UI.
+The JVS UI facilitates the justification verification flow using a UI. It is
+meant to be an alternative to using the API and requires integrating a calling
+application that is non-customer facing to trigger the UI.
 
 ## Environment Variables
 
@@ -33,7 +35,13 @@ Setting `DEV_MODE` to `true` will automatically reload any html files without ha
 Set your `JVS_UI_ALLOWLIST` env variable to `*` because this environment variable must be set to run the UI. Run the following command from the root directory and access the UI at the port you defined above.
 
 ```shell
-go run cmd/ui/main.go
+go run cmd/jvsctl/main.go ui server
+```
+
+or
+
+```shell
+jvsctl ui server
 ```
 
 If you did not define a port your service should be running at `localhost:9091/popup`.
