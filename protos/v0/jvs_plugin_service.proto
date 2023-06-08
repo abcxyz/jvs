@@ -38,6 +38,7 @@ message ValidateJustificationResponse {
   bool valid = 1;
 
   // Could be empty if it's valid.
-  // Otherwise a reason should be provided.
-  string reason = 2;
+  // Otherwise some warning or error should be provided.
+  repeated string warning = 2;
+  repeated string error = 3;
 }
