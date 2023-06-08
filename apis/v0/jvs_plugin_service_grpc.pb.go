@@ -1,4 +1,4 @@
-// Copyright 2022 Google LLC
+// Copyright 2023 Google LLC
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -16,7 +16,7 @@
 // versions:
 // - protoc-gen-go-grpc v1.3.0
 // - protoc             v3.20.1
-// source: validate_justification_service.proto
+// source: jvs_plugin_service.proto
 
 package v0
 
@@ -119,5 +119,5 @@ var JVSPlugin_ServiceDesc = grpc.ServiceDesc{
 		},
 	},
 	Streams:  []grpc.StreamDesc{},
-	Metadata: "validate_justification_service.proto",
+	Metadata: "jvs_plugin_service.proto",
 }

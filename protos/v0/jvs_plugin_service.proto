@@ -1,4 +1,4 @@
-// Copyright 2022 Google LLC
+// Copyright 2023 Google LLC
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -14,23 +14,30 @@
 
 syntax = "proto3";
 
-import "jvs_request.proto";
-
 package abcxyz.jvs;
 
+import "jvs_request.proto";
+
 option go_package = "github.com/abcxyz/jvs/apis/v0";
+
+// JVSPlugin processes ValidateJustificationRequest and return validation
+// result.
+service JVSPlugin {
+  rpc Validate(ValidateJustificationRequest)
+      returns (ValidateJustificationResponse);
+}
 
 // ValidateJustificationRequest provides a justification for the server to validate.
 message ValidateJustificationRequest {
 
   Justification justification = 1;
-  
-  message RequesterTokenClaims {
-    string issuer = 1;
-    string subject = 2;
-  }
-
-  // The requester identity might be needed in order to validate the reason.
-  RequesterTokenClaims requesterTokenClaims = 2;
 }
 
+// ValidateJustificationResponse contains the validation result.
+message ValidateJustificationResponse {
+  bool valid = 1;
+
+  // Could be empty if it's valid.
+  // Otherwise a reason should be provided.
+  string reason = 2;
+}
