@@ -294,6 +294,8 @@ func getFormDetails(r *http.Request) (*FormDetails, error) {
 			CategoryLabel: "Category",
 			ReasonLabel:   "Reason",
 			TTLLabel:      "TTL",
+			// Then from the config we can read the list of plugins.
+			// Then for each of them, make it a new category.
 			Categories: []Pair{
 				{
 					Key:  "explanation",

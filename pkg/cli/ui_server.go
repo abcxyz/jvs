@@ -20,6 +20,7 @@ import (
 	"net/http"
 
 	kms "cloud.google.com/go/kms/apiv1"
+	jvspb "github.com/abcxyz/jvs/apis/v0"
 	"github.com/abcxyz/jvs/internal/version"
 	"github.com/abcxyz/jvs/pkg/config"
 	"github.com/abcxyz/jvs/pkg/justification"
@@ -105,7 +106,12 @@ func (c *UIServerCommand) RunUnstarted(ctx context.Context, args []string) (*ser
 		}
 	}
 
-	p := justification.NewProcessor(kmsClient, c.cfg.JustificationConfig)
+	plugins, err := jvspb.InitPlugins(ctx, c.cfg.Plugins)
+	if err != nil {
+		return nil, nil, nil, fmt.Errorf("failed to init plugins: %w", err)
+	}
+
+	p := justification.NewProcessor(kmsClient, c.cfg.JustificationConfig, justification.WithPlugins(plugins))
 
 	uiServer, err := ui.NewServer(ctx, c.cfg, p)
 	if err != nil {

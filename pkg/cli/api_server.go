@@ -116,7 +116,12 @@ func (c *APIServerCommand) RunUnstarted(ctx context.Context, args []string) (*se
 	// Create basic health check
 	healthcheck.RegisterGRPCHealthCheck(grpcServer)
 
-	p := justification.NewProcessor(kmsClient, c.cfg)
+	plugins, err := jvspb.InitPlugins(ctx, c.cfg.Plugins)
+	if err != nil {
+		return nil, nil, nil, fmt.Errorf("failed to init plugins: %w", err)
+	}
+
+	p := justification.NewProcessor(kmsClient, c.cfg, justification.WithPlugins(plugins))
 	jvsAgent := justification.NewJVSAgent(p)
 	jvspb.RegisterJVSServiceServer(grpcServer, jvsAgent)
 	reflection.Register(grpcServer)

@@ -52,6 +52,10 @@ type JustificationConfig struct {
 	// The DefaultTTL must be less than or equal to MaxTTL.
 	DefaultTTL time.Duration `env:"JVS_API_DEFAULT_TTL,overwrite,default=15m"`
 	MaxTTL     time.Duration `env:"JVS_API_MAX_TTL,overwrite,default=4h"`
+
+	// For POC, we use a slice for plugin names. But we probably need a slightly
+	// more complext struct.
+	Plugins []string
 }
 
 // Validate checks if the config is valid.
@@ -146,6 +150,13 @@ func (cfg *JustificationConfig) ToFlags(set *cli.FlagSet) *cli.FlagSet {
 		EnvVar:  "JVS_API_MAX_TTL",
 		Default: 4 * time.Hour,
 		Usage:   "The maximum TTL that a token can have.",
+	})
+
+	f.StringSliceVar(&cli.StringSliceVar{
+		Name:   "plugins",
+		Target: &cfg.Plugins,
+		EnvVar: "JVS_API_PLUGINS",
+		Usage:  "A list of plugin names.",
 	})
 
 	return set

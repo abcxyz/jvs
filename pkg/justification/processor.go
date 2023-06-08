@@ -40,9 +40,10 @@ import (
 // mints a token.
 type Processor struct {
 	jvspb.UnimplementedJVSServiceServer
-	kms    *kms.KeyManagementClient
-	config *config.JustificationConfig
-	cache  *cache.Cache[*signerWithID]
+	kms     *kms.KeyManagementClient
+	config  *config.JustificationConfig
+	cache   *cache.Cache[*signerWithID]
+	plugins map[string]jvspb.PluginVerifier
 }
 
 type signerWithID struct {
@@ -50,14 +51,29 @@ type signerWithID struct {
 	id string
 }
 
+// Whether to use option pattern it TBD.
+// Use it in POC to introduce less breaking changes.
+type Option func(p *Processor)
+
+func WithPlugins(plugins map[string]jvspb.PluginVerifier) Option {
+	return func(p *Processor) {
+		p.plugins = plugins
+	}
+}
+
 // NewProcessor creates a processor with the signer cache initialized.
-func NewProcessor(kms *kms.KeyManagementClient, config *config.JustificationConfig) *Processor {
+func NewProcessor(kms *kms.KeyManagementClient, config *config.JustificationConfig, opts ...Option) *Processor {
 	cache := cache.New[*signerWithID](config.SignerCacheTimeout)
-	return &Processor{
+	p := &Processor{
 		kms:    kms,
 		config: config,
 		cache:  cache,
 	}
+
+	for _, o := range opts {
+		o(p)
+	}
+	return p
 }
 
 const (
@@ -140,12 +156,25 @@ func (p *Processor) runValidations(req *jvspb.CreateJustificationRequest) error 
 	for _, j := range req.Justifications {
 		justificationsLength += len(j.Category) + len(j.Value)
 
-		switch j.Category {
-		case "explanation":
+		// switch j.Category {
+		// case "explanation":
+		// 	if j.Value == "" {
+		// 		err = multierror.Append(err, fmt.Errorf("no value specified for 'explanation' category"))
+		// 	}
+		// default:
+		// 	err = multierror.Append(err, fmt.Errorf("unexpected justification %v unrecognized", j))
+		// }
+
+		if j.Category == "explanation" {
 			if j.Value == "" {
 				err = multierror.Append(err, fmt.Errorf("no value specified for 'explanation' category"))
 			}
-		default:
+		} else if v, ok := p.plugins[j.Category]; ok {
+			// Use a passed-in context instead.
+			if err := v.Verify(context.TODO(), j); err != nil {
+				err = multierror.Append(err, fmt.Errorf("failed justification verification for %q category", j.Category))
+			}
+		} else {
 			err = multierror.Append(err, fmt.Errorf("unexpected justification %v unrecognized", j))
 		}
 	}

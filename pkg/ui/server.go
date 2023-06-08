@@ -49,6 +49,7 @@ func NewServer(ctx context.Context, uiCfg *config.UIServiceConfig, p *justificat
 	}
 
 	return &Server{
+		// Need to pass the config to the controller.
 		c:      controller.New(h, p, uiCfg.Allowlist),
 		config: uiCfg,
 	}, nil
