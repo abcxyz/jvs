@@ -86,10 +86,14 @@ func TestUIServerCommand(t *testing.T) {
 			_, _, _ = cmd.Pipe()
 
 			srv, mux, closer, err := cmd.RunUnstarted(ctx, tc.args)
+			defer func() {
+				if err := closer.Close(); err != nil {
+					t.Error(err)
+				}
+			}()
 			if diff := testutil.DiffErrString(err, tc.expErr); diff != "" {
 				t.Fatal(diff)
 			}
-			defer closer()
 			if err != nil {
 				return
 			}

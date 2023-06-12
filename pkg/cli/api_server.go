@@ -26,6 +26,7 @@ import (
 	"github.com/abcxyz/pkg/cli"
 	"github.com/abcxyz/pkg/healthcheck"
 	"github.com/abcxyz/pkg/logging"
+	"github.com/abcxyz/pkg/multicloser"
 	"github.com/abcxyz/pkg/serving"
 	"go.opentelemetry.io/contrib/instrumentation/google.golang.org/grpc/otelgrpc"
 	"google.golang.org/api/option"
@@ -67,16 +68,20 @@ func (c *APIServerCommand) Flags() *cli.FlagSet {
 
 func (c *APIServerCommand) Run(ctx context.Context, args []string) error {
 	server, grpcServer, closer, err := c.RunUnstarted(ctx, args)
+	defer func() {
+		if err := closer.Close(); err != nil {
+			logging.FromContext(ctx).Errorw("failed to close", "error", err)
+		}
+	}()
 	if err != nil {
 		return err
 	}
-	defer closer()
 
 	return server.StartGRPC(ctx, grpcServer)
 }
 
-func (c *APIServerCommand) RunUnstarted(ctx context.Context, args []string) (*serving.Server, *grpc.Server, func(), error) {
-	closer := func() {}
+func (c *APIServerCommand) RunUnstarted(ctx context.Context, args []string) (*serving.Server, *grpc.Server, *multicloser.Closer, error) {
+	var closer *multicloser.Closer
 
 	f := c.Flags()
 	if err := f.Parse(args); err != nil {
@@ -102,11 +107,7 @@ func (c *APIServerCommand) RunUnstarted(ctx context.Context, args []string) (*se
 	if err != nil {
 		return nil, nil, closer, fmt.Errorf("failed to setup kms client: %w", err)
 	}
-	closer = func() {
-		if err := kmsClient.Close(); err != nil {
-			logger.Errorw("failed to close kms client", "error", err)
-		}
-	}
+	closer = multicloser.Append(closer, kmsClient.Close)
 
 	grpcServer := grpc.NewServer(grpc.ChainUnaryInterceptor(
 		logging.GRPCUnaryInterceptor(logger, c.cfg.ProjectID),
