@@ -49,12 +49,14 @@ func InitValidators(ctx context.Context, configs []PluginConfig) (map[string]Val
 		rpcClient, err := pluginClient.Client()
 		if err != nil {
 			merr = multierror.Append(fmt.Errorf("failed to initiate plugin client %s : %w", c.Name, err))
+			break
 		}
 
 		// Request the plugin.
 		raw, err := rpcClient.Dispense(c.Name)
 		if err != nil {
 			merr = multierror.Append(fmt.Errorf("failed to request plugin %s : %w", c.Name, err))
+			break
 		}
 
 		validators[c.Name] = raw.(Validator)
