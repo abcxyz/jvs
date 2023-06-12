@@ -59,7 +59,12 @@ func InitValidators(ctx context.Context, configs []PluginConfig) (map[string]Val
 			break
 		}
 
-		validators[c.Name] = raw.(Validator)
+		v, ok := raw.(Validator)
+		if !ok {
+			merr = multierror.Append(fmt.Errorf("failed to cast plugin %s to Validator interface", c.Name))
+			break
+		}
+		validators[c.Name] = v
 	}
 	return validators, merr.ErrorOrNil()
 }
