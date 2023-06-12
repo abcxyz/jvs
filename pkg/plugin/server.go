@@ -39,7 +39,7 @@ func InitValidators(ctx context.Context, configs []PluginConfig) (map[string]Val
 	for _, c := range configs {
 		// Enable the plugin.
 		pluginClient := plugin.NewClient(&plugin.ClientConfig{
-			HandshakeConfig:  HandShake,
+			HandshakeConfig:  Handshake,
 			Plugins:          PluginMap,
 			Cmd:              exec.Command("sh", "-c", os.Getenv(c.EntryPoint)),
 			AllowedProtocols: []plugin.Protocol{plugin.ProtocolGRPC},

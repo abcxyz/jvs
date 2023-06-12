@@ -23,8 +23,8 @@ import (
 )
 
 const (
-	handShakeCookieKey   = "JVS_PLUGIN"
-	handShakeCookieValue = "hello"
+	handshakeCookieKey   = "JVS_PLUGIN"
+	handshakeCookieValue = "hello"
 	JiraGRPCPlugin       = "jira_grpc_plugin"
 )
 
@@ -33,11 +33,11 @@ const (
 // a plugin and host. If the handshake fails, a user friendly error is shown.
 // This prevents users from executing bad plugins or executing a plugin
 // directory. It is a UX feature, not a security feature.
-var HandShake = plugin.HandshakeConfig{
+var Handshake = plugin.HandshakeConfig{
 	// This isn't required when using VersionedPlugins
 	ProtocolVersion:  1,
-	MagicCookieKey:   handShakeCookieKey,
-	MagicCookieValue: handShakeCookieValue,
+	MagicCookieKey:   handshakeCookieKey,
+	MagicCookieValue: handshakeCookieValue,
 }
 
 // PluginMap is the map of plugins we can dispense.
