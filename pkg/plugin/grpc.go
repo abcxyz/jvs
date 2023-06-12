@@ -16,18 +16,25 @@ package plugin
 
 import (
 	"context"
+	"fmt"
 
 	jvspb "github.com/abcxyz/jvs/apis/v0"
 )
 
 // GRPCClient is an implementation of Validator that talks over RPC.
-type GRPCClient struct{ client jvspb.JVSPluginClient }
+type GRPCClient struct {
+	client jvspb.JVSPluginClient
+}
 
 func (m *GRPCClient) Validate(justification *jvspb.Justification) (*jvspb.ValidateJustificationResponse, error) {
 	resp, err := m.client.Validate(context.Background(), &jvspb.ValidateJustificationRequest{
 		Justification: justification,
 	})
-	return resp, err
+
+	if err != nil {
+		return resp, fmt.Errorf("failed to validate justification: %w", err)
+	}
+	return resp, nil
 }
 
 // Here is the gRPC server that GRPCClient talks to.
@@ -41,5 +48,9 @@ func (m *GRPCServer) Validate(
 	ctx context.Context,
 	req *jvspb.ValidateJustificationRequest) (*jvspb.ValidateJustificationResponse, error) {
 	resp, err := m.Impl.Validate(ctx, req.Justification)
-	return resp, err
+
+	if err != nil {
+		return resp, fmt.Errorf("failed to validate justification: %w", err)
+	}
+	return resp, nil
 }

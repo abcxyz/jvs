@@ -22,6 +22,12 @@ import (
 	"google.golang.org/grpc"
 )
 
+const (
+	handShakeCookieKey   = "JVS_PLUGIN"
+	handShakeCookieValue = "hello"
+	JiraGRPCPlugin       = "jira_grpc_plugin"
+)
+
 // Handshake is a common handshake that is shared by plugin and host.
 // handshakeConfigs are used to just do a basic handshake between
 // a plugin and host. If the handshake fails, a user friendly error is shown.
@@ -30,13 +36,13 @@ import (
 var HandShake = plugin.HandshakeConfig{
 	// This isn't required when using VersionedPlugins
 	ProtocolVersion:  1,
-	MagicCookieKey:   "JIRA_PLUGIN",
-	MagicCookieValue: "hello",
+	MagicCookieKey:   handShakeCookieKey,
+	MagicCookieValue: handShakeCookieValue,
 }
 
 // PluginMap is the map of plugins we can dispense.
 var PluginMap = map[string]plugin.Plugin{
-	"jira_plugin_grpc": &ValidatorGRPCPlugin{},
+	JiraGRPCPlugin: &ValidatorGRPCPlugin{},
 }
 
 // The interface we are exposing as a plugin.
@@ -58,6 +64,6 @@ func (p *ValidatorGRPCPlugin) GRPCServer(broker *plugin.GRPCBroker, s *grpc.Serv
 	return nil
 }
 
-func (p *ValidatorGRPCPlugin) GRPCClient(ctx context.Context, broker *plugin.GRPCBroker, c *grpc.ClientConn) (interface{}, error) {
+func (p *ValidatorGRPCPlugin) GRPCClient(ctx context.Context, broker *plugin.GRPCBroker, c *grpc.ClientConn) (any, error) {
 	return &GRPCClient{client: jvspb.NewJVSPluginClient(c)}, nil
 }
