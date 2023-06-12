@@ -23,6 +23,15 @@ require (
 )
 
 require (
+	github.com/fatih/color v1.7.0 // indirect
+	github.com/hashicorp/go-hclog v0.14.1 // indirect
+	github.com/hashicorp/yamux v0.0.0-20180604194846-3520598351bb // indirect
+	github.com/mattn/go-colorable v0.1.4 // indirect
+	github.com/mitchellh/go-testing-interface v0.0.0-20171004221916-a61a99592b77 // indirect
+	github.com/oklog/run v1.0.0 // indirect
+)
+
+require (
 	cloud.google.com/go/compute v1.19.0 // indirect
 	cloud.google.com/go/compute/metadata v0.2.3 // indirect
 	cloud.google.com/go/iam v0.13.0 // indirect
@@ -36,6 +45,7 @@ require (
 	github.com/googleapis/enterprise-certificate-proxy v0.2.3 // indirect
 	github.com/googleapis/gax-go/v2 v2.8.0 // indirect
 	github.com/hashicorp/errwrap v1.1.0 // indirect
+	github.com/hashicorp/go-plugin v1.4.10
 	github.com/kr/pretty v0.3.0 // indirect
 	github.com/kr/text v0.2.0 // indirect
 	github.com/lestrrat-go/blackmagic v1.0.1 // indirect
