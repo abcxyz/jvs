@@ -80,7 +80,7 @@ func (c *PublicKeyServerCommand) Run(ctx context.Context, args []string) error {
 }
 
 func (c *PublicKeyServerCommand) RunUnstarted(ctx context.Context, args []string) (*serving.Server, http.Handler, *multicloser.Closer, error) {
-	closer := &multicloser.Closer{}
+	var closer *multicloser.Closer
 
 	f := c.Flags()
 	if err := f.Parse(args); err != nil {

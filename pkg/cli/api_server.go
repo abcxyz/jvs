@@ -81,7 +81,7 @@ func (c *APIServerCommand) Run(ctx context.Context, args []string) error {
 }
 
 func (c *APIServerCommand) RunUnstarted(ctx context.Context, args []string) (*serving.Server, *grpc.Server, *multicloser.Closer, error) {
-	closer := &multicloser.Closer{}
+	var closer *multicloser.Closer
 
 	f := c.Flags()
 	if err := f.Parse(args); err != nil {

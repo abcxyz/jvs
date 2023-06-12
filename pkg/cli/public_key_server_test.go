@@ -86,7 +86,7 @@ func TestPublicKeyServerCommand(t *testing.T) {
 			srv, mux, closer, err := cmd.RunUnstarted(ctx, tc.args)
 			defer func() {
 				if err := closer.Close(); err != nil {
-					t.Log(err)
+					t.Error(err)
 				}
 			}()
 			if diff := testutil.DiffErrString(err, tc.expErr); diff != "" {
