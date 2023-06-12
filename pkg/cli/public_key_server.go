@@ -27,6 +27,7 @@ import (
 	"github.com/abcxyz/pkg/cli"
 	"github.com/abcxyz/pkg/healthcheck"
 	"github.com/abcxyz/pkg/logging"
+	"github.com/abcxyz/pkg/multicloser"
 	"github.com/abcxyz/pkg/renderer"
 	"github.com/abcxyz/pkg/serving"
 	"google.golang.org/api/option"
@@ -66,16 +67,20 @@ func (c *PublicKeyServerCommand) Flags() *cli.FlagSet {
 
 func (c *PublicKeyServerCommand) Run(ctx context.Context, args []string) error {
 	server, mux, closer, err := c.RunUnstarted(ctx, args)
+	defer func() {
+		if err := closer.Close(); err != nil {
+			logging.FromContext(ctx).Errorw("failed to close", "error", err)
+		}
+	}()
 	if err != nil {
 		return err
 	}
-	defer closer()
 
 	return server.StartHTTPHandler(ctx, mux)
 }
 
-func (c *PublicKeyServerCommand) RunUnstarted(ctx context.Context, args []string) (*serving.Server, http.Handler, func(), error) {
-	closer := func() {}
+func (c *PublicKeyServerCommand) RunUnstarted(ctx context.Context, args []string) (*serving.Server, http.Handler, *multicloser.Closer, error) {
+	closer := &multicloser.Closer{}
 
 	f := c.Flags()
 	if err := f.Parse(args); err != nil {
@@ -101,11 +106,7 @@ func (c *PublicKeyServerCommand) RunUnstarted(ctx context.Context, args []string
 	if err != nil {
 		return nil, nil, closer, fmt.Errorf("failed to setup kms client: %w", err)
 	}
-	closer = func() {
-		if err := kmsClient.Close(); err != nil {
-			logger.Errorw("failed to close kms client", "error", err)
-		}
-	}
+	closer = multicloser.Append(closer, kmsClient.Close)
 
 	// Create the renderer
 	h, err := renderer.New(ctx, assets.ServerFS(),
