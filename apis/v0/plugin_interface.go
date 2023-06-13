@@ -24,7 +24,7 @@ import (
 
 const (
 	handshakeCookieKey   = "JVS_PLUGIN"
-	handshakeCookieValue = "hello"
+	handshakeCookieValue = "cc400ef1c6e74ee20be491c6013ae2120fb04c11703d05fbbf18dbb2e5e0"
 )
 
 // Handshake is a common handshake that is shared by plugin and host.
