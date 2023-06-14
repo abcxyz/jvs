@@ -40,7 +40,7 @@ resource "google_project_iam_member" "gh_access_acc_iam" {
 }
 
 module "github_ci_infra" {
-  source = "git::https://github.com/abcxyz/terraform-modules.git//modules/github_ci_infra?ref=41836e2b91baa1a7552b41f76fb9a8f261ae7dbe"
+  source = "git::https://github.com/abcxyz/terraform-modules.git//modules/github_ci_infra?ref=46d3ffd82d7c3080bc5ec2cc788fe3e21176a8be"
 
   project_id = var.project_id
 

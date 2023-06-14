@@ -20,7 +20,7 @@ resource "google_project_service" "scheduler_api" {
 }
 
 module "cert_rotator_cloud_run" {
-  source = "git::https://github.com/abcxyz/terraform-modules.git//modules/cloud_run?ref=5445543e21491176528fb5cd7adcb505d9dec5dd"
+  source = "git::https://github.com/abcxyz/terraform-modules.git//modules/cloud_run?ref=46d3ffd82d7c3080bc5ec2cc788fe3e21176a8be"
 
   project_id = var.project_id
 
