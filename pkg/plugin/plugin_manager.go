@@ -55,26 +55,26 @@ func LoadPlugins(dir string) (map[string]jvspb.Validator, *multicloser.Closer, e
 			Cmd:              exec.Command(path),
 			AllowedProtocols: []plugin.Protocol{plugin.ProtocolGRPC},
 		})
+		closer = multicloser.Append(closer, pluginClient.Kill)
 
 		// Connect plugin via RPC.
 		rpcClient, err := pluginClient.Client()
 		if err != nil {
 			merr = errors.Join(merr, fmt.Errorf("failed to initiate plugin client %s : %w", name, err))
-			break
+			continue
 		}
-		closer = multicloser.Append(closer, rpcClient.Close)
 
 		// Request the plugin.
 		raw, err := rpcClient.Dispense(name)
 		if err != nil {
 			merr = errors.Join(merr, fmt.Errorf("failed to dispense plugin %s : %w", name, err))
-			break
+			continue
 		}
 
 		v, ok := raw.(jvspb.Validator)
 		if !ok {
 			merr = errors.Join(merr, fmt.Errorf("failed to cast plugin %s to Validator interface", name))
-			break
+			continue
 		}
 		validators[name] = v
 	}
