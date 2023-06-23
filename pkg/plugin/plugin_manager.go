@@ -67,7 +67,7 @@ func LoadPlugins(dir string) (map[string]jvspb.Validator, *multicloser.Closer, e
 		// Request the plugin.
 		raw, err := rpcClient.Dispense(name)
 		if err != nil {
-			merr = errors.Join(merr, fmt.Errorf("failed to dispense plugin %s : %w", name, err))
+			merr = errors.Join(merr, fmt.Errorf("failed to dispense plugin %s: %w", name, err))
 			continue
 		}
 
