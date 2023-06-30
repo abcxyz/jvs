@@ -23,6 +23,7 @@ import (
 	"github.com/abcxyz/jvs/internal/version"
 	"github.com/abcxyz/jvs/pkg/config"
 	"github.com/abcxyz/jvs/pkg/justification"
+	"github.com/abcxyz/jvs/pkg/plugin"
 	"github.com/abcxyz/pkg/cli"
 	"github.com/abcxyz/pkg/healthcheck"
 	"github.com/abcxyz/pkg/logging"
@@ -117,7 +118,14 @@ func (c *APIServerCommand) RunUnstarted(ctx context.Context, args []string) (*se
 	// Create basic health check
 	healthcheck.RegisterGRPCHealthCheck(grpcServer)
 
-	p := justification.NewProcessor(kmsClient, c.cfg)
+	validators, pluginClosers, err := plugin.LoadPlugins(c.cfg.PluginDir)
+	if err != nil {
+		logger.Debugw("error loading plugins", "error", err)
+	}
+
+	closer = multicloser.Append(closer, pluginClosers.Close)
+
+	p := justification.NewProcessor(kmsClient, c.cfg).WithValidators(validators)
 	jvsAgent := justification.NewJVSAgent(p)
 	jvspb.RegisterJVSServiceServer(grpcServer, jvsAgent)
 	reflection.Register(grpcServer)
