@@ -129,7 +129,7 @@ func (cfg *JustificationConfig) ToFlags(set *cli.FlagSet) *cli.FlagSet {
 
 	f.StringVar(&cli.StringVar{
 		Name:    "plugin-dir",
-		Target:  &cfg.Issuer,
+		Target:  &cfg.PluginDir,
 		EnvVar:  "JVS_PLUGIN_DIR",
 		Default: "plugins",
 		Usage:   `The directory to load plugins.`,
