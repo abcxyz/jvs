@@ -118,11 +118,11 @@ func (c *APIServerCommand) RunUnstarted(ctx context.Context, args []string) (*se
 	// Create basic health check
 	healthcheck.RegisterGRPCHealthCheck(grpcServer)
 
-	validators, pluginClosers, err := plugin.LoadPlugins(c.cfg.PluginDir)
+	validators, pluginClosers, err := plugin.LoadPlugins(c.cfg.PluginAbsDir)
 	if err != nil {
-		logger.Debugw("error loading plugins", "error", err)
+		return nil, nil, closer, fmt.Errorf("failed to load plugins: %w", err)
 	}
-
+	logger.Infow("plugins loaded", "validators", validators)
 	closer = multicloser.Append(closer, pluginClosers.Close)
 
 	p := justification.NewProcessor(kmsClient, c.cfg).WithValidators(validators)
