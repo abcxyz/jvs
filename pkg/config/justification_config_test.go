@@ -111,7 +111,7 @@ func TestJustificationConfig_Validate(t *testing.T) {
 			},
 		},
 		{
-			name: "valid",
+			name: "relative_plugin_dir",
 			cfg: &JustificationConfig{
 				ProjectID:          "example-project",
 				Port:               "8080",
