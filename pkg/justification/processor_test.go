@@ -272,6 +272,19 @@ func TestCreateToken(t *testing.T) {
 			},
 			wantErr: "unexpected error from validator \"jira\": Cannot connect to validator",
 		},
+		{
+			name: "missing_validator",
+			request: &jvspb.CreateJustificationRequest{
+				Justifications: []*jvspb.Justification{
+					{
+						Category: "jira",
+						Value:    "test",
+					},
+				},
+				Ttl: durationpb.New(3600 * time.Second),
+			},
+			wantErr: "missing validator for category \"jira\"",
+		},
 	}
 
 	for _, tc := range tests {
