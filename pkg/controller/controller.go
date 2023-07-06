@@ -299,10 +299,6 @@ func getFormDetails(r *http.Request) (*FormDetails, error) {
 					Key:  "explanation",
 					Text: "Explanation",
 				},
-				{
-					Key:  "breakglass",
-					Text: "Breakglass",
-				},
 			},
 			TTLs: ttls(),
 		},
@@ -339,5 +335,5 @@ func ttls() []string {
 }
 
 func categories() []string {
-	return []string{"explanation", "breakglass"}
+	return []string{"explanation"}
 }
