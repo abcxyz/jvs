@@ -191,18 +191,18 @@ func TestCreateToken(t *testing.T) {
 			wantErr: "must be less than 1000 bytes",
 		},
 		{
-			name: "happy_path_with_validator",
+			name: "happy_path_with_jira_validator",
 			request: &jvspb.CreateJustificationRequest{
 				Justifications: []*jvspb.Justification{
 					{
-						Category: "explanation",
+						Category: "jira",
 						Value:    "test",
 					},
 				},
 				Ttl: durationpb.New(3600 * time.Second),
 			},
 			validators: map[string]jvspb.Validator{
-				"explanation": &mockValidator{
+				"jira": &mockValidator{
 					resp: &jvspb.ValidateJustificationResponse{
 						Valid: true,
 					},
@@ -212,7 +212,7 @@ func TestCreateToken(t *testing.T) {
 			wantAudiences: []string{DefaultAudience},
 		},
 		{
-			name: "happy_path_with_irrelevant_validator",
+			name: "happy_path_with_unused_validator",
 			request: &jvspb.CreateJustificationRequest{
 				Justifications: []*jvspb.Justification{
 					{
@@ -238,14 +238,14 @@ func TestCreateToken(t *testing.T) {
 			request: &jvspb.CreateJustificationRequest{
 				Justifications: []*jvspb.Justification{
 					{
-						Category: "explanation",
+						Category: "jira",
 						Value:    "test",
 					},
 				},
 				Ttl: durationpb.New(3600 * time.Second),
 			},
 			validators: map[string]jvspb.Validator{
-				"explanation": &mockValidator{
+				"jira": &mockValidator{
 					resp: &jvspb.ValidateJustificationResponse{
 						Valid: false,
 						Error: []string{"bad explanation"},
@@ -259,18 +259,18 @@ func TestCreateToken(t *testing.T) {
 			request: &jvspb.CreateJustificationRequest{
 				Justifications: []*jvspb.Justification{
 					{
-						Category: "explanation",
+						Category: "jira",
 						Value:    "test",
 					},
 				},
 				Ttl: durationpb.New(3600 * time.Second),
 			},
 			validators: map[string]jvspb.Validator{
-				"explanation": &mockValidator{
+				"jira": &mockValidator{
 					err: fmt.Errorf("Cannot connect to validator"),
 				},
 			},
-			wantErr: "unexpected error from validator \"explanation\": Cannot connect to validator",
+			wantErr: "unexpected error from validator \"jira\": Cannot connect to validator",
 		},
 	}
 

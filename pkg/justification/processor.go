@@ -152,10 +152,11 @@ func (p *Processor) runValidations(ctx context.Context, req *jvspb.CreateJustifi
 				err = multierror.Append(err, fmt.Errorf("no value specified for 'explanation' category"))
 			}
 		default:
-			err = multierror.Append(err, fmt.Errorf("unexpected justification %v unrecognized", j))
-		}
-
-		if v, ok := p.validators[j.Category]; ok {
+			v, ok := p.validators[j.Category]
+			if !ok {
+				err = multierror.Append(err, fmt.Errorf("missing validator for category %q", j.Category))
+				continue
+			}
 			resp, e := v.Validate(ctx, &jvspb.ValidateJustificationRequest{
 				Justification: j,
 			})
