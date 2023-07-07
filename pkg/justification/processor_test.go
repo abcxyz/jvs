@@ -191,7 +191,7 @@ func TestCreateToken(t *testing.T) {
 			wantErr: "must be less than 1000 bytes",
 		},
 		{
-			name: "happy_path_with_jira_validator",
+			name: "happy_path_with_validator",
 			request: &jvspb.CreateJustificationRequest{
 				Justifications: []*jvspb.Justification{
 					{

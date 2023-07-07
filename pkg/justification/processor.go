@@ -157,11 +157,11 @@ func (p *Processor) runValidations(ctx context.Context, req *jvspb.CreateJustifi
 				err = multierror.Append(err, fmt.Errorf("missing validator for category %q", j.Category))
 				continue
 			}
-			resp, e := v.Validate(ctx, &jvspb.ValidateJustificationRequest{
+			resp, verr := v.Validate(ctx, &jvspb.ValidateJustificationRequest{
 				Justification: j,
 			})
-			if e != nil {
-				err = multierror.Append(err, fmt.Errorf("unexpected error from validator %q: %w", j.Category, e))
+			if verr != nil {
+				err = multierror.Append(err, fmt.Errorf("unexpected error from validator %q: %w", j.Category, verr))
 				continue
 			}
 

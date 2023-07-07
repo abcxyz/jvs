@@ -119,7 +119,6 @@ func (c *APIServerCommand) RunUnstarted(ctx context.Context, args []string) (*se
 	healthcheck.RegisterGRPCHealthCheck(grpcServer)
 
 	validators, pluginClosers, err := plugin.LoadPlugins(c.cfg.PluginDir)
-
 	if err != nil {
 		return nil, nil, closer, fmt.Errorf("failed to load plugins: %w", err)
 	}
