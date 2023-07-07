@@ -17,7 +17,6 @@ package config
 
 import (
 	"fmt"
-	"path/filepath"
 	"time"
 
 	"github.com/abcxyz/pkg/cli"
@@ -46,8 +45,8 @@ type JustificationConfig struct {
 	// Issuer will be used to set the issuer field when signing JWTs
 	Issuer string `env:"JVS_API_ISSUER,overwrite,default=jvs.abcxyz.dev"`
 
-	// PluginAbsDir is the absolute path of the directory to load plugins.
-	PluginAbsDir string `env:"JVS_PLUGIN_ABS_DIR,overwrite,default=/var/jvs/plugins"`
+	// PluginDir is the path of the directory to load plugins.
+	PluginDir string `env:"JVS_PLUGIN_DIR,overwrite,default=/var/jvs/plugins"`
 
 	// DefaultTTL sets the default TTL for JVS tokens that do not explicitly
 	// request a TTL. MaxTTL is the system-configured maximum TTL that a token can
@@ -68,10 +67,6 @@ func (cfg *JustificationConfig) Validate() error {
 
 	if cfg.KeyName == "" {
 		merr = multierror.Append(merr, fmt.Errorf("empty KeyName"))
-	}
-
-	if !filepath.IsAbs(cfg.PluginAbsDir) {
-		merr = multierror.Append(merr, fmt.Errorf("PluginAbsDir is not absolute path"))
 	}
 
 	if got := cfg.SignerCacheTimeout; got <= 0 {
@@ -133,11 +128,11 @@ func (cfg *JustificationConfig) ToFlags(set *cli.FlagSet) *cli.FlagSet {
 	})
 
 	f.StringVar(&cli.StringVar{
-		Name:    "plugin-abs-dir",
-		Target:  &cfg.PluginAbsDir,
-		EnvVar:  "JVS_PLUGIN_ABS_DIR",
+		Name:    "plugin-dir",
+		Target:  &cfg.PluginDir,
+		EnvVar:  "JVS_PLUGIN_DIR",
 		Default: "/var/jvs/plugins",
-		Usage:   `The absolute path of the directory to load plugins.`,
+		Usage:   `The path of the directory to load plugins.`,
 	})
 
 	f.DurationVar(&cli.DurationVar{
