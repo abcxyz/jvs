@@ -115,7 +115,7 @@ func (c *Controller) HandlePopup() http.Handler {
 
 // handlePopupGet handles the initial page load.
 func (c *Controller) handlePopupGet(w http.ResponseWriter, r *http.Request) {
-	formDetails, err := getFormDetails(r)
+	formDetails, err := c.getFormDetails(r)
 	if err != nil {
 		c.renderBadRequest(w, err.Error())
 		return
@@ -130,7 +130,7 @@ func (c *Controller) handlePopupGet(w http.ResponseWriter, r *http.Request) {
 
 // handlePopupPost handles form submission.
 func (c *Controller) handlePopupPost(w http.ResponseWriter, r *http.Request) {
-	formDetails, err := getFormDetails(r)
+	formDetails, err := c.getFormDetails(r)
 	if err != nil {
 		c.renderBadRequest(w, err.Error())
 		return
@@ -274,10 +274,18 @@ func isValidOneOf(selection string, options []string) bool {
 	return slices.Contains(options, selection)
 }
 
-func getFormDetails(r *http.Request) (*FormDetails, error) {
+func (c *Controller) getFormDetails(r *http.Request) (*FormDetails, error) {
 	email, err := getEmail(r)
 	if err != nil {
 		return nil, err
+	}
+
+	categories := make([]Pair, 0, len(c.p.AllowedCategories()))
+	for _, category := range c.p.AllowedCategories() {
+		categories = append(categories, Pair{
+			Key:  strings.ToLower(category),
+			Text: category,
+		})
 	}
 
 	return &FormDetails{
@@ -294,13 +302,8 @@ func getFormDetails(r *http.Request) (*FormDetails, error) {
 			CategoryLabel: "Category",
 			ReasonLabel:   "Reason",
 			TTLLabel:      "TTL",
-			Categories: []Pair{
-				{
-					Key:  "explanation",
-					Text: "Explanation",
-				},
-			},
-			TTLs: ttls(),
+			Categories:    categories,
+			TTLs:          ttls(),
 		},
 	}, nil
 }
