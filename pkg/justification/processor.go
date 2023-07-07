@@ -40,9 +40,10 @@ import (
 // mints a token.
 type Processor struct {
 	jvspb.UnimplementedJVSServiceServer
-	kms    *kms.KeyManagementClient
-	config *config.JustificationConfig
-	cache  *cache.Cache[*signerWithID]
+	kms        *kms.KeyManagementClient
+	config     *config.JustificationConfig
+	cache      *cache.Cache[*signerWithID]
+	validators map[string]jvspb.Validator
 }
 
 type signerWithID struct {
@@ -68,6 +69,11 @@ const (
 	DefaultAudience = "dev.abcxyz.jvs"
 )
 
+func (p *Processor) WithValidators(v map[string]jvspb.Validator) *Processor {
+	p.validators = v
+	return p
+}
+
 // CreateToken implements the create token API which creates and signs a JWT
 // token if the provided justifications are valid.
 func (p *Processor) CreateToken(ctx context.Context, requestor string, req *jvspb.CreateJustificationRequest) ([]byte, error) {
@@ -75,7 +81,7 @@ func (p *Processor) CreateToken(ctx context.Context, requestor string, req *jvsp
 
 	logger := logging.FromContext(ctx)
 
-	if err := p.runValidations(req); err != nil {
+	if err := p.runValidations(ctx, req); err != nil {
 		logger.Errorw("failed to validate request", "error", err)
 		return nil, status.Errorf(codes.InvalidArgument, "failed to validate request: %s", err)
 	}
@@ -130,7 +136,7 @@ func (p *Processor) getPrimarySigner(ctx context.Context) (*signerWithID, error)
 }
 
 // TODO: Each category should have its own validator struct, with a shared interface.
-func (p *Processor) runValidations(req *jvspb.CreateJustificationRequest) error {
+func (p *Processor) runValidations(ctx context.Context, req *jvspb.CreateJustificationRequest) error {
 	if len(req.Justifications) < 1 {
 		return fmt.Errorf("no justifications specified")
 	}
@@ -146,7 +152,23 @@ func (p *Processor) runValidations(req *jvspb.CreateJustificationRequest) error 
 				err = multierror.Append(err, fmt.Errorf("no value specified for 'explanation' category"))
 			}
 		default:
-			err = multierror.Append(err, fmt.Errorf("unexpected justification %v unrecognized", j))
+			v, ok := p.validators[j.Category]
+			if !ok {
+				err = multierror.Append(err, fmt.Errorf("missing validator for category %q", j.Category))
+				continue
+			}
+			resp, verr := v.Validate(ctx, &jvspb.ValidateJustificationRequest{
+				Justification: j,
+			})
+			if verr != nil {
+				err = multierror.Append(err, fmt.Errorf("unexpected error from validator %q: %w", j.Category, verr))
+				continue
+			}
+
+			if !resp.Valid {
+				err = multierror.Append(err,
+					fmt.Errorf("failed validation criteria with error %v and warning %v", resp.Error, resp.Warning))
+			}
 		}
 	}
 

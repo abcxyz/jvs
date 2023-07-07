@@ -21,6 +21,7 @@ import (
 	"crypto/rand"
 	"crypto/x509"
 	"encoding/pem"
+	"fmt"
 	"reflect"
 	"strings"
 	"testing"
@@ -45,6 +46,15 @@ import (
 	"google.golang.org/protobuf/types/known/durationpb"
 )
 
+type mockValidator struct {
+	resp *jvspb.ValidateJustificationResponse
+	err  error
+}
+
+func (m *mockValidator) Validate(ctx context.Context, req *jvspb.ValidateJustificationRequest) (*jvspb.ValidateJustificationResponse, error) {
+	return m.resp, m.err
+}
+
 func TestCreateToken(t *testing.T) {
 	t.Parallel()
 
@@ -52,6 +62,7 @@ func TestCreateToken(t *testing.T) {
 		name          string
 		request       *jvspb.CreateJustificationRequest
 		requestor     string
+		validators    map[string]jvspb.Validator
 		wantTTL       time.Duration
 		wantSubject   string
 		wantAudiences []string
@@ -179,6 +190,101 @@ func TestCreateToken(t *testing.T) {
 			},
 			wantErr: "must be less than 1000 bytes",
 		},
+		{
+			name: "happy_path_with_validator",
+			request: &jvspb.CreateJustificationRequest{
+				Justifications: []*jvspb.Justification{
+					{
+						Category: "jira",
+						Value:    "test",
+					},
+				},
+				Ttl: durationpb.New(3600 * time.Second),
+			},
+			validators: map[string]jvspb.Validator{
+				"jira": &mockValidator{
+					resp: &jvspb.ValidateJustificationResponse{
+						Valid: true,
+					},
+				},
+			},
+			wantTTL:       1 * time.Hour,
+			wantAudiences: []string{DefaultAudience},
+		},
+		{
+			name: "happy_path_with_unused_validator",
+			request: &jvspb.CreateJustificationRequest{
+				Justifications: []*jvspb.Justification{
+					{
+						Category: "explanation",
+						Value:    "test",
+					},
+				},
+				Ttl: durationpb.New(3600 * time.Second),
+			},
+			validators: map[string]jvspb.Validator{
+				"jira": &mockValidator{
+					resp: &jvspb.ValidateJustificationResponse{
+						Valid: false,
+						Error: []string{"bad jira ticket"},
+					},
+				},
+			},
+			wantTTL:       1 * time.Hour,
+			wantAudiences: []string{DefaultAudience},
+		},
+		{
+			name: "failed_validator_criteria",
+			request: &jvspb.CreateJustificationRequest{
+				Justifications: []*jvspb.Justification{
+					{
+						Category: "jira",
+						Value:    "test",
+					},
+				},
+				Ttl: durationpb.New(3600 * time.Second),
+			},
+			validators: map[string]jvspb.Validator{
+				"jira": &mockValidator{
+					resp: &jvspb.ValidateJustificationResponse{
+						Valid: false,
+						Error: []string{"bad explanation"},
+					},
+				},
+			},
+			wantErr: "failed validation criteria with error [bad explanation] and warning []",
+		},
+		{
+			name: "validator_err",
+			request: &jvspb.CreateJustificationRequest{
+				Justifications: []*jvspb.Justification{
+					{
+						Category: "jira",
+						Value:    "test",
+					},
+				},
+				Ttl: durationpb.New(3600 * time.Second),
+			},
+			validators: map[string]jvspb.Validator{
+				"jira": &mockValidator{
+					err: fmt.Errorf("Cannot connect to validator"),
+				},
+			},
+			wantErr: "unexpected error from validator \"jira\": Cannot connect to validator",
+		},
+		{
+			name: "missing_validator",
+			request: &jvspb.CreateJustificationRequest{
+				Justifications: []*jvspb.Justification{
+					{
+						Category: "jira",
+						Value:    "test",
+					},
+				},
+				Ttl: durationpb.New(3600 * time.Second),
+			},
+			wantErr: "missing validator for category \"jira\"",
+		},
 	}
 
 	for _, tc := range tests {
@@ -246,7 +352,7 @@ func TestCreateToken(t *testing.T) {
 				Issuer:             "test-iss",
 				DefaultTTL:         1 * time.Minute,
 				MaxTTL:             1 * time.Hour,
-			})
+			}).WithValidators(tc.validators)
 
 			mockKeyManagement.Reqs = nil
 			mockKeyManagement.Err = tc.serverErr

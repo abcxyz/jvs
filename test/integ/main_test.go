@@ -91,6 +91,7 @@ func TestJVS(t *testing.T) {
 		ProjectID:          os.Getenv("PROJECT_ID"),
 		KeyName:            keyName,
 		Issuer:             "ci-test",
+		PluginDir:          "/var/jvs/plugins",
 		SignerCacheTimeout: 1 * time.Nanosecond, // no caching
 		DefaultTTL:         15 * time.Minute,
 		MaxTTL:             2 * time.Hour,
