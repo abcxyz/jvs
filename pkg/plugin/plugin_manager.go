@@ -51,8 +51,11 @@ func LoadPlugins(dir string) (map[string]jvspb.Validator, *multicloser.Closer, e
 
 		// Enable the plugin.
 		pluginClient := plugin.NewClient(&plugin.ClientConfig{
-			HandshakeConfig:  jvspb.Handshake,
-			Cmd:              exec.Command(path),
+			HandshakeConfig: jvspb.Handshake,
+			// This field need to be set otherwise exception will be thrown from
+			// https://github.com/hashicorp/go-plugin/blob/a88a423a8813d0b26c8e3219f71b0f30447b5d2e/client.go#L909
+			Plugins:          jvspb.PluginMap,
+			Cmd:              exec.Command(path, "server"),
 			AllowedProtocols: []plugin.Protocol{plugin.ProtocolGRPC},
 		})
 		closer = multicloser.Append(closer, pluginClient.Kill)

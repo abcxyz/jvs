@@ -39,6 +39,11 @@ var Handshake = plugin.HandshakeConfig{
 	MagicCookieValue: handshakeCookieValue,
 }
 
+// PluginMap is the map of plugins we can dispense.
+var PluginMap = map[string]plugin.Plugin{
+	"jvs-plugin-jira": &ValidatorPlugin{},
+}
+
 // The interface we are exposing as a plugin.
 type Validator interface {
 	Validate(context.Context, *ValidateJustificationRequest) (*ValidateJustificationResponse, error)
