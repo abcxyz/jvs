@@ -27,6 +27,7 @@ import (
 	"github.com/abcxyz/jvs/internal/project"
 	"github.com/abcxyz/jvs/pkg/justification"
 	"github.com/abcxyz/pkg/renderer"
+
 	"golang.org/x/exp/slices"
 	"google.golang.org/protobuf/types/known/durationpb"
 )
@@ -38,9 +39,14 @@ type Controller struct {
 	allowlist []string
 }
 
-// Pair represents a key value pair used by the select HTML element.
+// Pair represents a key value pair used to render HTML Option element.
+//
+//	https://developer.mozilla.org/en-US/docs/Web/HTML/Element/option
 type Pair struct {
-	Key  string
+	// Key will be used to populate the value of the Option.
+	Key string
+
+	// Text will be used to render the text on the Option element.
 	Text string
 }
 
@@ -122,7 +128,7 @@ func (c *Controller) handlePopupGet(w http.ResponseWriter, r *http.Request) {
 	}
 
 	// set some defaults for the form
-	formDetails.Category = categories()[0]
+	formDetails.Category = c.categories()[0]
 	formDetails.TTL = ttls()[0]
 
 	c.h.RenderHTML(w, "popup.html", formDetails)
@@ -151,7 +157,7 @@ func (c *Controller) handlePopupPost(w http.ResponseWriter, r *http.Request) {
 	}
 
 	// 2. Validate input
-	if !validateForm(formDetails) {
+	if !c.validateForm(formDetails) {
 		c.h.RenderHTML(w, "popup.html", formDetails)
 		return
 	}
@@ -252,10 +258,10 @@ func validateLocalIP(originParam string) (bool, error) {
 	return (parsedIP.IsLoopback() || parsedIP.IsPrivate()), nil
 }
 
-func validateForm(formDetails *FormDetails) bool {
+func (c *Controller) validateForm(formDetails *FormDetails) bool {
 	formDetails.Errors = make(map[string]string)
 
-	if !isValidOneOf(formDetails.Category, categories()) {
+	if !isValidOneOf(formDetails.Category, c.categories()) {
 		formDetails.Errors["Category"] = "Category must be selected"
 	}
 
@@ -280,14 +286,6 @@ func (c *Controller) getFormDetails(r *http.Request) (*FormDetails, error) {
 		return nil, err
 	}
 
-	categories := make([]Pair, 0, len(c.p.AllowedCategories()))
-	for _, category := range c.p.AllowedCategories() {
-		categories = append(categories, Pair{
-			Key:  strings.ToLower(category),
-			Text: category,
-		})
-	}
-
 	return &FormDetails{
 		WindowName:  r.FormValue("windowname"),
 		Origin:      r.FormValue("origin"),
@@ -302,7 +300,7 @@ func (c *Controller) getFormDetails(r *http.Request) (*FormDetails, error) {
 			CategoryLabel: "Category",
 			ReasonLabel:   "Reason",
 			TTLLabel:      "TTL",
-			Categories:    categories,
+			Categories:    c.categoryPairs(),
 			TTLs:          ttls(),
 		},
 	}, nil
@@ -337,6 +335,30 @@ func ttls() []string {
 	return []string{"15m", "30m", "1h", "2h", "4h"}
 }
 
-func categories() []string {
-	return []string{"explanation"}
+func (c *Controller) categories() []string {
+	return c.p.AllowedCategories()
+}
+
+// Returns a list of Pairs for rendering.
+func (c *Controller) categoryPairs() []Pair {
+	pairs := make([]Pair, 0, len(c.categories()))
+	for _, category := range c.categories() {
+		pairs = append(pairs, Pair{
+			Key:  category,
+			Text: getText(category),
+		})
+	}
+	return pairs
+}
+
+// Return the corresponding text for rendering.
+func getText(category string) string {
+	switch category {
+	case "explanation":
+		return "Explanation"
+	case "jira":
+		return "Jira"
+	default:
+		return "UNKOWN"
+	}
 }
