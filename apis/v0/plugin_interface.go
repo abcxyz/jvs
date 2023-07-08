@@ -41,7 +41,9 @@ var Handshake = plugin.HandshakeConfig{
 
 // PluginMap is the map of plugins we can dispense.
 var PluginMap = map[string]plugin.Plugin{
-	"jvs-plugin-jira": &ValidatorPlugin{},
+	// Due to [dispense name check], the name need to be consistent with the plugin name.
+	// https://github.com/hashicorp/go-plugin/blob/a88a423a8813d0b26c8e3219f71b0f30447b5d2e/grpc_client.go#L110
+	"jira": &ValidatorPlugin{},
 }
 
 // The interface we are exposing as a plugin.
@@ -49,7 +51,9 @@ type Validator interface {
 	Validate(context.Context, *ValidateJustificationRequest) (*ValidateJustificationResponse, error)
 }
 
-// This is the implementation of plugin.GRPCPlugin so we can serve/consume this.
+// This is the implementation of [plugin.GRPCPlugin] so we can serve/consume this.
+//
+// [plugin.GRPCPlugin]: https://github.com/hashicorp/go-plugin/blob/a88a423a8813d0b26c8e3219f71b0f30447b5d2e/plugin.go#L36
 type ValidatorPlugin struct {
 	// GRPCPlugin must still implement the Plugin interface.
 	plugin.Plugin
@@ -58,12 +62,15 @@ type ValidatorPlugin struct {
 	Impl Validator
 }
 
-func (p *ValidatorPlugin) PluginServer(broker *plugin.GRPCBroker, s *grpc.Server) error {
+// Due to [type check], ValidatorPlugin need to implement the following interface.
+//
+// [type check]: https://github.com/hashicorp/go-plugin/blob/a88a423a8813d0b26c8e3219f71b0f30447b5d2e/server.go#L191
+func (p *ValidatorPlugin) GRPCServer(broker *plugin.GRPCBroker, s *grpc.Server) error {
 	RegisterJVSPluginServer(s, &PluginServer{Impl: p.Impl})
 	return nil
 }
 
-func (p *ValidatorPlugin) PluginClient(ctx context.Context, broker *plugin.GRPCBroker, c *grpc.ClientConn) (any, error) {
+func (p *ValidatorPlugin) GRPCClient(ctx context.Context, broker *plugin.GRPCBroker, c *grpc.ClientConn) (any, error) {
 	return &PluginClient{client: NewJVSPluginClient(c)}, nil
 }
 
