@@ -16,6 +16,7 @@ package justification
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"time"
 
@@ -27,7 +28,6 @@ import (
 	"github.com/abcxyz/pkg/logging"
 	"github.com/abcxyz/pkg/timeutil"
 	"github.com/google/uuid"
-	"github.com/hashicorp/go-multierror"
 	"github.com/lestrrat-go/jwx/v2/jwa"
 	"github.com/lestrrat-go/jwx/v2/jws"
 	"github.com/lestrrat-go/jwx/v2/jwt"
@@ -136,37 +136,36 @@ func (p *Processor) getPrimarySigner(ctx context.Context) (*signerWithID, error)
 }
 
 // TODO: Each category should have its own validator struct, with a shared interface.
-func (p *Processor) runValidations(ctx context.Context, req *jvspb.CreateJustificationRequest) error {
+func (p *Processor) runValidations(ctx context.Context, req *jvspb.CreateJustificationRequest) (merr error) {
 	if len(req.Justifications) < 1 {
 		return fmt.Errorf("no justifications specified")
 	}
 
 	var justificationsLength int
-	var err *multierror.Error
 	for _, j := range req.Justifications {
 		justificationsLength += len(j.Category) + len(j.Value)
 
 		switch j.Category {
 		case "explanation":
 			if j.Value == "" {
-				err = multierror.Append(err, fmt.Errorf("no value specified for 'explanation' category"))
+				merr = errors.Join(merr, fmt.Errorf("no value specified for 'explanation' category"))
 			}
 		default:
 			v, ok := p.validators[j.Category]
 			if !ok {
-				err = multierror.Append(err, fmt.Errorf("missing validator for category %q", j.Category))
+				merr = errors.Join(merr, fmt.Errorf("missing validator for category %q", j.Category))
 				continue
 			}
 			resp, verr := v.Validate(ctx, &jvspb.ValidateJustificationRequest{
 				Justification: j,
 			})
 			if verr != nil {
-				err = multierror.Append(err, fmt.Errorf("unexpected error from validator %q: %w", j.Category, verr))
+				merr = errors.Join(merr, fmt.Errorf("unexpected error from validator %q: %w", j.Category, verr))
 				continue
 			}
 
 			if !resp.Valid {
-				err = multierror.Append(err,
+				merr = errors.Join(merr,
 					fmt.Errorf("failed validation criteria with error %v and warning %v", resp.Error, resp.Warning))
 			}
 		}
@@ -175,7 +174,7 @@ func (p *Processor) runValidations(ctx context.Context, req *jvspb.CreateJustifi
 	// This isn't perfect, but it's the easiest place to get "close" to limiting
 	// the size.
 	if got, max := justificationsLength, 4_000; got > max {
-		err = multierror.Append(err, fmt.Errorf("justification size (%d bytes) must be less than %d bytes",
+		merr = errors.Join(merr, fmt.Errorf("justification size (%d bytes) must be less than %d bytes",
 			got, max))
 	}
 
@@ -184,11 +183,11 @@ func (p *Processor) runValidations(ctx context.Context, req *jvspb.CreateJustifi
 		audiencesLength += len(v)
 	}
 	if got, max := audiencesLength, 1_000; got > max {
-		err = multierror.Append(err, fmt.Errorf("audiences size (%d bytes) must be less than %d bytes",
+		merr = errors.Join(merr, fmt.Errorf("audiences size (%d bytes) must be less than %d bytes",
 			got, max))
 	}
 
-	return err.ErrorOrNil()
+	return
 }
 
 // createToken is an internal helper for testing that builds an unsigned jwt

@@ -16,11 +16,11 @@
 package config
 
 import (
+	"errors"
 	"fmt"
 	"time"
 
 	"github.com/abcxyz/pkg/cli"
-	"github.com/hashicorp/go-multierror"
 )
 
 // CertRotationConfig is a configuration for cert rotation services.
@@ -53,40 +53,38 @@ type CertRotationConfig struct {
 }
 
 // Validate checks if the config is valid.
-func (cfg *CertRotationConfig) Validate() error {
-	var merr *multierror.Error
-
+func (cfg *CertRotationConfig) Validate() (merr error) {
 	if cfg.ProjectID == "" {
-		merr = multierror.Append(merr, fmt.Errorf("empty ProjectID"))
+		merr = errors.Join(merr, fmt.Errorf("empty ProjectID"))
 	}
 
 	if len(cfg.KeyNames) == 0 {
-		merr = multierror.Append(merr, fmt.Errorf("empty KeyNames"))
+		merr = errors.Join(merr, fmt.Errorf("empty KeyNames"))
 	}
 
 	if got := cfg.KeyTTL; got <= 0 {
-		merr = multierror.Append(merr, fmt.Errorf("key ttl must be a positive duration, got %q", got))
+		merr = errors.Join(merr, fmt.Errorf("key ttl must be a positive duration, got %q", got))
 	}
 
 	if got := cfg.GracePeriod; got <= 0 {
-		merr = multierror.Append(merr, fmt.Errorf("grace period must be a positive duration, got %q", got))
+		merr = errors.Join(merr, fmt.Errorf("grace period must be a positive duration, got %q", got))
 	}
 
 	if got := cfg.DisabledPeriod; got <= 0 {
-		merr = multierror.Append(merr, fmt.Errorf("disabled period must be a positive duration, got %q", got))
+		merr = errors.Join(merr, fmt.Errorf("disabled period must be a positive duration, got %q", got))
 	}
 
 	// Propagation delay must be positive but less than the grace period.
 	if got := cfg.PropagationDelay; got <= 0 {
-		merr = multierror.Append(merr, fmt.Errorf("propagation delay must be a positive duration, got %q", got))
+		merr = errors.Join(merr, fmt.Errorf("propagation delay must be a positive duration, got %q", got))
 	}
 
 	if cfg.PropagationDelay > cfg.GracePeriod {
-		merr = multierror.Append(merr, fmt.Errorf("propagation delay %q must be less than grace period %q",
+		merr = errors.Join(merr, fmt.Errorf("propagation delay %q must be less than grace period %q",
 			cfg.PropagationDelay, cfg.GracePeriod))
 	}
 
-	return merr.ErrorOrNil()
+	return
 }
 
 // RotationAge gets the duration after a key has been created that a new key should be created.

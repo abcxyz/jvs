@@ -16,10 +16,10 @@ package client
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"time"
 
-	"github.com/hashicorp/go-multierror"
 	"github.com/sethvargo/go-envconfig"
 	"gopkg.in/yaml.v3"
 )
@@ -38,15 +38,14 @@ type JVSConfig struct {
 }
 
 // Validate checks if the config is valid.
-func (cfg *JVSConfig) Validate() error {
-	var merr *multierror.Error
+func (cfg *JVSConfig) Validate() (merr error) {
 	if cfg.JWKSEndpoint == "" {
-		merr = multierror.Append(merr, fmt.Errorf("endpoint must be set"))
+		merr = errors.Join(merr, fmt.Errorf("endpoint must be set"))
 	}
 	if cfg.CacheTimeout <= 0 {
-		merr = multierror.Append(merr, fmt.Errorf("cache timeout must be a positive duration, got %q", cfg.CacheTimeout))
+		merr = errors.Join(merr, fmt.Errorf("cache timeout must be a positive duration, got %q", cfg.CacheTimeout))
 	}
-	return merr.ErrorOrNil()
+	return
 }
 
 // LoadJVSConfig calls the necessary methods to load in config using the OsLookuper which finds env variables specified on the host.

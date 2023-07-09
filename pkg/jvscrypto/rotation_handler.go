@@ -28,7 +28,6 @@ import (
 
 	kms "cloud.google.com/go/kms/apiv1"
 	"cloud.google.com/go/kms/apiv1/kmspb"
-	"github.com/hashicorp/go-multierror"
 	"google.golang.org/api/iterator"
 )
 
@@ -52,20 +51,19 @@ func NewRotationHandler(ctx context.Context, kmsClient *kms.KeyManagementClient,
 }
 
 // RotateKeys rotates all keys.
-func (h *RotationHandler) RotateKeys(ctx context.Context) error {
+func (h *RotationHandler) RotateKeys(ctx context.Context) (merr error) {
 	logger := logging.FromContext(ctx)
 
-	var merr *multierror.Error
 	// TODO: load keys from DB instead. https://github.com/abcxyz/jvs/issues/17
 	for _, key := range h.config.KeyNames {
 		if err := h.RotateKey(ctx, key); err != nil {
-			merr = multierror.Append(merr, fmt.Errorf("failed to rotate key %s: %w", key, err))
+			merr = errors.Join(merr, fmt.Errorf("failed to rotate key %s: %w", key, err))
 			continue
 		}
 		logger.Infow("successfully rotated (if necessary)", "key", key)
 	}
 
-	return merr.ErrorOrNil()
+	return
 }
 
 // RotateKey is called to determine and perform rotation actions on versions for a key.
@@ -301,43 +299,42 @@ func (h *RotationHandler) shouldPromote(ctx context.Context, primary, newest *km
 // actions are expected to occur. for example, if we are demoting a key, we also
 // need to ensure we've marked another as primary, and may end up in an odd
 // state if one action occurs and the other does not.
-func (h *RotationHandler) performActions(ctx context.Context, keyName string, actions []*actionTuple) error {
+func (h *RotationHandler) performActions(ctx context.Context, keyName string, actions []*actionTuple) (merr error) {
 	logger := logging.FromContext(ctx)
-	var merr *multierror.Error
 	for _, action := range actions {
 		switch action.Action {
 		case ActionCreateNew:
 			_, err := h.performCreateNew(ctx, keyName)
 			if err != nil {
-				merr = multierror.Append(merr, err)
+				merr = errors.Join(merr, err)
 			}
 		case ActionPromote:
 			if err := SetPrimary(ctx, h.kmsClient, keyName, action.Version.Name); err != nil {
-				merr = multierror.Append(merr, err)
+				merr = errors.Join(merr, err)
 			}
 		case ActionCreateNewAndPromote:
 			newVer, err := h.performCreateNew(ctx, keyName)
 			if err != nil {
-				merr = multierror.Append(merr, err)
+				merr = errors.Join(merr, err)
 				continue
 			}
 			logger.Info("Promoting immediately.")
 			if err := SetPrimary(ctx, h.kmsClient, keyName, newVer.Name); err != nil {
-				merr = multierror.Append(merr, err)
+				merr = errors.Join(merr, err)
 			}
 		case ActionDisable:
 			if err := h.performDisable(ctx, action.Version); err != nil {
-				merr = multierror.Append(merr, err)
+				merr = errors.Join(merr, err)
 				continue
 			}
 		case ActionDestroy:
 			if err := h.performDestroy(ctx, action.Version); err != nil {
-				merr = multierror.Append(merr, err)
+				merr = errors.Join(merr, err)
 			}
 		}
 	}
 
-	return merr.ErrorOrNil()
+	return
 }
 
 func (h *RotationHandler) performDisable(ctx context.Context, ver *kmspb.CryptoKeyVersion) error {

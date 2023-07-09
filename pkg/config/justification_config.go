@@ -16,12 +16,12 @@
 package config
 
 import (
+	"errors"
 	"fmt"
 	"time"
 
 	"github.com/abcxyz/pkg/cli"
 	"github.com/abcxyz/pkg/timeutil"
-	"github.com/hashicorp/go-multierror"
 )
 
 // JustificationConfig is the full jvs config.
@@ -58,28 +58,26 @@ type JustificationConfig struct {
 }
 
 // Validate checks if the config is valid.
-func (cfg *JustificationConfig) Validate() error {
-	var merr *multierror.Error
-
+func (cfg *JustificationConfig) Validate() (merr error) {
 	if cfg.ProjectID == "" {
-		merr = multierror.Append(merr, fmt.Errorf("empty ProjectID"))
+		merr = errors.Join(merr, fmt.Errorf("empty ProjectID"))
 	}
 
 	if cfg.KeyName == "" {
-		merr = multierror.Append(merr, fmt.Errorf("empty KeyName"))
+		merr = errors.Join(merr, fmt.Errorf("empty KeyName"))
 	}
 
 	if got := cfg.SignerCacheTimeout; got <= 0 {
-		merr = multierror.Append(merr, fmt.Errorf("cache timeout must be a positive duration, got %s",
+		merr = errors.Join(merr, fmt.Errorf("cache timeout must be a positive duration, got %s",
 			got))
 	}
 
 	if def, max := cfg.DefaultTTL, cfg.MaxTTL; def > max {
-		merr = multierror.Append(merr, fmt.Errorf("default ttl (%s) must be less than or equal to the max ttl (%s)",
+		merr = errors.Join(merr, fmt.Errorf("default ttl (%s) must be less than or equal to the max ttl (%s)",
 			timeutil.HumanDuration(def), timeutil.HumanDuration(max)))
 	}
 
-	return merr.ErrorOrNil()
+	return
 }
 
 // ToFlags binds the config to the give [cli.FlagSet] and returns it.

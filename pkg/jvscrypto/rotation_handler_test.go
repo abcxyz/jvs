@@ -386,7 +386,7 @@ func TestPerformActions(t *testing.T) {
 				},
 			},
 			serverErr: fmt.Errorf("key creation failed"),
-			wantErr:   "1 error occurred:\n\t* key creation failed: rpc error: code = Unknown desc = key creation failed\n\n",
+			wantErr:   "key creation failed",
 			expectedRequests: []proto.Message{
 				&kmspb.CreateCryptoKeyVersionRequest{
 					Parent:           parent,
@@ -454,7 +454,7 @@ func TestPerformActions(t *testing.T) {
 				},
 			},
 			serverErr: fmt.Errorf("test error while disabling"),
-			wantErr:   "1 error occurred:\n\t* key destroy failed: rpc error: code = Unknown desc = test error while disabling\n\n",
+			wantErr:   "key destroy failed",
 			expectedRequests: []proto.Message{
 				&kmspb.DestroyCryptoKeyVersionRequest{
 					Name: versionName,

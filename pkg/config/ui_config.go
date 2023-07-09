@@ -15,10 +15,10 @@
 package config
 
 import (
+	"errors"
 	"fmt"
 
 	"github.com/abcxyz/pkg/cli"
-	"github.com/hashicorp/go-multierror"
 )
 
 // UIServiceConfig defines the set over environment variables required
@@ -30,15 +30,13 @@ type UIServiceConfig struct {
 }
 
 // Validate checks if the config is valid.
-func (cfg *UIServiceConfig) Validate() error {
-	var merr *multierror.Error
-
+func (cfg *UIServiceConfig) Validate() (merr error) {
 	if err := cfg.JustificationConfig.Validate(); err != nil {
-		merr = multierror.Append(merr, err)
+		merr = errors.Join(merr, err)
 	}
 
 	if len(cfg.Allowlist) == 0 {
-		merr = multierror.Append(merr, fmt.Errorf("empty Allowlist"))
+		merr = errors.Join(merr, fmt.Errorf("empty Allowlist"))
 	}
 
 	// edge case, exclusive asterisk(*)
@@ -47,13 +45,13 @@ func (cfg *UIServiceConfig) Validate() error {
 		// i.e. ["example.com" "*"] is invalid
 		for _, e := range cfg.Allowlist {
 			if e == "*" {
-				merr = multierror.Append(merr,
+				merr = errors.Join(merr,
 					fmt.Errorf("asterisk(*) must be exclusive, no other domains allowed"))
 			}
 		}
 	}
 
-	return merr.ErrorOrNil()
+	return merr
 }
 
 // ToFlags binds the config to the give [cli.FlagSet] and returns it.
