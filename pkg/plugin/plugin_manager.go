@@ -31,6 +31,14 @@ const (
 	PluginGlob = "jvs-plugin-*"
 )
 
+// pluginMap is the map of plugins we can dispense.
+var pluginMap = map[string]plugin.Plugin{
+	// Due to [dispense name check], the name need to be consistent with the plugin name.
+	//
+	// [dispense name check]: https://github.com/hashicorp/go-plugin/blob/a88a423a8813d0b26c8e3219f71b0f30447b5d2e/grpc_client.go#L110
+	"jira": &jvspb.ValidatorPlugin{},
+}
+
 // LoadPlugins loads plugins in the dir and put them into the Validator interface.
 func LoadPlugins(dir string) (map[string]jvspb.Validator, *multicloser.Closer, error) {
 	validators := make(map[string]jvspb.Validator)
@@ -54,7 +62,7 @@ func LoadPlugins(dir string) (map[string]jvspb.Validator, *multicloser.Closer, e
 			HandshakeConfig: jvspb.Handshake,
 			// Plugins field need to be set otherwise exception will be thrown from
 			// https://github.com/hashicorp/go-plugin/blob/a88a423a8813d0b26c8e3219f71b0f30447b5d2e/client.go#L909
-			Plugins:          jvspb.PluginMap,
+			Plugins:          pluginMap,
 			Cmd:              exec.Command(path),
 			AllowedProtocols: []plugin.Protocol{plugin.ProtocolGRPC},
 		})

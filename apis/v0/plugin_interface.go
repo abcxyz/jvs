@@ -39,14 +39,6 @@ var Handshake = plugin.HandshakeConfig{
 	MagicCookieValue: handshakeCookieValue,
 }
 
-// PluginMap is the map of plugins we can dispense.
-var PluginMap = map[string]plugin.Plugin{
-	// Due to [dispense name check], the name need to be consistent with the plugin name.
-	//
-	// [dispense name check]: https://github.com/hashicorp/go-plugin/blob/a88a423a8813d0b26c8e3219f71b0f30447b5d2e/grpc_client.go#L110
-	"jira": &ValidatorPlugin{},
-}
-
 // The interface we are exposing as a plugin.
 type Validator interface {
 	Validate(context.Context, *ValidateJustificationRequest) (*ValidateJustificationResponse, error)
