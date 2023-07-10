@@ -15,11 +15,11 @@
 package config
 
 import (
+	"errors"
 	"fmt"
 	"time"
 
 	"github.com/abcxyz/pkg/cli"
-	"github.com/hashicorp/go-multierror"
 )
 
 // PublicKeyConfig is the config used for public key hosting.
@@ -38,22 +38,20 @@ type PublicKeyConfig struct {
 	CacheTimeout time.Duration `env:"JVS_PUBLIC_KEY_CACHE_TIMEOUT, default=5m"`
 }
 
-func (cfg *PublicKeyConfig) Validate() error {
-	var merr *multierror.Error
-
+func (cfg *PublicKeyConfig) Validate() (merr error) {
 	if cfg.ProjectID == "" {
-		merr = multierror.Append(merr, fmt.Errorf("empty ProjectID"))
+		merr = errors.Join(merr, fmt.Errorf("empty ProjectID"))
 	}
 
 	if len(cfg.KeyNames) == 0 {
-		merr = multierror.Append(merr, fmt.Errorf("empty KeyNames"))
+		merr = errors.Join(merr, fmt.Errorf("empty KeyNames"))
 	}
 
 	if got := cfg.CacheTimeout; got <= 0 {
-		merr = multierror.Append(merr, fmt.Errorf("cache_timeout must be a positive duration, got %q", got))
+		merr = errors.Join(merr, fmt.Errorf("cache_timeout must be a positive duration, got %q", got))
 	}
 
-	return merr.ErrorOrNil()
+	return
 }
 
 // ToFlags binds the config to the give [cli.FlagSet] and returns it.
