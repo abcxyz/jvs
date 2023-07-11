@@ -22,10 +22,31 @@ import (
 	"net/url"
 	"testing"
 
+	jvspb "github.com/abcxyz/jvs/apis/v0"
 	"github.com/abcxyz/jvs/internal/envtest"
 	"github.com/abcxyz/pkg/testutil"
 	"github.com/google/go-cmp/cmp"
 )
+
+type mockValidator struct {
+	Valid bool
+}
+
+func (v *mockValidator) Validate(context.Context, *jvspb.ValidateJustificationRequest) (*jvspb.ValidateJustificationResponse, error) {
+	return &jvspb.ValidateJustificationResponse{Valid: v.Valid}, nil
+}
+
+type mockProcessor struct {
+	validators map[string]jvspb.Validator
+}
+
+func (m *mockProcessor) CreateToken(ctx context.Context, requestor string, req *jvspb.CreateJustificationRequest) ([]byte, error) {
+	return []byte{}, nil
+}
+
+func (m *mockProcessor) Validators() map[string]jvspb.Validator {
+	return m.validators
+}
 
 type testValidateFormParam struct {
 	name   string
@@ -256,7 +277,16 @@ func TestValidateForm(t *testing.T) {
 
 	var cases []*testValidateFormParam
 
-	cats := categories()
+	controller := &Controller{
+		p: &mockProcessor{
+			validators: map[string]jvspb.Validator{
+				"jira": &mockValidator{Valid: true},
+				"git":  &mockValidator{Valid: false},
+			},
+		},
+	}
+
+	cats := controller.categories()
 	ttls := ttls()
 
 	for i := 0; i < len(cats); i++ {
@@ -324,7 +354,7 @@ func TestValidateForm(t *testing.T) {
 		t.Run(tc.name, func(t *testing.T) {
 			t.Parallel()
 
-			got := validateForm(&tc.detail)
+			got := controller.validateForm(&tc.detail)
 			if diff := cmp.Diff(tc.want, got); diff != "" {
 				t.Errorf("Failed validating (-want,+got):\n%s", diff)
 			}

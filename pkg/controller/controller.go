@@ -32,10 +32,16 @@ import (
 	"google.golang.org/protobuf/types/known/durationpb"
 )
 
+// processor is the mockable interface for the convenience of testing.
+type processor interface {
+	CreateToken(context.Context, string, *jvspb.CreateJustificationRequest) ([]byte, error)
+	Validators() map[string]jvspb.Validator
+}
+
 // Controller manages use of the renderer in the http handler.
 type Controller struct {
 	h         *renderer.Renderer
-	p         *justification.Processor
+	p         processor
 	allowlist []string
 }
 
@@ -259,6 +265,8 @@ func validateLocalIP(originParam string) (bool, error) {
 }
 
 func (c *Controller) validateForm(formDetails *FormDetails) bool {
+	// Note: c.p.Validators are not checked on this level and will be checked
+	// at c.p.CreateToken
 	formDetails.Errors = make(map[string]string)
 
 	if !isValidOneOf(formDetails.Category, c.categories()) {
@@ -336,10 +344,16 @@ func ttls() []string {
 }
 
 func (c *Controller) categories() []string {
-	return c.p.AllowedCategories()
+	validators := c.p.Validators()
+	categories := make([]string, 0, len(validators))
+	for v := range validators {
+		categories = append(categories, v)
+	}
+	categories = append(categories, "explanation")
+	return categories
 }
 
-// Returns a list of Pairs for rendering.
+// categoryPairs returns a list of Pairs for rendering.
 func (c *Controller) categoryPairs() []Pair {
 	pairs := make([]Pair, 0, len(c.categories()))
 	for _, category := range c.categories() {
@@ -351,7 +365,7 @@ func (c *Controller) categoryPairs() []Pair {
 	return pairs
 }
 
-// Return the corresponding text for rendering.
+// getText returns the corresponding text for rendering.
 func getText(category string) string {
 	switch category {
 	case "explanation":
@@ -359,6 +373,6 @@ func getText(category string) string {
 	case "jira":
 		return "Jira"
 	default:
-		return "UNKOWN"
+		return "UNKNOWN"
 	}
 }

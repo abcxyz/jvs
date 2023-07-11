@@ -75,14 +75,9 @@ func (p *Processor) WithValidators(v map[string]jvspb.Validator) *Processor {
 	return p
 }
 
-// AllowedCategories returns all the categories allowed by this processor.
-func (p *Processor) AllowedCategories() []string {
-	categories := make([]string, 0, len(p.validators))
-	for k := range p.validators {
-		categories = append(categories, k)
-	}
-	categories = append(categories, "explanation")
-	return categories
+// ValidatorMap returns all the validators allowed by this processor.
+func (p *Processor) Validators() map[string]jvspb.Validator {
+	return p.validators
 }
 
 // CreateToken implements the create token API which creates and signs a JWT
