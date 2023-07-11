@@ -23,6 +23,7 @@ import (
 	"github.com/abcxyz/jvs/internal/version"
 	"github.com/abcxyz/jvs/pkg/config"
 	"github.com/abcxyz/jvs/pkg/justification"
+	"github.com/abcxyz/jvs/pkg/plugin"
 	"github.com/abcxyz/jvs/pkg/ui"
 	"github.com/abcxyz/pkg/cli"
 	"github.com/abcxyz/pkg/logging"
@@ -106,7 +107,14 @@ func (c *UIServerCommand) RunUnstarted(ctx context.Context, args []string) (*ser
 	}
 	closer = multicloser.Append(closer, kmsClient.Close)
 
-	p := justification.NewProcessor(kmsClient, c.cfg.JustificationConfig)
+	validators, pluginClosers, err := plugin.LoadPlugins(c.cfg.PluginDir)
+	if err != nil {
+		return nil, nil, closer, fmt.Errorf("failed to load plugins: %w", err)
+	}
+	logger.Infow("plugins loaded", "validators", validators)
+	closer = multicloser.Append(closer, pluginClosers.Close)
+
+	p := justification.NewProcessor(kmsClient, c.cfg.JustificationConfig).WithValidators(validators)
 
 	uiServer, err := ui.NewServer(ctx, c.cfg, p)
 	if err != nil {
