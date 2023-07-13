@@ -36,18 +36,6 @@ func (v *mockValidator) Validate(context.Context, *jvspb.ValidateJustificationRe
 	return &jvspb.ValidateJustificationResponse{Valid: v.Valid}, nil
 }
 
-type mockProcessor struct {
-	validators map[string]jvspb.Validator
-}
-
-func (m *mockProcessor) CreateToken(ctx context.Context, requestor string, req *jvspb.CreateJustificationRequest) ([]byte, error) {
-	return []byte{}, nil
-}
-
-func (m *mockProcessor) Validators() map[string]jvspb.Validator {
-	return m.validators
-}
-
 type testValidateFormParam struct {
 	name   string
 	detail FormDetails
@@ -277,16 +265,17 @@ func TestValidateForm(t *testing.T) {
 
 	var cases []*testValidateFormParam
 
+	categories := categories(map[string]jvspb.Validator{
+		"jira": &mockValidator{Valid: true},
+		"git":  &mockValidator{Valid: false},
+	})
+
 	controller := &Controller{
-		p: &mockProcessor{
-			validators: map[string]jvspb.Validator{
-				"jira": &mockValidator{Valid: true},
-				"git":  &mockValidator{Valid: false},
-			},
-		},
+		allowCategories: categories,
+		categoryPairs:   categoryPairs(categories),
 	}
 
-	cats := controller.categories()
+	cats := controller.allowCategories
 	ttls := ttls()
 
 	for i := 0; i < len(cats); i++ {

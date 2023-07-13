@@ -75,7 +75,7 @@ func (p *Processor) WithValidators(v map[string]jvspb.Validator) *Processor {
 	return p
 }
 
-// ValidatorMap returns all the validators allowed by this processor.
+// Validators returns all the validators allowed by this processor.
 func (p *Processor) Validators() map[string]jvspb.Validator {
 	return p.validators
 }

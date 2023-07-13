@@ -32,17 +32,13 @@ import (
 	"google.golang.org/protobuf/types/known/durationpb"
 )
 
-// processor is the mockable interface for the convenience of testing.
-type processor interface {
-	CreateToken(context.Context, string, *jvspb.CreateJustificationRequest) ([]byte, error)
-	Validators() map[string]jvspb.Validator
-}
-
 // Controller manages use of the renderer in the http handler.
 type Controller struct {
-	h         *renderer.Renderer
-	p         processor
-	allowlist []string
+	h               *renderer.Renderer
+	p               *justification.Processor
+	allowlist       []string
+	allowCategories []string
+	categoryPairs   []Pair
 }
 
 // Pair represents a key value pair used to render HTML Option element.
@@ -99,10 +95,13 @@ type ErrorDetails struct {
 const iapHeaderName = "x-goog-authenticated-user-email"
 
 func New(h *renderer.Renderer, p *justification.Processor, allowlist []string) *Controller {
+	categories := categories(p.Validators())
 	return &Controller{
-		h:         h,
-		p:         p,
-		allowlist: allowlist,
+		h:               h,
+		p:               p,
+		allowlist:       allowlist,
+		allowCategories: categories,
+		categoryPairs:   categoryPairs(categories),
 	}
 }
 
@@ -134,7 +133,7 @@ func (c *Controller) handlePopupGet(w http.ResponseWriter, r *http.Request) {
 	}
 
 	// set some defaults for the form
-	formDetails.Category = c.categories()[0]
+	formDetails.Category = c.allowCategories[0]
 	formDetails.TTL = ttls()[0]
 
 	c.h.RenderHTML(w, "popup.html", formDetails)
@@ -265,11 +264,11 @@ func validateLocalIP(originParam string) (bool, error) {
 }
 
 func (c *Controller) validateForm(formDetails *FormDetails) bool {
-	// Note: c.p.Validators are not checked on this level and will be checked
-	// at c.p.CreateToken
+	// This only does sanity check of the form, e.g. field not empty.
+	// The actual verification only happens when submitting the form.
 	formDetails.Errors = make(map[string]string)
 
-	if !isValidOneOf(formDetails.Category, c.categories()) {
+	if !isValidOneOf(formDetails.Category, c.allowCategories) {
 		formDetails.Errors["Category"] = "Category must be selected"
 	}
 
@@ -308,7 +307,7 @@ func (c *Controller) getFormDetails(r *http.Request) (*FormDetails, error) {
 			CategoryLabel: "Category",
 			ReasonLabel:   "Reason",
 			TTLLabel:      "TTL",
-			Categories:    c.categoryPairs(),
+			Categories:    c.categoryPairs,
 			TTLs:          ttls(),
 		},
 	}, nil
@@ -343,8 +342,7 @@ func ttls() []string {
 	return []string{"15m", "30m", "1h", "2h", "4h"}
 }
 
-func (c *Controller) categories() []string {
-	validators := c.p.Validators()
+func categories(validators map[string]jvspb.Validator) []string {
 	categories := make([]string, 0, len(validators))
 	for v := range validators {
 		categories = append(categories, v)
@@ -354,9 +352,9 @@ func (c *Controller) categories() []string {
 }
 
 // categoryPairs returns a list of Pairs for rendering.
-func (c *Controller) categoryPairs() []Pair {
-	pairs := make([]Pair, 0, len(c.categories()))
-	for _, category := range c.categories() {
+func categoryPairs(categories []string) []Pair {
+	pairs := make([]Pair, 0, len(categories))
+	for _, category := range categories {
 		pairs = append(pairs, Pair{
 			Key:  category,
 			Text: getText(category),
