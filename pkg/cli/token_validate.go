@@ -137,7 +137,7 @@ func (c *TokenValidateCommand) Run(ctx context.Context, args []string) error {
 
 	// Read token from stdin
 	if c.flagToken == "-" {
-		token, err := c.Prompt("Enter token: ")
+		token, err := c.Prompt(ctx, "Enter token: ")
 		if err != nil {
 			return fmt.Errorf("failed to get token from prompt: %w", err)
 		}

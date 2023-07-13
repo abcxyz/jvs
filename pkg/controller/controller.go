@@ -31,17 +31,27 @@ import (
 	"google.golang.org/protobuf/types/known/durationpb"
 )
 
+var ttls = map[string]struct{}{
+	"15m": {},
+	"30m": {},
+	"1h":  {},
+	"2h":  {},
+	"4h":  {},
+}
+
+const defaultTTL = "15m"
+
+var categories = map[string]struct{}{
+	"explanation": {},
+}
+
+const defaultCategory = "explanation"
+
 // Controller manages use of the renderer in the http handler.
 type Controller struct {
 	h         *renderer.Renderer
 	p         *justification.Processor
 	allowlist []string
-}
-
-// Pair represents a key value pair used by the select HTML element.
-type Pair struct {
-	Key  string
-	Text string
 }
 
 // Content defines the displayable parts of the token retrieval form.
@@ -50,8 +60,8 @@ type Content struct {
 	CategoryLabel string
 	ReasonLabel   string
 	TTLLabel      string
-	Categories    []Pair
-	TTLs          []string
+	Categories    map[string]struct{}
+	TTLs          map[string]struct{}
 }
 
 // FormDetails represents all the input and content used for the token retrievlal form.
@@ -61,7 +71,7 @@ type FormDetails struct {
 	PageTitle   string
 	Description string
 	UserEmail   string
-	Content     Content
+	Content     *Content
 	Category    string
 	Reason      string
 	TTL         string
@@ -122,8 +132,12 @@ func (c *Controller) handlePopupGet(w http.ResponseWriter, r *http.Request) {
 	}
 
 	// set some defaults for the form
-	formDetails.Category = categories()[0]
-	formDetails.TTL = ttls()[0]
+	if formDetails.Category == "" {
+		formDetails.Category = defaultCategory
+	}
+	if formDetails.TTL == "" {
+		formDetails.TTL = defaultTTL
+	}
 
 	c.h.RenderHTML(w, "popup.html", formDetails)
 }
@@ -255,7 +269,7 @@ func validateLocalIP(originParam string) (bool, error) {
 func validateForm(formDetails *FormDetails) bool {
 	formDetails.Errors = make(map[string]string)
 
-	if !isValidOneOf(formDetails.Category, categories()) {
+	if _, ok := categories[formDetails.Category]; !ok {
 		formDetails.Errors["Category"] = "Category must be selected"
 	}
 
@@ -263,7 +277,7 @@ func validateForm(formDetails *FormDetails) bool {
 		formDetails.Errors["Reason"] = "Reason is required"
 	}
 
-	if !isValidOneOf(formDetails.TTL, ttls()) {
+	if _, ok := ttls[formDetails.TTL]; !ok {
 		formDetails.Errors["TTL"] = "TTL is required"
 	}
 
@@ -289,18 +303,13 @@ func getFormDetails(r *http.Request) (*FormDetails, error) {
 		TTL:         r.FormValue("ttl"),
 		PageTitle:   "JVS - Justification Request System",
 		Description: "Justification Verification System form used for minting tokens.",
-		Content: Content{
+		Content: &Content{
 			UserLabel:     "User",
 			CategoryLabel: "Category",
 			ReasonLabel:   "Reason",
 			TTLLabel:      "TTL",
-			Categories: []Pair{
-				{
-					Key:  "explanation",
-					Text: "Explanation",
-				},
-			},
-			TTLs: ttls(),
+			Categories:    categories,
+			TTLs:          ttls,
 		},
 	}, nil
 }
@@ -324,16 +333,8 @@ func getEmail(r *http.Request) (string, error) {
 
 	split := strings.Split(iapEmailValue, ":")
 	if len(split) != 2 {
-		return "", fmt.Errorf("email value has unexpected format, expected %s:<email>", iapHeaderName)
+		return "", fmt.Errorf("email value has unexpected format, expected %s:domain:<email>", iapHeaderName)
 	}
 
 	return split[1], nil
-}
-
-func ttls() []string {
-	return []string{"15m", "30m", "1h", "2h", "4h"}
-}
-
-func categories() []string {
-	return []string{"explanation"}
 }

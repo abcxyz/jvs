@@ -225,7 +225,7 @@ class Helper {
 
 6. Run `npm start`, your application should be running.
 
-7. Before you click the button in the UI to trigger the JVS UI popup, you must provide an anticipated header normally provided by IAP. While running locally there is no IAP instance running so you will need to inject a header of the format `x-goog-authenticated-user-email:<your email here>`.
+7. Before you click the button in the UI to trigger the JVS UI popup, you must provide an anticipated header normally provided by IAP. While running locally there is no IAP instance running so you will need to inject a header of the format `x-goog-authenticated-user-email:accounts.google.com:<your email here>`.
 
 8. With your header set, click the button and you should now see the JVS UI with your email in the form. Provide a reason and submit the form. If you have a KMS instance running then your popup will automatically close and the token will be available in your calling application. If you dont have KMS set up see the next section.
 

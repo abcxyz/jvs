@@ -39,7 +39,6 @@ import (
 	kms "cloud.google.com/go/kms/apiv1"
 	"cloud.google.com/go/kms/apiv1/kmspb"
 	jvspb "github.com/abcxyz/jvs/apis/v0"
-	"github.com/abcxyz/jvs/assets"
 	"github.com/abcxyz/jvs/pkg/config"
 	"github.com/abcxyz/jvs/pkg/justification"
 	"github.com/abcxyz/jvs/pkg/jvscrypto"
@@ -492,7 +491,7 @@ func TestPublicKeys(t *testing.T) {
 		CacheTimeout: 10 * time.Second,
 	}
 
-	h, err := renderer.New(ctx, assets.ServerFS(),
+	h, err := renderer.New(ctx, nil,
 		renderer.WithDebug(cfg.DevMode))
 	if err != nil {
 		t.Fatal(err)

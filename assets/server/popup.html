@@ -23,11 +23,11 @@
         <li class="content-row">
           <label class="content-label" for="category">Category</label>
           <select class="content-select" id="category" name="category">
-            {{ range $index, $element := .Content.Categories }}
-            {{ if eq $element.Key $context.Category }}
-            <option value="{{ $element.Key }}" selected="selected">{{ $element.Text }}</option>
+            {{ range $element, $value := .Content.Categories }}
+            {{ if eq $element $context.Category }}
+            <option value="{{ $element }}" selected="selected">{{ $element | toTitle }}</option>
             {{ else }}
-            <option value="{{ $element.Key }}">{{ $element.Text }}</option>
+            <option value="{{ $element }}">{{ $element }}</option>
             {{ end }}
             {{ end }}
           </select>
@@ -53,7 +53,7 @@
         <li class="content-row">
           <label class="content-label" for="ttl">TTL</label>
           <select class="content-select" id="ttl" name="ttl">
-            {{ range $index, $element := .Content.TTLs }}
+            {{ range $element, $value := .Content.TTLs }}
             {{ if eq $element $context.TTL }}
             <option value="{{ $element }}" selected="selected">{{ $element }}</option>
             {{ else }}
