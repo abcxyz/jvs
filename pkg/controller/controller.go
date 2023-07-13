@@ -333,7 +333,7 @@ func getEmail(r *http.Request) (string, error) {
 
 	split := strings.Split(iapEmailValue, ":")
 	if len(split) != 2 {
-		return "", fmt.Errorf("email value has unexpected format, expected %s:<email>", iapHeaderName)
+		return "", fmt.Errorf("email value has unexpected format, expected %s:domain:<email>", iapHeaderName)
 	}
 
 	return split[1], nil

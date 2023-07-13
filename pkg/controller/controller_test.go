@@ -82,7 +82,6 @@ func TestHandlePopup(t *testing.T) {
 		t.Run(tc.name, func(t *testing.T) {
 			t.Parallel()
 
-			ctx := ctx
 			harness := envtest.NewServerConfig(t, "9091", tc.allowlist, true)
 			c := New(harness.Renderer, harness.Processor, tc.allowlist)
 
@@ -256,13 +255,8 @@ func TestValidateForm(t *testing.T) {
 
 	var cases []*testValidateFormParam
 
-	cats := categories()
-	ttls := ttls()
-
-	for i := 0; i < len(cats); i++ {
-		category := cats[i]
-		for j := 0; j < len(ttls); j++ {
-			ttl := ttls[j]
+	for category := range categories {
+		for ttl := range ttls {
 			reason := "reason"
 			happyPathCase := &testValidateFormParam{
 				name: fmt.Sprintf("%s_%s_%s", category, reason, ttl),
@@ -292,23 +286,23 @@ func TestValidateForm(t *testing.T) {
 			detail: FormDetails{
 				Category: "",
 				Reason:   "reason",
-				TTL:      ttls[0],
+				TTL:      defaultTTL,
 			},
 			want: false,
 		},
 		{
 			name: "no_input_reason",
 			detail: FormDetails{
-				Category: cats[0],
+				Category: defaultCategory,
 				Reason:   "",
-				TTL:      ttls[1],
+				TTL:      defaultTTL,
 			},
 			want: false,
 		},
 		{
 			name: "no_input_ttl",
 			detail: FormDetails{
-				Category: cats[0],
+				Category: defaultCategory,
 				Reason:   "reason",
 				TTL:      "",
 			},

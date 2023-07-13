@@ -20,7 +20,6 @@ import (
 	"net/http"
 
 	kms "cloud.google.com/go/kms/apiv1"
-	"github.com/abcxyz/jvs/assets"
 	"github.com/abcxyz/jvs/internal/version"
 	"github.com/abcxyz/jvs/pkg/config"
 	"github.com/abcxyz/jvs/pkg/jvscrypto"
@@ -109,7 +108,7 @@ func (c *PublicKeyServerCommand) RunUnstarted(ctx context.Context, args []string
 	closer = multicloser.Append(closer, kmsClient.Close)
 
 	// Create the renderer
-	h, err := renderer.New(ctx, assets.ServerFS(),
+	h, err := renderer.New(ctx, nil,
 		renderer.WithDebug(c.cfg.DevMode),
 		renderer.WithOnError(func(err error) {
 			logger.Errorw("failed to render", "error", err)

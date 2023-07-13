@@ -17,7 +17,6 @@ package ui
 import (
 	"context"
 	"fmt"
-	"html/template"
 	"net/http"
 
 	"github.com/abcxyz/jvs/assets"
@@ -26,8 +25,6 @@ import (
 	"github.com/abcxyz/jvs/pkg/justification"
 	"github.com/abcxyz/pkg/logging"
 	"github.com/abcxyz/pkg/renderer"
-	"golang.org/x/text/cases"
-	"golang.org/x/text/language"
 )
 
 // Server holds the parsed html templates.
@@ -44,7 +41,6 @@ func NewServer(ctx context.Context, uiCfg *config.UIServiceConfig, p *justificat
 	// Create the renderer
 	h, err := renderer.New(ctx, assets.ServerFS(),
 		renderer.WithDebug(uiCfg.DevMode),
-		renderer.WithTemplateFuncs(templateFuncs()),
 		renderer.WithOnError(func(err error) {
 			logger.Errorw("failed to render", "error", err)
 		}))
@@ -75,10 +71,4 @@ func (s *Server) Routes(ctx context.Context) http.Handler {
 	root := logging.HTTPInterceptor(logger, s.config.ProjectID)(mux)
 
 	return root
-}
-
-func templateFuncs() template.FuncMap {
-	return map[string]any{
-		"toTitle": cases.Title(language.English, cases.NoLower).String,
-	}
 }
