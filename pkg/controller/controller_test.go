@@ -21,9 +21,12 @@ import (
 	"net/http/httptest"
 	"net/url"
 	"testing"
+	"time"
 
 	jvspb "github.com/abcxyz/jvs/apis/v0"
 	"github.com/abcxyz/jvs/internal/envtest"
+	"github.com/abcxyz/jvs/pkg/config"
+	"github.com/abcxyz/jvs/pkg/justification"
 	"github.com/abcxyz/pkg/testutil"
 	"github.com/google/go-cmp/cmp"
 )
@@ -91,7 +94,6 @@ func TestHandlePopup(t *testing.T) {
 		t.Run(tc.name, func(t *testing.T) {
 			t.Parallel()
 
-			ctx := ctx
 			harness := envtest.NewServerConfig(t, "9091", tc.allowlist, true)
 			c := New(harness.Renderer, harness.Processor, tc.allowlist)
 
@@ -265,23 +267,17 @@ func TestValidateForm(t *testing.T) {
 
 	var cases []*testValidateFormParam
 
-	categories := categories(map[string]jvspb.Validator{
+	p := justification.NewProcessor(nil, &config.JustificationConfig{
+		SignerCacheTimeout: 5 * time.Minute,
+	}).WithValidators(map[string]jvspb.Validator{
 		"jira": &mockValidator{Valid: true},
 		"git":  &mockValidator{Valid: false},
 	})
 
-	controller := &Controller{
-		allowCategories: categories,
-		categoryPairs:   categoryPairs(categories),
-	}
+	controller := New(nil, p, []string{})
 
-	cats := controller.allowCategories
-	ttls := ttls()
-
-	for i := 0; i < len(cats); i++ {
-		category := cats[i]
-		for j := 0; j < len(ttls); j++ {
-			ttl := ttls[j]
+	for category := range controller.categoryDisplayData {
+		for ttl := range ttls {
 			reason := "reason"
 			happyPathCase := &testValidateFormParam{
 				name: fmt.Sprintf("%s_%s_%s", category, reason, ttl),
@@ -311,23 +307,23 @@ func TestValidateForm(t *testing.T) {
 			detail: FormDetails{
 				Category: "",
 				Reason:   "reason",
-				TTL:      ttls[0],
+				TTL:      defaultTTL,
 			},
 			want: false,
 		},
 		{
 			name: "no_input_reason",
 			detail: FormDetails{
-				Category: cats[0],
+				Category: defaultCategory,
 				Reason:   "",
-				TTL:      ttls[1],
+				TTL:      defaultTTL,
 			},
 			want: false,
 		},
 		{
 			name: "no_input_ttl",
 			detail: FormDetails{
-				Category: cats[0],
+				Category: defaultCategory,
 				Reason:   "reason",
 				TTL:      "",
 			},

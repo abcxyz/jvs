@@ -32,24 +32,28 @@ import (
 	"google.golang.org/protobuf/types/known/durationpb"
 )
 
-// Controller manages use of the renderer in the http handler.
-type Controller struct {
-	h               *renderer.Renderer
-	p               *justification.Processor
-	allowlist       []string
-	allowCategories []string
-	categoryPairs   []Pair
+var ttls = map[string]struct{}{
+	"15m": {},
+	"30m": {},
+	"1h":  {},
+	"2h":  {},
+	"4h":  {},
 }
 
-// Pair represents a key value pair used to render HTML Option element.
-//
-//	https://developer.mozilla.org/en-US/docs/Web/HTML/Element/option
-type Pair struct {
-	// Key will be used to populate the value of the Option.
-	Key string
+const defaultTTL = "15m"
 
-	// Text will be used to render the text on the Option element.
-	Text string
+var categories = map[string]struct{}{
+	"explanation": {},
+}
+
+const defaultCategory = "explanation"
+
+// Controller manages use of the renderer in the http handler.
+type Controller struct {
+	h                   *renderer.Renderer
+	p                   *justification.Processor
+	allowlist           []string
+	categoryDisplayData map[string]struct{}
 }
 
 // Content defines the displayable parts of the token retrieval form.
@@ -58,8 +62,8 @@ type Content struct {
 	CategoryLabel string
 	ReasonLabel   string
 	TTLLabel      string
-	Categories    []Pair
-	TTLs          []string
+	Categories    map[string]struct{}
+	TTLs          map[string]struct{}
 }
 
 // FormDetails represents all the input and content used for the token retrievlal form.
@@ -69,7 +73,7 @@ type FormDetails struct {
 	PageTitle   string
 	Description string
 	UserEmail   string
-	Content     Content
+	Content     *Content
 	Category    string
 	Reason      string
 	TTL         string
@@ -95,13 +99,14 @@ type ErrorDetails struct {
 const iapHeaderName = "x-goog-authenticated-user-email"
 
 func New(h *renderer.Renderer, p *justification.Processor, allowlist []string) *Controller {
-	categories := categories(p.Validators())
+	for v := range p.Validators() {
+		categories[v] = struct{}{}
+	}
 	return &Controller{
-		h:               h,
-		p:               p,
-		allowlist:       allowlist,
-		allowCategories: categories,
-		categoryPairs:   categoryPairs(categories),
+		h:                   h,
+		p:                   p,
+		allowlist:           allowlist,
+		categoryDisplayData: categories,
 	}
 }
 
@@ -133,8 +138,12 @@ func (c *Controller) handlePopupGet(w http.ResponseWriter, r *http.Request) {
 	}
 
 	// set some defaults for the form
-	formDetails.Category = c.allowCategories[0]
-	formDetails.TTL = ttls()[0]
+	if formDetails.Category == "" {
+		formDetails.Category = defaultCategory
+	}
+	if formDetails.TTL == "" {
+		formDetails.TTL = defaultTTL
+	}
 
 	c.h.RenderHTML(w, "popup.html", formDetails)
 }
@@ -268,7 +277,7 @@ func (c *Controller) validateForm(formDetails *FormDetails) bool {
 	// The actual verification only happens when submitting the form.
 	formDetails.Errors = make(map[string]string)
 
-	if !isValidOneOf(formDetails.Category, c.allowCategories) {
+	if _, ok := c.categoryDisplayData[formDetails.Category]; !ok {
 		formDetails.Errors["Category"] = "Category must be selected"
 	}
 
@@ -276,7 +285,7 @@ func (c *Controller) validateForm(formDetails *FormDetails) bool {
 		formDetails.Errors["Reason"] = "Reason is required"
 	}
 
-	if !isValidOneOf(formDetails.TTL, ttls()) {
+	if _, ok := ttls[formDetails.TTL]; !ok {
 		formDetails.Errors["TTL"] = "TTL is required"
 	}
 
@@ -302,13 +311,13 @@ func (c *Controller) getFormDetails(r *http.Request) (*FormDetails, error) {
 		TTL:         r.FormValue("ttl"),
 		PageTitle:   "JVS - Justification Request System",
 		Description: "Justification Verification System form used for minting tokens.",
-		Content: Content{
+		Content: &Content{
 			UserLabel:     "User",
 			CategoryLabel: "Category",
 			ReasonLabel:   "Reason",
 			TTLLabel:      "TTL",
-			Categories:    c.categoryPairs,
-			TTLs:          ttls(),
+			Categories:    c.categoryDisplayData,
+			TTLs:          ttls,
 		},
 	}, nil
 }
@@ -332,45 +341,8 @@ func getEmail(r *http.Request) (string, error) {
 
 	split := strings.Split(iapEmailValue, ":")
 	if len(split) != 2 {
-		return "", fmt.Errorf("email value has unexpected format, expected %s:<email>", iapHeaderName)
+		return "", fmt.Errorf("email value has unexpected format, expected %s:domain:<email>", iapHeaderName)
 	}
 
 	return split[1], nil
-}
-
-func ttls() []string {
-	return []string{"15m", "30m", "1h", "2h", "4h"}
-}
-
-func categories(validators map[string]jvspb.Validator) []string {
-	categories := make([]string, 0, len(validators))
-	for v := range validators {
-		categories = append(categories, v)
-	}
-	categories = append(categories, "explanation")
-	return categories
-}
-
-// categoryPairs returns a list of Pairs for rendering.
-func categoryPairs(categories []string) []Pair {
-	pairs := make([]Pair, 0, len(categories))
-	for _, category := range categories {
-		pairs = append(pairs, Pair{
-			Key:  category,
-			Text: getText(category),
-		})
-	}
-	return pairs
-}
-
-// getText returns the corresponding text for rendering.
-func getText(category string) string {
-	switch category {
-	case "explanation":
-		return "Explanation"
-	case "jira":
-		return "Jira"
-	default:
-		return "UNKNOWN"
-	}
 }
