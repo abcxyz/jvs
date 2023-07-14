@@ -314,7 +314,7 @@ func TestValidateForm(t *testing.T) {
 		{
 			name: "no_input_reason",
 			detail: FormDetails{
-				Category: defaultCategory,
+				Category: jvspb.DefaultJustificationCategory,
 				Reason:   "",
 				TTL:      defaultTTL,
 			},
@@ -323,7 +323,7 @@ func TestValidateForm(t *testing.T) {
 		{
 			name: "no_input_ttl",
 			detail: FormDetails{
-				Category: defaultCategory,
+				Category: jvspb.DefaultJustificationCategory,
 				Reason:   "reason",
 				TTL:      "",
 			},
