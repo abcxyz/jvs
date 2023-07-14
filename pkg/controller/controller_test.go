@@ -21,11 +21,23 @@ import (
 	"net/http/httptest"
 	"net/url"
 	"testing"
+	"time"
 
+	jvspb "github.com/abcxyz/jvs/apis/v0"
 	"github.com/abcxyz/jvs/internal/envtest"
+	"github.com/abcxyz/jvs/pkg/config"
+	"github.com/abcxyz/jvs/pkg/justification"
 	"github.com/abcxyz/pkg/testutil"
 	"github.com/google/go-cmp/cmp"
 )
+
+type mockValidator struct {
+	Valid bool
+}
+
+func (v *mockValidator) Validate(context.Context, *jvspb.ValidateJustificationRequest) (*jvspb.ValidateJustificationResponse, error) {
+	return &jvspb.ValidateJustificationResponse{Valid: v.Valid}, nil
+}
 
 type testValidateFormParam struct {
 	name   string
@@ -255,7 +267,16 @@ func TestValidateForm(t *testing.T) {
 
 	var cases []*testValidateFormParam
 
-	for category := range categories {
+	p := justification.NewProcessor(nil, &config.JustificationConfig{
+		SignerCacheTimeout: 5 * time.Minute,
+	}).WithValidators(map[string]jvspb.Validator{
+		"jira": &mockValidator{Valid: true},
+		"git":  &mockValidator{Valid: false},
+	})
+
+	controller := New(nil, p, []string{})
+
+	for category := range controller.categoryDisplayData {
 		for ttl := range ttls {
 			reason := "reason"
 			happyPathCase := &testValidateFormParam{
@@ -318,7 +339,7 @@ func TestValidateForm(t *testing.T) {
 		t.Run(tc.name, func(t *testing.T) {
 			t.Parallel()
 
-			got := validateForm(&tc.detail)
+			got := controller.validateForm(&tc.detail)
 			if diff := cmp.Diff(tc.want, got); diff != "" {
 				t.Errorf("Failed validating (-want,+got):\n%s", diff)
 			}

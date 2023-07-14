@@ -69,9 +69,15 @@ const (
 	DefaultAudience = "dev.abcxyz.jvs"
 )
 
+// WithValidators add validators to the processor.
 func (p *Processor) WithValidators(v map[string]jvspb.Validator) *Processor {
 	p.validators = v
 	return p
+}
+
+// Validators returns all the validators allowed by this processor.
+func (p *Processor) Validators() map[string]jvspb.Validator {
+	return p.validators
 }
 
 // CreateToken implements the create token API which creates and signs a JWT

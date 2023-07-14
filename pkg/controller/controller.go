@@ -27,6 +27,7 @@ import (
 	"github.com/abcxyz/jvs/internal/project"
 	"github.com/abcxyz/jvs/pkg/justification"
 	"github.com/abcxyz/pkg/renderer"
+
 	"golang.org/x/exp/slices"
 	"google.golang.org/protobuf/types/known/durationpb"
 )
@@ -49,9 +50,10 @@ const defaultCategory = "explanation"
 
 // Controller manages use of the renderer in the http handler.
 type Controller struct {
-	h         *renderer.Renderer
-	p         *justification.Processor
-	allowlist []string
+	h                   *renderer.Renderer
+	p                   *justification.Processor
+	allowlist           []string
+	categoryDisplayData map[string]struct{}
 }
 
 // Content defines the displayable parts of the token retrieval form.
@@ -97,10 +99,14 @@ type ErrorDetails struct {
 const iapHeaderName = "x-goog-authenticated-user-email"
 
 func New(h *renderer.Renderer, p *justification.Processor, allowlist []string) *Controller {
+	for v := range p.Validators() {
+		categories[v] = struct{}{}
+	}
 	return &Controller{
-		h:         h,
-		p:         p,
-		allowlist: allowlist,
+		h:                   h,
+		p:                   p,
+		allowlist:           allowlist,
+		categoryDisplayData: categories,
 	}
 }
 
@@ -125,7 +131,7 @@ func (c *Controller) HandlePopup() http.Handler {
 
 // handlePopupGet handles the initial page load.
 func (c *Controller) handlePopupGet(w http.ResponseWriter, r *http.Request) {
-	formDetails, err := getFormDetails(r)
+	formDetails, err := c.getFormDetails(r)
 	if err != nil {
 		c.renderBadRequest(w, err.Error())
 		return
@@ -144,7 +150,7 @@ func (c *Controller) handlePopupGet(w http.ResponseWriter, r *http.Request) {
 
 // handlePopupPost handles form submission.
 func (c *Controller) handlePopupPost(w http.ResponseWriter, r *http.Request) {
-	formDetails, err := getFormDetails(r)
+	formDetails, err := c.getFormDetails(r)
 	if err != nil {
 		c.renderBadRequest(w, err.Error())
 		return
@@ -165,7 +171,7 @@ func (c *Controller) handlePopupPost(w http.ResponseWriter, r *http.Request) {
 	}
 
 	// 2. Validate input
-	if !validateForm(formDetails) {
+	if !c.validateForm(formDetails) {
 		c.h.RenderHTML(w, "popup.html", formDetails)
 		return
 	}
@@ -266,10 +272,12 @@ func validateLocalIP(originParam string) (bool, error) {
 	return (parsedIP.IsLoopback() || parsedIP.IsPrivate()), nil
 }
 
-func validateForm(formDetails *FormDetails) bool {
+func (c *Controller) validateForm(formDetails *FormDetails) bool {
+	// This only does sanity check of the form, e.g. field not empty.
+	// The actual verification only happens when submitting the form.
 	formDetails.Errors = make(map[string]string)
 
-	if _, ok := categories[formDetails.Category]; !ok {
+	if _, ok := c.categoryDisplayData[formDetails.Category]; !ok {
 		formDetails.Errors["Category"] = "Category must be selected"
 	}
 
@@ -288,7 +296,7 @@ func isValidOneOf(selection string, options []string) bool {
 	return slices.Contains(options, selection)
 }
 
-func getFormDetails(r *http.Request) (*FormDetails, error) {
+func (c *Controller) getFormDetails(r *http.Request) (*FormDetails, error) {
 	email, err := getEmail(r)
 	if err != nil {
 		return nil, err
@@ -308,7 +316,7 @@ func getFormDetails(r *http.Request) (*FormDetails, error) {
 			CategoryLabel: "Category",
 			ReasonLabel:   "Reason",
 			TTLLabel:      "TTL",
-			Categories:    categories,
+			Categories:    c.categoryDisplayData,
 			TTLs:          ttls,
 		},
 	}, nil
