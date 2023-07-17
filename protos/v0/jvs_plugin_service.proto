@@ -45,7 +45,7 @@ message ValidateJustificationResponse {
   repeated string error = 3;
 }
 
-// GetUIDataRequest is to retrieve data for display. Currently, it is designed to obtain the display_name and hint.
+// GetUIDataRequest is the request to get the plugin data for display purposes.
 message GetUIDataRequest {
 }
 
