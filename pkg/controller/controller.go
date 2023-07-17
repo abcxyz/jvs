@@ -42,12 +42,6 @@ var ttls = map[string]struct{}{
 
 const defaultTTL = "15m"
 
-var categories = map[string]struct{}{
-	"explanation": {},
-}
-
-const defaultCategory = "explanation"
-
 // Controller manages use of the renderer in the http handler.
 type Controller struct {
 	h                   *renderer.Renderer
@@ -99,6 +93,7 @@ type ErrorDetails struct {
 const iapHeaderName = "x-goog-authenticated-user-email"
 
 func New(h *renderer.Renderer, p *justification.Processor, allowlist []string) *Controller {
+	categories := make(map[string]struct{})
 	for v := range p.Validators() {
 		categories[v] = struct{}{}
 	}
@@ -139,7 +134,7 @@ func (c *Controller) handlePopupGet(w http.ResponseWriter, r *http.Request) {
 
 	// set some defaults for the form
 	if formDetails.Category == "" {
-		formDetails.Category = defaultCategory
+		formDetails.Category = jvspb.DefaultJustificationCategory
 	}
 	if formDetails.TTL == "" {
 		formDetails.TTL = defaultTTL

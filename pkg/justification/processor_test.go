@@ -138,6 +138,18 @@ func TestCreateToken(t *testing.T) {
 			wantErr: "failed to validate request",
 		},
 		{
+			name: "justification_explanation_empty",
+			request: &jvspb.CreateJustificationRequest{
+				Justifications: []*jvspb.Justification{
+					{
+						Category: "explanation",
+					},
+				},
+				Ttl: durationpb.New(3600 * time.Second),
+			},
+			wantErr: "failed to validate request: failed validation criteria with error [explanation cannot be empty] and warning []",
+		},
+		{
 			name: "no_ttl",
 			request: &jvspb.CreateJustificationRequest{
 				Justifications: []*jvspb.Justification{

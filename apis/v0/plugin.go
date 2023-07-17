@@ -25,7 +25,16 @@ import (
 const (
 	handshakeCookieKey   = "JVS_PLUGIN"
 	handshakeCookieValue = "cc400ef1c6e74ee20be491c6013ae2120fb04c11703d05fbbf18dbb2e5e0"
+
+	// DefaultJustificationCategory is the default justification category
+	// supported. An "explanation" justification represents a manual free text
+	// reason from the requester.
+	DefaultJustificationCategory = "explanation"
 )
+
+// DefaultJustificationValidator is the [Validator] for the
+// [DefaultJustificationCategory].
+var DefaultJustificationValidator = &ExplanationValidator{}
 
 // Handshake is a common handshake that is shared by plugin and host.
 // handshakeConfigs are used to just do a basic handshake between
@@ -42,6 +51,22 @@ var Handshake = plugin.HandshakeConfig{
 // The interface we are exposing as a plugin.
 type Validator interface {
 	Validate(context.Context, *ValidateJustificationRequest) (*ValidateJustificationResponse, error)
+}
+
+// ExplanationValidator is the built-in [Validator] for the "explanation"
+// justifications. An "explanation" justification represents a manual free text
+// reason from the requester.
+type ExplanationValidator struct{}
+
+// Validate only checks if the input is not empty.
+func (v *ExplanationValidator) Validate(_ context.Context, req *ValidateJustificationRequest) (*ValidateJustificationResponse, error) {
+	if req.Justification == nil || req.Justification.Value == "" {
+		return &ValidateJustificationResponse{
+			Valid: false,
+			Error: []string{"explanation cannot be empty"},
+		}, nil
+	}
+	return &ValidateJustificationResponse{Valid: true}, nil
 }
 
 // ValidatorPlugin implements [plugin.GRPCPlugin].

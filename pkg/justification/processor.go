@@ -58,6 +58,9 @@ func NewProcessor(kms *kms.KeyManagementClient, config *config.JustificationConf
 		kms:    kms,
 		config: config,
 		cache:  cache,
+		validators: map[string]jvspb.Validator{
+			jvspb.DefaultJustificationCategory: jvspb.DefaultJustificationValidator,
+		},
 	}
 }
 
@@ -69,9 +72,11 @@ const (
 	DefaultAudience = "dev.abcxyz.jvs"
 )
 
-// WithValidators add validators to the processor.
+// WithValidators adds validators to the processor.
 func (p *Processor) WithValidators(v map[string]jvspb.Validator) *Processor {
-	p.validators = v
+	for k, validator := range v {
+		p.validators[k] = validator
+	}
 	return p
 }
 
@@ -151,29 +156,22 @@ func (p *Processor) runValidations(ctx context.Context, req *jvspb.CreateJustifi
 	for _, j := range req.Justifications {
 		justificationsLength += len(j.Category) + len(j.Value)
 
-		switch j.Category {
-		case "explanation":
-			if j.Value == "" {
-				merr = errors.Join(merr, fmt.Errorf("no value specified for 'explanation' category"))
-			}
-		default:
-			v, ok := p.validators[j.Category]
-			if !ok {
-				merr = errors.Join(merr, fmt.Errorf("missing validator for category %q", j.Category))
-				continue
-			}
-			resp, verr := v.Validate(ctx, &jvspb.ValidateJustificationRequest{
-				Justification: j,
-			})
-			if verr != nil {
-				merr = errors.Join(merr, fmt.Errorf("unexpected error from validator %q: %w", j.Category, verr))
-				continue
-			}
+		v, ok := p.validators[j.Category]
+		if !ok {
+			merr = errors.Join(merr, fmt.Errorf("missing validator for category %q", j.Category))
+			continue
+		}
+		resp, verr := v.Validate(ctx, &jvspb.ValidateJustificationRequest{
+			Justification: j,
+		})
+		if verr != nil {
+			merr = errors.Join(merr, fmt.Errorf("unexpected error from validator %q: %w", j.Category, verr))
+			continue
+		}
 
-			if !resp.Valid {
-				merr = errors.Join(merr,
-					fmt.Errorf("failed validation criteria with error %v and warning %v", resp.Error, resp.Warning))
-			}
+		if !resp.Valid {
+			merr = errors.Join(merr,
+				fmt.Errorf("failed validation criteria with error %v and warning %v", resp.Error, resp.Warning))
 		}
 	}
 
