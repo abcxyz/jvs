@@ -52,7 +52,7 @@ message GetUIDataRequest {
 // The UIData comprises the data that will be displayed. At present, it exclusively includes the display_name and hint.
 message UIData {
 
-  // The display_name is presented as a category option within the JVS UI.
+  // The display name for the plugin, e.g. for the web UI.
   string display_name = 1;
 
   // The hint represents the Jira Issue key in JVS, serving as a placeholder for the Reason field in the JVS UI.
