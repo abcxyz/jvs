@@ -25,7 +25,7 @@ option go_package = "github.com/abcxyz/jvs/apis/v0";
 service JVSPlugin {
   rpc Validate(ValidateJustificationRequest)
       returns (ValidateJustificationResponse);
-  rpc GetUiData(GetUIDataRequest)
+  rpc GetUIData(GetUIDataRequest)
       returns (UIData);
 }
 
@@ -45,7 +45,7 @@ message ValidateJustificationResponse {
   repeated string error = 3;
 }
 
-// GetUiDataRequest is to retrieve data for display. Currently, it is designed to obtain the display_name and hint. 
+// GetUIDataRequest is to retrieve data for display. Currently, it is designed to obtain the display_name and hint.
 message GetUIDataRequest {
 }
 
