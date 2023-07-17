@@ -55,6 +55,6 @@ message UIData {
   // The display name for the plugin, e.g. for the web UI.
   string display_name = 1;
 
-  // The hint represents the Jira Issue key in JVS, serving as a placeholder for the Reason field in the JVS UI.
+  // The hint for what value to put as the justification.
   string hint = 2;
 }
