@@ -23,7 +23,7 @@ const _ = grpc.SupportPackageIsVersion7
 // For semantics around ctx use and closing/ending streaming RPCs, please refer to https://pkg.go.dev/google.golang.org/grpc/?tab=doc#ClientConn.NewStream.
 type JVSPluginClient interface {
 	Validate(ctx context.Context, in *ValidateJustificationRequest, opts ...grpc.CallOption) (*ValidateJustificationResponse, error)
-	GetUiData(ctx context.Context, in *GetUiDataRequest, opts ...grpc.CallOption) (*GetUiDataResponse, error)
+	GetUiData(ctx context.Context, in *GetUIDataRequest, opts ...grpc.CallOption) (*UIData, error)
 }
 
 type jVSPluginClient struct {
@@ -43,8 +43,8 @@ func (c *jVSPluginClient) Validate(ctx context.Context, in *ValidateJustificatio
 	return out, nil
 }
 
-func (c *jVSPluginClient) GetUiData(ctx context.Context, in *GetUiDataRequest, opts ...grpc.CallOption) (*GetUiDataResponse, error) {
-	out := new(GetUiDataResponse)
+func (c *jVSPluginClient) GetUiData(ctx context.Context, in *GetUIDataRequest, opts ...grpc.CallOption) (*UIData, error) {
+	out := new(UIData)
 	err := c.cc.Invoke(ctx, "/abcxyz.jvs.JVSPlugin/GetUiData", in, out, opts...)
 	if err != nil {
 		return nil, err
@@ -57,7 +57,7 @@ func (c *jVSPluginClient) GetUiData(ctx context.Context, in *GetUiDataRequest, o
 // for forward compatibility
 type JVSPluginServer interface {
 	Validate(context.Context, *ValidateJustificationRequest) (*ValidateJustificationResponse, error)
-	GetUiData(context.Context, *GetUiDataRequest) (*GetUiDataResponse, error)
+	GetUiData(context.Context, *GetUIDataRequest) (*UIData, error)
 	mustEmbedUnimplementedJVSPluginServer()
 }
 
@@ -68,7 +68,7 @@ type UnimplementedJVSPluginServer struct {
 func (UnimplementedJVSPluginServer) Validate(context.Context, *ValidateJustificationRequest) (*ValidateJustificationResponse, error) {
 	return nil, status.Errorf(codes.Unimplemented, "method Validate not implemented")
 }
-func (UnimplementedJVSPluginServer) GetUiData(context.Context, *GetUiDataRequest) (*GetUiDataResponse, error) {
+func (UnimplementedJVSPluginServer) GetUiData(context.Context, *GetUIDataRequest) (*UIData, error) {
 	return nil, status.Errorf(codes.Unimplemented, "method GetUiData not implemented")
 }
 func (UnimplementedJVSPluginServer) mustEmbedUnimplementedJVSPluginServer() {}
@@ -103,7 +103,7 @@ func _JVSPlugin_Validate_Handler(srv interface{}, ctx context.Context, dec func(
 }
 
 func _JVSPlugin_GetUiData_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
-	in := new(GetUiDataRequest)
+	in := new(GetUIDataRequest)
 	if err := dec(in); err != nil {
 		return nil, err
 	}
@@ -115,7 +115,7 @@ func _JVSPlugin_GetUiData_Handler(srv interface{}, ctx context.Context, dec func
 		FullMethod: "/abcxyz.jvs.JVSPlugin/GetUiData",
 	}
 	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
-		return srv.(JVSPluginServer).GetUiData(ctx, req.(*GetUiDataRequest))
+		return srv.(JVSPluginServer).GetUiData(ctx, req.(*GetUIDataRequest))
 	}
 	return interceptor(ctx, in, info, handler)
 }
