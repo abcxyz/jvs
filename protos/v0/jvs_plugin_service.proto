@@ -25,8 +25,8 @@ option go_package = "github.com/abcxyz/jvs/apis/v0";
 service JVSPlugin {
   rpc Validate(ValidateJustificationRequest)
       returns (ValidateJustificationResponse);
-  rpc GetUiData(GetUiDataRequest)
-      returns (GetUiDataResponse);
+  rpc GetUiData(GetUIDataRequest)
+      returns (UIData);
 }
 
 // ValidateJustificationRequest provides a justification for the server to validate.
@@ -46,11 +46,15 @@ message ValidateJustificationResponse {
 }
 
 // GetUiDataRequest is to retrieve data for display. Currently, it is designed to obtain the display_name and hint. 
-message GetUiDataRequest {
+message GetUIDataRequest {
 }
 
-// The GetUiDataResponse comprises the data that will be displayed. At present, it exclusively includes the display_name and hint.
-message GetUiDataResponse {
+// The UIData comprises the data that will be displayed. At present, it exclusively includes the display_name and hint.
+message UIData {
+
+  // The display_name is presented as a category option within the JVS UI.
   string display_name = 1;
+
+  // The hint represents the Jira Issue key in JVS, serving as a placeholder for the Reason field in the JVS UI.
   string hint = 2;
 }
