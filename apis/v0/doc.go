@@ -12,7 +12,7 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-//go:generate protoc -I../../protos/v0 --go_out=. --go-grpc_out=. --go_opt=paths=source_relative --go-grpc_opt=paths=source_relative jvs_request.proto jvs_service.proto cert_action_request.proto cert_action_service.proto
+//go:generate protoc -I../../protos/v0 --go_out=. --go-grpc_out=. --go_opt=paths=source_relative --go-grpc_opt=paths=source_relative jvs_request.proto jvs_service.proto cert_action_request.proto cert_action_service.proto jvs_plugin_service.proto
 
 // Package v0 contains versioned JVS contracts, e.g. service definition.
 package v0

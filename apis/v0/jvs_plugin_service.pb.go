@@ -148,7 +148,7 @@ func (x *ValidateJustificationResponse) GetError() []string {
 	return nil
 }
 
-// GetUIDataRequest is to retrieve data for display. Currently, it is designed to obtain the display_name and hint.
+// GetUIDataRequest is the request to get the plugin data for display purposes.
 type GetUIDataRequest struct {
 	state         protoimpl.MessageState
 	sizeCache     protoimpl.SizeCache
@@ -193,9 +193,9 @@ type UIData struct {
 	sizeCache     protoimpl.SizeCache
 	unknownFields protoimpl.UnknownFields
 
-	// The display_name is presented as a category option within the JVS UI.
+	// The display name for the plugin, e.g. for the web UI.
 	DisplayName string `protobuf:"bytes,1,opt,name=display_name,json=displayName,proto3" json:"display_name,omitempty"`
-	// The hint represents the Jira Issue key in JVS, serving as a placeholder for the Reason field in the JVS UI.
+	// The hint for what value to put as the justification.
 	Hint string `protobuf:"bytes,2,opt,name=hint,proto3" json:"hint,omitempty"`
 }
 
