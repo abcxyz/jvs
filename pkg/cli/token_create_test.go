@@ -62,20 +62,20 @@ func TestTokenCreateCommand(t *testing.T) {
 			expErr: `unexpected arguments: ["foo"]`,
 		},
 		{
-			name:   "missing_explanation",
+			name:   "missing_justification",
 			args:   nil,
-			expErr: `explanation is required`,
+			expErr: `justification is required`,
 		},
 		{
 			name: "bad_server_response",
 			args: []string{
-				"-explanation", "for testing purposes",
+				"-justification", "for testing purposes",
 				"-server", badJVS,
 			},
 			expErr: "testing server error",
 		},
 		{
-			name: "happy_path",
+			name: "explanation_flag_back_compatibility", // TODO(#308): remove this later
 			args: []string{
 				"-explanation", "for testing purposes",
 				"-server", goodJVS,
@@ -89,9 +89,38 @@ func TestTokenCreateCommand(t *testing.T) {
 			},
 		},
 		{
+			name: "happy_path",
+			args: []string{
+				"-justification", "for testing purposes",
+				"-server", goodJVS,
+			},
+			expAudiences: []string{justification.DefaultAudience},
+			expJustifications: []*jvspb.Justification{
+				{
+					Category: "explanation",
+					Value:    "for testing purposes",
+				},
+			},
+		},
+		{
+			name: "happy_path_custom_category",
+			args: []string{
+				"-category", "jira",
+				"-justification", "JIRACOMPONENT/123",
+				"-server", goodJVS,
+			},
+			expAudiences: []string{justification.DefaultAudience},
+			expJustifications: []*jvspb.Justification{
+				{
+					Category: "jira",
+					Value:    "JIRACOMPONENT/123",
+				},
+			},
+		},
+		{
 			name: "breakglass",
 			args: []string{
-				"-explanation=prod is down",
+				"-justification=prod is down",
 				"-breakglass",
 			},
 			expAudiences: []string{justification.DefaultAudience},
@@ -105,7 +134,7 @@ func TestTokenCreateCommand(t *testing.T) {
 		{
 			name: "custom_subject",
 			args: []string{
-				"-explanation=prod is down",
+				"-justification=prod is down",
 				"-subject=user@example.com",
 				"-breakglass",
 			},
@@ -121,7 +150,7 @@ func TestTokenCreateCommand(t *testing.T) {
 		{
 			name: "custom_audiences",
 			args: []string{
-				"-explanation=prod is down",
+				"-justification=prod is down",
 				"-breakglass",
 				"-audience=foo,bar",
 				"-audience=baz",

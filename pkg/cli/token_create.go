@@ -40,12 +40,14 @@ var _ cli.Command = (*TokenCreateCommand)(nil)
 type TokenCreateCommand struct {
 	cli.BaseCommand
 
-	flagAudiences   []string
-	flagAuthToken   string
-	flagBreakglass  bool
-	flagExplanation string
-	flagSubject     string
-	flagTTL         time.Duration
+	flagAudiences         []string
+	flagAuthToken         string
+	flagBreakglass        bool
+	flagExplanation       string
+	flagCategory          string
+	flagJustificationText string
+	flagSubject           string
+	flagTTL               time.Duration
 
 	// flag Server is the server address.
 	flagServer string
@@ -72,19 +74,26 @@ Usage: {{ COMMAND }} [options]
   Generate a token with a 30min ttl:
 
       jvsctl token create \
-        -explanation "issues/12345" \
+        -justification "issues/12345" \
+        -ttl "30m"
+
+  Generate a token with a JIRA justification:
+
+      jvsctl token create \
+        -category "jira"
+        -justification "JIRACOMPONENT/123" \
         -ttl "30m"
 
   Generate a token with custom audiences:
 
       jvsctl token create \
-        -explanation "access production" \
+        -justification "access production" \
         -audiences "my.service.dev"
 
   Generate a breakglass token:
 
       jvsctl token create \
-        -explanation "everything is broken" \
+        -justification "everything is broken" \
         -breakglass
 `
 }
@@ -125,7 +134,22 @@ func (c *TokenCreateCommand) Flags() *cli.FlagSet {
 		Target:  &c.flagExplanation,
 		Aliases: []string{"e"},
 		Example: "Debugging ticket #123",
-		Usage:   `A reason for the action.`,
+		Usage:   `DEPRECATED. Use "justification" flag instead. This flag will be removed in a future release.`,
+	})
+
+	f.StringVar(&cli.StringVar{
+		Name:    "category",
+		Target:  &c.flagCategory,
+		EnvVar:  "JVSCTL_CATEGORY",
+		Default: jvspb.DefaultJustificationCategory,
+		Usage:   `The justification category.`,
+	})
+
+	f.StringVar(&cli.StringVar{
+		Name:    "justification",
+		Target:  &c.flagExplanation,
+		Aliases: []string{"j"},
+		Usage:   `The justification text. The format depends on the justification category.`,
 	})
 
 	f.StringVar(&cli.StringVar{
@@ -185,8 +209,16 @@ func (c *TokenCreateCommand) Run(ctx context.Context, args []string) error {
 		return fmt.Errorf("unexpected arguments: %q", args)
 	}
 
-	if c.flagExplanation == "" {
-		return fmt.Errorf("explanation is required")
+	if c.flagExplanation != "" {
+		fmt.Fprintln(c.Stderr(), `WARNING: "explanation" flag is DEPRECATED and will be removed in a future release. Use "justification" flag instead.`)
+		// TODO(#308): For now, still support the old "explanation" flag if the new flag is not used.
+		if c.flagJustificationText == "" {
+			c.flagJustificationText = c.flagExplanation
+		}
+	}
+
+	if c.flagJustificationText == "" {
+		return fmt.Errorf("justification is required")
 	}
 
 	// Explicitly set this here because, if it's set as a default, there's no way
@@ -225,8 +257,8 @@ func (c *TokenCreateCommand) Run(ctx context.Context, args []string) error {
 	req := &jvspb.CreateJustificationRequest{
 		Subject: c.flagSubject,
 		Justifications: []*jvspb.Justification{{
-			Category: "explanation",
-			Value:    c.flagExplanation,
+			Category: c.flagCategory,
+			Value:    c.flagJustificationText,
 		}},
 		Ttl: durationpb.New(c.flagTTL),
 	}
