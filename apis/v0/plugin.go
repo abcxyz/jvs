@@ -70,8 +70,12 @@ func (v *ExplanationValidator) Validate(_ context.Context, req *ValidateJustific
 	return &ValidateJustificationResponse{Valid: true}, nil
 }
 
+// This method retrieves UIData and handle any potential errors encountered during the process.
 func (v *ExplanationValidator) GetUIData(_ context.Context, req *GetUIDataRequest) (*UIData, error) {
-	return &UIData{}, nil
+	return &UIData{
+		DisplayName: "Explanation",
+		Hint:        "A justification reason in free-form text.",
+	}, nil
 }
 
 // ValidatorPlugin implements [plugin.GRPCPlugin].
@@ -113,6 +117,7 @@ func (m *PluginClient) Validate(ctx context.Context, req *ValidateJustificationR
 	return resp, nil
 }
 
+// This method retrieves UIData and handles any potential errors encountered during the process.
 func (m *PluginClient) GetUIData(ctx context.Context, req *GetUIDataRequest) (*UIData, error) {
 	resp, err := m.client.GetUIData(ctx, req)
 	if err != nil {
@@ -136,6 +141,7 @@ func (m *PluginServer) Validate(ctx context.Context, req *ValidateJustificationR
 	return resp, nil
 }
 
+// This method retrieves UIData and handles any potential errors encountered during the process.
 func (m *PluginServer) GetUIData(ctx context.Context, req *GetUIDataRequest) (*UIData, error) {
 	resp, err := m.Impl.GetUIData(ctx, req)
 	if err != nil {

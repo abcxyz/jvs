@@ -47,12 +47,17 @@ import (
 )
 
 type mockValidator struct {
-	resp *jvspb.ValidateJustificationResponse
-	err  error
+	resp   *jvspb.ValidateJustificationResponse
+	uiData *jvspb.UIData
+	err    error
 }
 
 func (m *mockValidator) Validate(ctx context.Context, req *jvspb.ValidateJustificationRequest) (*jvspb.ValidateJustificationResponse, error) {
 	return m.resp, m.err
+}
+
+func (m *mockValidator) GetUIData(ctx context.Context, req *jvspb.GetUIDataRequest) (*jvspb.UIData, error) {
+	return m.uiData, m.err
 }
 
 func TestCreateToken(t *testing.T) {
@@ -218,6 +223,10 @@ func TestCreateToken(t *testing.T) {
 					resp: &jvspb.ValidateJustificationResponse{
 						Valid: true,
 					},
+					uiData: &jvspb.UIData{
+						DisplayName: "Jira issue key",
+						Hint:        "Jira issue key under JVS project",
+					},
 				},
 			},
 			wantTTL:       1 * time.Hour,
@@ -283,6 +292,27 @@ func TestCreateToken(t *testing.T) {
 				},
 			},
 			wantErr: "unexpected error from validator \"jira\": Cannot connect to validator",
+		},
+		{
+			name: "validator_missing_ui_data",
+			request: &jvspb.CreateJustificationRequest{
+				Justifications: []*jvspb.Justification{
+					{
+						Category: "jira",
+						Value:    "test",
+					},
+				},
+				Ttl: durationpb.New(3600 * time.Second),
+			},
+			validators: map[string]jvspb.Validator{
+				"jira": &mockValidator{
+					resp: &jvspb.ValidateJustificationResponse{
+						Valid: true,
+					},
+				},
+			},
+			wantTTL:       1 * time.Hour,
+			wantAudiences: []string{DefaultAudience},
 		},
 		{
 			name: "missing_validator",
