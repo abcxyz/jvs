@@ -70,7 +70,7 @@ func (v *ExplanationValidator) Validate(_ context.Context, req *ValidateJustific
 	return &ValidateJustificationResponse{Valid: true}, nil
 }
 
-// This method retrieves UIData and handle any potential errors encountered during the process.
+// GetUIData retrieves plugin's display data.
 func (v *ExplanationValidator) GetUIData(_ context.Context, req *GetUIDataRequest) (*UIData, error) {
 	return &UIData{
 		DisplayName: "Explanation",
@@ -117,7 +117,7 @@ func (m *PluginClient) Validate(ctx context.Context, req *ValidateJustificationR
 	return resp, nil
 }
 
-// This method retrieves UIData and handles any potential errors encountered during the process.
+// GetUIData retrieves plugin's display data.
 func (m *PluginClient) GetUIData(ctx context.Context, req *GetUIDataRequest) (*UIData, error) {
 	resp, err := m.client.GetUIData(ctx, req)
 	if err != nil {
@@ -141,7 +141,7 @@ func (m *PluginServer) Validate(ctx context.Context, req *ValidateJustificationR
 	return resp, nil
 }
 
-// This method retrieves UIData and handles any potential errors encountered during the process.
+// GetUIData retrieves plugin's display data.
 func (m *PluginServer) GetUIData(ctx context.Context, req *GetUIDataRequest) (*UIData, error) {
 	resp, err := m.Impl.GetUIData(ctx, req)
 	if err != nil {
