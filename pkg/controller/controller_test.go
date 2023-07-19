@@ -32,11 +32,20 @@ import (
 )
 
 type mockValidator struct {
-	Valid bool
+	Valid       bool
+	DisplayName string
+	Hint        string
 }
 
 func (v *mockValidator) Validate(context.Context, *jvspb.ValidateJustificationRequest) (*jvspb.ValidateJustificationResponse, error) {
 	return &jvspb.ValidateJustificationResponse{Valid: v.Valid}, nil
+}
+
+func (v *mockValidator) GetUIData(context.Context, *jvspb.GetUIDataRequest) (*jvspb.UIData, error) {
+	return &jvspb.UIData{
+		DisplayName: v.DisplayName,
+		Hint:        v.Hint,
+	}, nil
 }
 
 type testValidateFormParam struct {
@@ -270,8 +279,16 @@ func TestValidateForm(t *testing.T) {
 	p := justification.NewProcessor(nil, &config.JustificationConfig{
 		SignerCacheTimeout: 5 * time.Minute,
 	}).WithValidators(map[string]jvspb.Validator{
-		"jira": &mockValidator{Valid: true},
-		"git":  &mockValidator{Valid: false},
+		"jira": &mockValidator{
+			Valid:       true,
+			DisplayName: "Jira issue key",
+			Hint:        "Jira Issue key under JVS project",
+		},
+		"git": &mockValidator{
+			Valid:       false,
+			DisplayName: "Git issue key",
+			Hint:        "Git Issue key under JVS project",
+		},
 	})
 
 	controller := New(nil, p, []string{})

@@ -51,6 +51,7 @@ var Handshake = plugin.HandshakeConfig{
 // The interface we are exposing as a plugin.
 type Validator interface {
 	Validate(context.Context, *ValidateJustificationRequest) (*ValidateJustificationResponse, error)
+	GetUIData(context.Context, *GetUIDataRequest) (*UIData, error)
 }
 
 // ExplanationValidator is the built-in [Validator] for the "explanation"
@@ -67,6 +68,14 @@ func (v *ExplanationValidator) Validate(_ context.Context, req *ValidateJustific
 		}, nil
 	}
 	return &ValidateJustificationResponse{Valid: true}, nil
+}
+
+// GetUIData retrieves plugin's display data.
+func (v *ExplanationValidator) GetUIData(_ context.Context, req *GetUIDataRequest) (*UIData, error) {
+	return &UIData{
+		DisplayName: "Explanation",
+		Hint:        "A justification reason in free-form text.",
+	}, nil
 }
 
 // ValidatorPlugin implements [plugin.GRPCPlugin].
@@ -108,6 +117,15 @@ func (m *PluginClient) Validate(ctx context.Context, req *ValidateJustificationR
 	return resp, nil
 }
 
+// GetUIData retrieves plugin's display data.
+func (m *PluginClient) GetUIData(ctx context.Context, req *GetUIDataRequest) (*UIData, error) {
+	resp, err := m.client.GetUIData(ctx, req)
+	if err != nil {
+		return resp, fmt.Errorf("failed to get UI data: %w", err)
+	}
+	return resp, nil
+}
+
 // Here is the gRPC server that PluginClient talks to.
 type PluginServer struct {
 	JVSPluginServer
@@ -119,6 +137,15 @@ func (m *PluginServer) Validate(ctx context.Context, req *ValidateJustificationR
 	resp, err := m.Impl.Validate(ctx, req)
 	if err != nil {
 		return resp, fmt.Errorf("failed to validate justification: %w", err)
+	}
+	return resp, nil
+}
+
+// GetUIData retrieves plugin's display data.
+func (m *PluginServer) GetUIData(ctx context.Context, req *GetUIDataRequest) (*UIData, error) {
+	resp, err := m.Impl.GetUIData(ctx, req)
+	if err != nil {
+		return resp, fmt.Errorf("failed to get UI data: %w", err)
 	}
 	return resp, nil
 }

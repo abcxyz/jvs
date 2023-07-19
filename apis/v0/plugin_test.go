@@ -73,3 +73,39 @@ func TestExplanationValidator(t *testing.T) {
 		})
 	}
 }
+
+func TestGetUIDataInValidator(t *testing.T) {
+	t.Parallel()
+
+	cases := []struct {
+		name     string
+		req      *GetUIDataRequest
+		wantResp *UIData
+	}{
+		{
+			name: "success",
+			req:  &GetUIDataRequest{},
+			wantResp: &UIData{
+				DisplayName: "Explanation",
+				Hint:        "A justification reason in free-form text.",
+			},
+		},
+	}
+
+	for _, tc := range cases {
+		tc := tc
+
+		t.Run(tc.name, func(t *testing.T) {
+			t.Parallel()
+
+			gotResp, err := DefaultJustificationValidator.GetUIData(context.Background(), tc.req)
+			if err != nil {
+				t.Fatal(err)
+			}
+
+			if diff := cmp.Diff(tc.wantResp, gotResp, protocmp.Transform()); diff != "" {
+				t.Errorf("GetUIData response (-want,+got):\n%s", diff)
+			}
+		})
+	}
+}
