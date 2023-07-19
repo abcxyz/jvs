@@ -134,7 +134,8 @@ func (c *TokenCreateCommand) Flags() *cli.FlagSet {
 		Target:  &c.flagExplanation,
 		Aliases: []string{"e"},
 		Example: "Debugging ticket #123",
-		Usage:   `DEPRECATED. Use "justification" flag instead. This flag will be removed in a future release.`,
+		Usage:   `A reason for the action.`,
+		Hidden:  true,
 	})
 
 	f.StringVar(&cli.StringVar{
@@ -147,7 +148,7 @@ func (c *TokenCreateCommand) Flags() *cli.FlagSet {
 
 	f.StringVar(&cli.StringVar{
 		Name:    "justification",
-		Target:  &c.flagExplanation,
+		Target:  &c.flagJustificationText,
 		Aliases: []string{"j"},
 		Usage:   `The justification text. The format depends on the justification category.`,
 	})
@@ -210,7 +211,7 @@ func (c *TokenCreateCommand) Run(ctx context.Context, args []string) error {
 	}
 
 	if c.flagExplanation != "" {
-		fmt.Fprintln(c.Stderr(), `WARNING: "explanation" flag is DEPRECATED and will be removed in a future release. Use "justification" flag instead.`)
+		c.Errf(`WARNING: the "-explanation" flag is deprecated and will be removed in a future release. Use "-justification" instead.`)
 		// TODO(#308): For now, still support the old "explanation" flag if the new flag is not used.
 		if c.flagJustificationText == "" {
 			c.flagJustificationText = c.flagExplanation
@@ -229,7 +230,7 @@ func (c *TokenCreateCommand) Run(ctx context.Context, args []string) error {
 
 	// breakglass won't require JVS server. Handle that first.
 	if c.flagBreakglass {
-		fmt.Fprintln(c.Stderr(), "WARNING: In breakglass mode, the justification token is not signed.")
+		c.Errf("WARNING: In breakglass mode, the justification token is not signed.")
 		tok, err := c.breakglassToken(ctx)
 		if err != nil {
 			return fmt.Errorf("failed to generate breakglass token: %w", err)
@@ -330,7 +331,7 @@ func (c *TokenCreateCommand) breakglassToken(ctx context.Context) (string, error
 		return "", fmt.Errorf("failed to build breakglass token: %w", err)
 	}
 
-	str, err := jvspb.CreateBreakglassToken(token, c.flagExplanation)
+	str, err := jvspb.CreateBreakglassToken(token, c.flagJustificationText)
 	if err != nil {
 		return "", fmt.Errorf("failed to create breakglass token: %w", err)
 	}
