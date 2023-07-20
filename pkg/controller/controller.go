@@ -47,7 +47,7 @@ type Controller struct {
 	h                   *renderer.Renderer
 	p                   *justification.Processor
 	allowlist           []string
-	categoryDisplayData map[string]struct{}
+	categoryDisplayData map[string]*jvspb.UIData
 }
 
 // Content defines the displayable parts of the token retrieval form.
@@ -56,7 +56,7 @@ type Content struct {
 	CategoryLabel string
 	ReasonLabel   string
 	TTLLabel      string
-	Categories    map[string]struct{}
+	Categories    map[string]*jvspb.UIData
 	TTLs          map[string]struct{}
 }
 
@@ -92,17 +92,18 @@ type ErrorDetails struct {
 
 const iapHeaderName = "x-goog-authenticated-user-email"
 
-func New(h *renderer.Renderer, p *justification.Processor, allowlist []string) *Controller {
-	categories := make(map[string]struct{})
-	for v := range p.Validators() {
-		categories[v] = struct{}{}
+func New(ctx context.Context, h *renderer.Renderer, p *justification.Processor, allowlist []string) (*Controller, error) {
+	categories, err := catagoriesDisplayData(ctx, p.Validators())
+	if err != nil {
+		return nil, err
 	}
+
 	return &Controller{
 		h:                   h,
 		p:                   p,
 		allowlist:           allowlist,
 		categoryDisplayData: categories,
-	}
+	}, nil
 }
 
 func (c *Controller) HandleHealth() http.Handler {
@@ -340,4 +341,18 @@ func getEmail(r *http.Request) (string, error) {
 	}
 
 	return split[1], nil
+}
+
+// categoriesDisplayData gathers the plugins' display data.
+func catagoriesDisplayData(ctx context.Context, validators map[string]jvspb.Validator) (map[string]*jvspb.UIData, error) {
+	displayData := make(map[string]*jvspb.UIData, len(validators))
+
+	for k, v := range validators {
+		d, err := v.GetUIData(ctx, &jvspb.GetUIDataRequest{})
+		if err != nil {
+			return nil, fmt.Errorf("failed to get display data for category %q: %w", k, err)
+		}
+		displayData[k] = d
+	}
+	return displayData, nil
 }
