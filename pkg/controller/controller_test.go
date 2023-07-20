@@ -29,6 +29,7 @@ import (
 	"github.com/abcxyz/jvs/pkg/justification"
 	"github.com/abcxyz/pkg/testutil"
 	"github.com/google/go-cmp/cmp"
+	"google.golang.org/protobuf/testing/protocmp"
 )
 
 type mockValidator struct {
@@ -104,7 +105,10 @@ func TestHandlePopup(t *testing.T) {
 			t.Parallel()
 
 			harness := envtest.NewServerConfig(t, "9091", tc.allowlist, true)
-			c, _ := New(harness.Renderer, harness.Processor, tc.allowlist, context.Background())
+			c, err := New(context.Background(), harness.Renderer, harness.Processor, tc.allowlist)
+			if err != nil {
+				t.Fatal(err)
+			}
 
 			w, r := envtest.BuildFormRequest(ctx, t, tc.method, tc.path,
 				tc.queryParam)
@@ -291,7 +295,10 @@ func TestValidateForm(t *testing.T) {
 		},
 	})
 
-	controller, _ := New(nil, p, []string{}, context.Background())
+	controller, err := New(context.Background(), nil, p, []string{})
+	if err != nil {
+		t.Fatal(err)
+	}
 
 	for category := range controller.categoryDisplayData {
 		for ttl := range ttls {
@@ -461,31 +468,6 @@ func TestGetEmail(t *testing.T) {
 func TestGetCatagoriesDisplayData(t *testing.T) {
 	t.Parallel()
 
-	validators := map[string]jvspb.Validator{
-		"jira": &mockValidator{
-			Valid:       true,
-			DisplayName: "Jira issue key",
-			Hint:        "Jira Issue key under JVS project",
-		},
-		"git": &mockValidator{
-			Valid:       false,
-			DisplayName: "Git issue key",
-			Hint:        "Git Issue key under JVS project",
-		},
-	}
-	jiraUIData := &jvspb.UIData{
-		DisplayName: "Jira issue key",
-		Hint:        "Jira Issue key under JVS project",
-	}
-	gitUIData := &jvspb.UIData{
-		DisplayName: "Git issue key",
-		Hint:        "Git Issue key under JVS project",
-	}
-	expectedCatagoriesData := map[string]*jvspb.UIData{
-		"jira": jiraUIData,
-		"git":  gitUIData,
-	}
-
 	cases := []struct {
 		name       string
 		validators map[string]jvspb.Validator
@@ -498,9 +480,29 @@ func TestGetCatagoriesDisplayData(t *testing.T) {
 			wantRes:    make(map[string]*jvspb.UIData),
 		},
 		{
-			name:       "success_when_validator_with_ui_data",
-			validators: validators,
-			wantRes:    expectedCatagoriesData,
+			name: "success_when_validator_with_ui_data",
+			validators: map[string]jvspb.Validator{
+				"jira": &mockValidator{
+					Valid:       true,
+					DisplayName: "Jira issue key",
+					Hint:        "Jira Issue key under JVS project",
+				},
+				"git": &mockValidator{
+					Valid:       false,
+					DisplayName: "Git issue key",
+					Hint:        "Git Issue key under JVS project",
+				},
+			},
+			wantRes: map[string]*jvspb.UIData{
+				"jira": {
+					DisplayName: "Jira issue key",
+					Hint:        "Jira Issue key under JVS project",
+				},
+				"git": {
+					DisplayName: "Git issue key",
+					Hint:        "Git Issue key under JVS project",
+				},
+			},
 		},
 	}
 
@@ -510,27 +512,13 @@ func TestGetCatagoriesDisplayData(t *testing.T) {
 		t.Run(tc.name, func(t *testing.T) {
 			t.Parallel()
 
-			gotRes, err := getCatagoriesDisplayData(tc.validators, context.Background())
+			gotRes, err := catagoriesDisplayData(context.Background(), tc.validators)
 			if diff := testutil.DiffErrString(err, tc.wantErr); diff != "" {
 				t.Errorf("Unexpected err: %s", diff)
 			}
 
-			// Compares goRes and wantRes
-			wantResLen := len(tc.wantRes)
-			gotResLen := len(gotRes)
-			if gotResLen != wantResLen {
-				t.Errorf("Expected map with size '%d' but actual map with size '%v'", wantResLen, gotResLen)
-			}
-
-			for k, w := range tc.wantRes {
-				g, ok := gotRes[k]
-				if !ok {
-					t.Errorf("Key '%s' not found in the actual map", k)
-				}
-
-				if w.DisplayName != g.DisplayName || w.Hint != g.Hint {
-					t.Errorf("Values for key '%s' are different. Expected: %v, Actual: %v", k, w, g)
-				}
+			if diff := cmp.Diff(tc.wantRes, gotRes, protocmp.Transform()); diff != "" {
+				t.Errorf("Display data (-want,+got):\n%s", diff)
 			}
 		})
 	}

@@ -92,8 +92,8 @@ type ErrorDetails struct {
 
 const iapHeaderName = "x-goog-authenticated-user-email"
 
-func New(h *renderer.Renderer, p *justification.Processor, allowlist []string, ctx context.Context) (*Controller, error) {
-	categories, err := getCatagoriesDisplayData(p.Validators(), ctx)
+func New(ctx context.Context, h *renderer.Renderer, p *justification.Processor, allowlist []string) (*Controller, error) {
+	categories, err := catagoriesDisplayData(ctx, p.Validators())
 	if err != nil {
 		return nil, err
 	}
@@ -343,14 +343,14 @@ func getEmail(r *http.Request) (string, error) {
 	return split[1], nil
 }
 
-// GetCatagoriesDisplayData takes validators as input and returns UIData for display. If there's an error during the GetUIData RPC call, it will be thrown.
-func getCatagoriesDisplayData(validators map[string]jvspb.Validator, ctx context.Context) (map[string]*jvspb.UIData, error) {
+// categoriesDisplayData gathers the plugins' display data.
+func catagoriesDisplayData(ctx context.Context, validators map[string]jvspb.Validator) (map[string]*jvspb.UIData, error) {
 	displayData := make(map[string]*jvspb.UIData, len(validators))
 
 	for k, v := range validators {
 		d, err := v.GetUIData(ctx, &jvspb.GetUIDataRequest{})
 		if err != nil {
-			return nil, fmt.Errorf("failed to get UIData with error %w", err)
+			return nil, fmt.Errorf("failed to get display data for category %q: %w", k, err)
 		}
 		displayData[k] = d
 	}
