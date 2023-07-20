@@ -48,7 +48,7 @@ func NewServer(ctx context.Context, uiCfg *config.UIServiceConfig, p *justificat
 		return nil, fmt.Errorf("failed to create renderer: %w", err)
 	}
 
-	uic, cerr := controller.New(h, p, uiCfg.Allowlist)
+	uic, cerr := controller.New(h, p, uiCfg.Allowlist, ctx)
 	if cerr != nil {
 		return nil, fmt.Errorf("failed to create controller: %w", cerr)
 	}

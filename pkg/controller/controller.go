@@ -92,8 +92,8 @@ type ErrorDetails struct {
 
 const iapHeaderName = "x-goog-authenticated-user-email"
 
-func New(h *renderer.Renderer, p *justification.Processor, allowlist []string) (*Controller, error) {
-	categories, err := getCatagoriesDisplayData(p.Validators())
+func New(h *renderer.Renderer, p *justification.Processor, allowlist []string, ctx context.Context) (*Controller, error) {
+	categories, err := getCatagoriesDisplayData(p.Validators(), ctx)
 	if err != nil {
 		return nil, err
 	}
@@ -344,11 +344,11 @@ func getEmail(r *http.Request) (string, error) {
 }
 
 // GetCatagoriesDisplayData takes validators as input and returns UIData for display. If there's an error during the GetUIData RPC call, it will be thrown.
-func getCatagoriesDisplayData(validators map[string]jvspb.Validator) (map[string]*jvspb.UIData, error) {
-	displayData := make(map[string]*jvspb.UIData)
+func getCatagoriesDisplayData(validators map[string]jvspb.Validator, ctx context.Context) (map[string]*jvspb.UIData, error) {
+	displayData := make(map[string]*jvspb.UIData, len(validators))
 
 	for k, v := range validators {
-		d, err := v.GetUIData(context.Background(), &jvspb.GetUIDataRequest{})
+		d, err := v.GetUIData(ctx, &jvspb.GetUIDataRequest{})
 		if err != nil {
 			return nil, fmt.Errorf("failed to get UIData with error %w", err)
 		}

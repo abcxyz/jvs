@@ -104,7 +104,7 @@ func TestHandlePopup(t *testing.T) {
 			t.Parallel()
 
 			harness := envtest.NewServerConfig(t, "9091", tc.allowlist, true)
-			c, _ := New(harness.Renderer, harness.Processor, tc.allowlist)
+			c, _ := New(harness.Renderer, harness.Processor, tc.allowlist, context.Background())
 
 			w, r := envtest.BuildFormRequest(ctx, t, tc.method, tc.path,
 				tc.queryParam)
@@ -291,7 +291,7 @@ func TestValidateForm(t *testing.T) {
 		},
 	})
 
-	controller, _ := New(nil, p, []string{})
+	controller, _ := New(nil, p, []string{}, context.Background())
 
 	for category := range controller.categoryDisplayData {
 		for ttl := range ttls {
@@ -510,7 +510,7 @@ func TestGetCatagoriesDisplayData(t *testing.T) {
 		t.Run(tc.name, func(t *testing.T) {
 			t.Parallel()
 
-			gotRes, err := getCatagoriesDisplayData(tc.validators)
+			gotRes, err := getCatagoriesDisplayData(tc.validators, context.Background())
 			if diff := testutil.DiffErrString(err, tc.wantErr); diff != "" {
 				t.Errorf("Unexpected err: %s", diff)
 			}
