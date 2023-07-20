@@ -50,7 +50,7 @@ func NewServer(ctx context.Context, uiCfg *config.UIServiceConfig, p *justificat
 
 	uic, cerr := controller.New(h, p, uiCfg.Allowlist)
 	if cerr != nil {
-		return nil, err
+		return nil, fmt.Errorf("failed to create controller: %w", cerr)
 	}
 
 	return &Server{
