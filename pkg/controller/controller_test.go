@@ -105,7 +105,7 @@ func TestHandlePopup(t *testing.T) {
 			t.Parallel()
 
 			harness := envtest.NewServerConfig(t, "9091", tc.allowlist, true)
-			c, err := New(context.Background(), harness.Renderer, harness.Processor, tc.allowlist)
+			c, err := New(ctx, harness.Renderer, harness.Processor, tc.allowlist)
 			if err != nil {
 				t.Fatal(err)
 			}
