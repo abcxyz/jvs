@@ -21,7 +21,6 @@ import (
 	"github.com/abcxyz/pkg/cli"
 	"github.com/abcxyz/pkg/logging"
 	"github.com/abcxyz/pkg/testutil"
-	"github.com/sethvargo/go-envconfig"
 	"google.golang.org/api/option"
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/credentials/insecure"
@@ -70,13 +69,13 @@ func TestAPIServerCommand(t *testing.T) {
 			defer done()
 
 			var cmd APIServerCommand
-			cmd.testFlagSetOpts = []cli.Option{cli.WithLookupEnv(envconfig.MultiLookuper(
-				envconfig.MapLookuper(tc.env),
-				envconfig.MapLookuper(map[string]string{
+			cmd.SetLookupEnv(cli.MultiLookuper(
+				cli.MapLookuper(tc.env),
+				cli.MapLookuper(map[string]string{
 					// Make the test choose a random port.
 					"PORT": "0",
 				}),
-			).Lookup)}
+			))
 			cmd.testKMSClientOptions = []option.ClientOption{
 				// Disable auth lookup in these tests, since we don't actually call KMS.
 				option.WithoutAuthentication(),

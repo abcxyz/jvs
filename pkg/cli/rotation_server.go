@@ -39,9 +39,6 @@ type RotationServerCommand struct {
 
 	cfg *config.CertRotationConfig
 
-	// testFlagSetOpts is only used for testing.
-	testFlagSetOpts []cli.Option
-
 	// testKMSClientOptions are KMS client options to override during testing.
 	testKMSClientOptions []option.ClientOption
 }
@@ -60,7 +57,7 @@ Usage: {{ COMMAND }} [options]
 
 func (c *RotationServerCommand) Flags() *cli.FlagSet {
 	c.cfg = &config.CertRotationConfig{}
-	set := cli.NewFlagSet(c.testFlagSetOpts...)
+	set := c.NewFlagSet()
 	return c.cfg.ToFlags(set)
 }
 
