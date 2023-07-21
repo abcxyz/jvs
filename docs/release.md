@@ -46,4 +46,9 @@ DOCKER_TAG=mytag
 # It should in the end push all the images to the given container registry.
 # All the images will be tagged with the git tag given earlier.
 goreleaser release -f .goreleaser.docker.yaml --clean
+
+# Use goreleaser to build the images with plugin.
+# It should in the end push all the images to the given container registry.
+# All the images will be tagged with the git tag given earlier.
+goreleaser release -f .goreleaser.withplugin.docker.yaml --clean --snapshot
 ```

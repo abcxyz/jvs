@@ -1,0 +1,93 @@
+# Copyright 2023 Google LLC
+#
+# Licensed under the Apache License, Version 2.0 (the "License");
+# you may not use this file except in compliance with the License.
+# You may obtain a copy of the License at
+#
+#      http://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+# See the License for the specific language governing permissions and
+# limitations under the License.
+
+env:
+  # Global env vars for Go build.
+  - 'CGO_ENABLED=0'
+  - 'GO111MODULE=on'
+  - 'GOPROXY=https://proxy.golang.org,direct'
+
+before:
+  hooks:
+    - 'go mod tidy'
+    - './plugin/downloadJiraPlugin.sh'
+
+#Skip build.
+builds:
+  -
+    skip: true
+
+dockers:
+  -
+    ids:
+    - 'jvsctl'
+    use: 'buildx'
+    goos: 'linux'
+    goarch: 'amd64'
+    image_templates:
+      - '{{ .Env.CONTAINER_REGISTRY }}/jvsctl-jira:{{ if index .Env "DOCKER_TAG"  }}{{ .Env.DOCKER_TAG }}{{ else }}{{ .Version }}{{ end }}-amd64'
+    dockerfile: './plugin/withplugin.dockerfile'
+    build_flag_templates:
+      - '--platform=linux/amd64'
+      - '--pull'
+      - '--label=org.opencontainers.image.created={{ .CommitTimestamp }}'
+      - '--label=org.opencontainers.image.description=JVS command line'
+      - '--label=org.opencontainers.image.licenses=Apache-2.0'
+      - '--label=org.opencontainers.image.name=jvsctl-jira'
+      - '--label=org.opencontainers.image.revision={{ .FullCommit }}'
+      - '--label=org.opencontainers.image.source={{ .GitURL }}'
+      - '--label=org.opencontainers.image.title=jvsctl-jira'
+      - '--label=org.opencontainers.image.version={{ .Version }}'
+      - '--build-arg=PLUGIN_DIR_SRC=plugin-dir-src-amd64'
+      - '--build-arg=PLUGIN_DIR_DEST=/var/jvs/plugins'
+      - '--build-arg=JVS_IMAGE=us-docker.pkg.dev/abcxyz-artifacts/docker-images/jvsctl:0.0.5-amd64'
+
+  -
+    ids:
+    - 'jvsctl'
+    use: 'buildx'
+    goos: 'linux'
+    goarch: 'arm64'
+    image_templates:
+      - '{{ .Env.CONTAINER_REGISTRY }}/jvsctl-jira:{{ if index .Env "DOCKER_TAG"  }}{{ .Env.DOCKER_TAG }}{{ else }}{{ .Version }}{{ end }}-arm64'
+    dockerfile: './plugin/withplugin.dockerfile'
+    build_flag_templates:
+      - '--platform=linux/arm64'
+      - '--pull'
+      - '--label=org.opencontainers.image.created={{ .CommitTimestamp }}'
+      - '--label=org.opencontainers.image.description=JVS command line'
+      - '--label=org.opencontainers.image.licenses=Apache-2.0'
+      - '--label=org.opencontainers.image.name=jvsctl-jira'
+      - '--label=org.opencontainers.image.revision={{ .FullCommit }}'
+      - '--label=org.opencontainers.image.source={{ .GitURL }}'
+      - '--label=org.opencontainers.image.title=jvsctl-jira'
+      - '--label=org.opencontainers.image.version={{ .Version }}'
+      - '--build-arg=PLUGIN_DIR_SRC=plugin-dir-src-arm64'
+      - '--build-arg=PLUGIN_DIR_DEST=/var/jvs/plugins'
+      - '--build-arg=JVS_IMAGE=us-docker.pkg.dev/abcxyz-artifacts/docker-images/jvsctl:0.0.5-arm64'
+
+docker_manifests:
+  -
+    name_template: '{{ .Env.CONTAINER_REGISTRY }}/jvsctl-jira:{{ if index .Env "DOCKER_TAG"  }}{{ .Env.DOCKER_TAG }}{{ else }}{{ .Version }}{{ end }}'
+    image_templates:
+      - '{{ .Env.CONTAINER_REGISTRY }}/jvsctl-jira:{{ if index .Env "DOCKER_TAG"  }}{{ .Env.DOCKER_TAG }}{{ else }}{{ .Version }}{{ end }}-amd64'
+      - '{{ .Env.CONTAINER_REGISTRY }}/jvsctl-jira:{{ if index .Env "DOCKER_TAG"  }}{{ .Env.DOCKER_TAG }}{{ else }}{{ .Version }}{{ end }}-arm64'
+
+
+# TODO(#144): Follow up on sign.
+
+
+# Disable SCM release we only want docker release here.
+release:
+  disable: true
