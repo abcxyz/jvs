@@ -25,7 +25,11 @@
           <select class="content-select" id="category" name="category">
             {{ range $element, $value := .Content.Categories }}
             {{ if eq $element $context.Category }}
-            <option value="{{ $element }}" selected="selected">{{ $element | toTitle }}</option>
+            {{ $hint := $value.Hint }}
+            {{ if or (not $hint) (eq $hint "") }}
+              {{ $hint = "i.e. issue/xxxxx" }}
+            {{ end }}
+            <option value="{{ $element }}" selected="selected" hint="{{ $hint }}">{{ $element | toTitle }}</option>
             {{ else }}
             <option value="{{ $element }}">{{ $element }}</option>
             {{ end }}
