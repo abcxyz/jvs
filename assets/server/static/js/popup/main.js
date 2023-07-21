@@ -12,13 +12,23 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-document.addEventListener("DOMContentLoaded", function () {
-  var categorySelect = document.getElementById("category");
-  var reasonInput = document.getElementById("reason");
+document.addEventListener("DOMContentLoaded", async function () {
+  const categorySelect = document.querySelector("#category");
+  const reasonInput = document.querySelector('#reason');
+
+  if (!categorySelect) {
+    alert("The category cell cannot be found in the form.");
+    return;
+  }
+
+  if (!reasonInput) {
+    alert("The reason cell cannot be found in the form.");
+    return;
+  }
 
   // Update the reason input's placeholder with the selected category's hint.
   function updatePlaceholder() {
-    var selectedOption = categorySelect.options[categorySelect.selectedIndex];
+    const selectedOption = categorySelect.options[categorySelect.selectedIndex];
     reasonInput.placeholder = selectedOption.getAttribute("hint");
   }
 
