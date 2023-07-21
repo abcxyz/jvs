@@ -100,7 +100,7 @@ func getLabelValue(versionName string) (string, error) {
 // parent keys.
 func CryptoKeyVersionsFor(ctx context.Context, client *kms.KeyManagementClient, parentKeys []string) ([]string, error) {
 	// Accumulate all the key versions for all provided keys.
-	versionsWorker := workerpool.New[[]string](0)
+	versionsWorker := workerpool.New[[]string](nil)
 	for _, parentKey := range parentKeys {
 		parentKey := parentKey
 
@@ -160,7 +160,7 @@ func PublicKeysFor(ctx context.Context, client *kms.KeyManagementClient, keyVers
 		publicKey crypto.PublicKey
 	}
 
-	publicKeysWorker := workerpool.New[*keyPair](0)
+	publicKeysWorker := workerpool.New[*keyPair](nil)
 	for _, keyVersion := range keyVersions {
 		keyVersion := keyVersion
 

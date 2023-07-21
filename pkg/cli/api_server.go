@@ -42,9 +42,6 @@ type APIServerCommand struct {
 
 	cfg *config.JustificationConfig
 
-	// testFlagSetOpts is only used for testing.
-	testFlagSetOpts []cli.Option
-
 	// testKMSClientOptions are KMS client options to override during testing.
 	testKMSClientOptions []option.ClientOption
 }
@@ -63,7 +60,7 @@ Usage: {{ COMMAND }} [options]
 
 func (c *APIServerCommand) Flags() *cli.FlagSet {
 	c.cfg = &config.JustificationConfig{}
-	set := cli.NewFlagSet(c.testFlagSetOpts...)
+	set := c.NewFlagSet()
 	return c.cfg.ToFlags(set)
 }
 

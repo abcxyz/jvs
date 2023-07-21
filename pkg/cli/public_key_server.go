@@ -39,9 +39,6 @@ type PublicKeyServerCommand struct {
 
 	cfg *config.PublicKeyConfig
 
-	// testFlagSetOpts is only used for testing.
-	testFlagSetOpts []cli.Option
-
 	// testKMSClientOptions are KMS client options to override during testing.
 	testKMSClientOptions []option.ClientOption
 }
@@ -60,7 +57,7 @@ Usage: {{ COMMAND }} [options]
 
 func (c *PublicKeyServerCommand) Flags() *cli.FlagSet {
 	c.cfg = &config.PublicKeyConfig{}
-	set := cli.NewFlagSet(c.testFlagSetOpts...)
+	set := c.NewFlagSet()
 	return c.cfg.ToFlags(set)
 }
 

@@ -21,7 +21,6 @@ import (
 	"github.com/abcxyz/pkg/cli"
 	"github.com/abcxyz/pkg/testutil"
 	"github.com/google/go-cmp/cmp"
-	"github.com/sethvargo/go-envconfig"
 )
 
 func TestJustificationConfig_ToFlags(t *testing.T) {
@@ -77,7 +76,7 @@ func TestJustificationConfig_ToFlags(t *testing.T) {
 			t.Parallel()
 
 			gotConfig := &JustificationConfig{}
-			set := cli.NewFlagSet(cli.WithLookupEnv(envconfig.MapLookuper(tc.envs).Lookup))
+			set := cli.NewFlagSet(cli.WithLookupEnv(cli.MapLookuper(tc.envs)))
 			set = gotConfig.ToFlags(set)
 			if err := set.Parse([]string{}); err != nil {
 				t.Errorf("unexpected flag set parse error: %v", err)
