@@ -29,5 +29,5 @@ module "api_cloud_run" {
   envvars = merge({
     "PROJECT_ID" : var.project_id
     "JVS_KEY" : google_kms_crypto_key.signing_key.id,
-  }, var.api_envvars, var.jira_plugin_envvars)
+  }, var.api_envvars, var.plugin_envvars)
 }
