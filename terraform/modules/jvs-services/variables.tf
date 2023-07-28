@@ -109,3 +109,9 @@ variable "ui_envvars" {
     "JVS_UI_ALLOWLIST" = "*",
   }
 }
+
+variable "plugin_envvars" {
+  description = "Env vars for plugin."
+  type        = map(string)
+  default     = {}
+}
