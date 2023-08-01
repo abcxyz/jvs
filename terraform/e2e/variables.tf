@@ -65,11 +65,6 @@ variable "jvs_prober_image" {
   description = "docker image for jvs-prober"
 }
 
-variable "prober_audience" {
-  type        = string
-  description = "The cloud run url for jvs api service or app address."
-}
-
 variable "plugin_envvars" {
   description = "Env vars for plugin."
   type        = map(string)
