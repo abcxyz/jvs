@@ -27,7 +27,7 @@
             {{ if eq $element $context.Category }}
             <option value="{{ $element }}" selected="selected" hint="{{ $value.Hint }}">{{ $value.DisplayName }}</option>
             {{ else }}
-            <option value="{{ $element }}" hint="{{ $value.Hint }}">{{ $element }}</option>
+            <option value="{{ $element }}" hint="{{ $value.Hint }}">{{ $value.DisplayName }}</option>
             {{ end }}
             {{ end }}
           </select>
