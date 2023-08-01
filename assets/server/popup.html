@@ -24,11 +24,7 @@
           <label class="content-label" for="category">Category</label>
           <select class="content-select" id="category" name="category">
             {{ range $element, $value := .Content.Categories }}
-            {{ if eq $element $context.Category }}
-            <option value="{{ $element }}" selected="selected" hint="{{ $value.Hint }}">{{ $value.DisplayName }}</option>
-            {{ else }}
-            <option value="{{ $element }}" hint="{{ $value.Hint }}">{{ $value.DisplayName }}</option>
-            {{ end }}
+            <option value="{{ $element }}" hint="{{ $value.Hint }}" {{ selectedIf (eq $element $context.Category) }}>{{ $value.DisplayName }}</option>
             {{ end }}
           </select>
         </li>
