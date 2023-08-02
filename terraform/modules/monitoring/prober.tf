@@ -101,10 +101,10 @@ resource "google_cloud_scheduler_job" "job" {
 
 # This alert will trigger if: in a user defined rolling window size, the number
 # of succeeded jvs-prober cloud job runs below the user defined threshold.
-resource "google_monitoring_alert_policy" "prober_service_failed_number_exceed_threshold" {
+resource "google_monitoring_alert_policy" "prober_service_succeeded_number_below_threshold" {
   project = var.project_id
 
-  display_name = "JVS-Prober Service Alert: Too many failed JVS probes"
+  display_name = "JVS-Prober Service Alert: Number of succeeded jvs probes below threshold"
 
   combiner = "OR"
 
