@@ -65,6 +65,15 @@ variable "jvs_prober_image" {
   description = "docker image for jvs-prober"
 }
 
+variable "prober_audience" {
+  type        = string
+  description = <<EOT
+    The cloud run url for jvs api service or app address.
+    If not set, the cloud run url for jvs api service will be used.
+  EOT
+  default     = ""
+}
+
 variable "plugin_envvars" {
   description = "Env vars for plugin."
   type        = map(string)
