@@ -67,7 +67,11 @@ variable "jvs_prober_image" {
 
 variable "prober_audience" {
   type        = string
-  description = "The cloud run url for jvs api service or app address."
+  description = <<EOT
+    The cloud run url for jvs api service or app address.
+    If not set, the cloud run url for jvs api service will be used.
+  EOT
+  default     = ""
 }
 
 variable "plugin_envvars" {

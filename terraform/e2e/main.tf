@@ -89,5 +89,6 @@ module "jvs_monitoring" {
   prober_jvs_api_address         = "${var.jvs_api_domain}:443"
   prober_jvs_public_key_endpoint = "https://${var.jvs_api_domain}/.well-known/jwks"
   jvs_prober_image               = var.jvs_prober_image
-  prober_audience                = var.prober_audience
+  # Default to JVS API backend url.
+  prober_audience = var.prober_audience == "" ? module.jvs_services.jvs_api_service_url : var.prober_audience
 }
