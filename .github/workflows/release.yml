@@ -32,7 +32,7 @@ jobs:
           fetch-depth: 0
       - uses: 'actions/setup-go@c4a742cab115ed795e34d4513e2cf7d472deb55f' # ratchet:actions/setup-go@v3
         with:
-          go-version: '1.20'
+          go-version: '1.21'
       - id: 'auth'
         name: 'Authenticate to Google Cloud'
         uses: 'google-github-actions/auth@c4799db9111fba4461e9f9da8732e5057b394f72' # ratchet:google-github-actions/auth@v0
@@ -92,7 +92,7 @@ jobs:
           fetch-depth: 0
       - uses: 'actions/setup-go@c4a742cab115ed795e34d4513e2cf7d472deb55f' # ratchet:actions/setup-go@v3
         with:
-          go-version: '1.20'
+          go-version: '1.21'
       - uses: 'goreleaser/goreleaser-action@b508e2e3ef3b19d4e4146d4f8fb3ba9db644a757' # ratchet:goreleaser/goreleaser-action@v3
         with:
           version: 'v1.16.1' # Manually pinned

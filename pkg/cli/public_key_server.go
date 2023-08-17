@@ -62,10 +62,12 @@ func (c *PublicKeyServerCommand) Flags() *cli.FlagSet {
 }
 
 func (c *PublicKeyServerCommand) Run(ctx context.Context, args []string) error {
+	logger := logging.FromContext(ctx)
+
 	server, mux, closer, err := c.RunUnstarted(ctx, args)
 	defer func() {
 		if err := closer.Close(); err != nil {
-			logging.FromContext(ctx).Errorw("failed to close", "error", err)
+			logger.ErrorContext(ctx, "failed to close", "error", err)
 		}
 	}()
 	if err != nil {
@@ -88,7 +90,7 @@ func (c *PublicKeyServerCommand) RunUnstarted(ctx context.Context, args []string
 	}
 
 	logger := logging.FromContext(ctx)
-	logger.Debugw("server starting",
+	logger.DebugContext(ctx, "server starting",
 		"name", version.Name,
 		"commit", version.Commit,
 		"version", version.Version)
@@ -96,7 +98,7 @@ func (c *PublicKeyServerCommand) RunUnstarted(ctx context.Context, args []string
 	if err := c.cfg.Validate(); err != nil {
 		return nil, nil, closer, fmt.Errorf("invalid configuration: %w", err)
 	}
-	logger.Debugw("loaded configuration", "config", c.cfg)
+	logger.DebugContext(ctx, "loaded configuration", "config", c.cfg)
 
 	kmsClient, err := kms.NewKeyManagementClient(ctx, c.testKMSClientOptions...)
 	if err != nil {
@@ -108,7 +110,7 @@ func (c *PublicKeyServerCommand) RunUnstarted(ctx context.Context, args []string
 	h, err := renderer.New(ctx, nil,
 		renderer.WithDebug(c.cfg.DevMode),
 		renderer.WithOnError(func(err error) {
-			logger.Errorw("failed to render", "error", err)
+			logger.ErrorContext(ctx, "failed to render", "error", err)
 		}))
 	if err != nil {
 		return nil, nil, closer, fmt.Errorf("failed to create renderer: %w", err)

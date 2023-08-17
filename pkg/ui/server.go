@@ -42,7 +42,7 @@ func NewServer(ctx context.Context, uiCfg *config.UIServiceConfig, p *justificat
 	h, err := renderer.New(ctx, assets.ServerFS(),
 		renderer.WithDebug(uiCfg.DevMode),
 		renderer.WithOnError(func(err error) {
-			logger.Errorw("failed to render", "error", err)
+			logger.ErrorContext(ctx, "failed to render", "error", err)
 		}))
 	if err != nil {
 		return nil, fmt.Errorf("failed to create renderer: %w", err)

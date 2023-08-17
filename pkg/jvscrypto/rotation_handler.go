@@ -60,7 +60,7 @@ func (h *RotationHandler) RotateKeys(ctx context.Context) (merr error) {
 			merr = errors.Join(merr, fmt.Errorf("failed to rotate key %s: %w", key, err))
 			continue
 		}
-		logger.Infow("successfully rotated (if necessary)", "key", key)
+		logger.InfoContext(ctx, "successfully rotated (if necessary)", "key", key)
 	}
 
 	return
@@ -128,7 +128,7 @@ func (h *RotationHandler) determineActions(ctx context.Context, vers []*kmspb.Cr
 	var newerVers []*kmspb.CryptoKeyVersion
 
 	for _, ver := range vers {
-		logger.Debugw("checking version", "version", ver)
+		logger.DebugContext(ctx, "checking version", "version", ver)
 		if primaryName != "" && ver.Name == primaryName {
 			primary = ver
 			break
@@ -144,10 +144,10 @@ func (h *RotationHandler) determineActions(ctx context.Context, vers []*kmspb.Cr
 				continue
 			}
 			if createdBefore(ver, primary) {
-				logger.Debugw("version is older", "version", ver)
+				logger.DebugContext(ctx, "version is older", "version", ver)
 				olderVers = append(olderVers, ver)
 			} else {
-				logger.Debugw("version is newer", "version", ver)
+				logger.DebugContext(ctx, "version is newer", "version", ver)
 				newerVers = append(newerVers, ver)
 			}
 		}
@@ -180,7 +180,7 @@ func (h *RotationHandler) actionsForNewVersions(ctx context.Context, vers []*kms
 	// We don't have a version eligible for promotion. If no primary currently
 	// exists, we need to create a new version and promote it to primary.
 	if primary == nil {
-		logger.Info("no primary or new keys found, creating a new key and immediately promoting to primary.")
+		logger.InfoContext(ctx, "no primary or new keys found, creating a new key and immediately promoting to primary")
 		return append(actions, &actionTuple{ActionCreateNewAndPromote, nil})
 	}
 
@@ -224,7 +224,7 @@ func (h *RotationHandler) actionsForOlderVersions(ctx context.Context, vers []*k
 				actions = append(actions, &actionTuple{ActionDestroy, ver})
 			}
 		default:
-			logger.Infow("no action needed for key version in current state.", "version", ver, "state", ver.State)
+			logger.InfoContext(ctx, "no action needed for key version in current state.", "version", ver, "state", ver.State)
 		}
 	}
 	return actions
@@ -235,9 +235,9 @@ func (h *RotationHandler) shouldDestroy(ctx context.Context, ver *kmspb.CryptoKe
 	cutoff := curTime.Add(-h.config.DestroyAge())
 	shouldDestroy := ver.CreateTime.AsTime().Before(cutoff)
 	if shouldDestroy {
-		logger.Infow("version created before cutoff date, should destroy.", "version", ver, "cutoff", cutoff)
+		logger.InfoContext(ctx, "version created before cutoff date, should destroy.", "version", ver, "cutoff", cutoff)
 	} else {
-		logger.Debugw("version created after cutoff date, no action necessary.", "version", ver, "cutoff", cutoff)
+		logger.DebugContext(ctx, "version created after cutoff date, no action necessary.", "version", ver, "cutoff", cutoff)
 	}
 	return shouldDestroy
 }
@@ -247,9 +247,9 @@ func (h *RotationHandler) shouldDisable(ctx context.Context, ver *kmspb.CryptoKe
 	cutoff := curTime.Add(-h.config.KeyTTL)
 	shouldDisable := ver.CreateTime.AsTime().Before(cutoff)
 	if shouldDisable {
-		logger.Infow("version created before cutoff date, should disable.", "version", ver, "cutoff", cutoff)
+		logger.InfoContext(ctx, "version created before cutoff date, should disable.", "version", ver, "cutoff", cutoff)
 	} else {
-		logger.Debugw("version created after cutoff date, no action necessary.", "version", ver, "cutoff", cutoff)
+		logger.DebugContext(ctx, "version created after cutoff date, no action necessary.", "version", ver, "cutoff", cutoff)
 	}
 	return shouldDisable
 }
@@ -260,15 +260,15 @@ func (h *RotationHandler) shouldDisable(ctx context.Context, ver *kmspb.CryptoKe
 func (h *RotationHandler) shouldRotate(ctx context.Context, primary, newest *kmspb.CryptoKeyVersion, curTime time.Time) bool {
 	logger := logging.FromContext(ctx)
 	if newest != nil {
-		logger.Debugw("new version already created, no action necessary.", "version", newest)
+		logger.DebugContext(ctx, "new version already created, no action necessary.", "version", newest)
 		return false
 	}
 	cutoff := curTime.Add(-h.config.RotationAge())
 	shouldRotate := primary.CreateTime.AsTime().Before(cutoff)
 	if shouldRotate {
-		logger.Infow("version created before cutoff date, should rotate.", "version", primary, "cutoff", cutoff)
+		logger.InfoContext(ctx, "version created before cutoff date, should rotate.", "version", primary, "cutoff", cutoff)
 	} else {
-		logger.Debugw("version created after cutoff date, no action necessary.", "version", primary, "cutoff", cutoff)
+		logger.DebugContext(ctx, "version created after cutoff date, no action necessary.", "version", primary, "cutoff", cutoff)
 	}
 	return shouldRotate
 }
@@ -282,15 +282,15 @@ func (h *RotationHandler) shouldPromote(ctx context.Context, primary, newest *km
 		return false
 	}
 	if primary == nil {
-		logger.Infow("primary does not exist, should promote the newest key to primary regardless of propagation delay.", "version", newest)
+		logger.InfoContext(ctx, "primary does not exist, should promote the newest key to primary regardless of propagation delay.", "version", newest)
 		return true
 	}
 	cutoff := curTime.Add(-h.config.PropagationDelay)
 	canPromote := newest.CreateTime.AsTime().Before(cutoff)
 	if canPromote {
-		logger.Infow("version created before cutoff date, should promote to primary.", "version", newest, "cutoff", cutoff)
+		logger.InfoContext(ctx, "version created before cutoff date, should promote to primary.", "version", newest, "cutoff", cutoff)
 	} else {
-		logger.Debugw("version created after cutoff date, no action necessary.", "version", newest, "cutoff", cutoff)
+		logger.DebugContext(ctx, "version created after cutoff date, no action necessary.", "version", newest, "cutoff", cutoff)
 	}
 	return canPromote
 }
@@ -318,7 +318,7 @@ func (h *RotationHandler) performActions(ctx context.Context, keyName string, ac
 				merr = errors.Join(merr, err)
 				continue
 			}
-			logger.Info("Promoting immediately.")
+			logger.InfoContext(ctx, "promoting immediately")
 			if err := SetPrimary(ctx, h.kmsClient, keyName, newVer.Name); err != nil {
 				merr = errors.Join(merr, err)
 			}
@@ -343,7 +343,7 @@ func (h *RotationHandler) performDisable(ctx context.Context, ver *kmspb.CryptoK
 	// Make a copy to modify
 	newVerState := ver
 
-	logger.Infow("disabling key version", "versionName", ver.Name)
+	logger.InfoContext(ctx, "disabling key version", "versionName", ver.Name)
 	newVerState.State = kmspb.CryptoKeyVersion_DISABLED
 	var messageType *kmspb.CryptoKeyVersion
 	mask, err := fieldmaskpb.New(messageType, "state")
@@ -362,7 +362,7 @@ func (h *RotationHandler) performDisable(ctx context.Context, ver *kmspb.CryptoK
 
 func (h *RotationHandler) performDestroy(ctx context.Context, ver *kmspb.CryptoKeyVersion) error {
 	logger := logging.FromContext(ctx)
-	logger.Infow("destroying key version", "versionName", ver.Name)
+	logger.InfoContext(ctx, "destroying key version", "versionName", ver.Name)
 	destroyReq := &kmspb.DestroyCryptoKeyVersionRequest{
 		Name: ver.Name,
 	}
@@ -374,7 +374,7 @@ func (h *RotationHandler) performDestroy(ctx context.Context, ver *kmspb.CryptoK
 
 func (h *RotationHandler) performCreateNew(ctx context.Context, keyName string) (*kmspb.CryptoKeyVersion, error) {
 	logger := logging.FromContext(ctx)
-	logger.Info("creating new key version.")
+	logger.InfoContext(ctx, "creating new key version")
 
 	createReq := &kmspb.CreateCryptoKeyVersionRequest{
 		Parent:           keyName,

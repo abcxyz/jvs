@@ -52,12 +52,14 @@ const cacheKey = "jwks"
 
 // ServeHTTP returns the public keys in JWK format.
 func (k *KeyServer) ServeHTTP(w http.ResponseWriter, r *http.Request) {
-	logger := logging.FromContext(r.Context())
+	ctx := r.Context()
+	logger := logging.FromContext(ctx)
+
 	val, err := k.cache.WriteThruLookup(cacheKey, func() (string, error) {
 		return k.generateJWKString(r.Context())
 	})
 	if err != nil {
-		logger.Errorw("error generating jwk string", "error", err)
+		logger.ErrorContext(ctx, "error generating jwk string", "error", err)
 		k.h.RenderJSON(w, http.StatusInternalServerError, fmt.Errorf("failed to generate jwks"))
 		return
 	}
