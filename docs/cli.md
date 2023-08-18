@@ -46,6 +46,13 @@ jvsctl -h
 jvsctl token -h
 ```
 
+To increasing the logging verbosity or to change the logging format:
+
+```shell
+export JVS_LOG_LEVEL="debug"
+export JVS_LOG_FORMAT="text"
+```
+
 ## Authentication
 
 If you installed JVS using the provided Terraform module as described in the
