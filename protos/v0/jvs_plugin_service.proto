@@ -43,6 +43,10 @@ message ValidateJustificationResponse {
   // Otherwise some warning or error should be provided.
   repeated string warning = 2;
   repeated string error = 3;
+
+  // Additional info the plugin may want to encapsulate in the Justification.
+  // It's not intended for user input.
+  map<string, string> annotation = 4;
 }
 
 // GetUIDataRequest is the request to get the plugin data for display purposes.
