@@ -22,12 +22,16 @@ import (
 	"syscall"
 
 	"github.com/abcxyz/jvs/pkg/cli"
+	"github.com/abcxyz/pkg/logging"
 )
 
 func main() {
 	ctx, done := signal.NotifyContext(context.Background(),
 		syscall.SIGINT, syscall.SIGTERM)
 	defer done()
+
+	logger := logging.NewFromEnv("JVS_")
+	ctx = logging.WithLogger(ctx, logger)
 
 	if err := realMain(ctx); err != nil {
 		done()
