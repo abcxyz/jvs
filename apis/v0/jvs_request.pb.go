@@ -122,7 +122,7 @@ type Justification struct {
 
 	Category string `protobuf:"bytes,1,opt,name=category,proto3" json:"category,omitempty"` // In MVP, the only supported category is "explanation".
 	Value    string `protobuf:"bytes,2,opt,name=value,proto3" json:"value,omitempty"`
-	// Additional info the plugin might want to encapsulate in the Justification.
+	// Additional info the plugin may want to encapsulate in the Justification.
 	// It's not intended for user input.
 	Annotation map[string]string `protobuf:"bytes,3,rep,name=annotation,proto3" json:"annotation,omitempty" protobuf_key:"bytes,1,opt,name=key,proto3" protobuf_val:"bytes,2,opt,name=value,proto3"`
 }

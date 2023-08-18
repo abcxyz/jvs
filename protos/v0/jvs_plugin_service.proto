@@ -44,7 +44,7 @@ message ValidateJustificationResponse {
   repeated string warning = 2;
   repeated string error = 3;
 
-  // Additional info the plugin might want to encapsulate in the Justification.
+  // Additional info the plugin may want to encapsulate in the Justification.
   // It's not intended for user input.
   map<string, string> annotation = 4;
 }

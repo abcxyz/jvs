@@ -41,7 +41,8 @@ message CreateJustificationRequest {
 message Justification {
   string category = 1;  // In MVP, the only supported category is "explanation".
   string value = 2;
-  // Additional info the plugin might want to encapsulate in the Justification.
+
+  // Additional info the plugin may want to encapsulate in the Justification.
   // It's not intended for user input.
   map<string, string> annotation = 3;
 }

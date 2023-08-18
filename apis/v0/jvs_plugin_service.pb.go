@@ -93,7 +93,7 @@ type ValidateJustificationResponse struct {
 	// Otherwise some warning or error should be provided.
 	Warning []string `protobuf:"bytes,2,rep,name=warning,proto3" json:"warning,omitempty"`
 	Error   []string `protobuf:"bytes,3,rep,name=error,proto3" json:"error,omitempty"`
-	// Additional info the plugin might want to encapsulate in the Justification.
+	// Additional info the plugin may want to encapsulate in the Justification.
 	// It's not intended for user input.
 	Annotation map[string]string `protobuf:"bytes,4,rep,name=annotation,proto3" json:"annotation,omitempty" protobuf_key:"bytes,1,opt,name=key,proto3" protobuf_val:"bytes,2,opt,name=value,proto3"`
 }
