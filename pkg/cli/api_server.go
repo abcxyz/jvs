@@ -65,10 +65,12 @@ func (c *APIServerCommand) Flags() *cli.FlagSet {
 }
 
 func (c *APIServerCommand) Run(ctx context.Context, args []string) error {
+	logger := logging.FromContext(ctx)
+
 	server, grpcServer, closer, err := c.RunUnstarted(ctx, args)
 	defer func() {
 		if err := closer.Close(); err != nil {
-			logging.FromContext(ctx).Errorw("failed to close", "error", err)
+			logger.ErrorContext(ctx, "failed to close", "error", err)
 		}
 	}()
 	if err != nil {
@@ -91,7 +93,7 @@ func (c *APIServerCommand) RunUnstarted(ctx context.Context, args []string) (*se
 	}
 
 	logger := logging.FromContext(ctx)
-	logger.Debugw("server starting",
+	logger.DebugContext(ctx, "server starting",
 		"name", version.Name,
 		"commit", version.Commit,
 		"version", version.Version)
@@ -99,7 +101,7 @@ func (c *APIServerCommand) RunUnstarted(ctx context.Context, args []string) (*se
 	if err := c.cfg.Validate(); err != nil {
 		return nil, nil, closer, fmt.Errorf("invalid configuration: %w", err)
 	}
-	logger.Debugw("loaded configuration", "config", c.cfg)
+	logger.DebugContext(ctx, "loaded configuration", "config", c.cfg)
 
 	kmsClient, err := kms.NewKeyManagementClient(ctx, c.testKMSClientOptions...)
 	if err != nil {
@@ -119,7 +121,7 @@ func (c *APIServerCommand) RunUnstarted(ctx context.Context, args []string) (*se
 	if err != nil {
 		return nil, nil, closer, fmt.Errorf("failed to load plugins: %w", err)
 	}
-	logger.Infow("plugins loaded", "validators", validators)
+	logger.InfoContext(ctx, "plugins loaded", "validators", validators)
 	closer = multicloser.Append(closer, pluginClosers.Close)
 
 	p := justification.NewProcessor(kmsClient, c.cfg).WithValidators(validators)

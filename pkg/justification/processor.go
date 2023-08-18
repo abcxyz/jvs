@@ -93,13 +93,13 @@ func (p *Processor) CreateToken(ctx context.Context, requestor string, req *jvsp
 	logger := logging.FromContext(ctx)
 
 	if err := p.runValidations(ctx, req); err != nil {
-		logger.Errorw("failed to validate request", "error", err)
+		logger.ErrorContext(ctx, "failed to validate request", "error", err)
 		return nil, status.Errorf(codes.InvalidArgument, "failed to validate request: %s", err)
 	}
 
 	token, err := p.createToken(ctx, requestor, req, now)
 	if err != nil {
-		logger.Errorw("failed to create token", "error", err)
+		logger.ErrorContext(ctx, "failed to create token", "error", err)
 		return nil, status.Errorf(codes.Internal, "failed to create token: %s", err)
 	}
 
@@ -107,21 +107,21 @@ func (p *Processor) CreateToken(ctx context.Context, requestor string, req *jvsp
 		return p.getPrimarySigner(ctx)
 	})
 	if err != nil {
-		logger.Errorw("failed to get token signer", "error", err)
+		logger.ErrorContext(ctx, "failed to get token signer", "error", err)
 		return nil, status.Errorf(codes.Internal, "failed to get token signer: %s", err)
 	}
 
 	// Build custom headers and set the "kid" as the signer ID.
 	headers := jws.NewHeaders()
 	if err := headers.Set(jws.KeyIDKey, signer.id); err != nil {
-		logger.Errorw("failed to set kid header", "error", err)
+		logger.ErrorContext(ctx, "failed to set kid header", "error", err)
 		return nil, status.Errorf(codes.Internal, "failed to set token headers: %s", err)
 	}
 
 	// Sign the token.
 	b, err := jwt.Sign(token, jwt.WithKey(jwa.ES256, signer, jws.WithProtectedHeaders(headers)))
 	if err != nil {
-		logger.Errorw("failed to sign token", "error", err)
+		logger.ErrorContext(ctx, "failed to sign token", "error", err)
 		return nil, status.Error(codes.Internal, "failed to sign token")
 	}
 
