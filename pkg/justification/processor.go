@@ -173,6 +173,8 @@ func (p *Processor) runValidations(ctx context.Context, req *jvspb.CreateJustifi
 			merr = errors.Join(merr,
 				fmt.Errorf("failed validation criteria with error %v and warning %v", resp.Error, resp.Warning))
 		}
+
+		j.Annotation = resp.Annotation
 	}
 
 	// This isn't perfect, but it's the easiest place to get "close" to limiting

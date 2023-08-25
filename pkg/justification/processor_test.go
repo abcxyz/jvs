@@ -222,6 +222,10 @@ func TestCreateToken(t *testing.T) {
 				"jira": &mockValidator{
 					resp: &jvspb.ValidateJustificationResponse{
 						Valid: true,
+						Annotation: map[string]string{
+							"jira_issue_id":  "1234",
+							"jira_issue_url": "https://example.atlassian.net/browse/ABCD",
+						},
 					},
 					uiData: &jvspb.UIData{
 						DisplayName: "Jira issue key",
