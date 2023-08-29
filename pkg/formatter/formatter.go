@@ -52,6 +52,10 @@ type justification struct {
 
 	// Value is the justification value.
 	Value string `json:"value" yaml:"value"`
+
+	// Annotation stores additional info the plugin may want to encapsulate in the Justification.
+	// It's not intended for user input.
+	Annotation map[string]string `json:"annotation" yaml:"annotation"`
 }
 
 // toStructure creates our internal structure from the token.
@@ -67,8 +71,9 @@ func toStructure(ctx context.Context, token jwt.Token, breakglass bool) (*struct
 	s.Justifications = make([]*justification, 0, len(justifications))
 	for _, j := range justifications {
 		s.Justifications = append(s.Justifications, &justification{
-			Category: j.GetCategory(),
-			Value:    j.GetValue(),
+			Category:   j.GetCategory(),
+			Value:      j.GetValue(),
+			Annotation: j.GetAnnotation(),
 		})
 	}
 	sort.Slice(s.Justifications, func(i, j int) bool {
