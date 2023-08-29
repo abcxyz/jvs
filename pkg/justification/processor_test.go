@@ -64,15 +64,16 @@ func TestCreateToken(t *testing.T) {
 	t.Parallel()
 
 	tests := []struct {
-		name          string
-		request       *jvspb.CreateJustificationRequest
-		requestor     string
-		validators    map[string]jvspb.Validator
-		wantTTL       time.Duration
-		wantSubject   string
-		wantAudiences []string
-		wantErr       string
-		serverErr     error
+		name               string
+		request            *jvspb.CreateJustificationRequest
+		requestor          string
+		validators         map[string]jvspb.Validator
+		wantTTL            time.Duration
+		wantSubject        string
+		wantAudiences      []string
+		wantErr            string
+		wantJustifications []*jvspb.Justification
+		serverErr          error
 	}{
 		{
 			name: "happy_path",
@@ -87,6 +88,12 @@ func TestCreateToken(t *testing.T) {
 			},
 			wantTTL:       1 * time.Hour,
 			wantAudiences: []string{DefaultAudience},
+			wantJustifications: []*jvspb.Justification{
+				{
+					Category: "explanation",
+					Value:    "test",
+				},
+			},
 		},
 		{
 			name: "custom_subject",
@@ -103,6 +110,12 @@ func TestCreateToken(t *testing.T) {
 			wantSubject:   "user@example.com",
 			wantTTL:       1 * time.Hour,
 			wantAudiences: []string{DefaultAudience},
+			wantJustifications: []*jvspb.Justification{
+				{
+					Category: "explanation",
+					Value:    "test",
+				},
+			},
 		},
 		{
 			name: "subject_inherits_requestor",
@@ -119,6 +132,12 @@ func TestCreateToken(t *testing.T) {
 			wantSubject:   "requestor@example.com",
 			wantTTL:       1 * time.Hour,
 			wantAudiences: []string{DefaultAudience},
+			wantJustifications: []*jvspb.Justification{
+				{
+					Category: "explanation",
+					Value:    "test",
+				},
+			},
 		},
 		{
 			name: "custom_audience",
@@ -134,6 +153,12 @@ func TestCreateToken(t *testing.T) {
 			},
 			wantTTL:       1 * time.Hour,
 			wantAudiences: []string{"aud1", "aud2"},
+			wantJustifications: []*jvspb.Justification{
+				{
+					Category: "explanation",
+					Value:    "test",
+				},
+			},
 		},
 		{
 			name: "no_justification",
@@ -166,6 +191,12 @@ func TestCreateToken(t *testing.T) {
 			},
 			wantTTL:       15 * time.Minute, // comes from default
 			wantAudiences: []string{"dev.abcxyz.jvs"},
+			wantJustifications: []*jvspb.Justification{
+				{
+					Category: "explanation",
+					Value:    "test",
+				},
+			},
 		},
 		{
 			name: "ttl_exceeds_max",
@@ -222,6 +253,10 @@ func TestCreateToken(t *testing.T) {
 				"jira": &mockValidator{
 					resp: &jvspb.ValidateJustificationResponse{
 						Valid: true,
+						Annotation: map[string]string{
+							"jira_issue_id":  "1234",
+							"jira_issue_url": "https://example.atlassian.net/browse/ABCD",
+						},
 					},
 					uiData: &jvspb.UIData{
 						DisplayName: "Jira issue key",
@@ -231,6 +266,16 @@ func TestCreateToken(t *testing.T) {
 			},
 			wantTTL:       1 * time.Hour,
 			wantAudiences: []string{DefaultAudience},
+			wantJustifications: []*jvspb.Justification{
+				{
+					Category: "jira",
+					Value:    "test",
+					Annotation: map[string]string{
+						"jira_issue_id":  "1234",
+						"jira_issue_url": "https://example.atlassian.net/browse/ABCD",
+					},
+				},
+			},
 		},
 		{
 			name: "happy_path_with_unused_validator",
@@ -253,6 +298,12 @@ func TestCreateToken(t *testing.T) {
 			},
 			wantTTL:       1 * time.Hour,
 			wantAudiences: []string{DefaultAudience},
+			wantJustifications: []*jvspb.Justification{
+				{
+					Category: "explanation",
+					Value:    "test",
+				},
+			},
 		},
 		{
 			name: "failed_validator_criteria",
@@ -313,6 +364,12 @@ func TestCreateToken(t *testing.T) {
 			},
 			wantTTL:       1 * time.Hour,
 			wantAudiences: []string{DefaultAudience},
+			wantJustifications: []*jvspb.Justification{
+				{
+					Category: "jira",
+					Value:    "test",
+				},
+			},
 		},
 		{
 			name: "missing_validator",
@@ -477,7 +534,7 @@ func TestCreateToken(t *testing.T) {
 			if err != nil {
 				t.Fatal(err)
 			}
-			expectedJustifications := tc.request.Justifications
+			expectedJustifications := tc.wantJustifications
 			if diff := cmp.Diff(expectedJustifications, gotJustifications, cmpopts.IgnoreUnexported(jvspb.Justification{})); diff != "" {
 				t.Errorf("justs: diff (-want, +got):\n%s", diff)
 			}

@@ -225,7 +225,7 @@ sub    test-sub
 				"-token", breakglassToken,
 				"-format", "json",
 			},
-			expOut: `{"breakglass":true,"justifications":[{"category":"breakglass","value":"prod is down"}],"claims":{"aud":["dev.abcxyz.jvs"],"iat":"1970-01-01T00:00:00Z","iss":"jvsctl","jti":"test-jwt","nbf":"1970-01-01T00:00:00Z","sub":"test-sub"}}`,
+			expOut: `{"breakglass":true,"justifications":[{"category":"breakglass","value":"prod is down","annotation":null}],"claims":{"aud":["dev.abcxyz.jvs"],"iat":"1970-01-01T00:00:00Z","iss":"jvsctl","jti":"test-jwt","nbf":"1970-01-01T00:00:00Z","sub":"test-sub"}}`,
 		},
 		{
 			name: "yaml",
@@ -239,8 +239,10 @@ breakglass: false
 justifications:
   - category: explanation
     value: test
+    annotation: {}
   - category: foo
     value: bar
+    annotation: {}
 claims:
   aud:
     - dev.abcxyz.jvs
