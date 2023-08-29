@@ -60,6 +60,20 @@ func (m *mockValidator) GetUIData(ctx context.Context, req *jvspb.GetUIDataReque
 	return m.uiData, m.err
 }
 
+var explanationJustification = []*jvspb.Justification{
+	{
+		Category: "explanation",
+		Value:    "test",
+	},
+}
+
+var jiraJustification = []*jvspb.Justification{
+	{
+		Category: "jira",
+		Value:    "test",
+	},
+}
+
 func TestCreateToken(t *testing.T) {
 	t.Parallel()
 
@@ -78,176 +92,18 @@ func TestCreateToken(t *testing.T) {
 		{
 			name: "happy_path",
 			request: &jvspb.CreateJustificationRequest{
-				Justifications: []*jvspb.Justification{
-					{
-						Category: "explanation",
-						Value:    "test",
-					},
-				},
-				Ttl: durationpb.New(3600 * time.Second),
+				Justifications: explanationJustification,
+				Ttl:            durationpb.New(3600 * time.Second),
 			},
-			wantTTL:       1 * time.Hour,
-			wantAudiences: []string{DefaultAudience},
-			wantJustifications: []*jvspb.Justification{
-				{
-					Category: "explanation",
-					Value:    "test",
-				},
-			},
-		},
-		{
-			name: "custom_subject",
-			request: &jvspb.CreateJustificationRequest{
-				Subject: "user@example.com",
-				Justifications: []*jvspb.Justification{
-					{
-						Category: "explanation",
-						Value:    "test",
-					},
-				},
-				Ttl: durationpb.New(3600 * time.Second),
-			},
-			wantSubject:   "user@example.com",
-			wantTTL:       1 * time.Hour,
-			wantAudiences: []string{DefaultAudience},
-			wantJustifications: []*jvspb.Justification{
-				{
-					Category: "explanation",
-					Value:    "test",
-				},
-			},
-		},
-		{
-			name: "subject_inherits_requestor",
-			request: &jvspb.CreateJustificationRequest{
-				Justifications: []*jvspb.Justification{
-					{
-						Category: "explanation",
-						Value:    "test",
-					},
-				},
-				Ttl: durationpb.New(3600 * time.Second),
-			},
-			requestor:     "requestor@example.com",
-			wantSubject:   "requestor@example.com",
-			wantTTL:       1 * time.Hour,
-			wantAudiences: []string{DefaultAudience},
-			wantJustifications: []*jvspb.Justification{
-				{
-					Category: "explanation",
-					Value:    "test",
-				},
-			},
-		},
-		{
-			name: "custom_audience",
-			request: &jvspb.CreateJustificationRequest{
-				Justifications: []*jvspb.Justification{
-					{
-						Category: "explanation",
-						Value:    "test",
-					},
-				},
-				Ttl:       durationpb.New(3600 * time.Second),
-				Audiences: []string{"aud1", "aud2"},
-			},
-			wantTTL:       1 * time.Hour,
-			wantAudiences: []string{"aud1", "aud2"},
-			wantJustifications: []*jvspb.Justification{
-				{
-					Category: "explanation",
-					Value:    "test",
-				},
-			},
-		},
-		{
-			name: "no_justification",
-			request: &jvspb.CreateJustificationRequest{
-				Ttl: durationpb.New(3600 * time.Second),
-			},
-			wantErr: "failed to validate request",
-		},
-		{
-			name: "justification_explanation_empty",
-			request: &jvspb.CreateJustificationRequest{
-				Justifications: []*jvspb.Justification{
-					{
-						Category: "explanation",
-					},
-				},
-				Ttl: durationpb.New(3600 * time.Second),
-			},
-			wantErr: "failed to validate request: failed validation criteria with error [explanation cannot be empty] and warning []",
-		},
-		{
-			name: "no_ttl",
-			request: &jvspb.CreateJustificationRequest{
-				Justifications: []*jvspb.Justification{
-					{
-						Category: "explanation",
-						Value:    "test",
-					},
-				},
-			},
-			wantTTL:       15 * time.Minute, // comes from default
-			wantAudiences: []string{"dev.abcxyz.jvs"},
-			wantJustifications: []*jvspb.Justification{
-				{
-					Category: "explanation",
-					Value:    "test",
-				},
-			},
-		},
-		{
-			name: "ttl_exceeds_max",
-			request: &jvspb.CreateJustificationRequest{
-				Justifications: []*jvspb.Justification{
-					{
-						Category: "explanation",
-						Value:    "test",
-					},
-				},
-				Ttl: durationpb.New(10 * time.Hour),
-			},
-			wantErr: "requested ttl (10h) cannot be greater than max tll (1h)",
-		},
-		{
-			name: "justifications_too_long",
-			request: &jvspb.CreateJustificationRequest{
-				Justifications: []*jvspb.Justification{
-					{
-						Category: "explanation",
-						Value:    strings.Repeat("test", 4_000),
-					},
-				},
-				Ttl: durationpb.New(10 * time.Hour),
-			},
-			wantErr: "must be less than 4000 bytes",
-		},
-		{
-			name: "audiences_too_long",
-			request: &jvspb.CreateJustificationRequest{
-				Justifications: []*jvspb.Justification{
-					{
-						Category: "explanation",
-						Value:    "test",
-					},
-				},
-				Audiences: []string{strings.Repeat("test", 1_000)},
-				Ttl:       durationpb.New(10 * time.Hour),
-			},
-			wantErr: "must be less than 1000 bytes",
+			wantTTL:            1 * time.Hour,
+			wantAudiences:      []string{DefaultAudience},
+			wantJustifications: explanationJustification,
 		},
 		{
 			name: "happy_path_with_validator",
 			request: &jvspb.CreateJustificationRequest{
-				Justifications: []*jvspb.Justification{
-					{
-						Category: "jira",
-						Value:    "test",
-					},
-				},
-				Ttl: durationpb.New(3600 * time.Second),
+				Justifications: jiraJustification,
+				Ttl:            durationpb.New(3600 * time.Second),
 			},
 			validators: map[string]jvspb.Validator{
 				"jira": &mockValidator{
@@ -278,15 +134,103 @@ func TestCreateToken(t *testing.T) {
 			},
 		},
 		{
-			name: "happy_path_with_unused_validator",
+			name: "custom_subject",
+			request: &jvspb.CreateJustificationRequest{
+				Subject:        "user@example.com",
+				Justifications: explanationJustification,
+				Ttl:            durationpb.New(3600 * time.Second),
+			},
+			wantSubject:        "user@example.com",
+			wantTTL:            1 * time.Hour,
+			wantAudiences:      []string{DefaultAudience},
+			wantJustifications: explanationJustification,
+		},
+		{
+			name: "subject_inherits_requestor",
+			request: &jvspb.CreateJustificationRequest{
+				Justifications: explanationJustification,
+				Ttl:            durationpb.New(3600 * time.Second),
+			},
+			requestor:          "requestor@example.com",
+			wantSubject:        "requestor@example.com",
+			wantTTL:            1 * time.Hour,
+			wantAudiences:      []string{DefaultAudience},
+			wantJustifications: explanationJustification,
+		},
+		{
+			name: "custom_audience",
+			request: &jvspb.CreateJustificationRequest{
+				Justifications: explanationJustification,
+				Ttl:            durationpb.New(3600 * time.Second),
+				Audiences:      []string{"aud1", "aud2"},
+			},
+			wantTTL:            1 * time.Hour,
+			wantAudiences:      []string{"aud1", "aud2"},
+			wantJustifications: explanationJustification,
+		},
+		{
+			name: "no_justification",
+			request: &jvspb.CreateJustificationRequest{
+				Ttl: durationpb.New(3600 * time.Second),
+			},
+			wantErr: "failed to validate request",
+		},
+		{
+			name: "justification_explanation_empty",
 			request: &jvspb.CreateJustificationRequest{
 				Justifications: []*jvspb.Justification{
 					{
 						Category: "explanation",
-						Value:    "test",
 					},
 				},
 				Ttl: durationpb.New(3600 * time.Second),
+			},
+			wantErr: "failed to validate request: failed validation criteria with error [explanation cannot be empty] and warning []",
+		},
+		{
+			name: "no_ttl",
+			request: &jvspb.CreateJustificationRequest{
+				Justifications: explanationJustification,
+			},
+			wantTTL:            15 * time.Minute, // comes from default
+			wantAudiences:      []string{"dev.abcxyz.jvs"},
+			wantJustifications: explanationJustification,
+		},
+		{
+			name: "ttl_exceeds_max",
+			request: &jvspb.CreateJustificationRequest{
+				Justifications: explanationJustification,
+				Ttl:            durationpb.New(10 * time.Hour),
+			},
+			wantErr: "requested ttl (10h) cannot be greater than max tll (1h)",
+		},
+		{
+			name: "justifications_too_long",
+			request: &jvspb.CreateJustificationRequest{
+				Justifications: []*jvspb.Justification{
+					{
+						Category: "explanation",
+						Value:    strings.Repeat("test", 4_000),
+					},
+				},
+				Ttl: durationpb.New(10 * time.Hour),
+			},
+			wantErr: "must be less than 4000 bytes",
+		},
+		{
+			name: "audiences_too_long",
+			request: &jvspb.CreateJustificationRequest{
+				Justifications: explanationJustification,
+				Audiences:      []string{strings.Repeat("test", 1_000)},
+				Ttl:            durationpb.New(10 * time.Hour),
+			},
+			wantErr: "must be less than 1000 bytes",
+		},
+		{
+			name: "happy_path_with_unused_validator",
+			request: &jvspb.CreateJustificationRequest{
+				Justifications: explanationJustification,
+				Ttl:            durationpb.New(3600 * time.Second),
 			},
 			validators: map[string]jvspb.Validator{
 				"jira": &mockValidator{
@@ -296,25 +240,15 @@ func TestCreateToken(t *testing.T) {
 					},
 				},
 			},
-			wantTTL:       1 * time.Hour,
-			wantAudiences: []string{DefaultAudience},
-			wantJustifications: []*jvspb.Justification{
-				{
-					Category: "explanation",
-					Value:    "test",
-				},
-			},
+			wantTTL:            1 * time.Hour,
+			wantAudiences:      []string{DefaultAudience},
+			wantJustifications: explanationJustification,
 		},
 		{
 			name: "failed_validator_criteria",
 			request: &jvspb.CreateJustificationRequest{
-				Justifications: []*jvspb.Justification{
-					{
-						Category: "jira",
-						Value:    "test",
-					},
-				},
-				Ttl: durationpb.New(3600 * time.Second),
+				Justifications: jiraJustification,
+				Ttl:            durationpb.New(3600 * time.Second),
 			},
 			validators: map[string]jvspb.Validator{
 				"jira": &mockValidator{
@@ -329,13 +263,8 @@ func TestCreateToken(t *testing.T) {
 		{
 			name: "validator_err",
 			request: &jvspb.CreateJustificationRequest{
-				Justifications: []*jvspb.Justification{
-					{
-						Category: "jira",
-						Value:    "test",
-					},
-				},
-				Ttl: durationpb.New(3600 * time.Second),
+				Justifications: jiraJustification,
+				Ttl:            durationpb.New(3600 * time.Second),
 			},
 			validators: map[string]jvspb.Validator{
 				"jira": &mockValidator{
@@ -347,13 +276,8 @@ func TestCreateToken(t *testing.T) {
 		{
 			name: "validator_missing_ui_data",
 			request: &jvspb.CreateJustificationRequest{
-				Justifications: []*jvspb.Justification{
-					{
-						Category: "jira",
-						Value:    "test",
-					},
-				},
-				Ttl: durationpb.New(3600 * time.Second),
+				Justifications: jiraJustification,
+				Ttl:            durationpb.New(3600 * time.Second),
 			},
 			validators: map[string]jvspb.Validator{
 				"jira": &mockValidator{
@@ -362,25 +286,15 @@ func TestCreateToken(t *testing.T) {
 					},
 				},
 			},
-			wantTTL:       1 * time.Hour,
-			wantAudiences: []string{DefaultAudience},
-			wantJustifications: []*jvspb.Justification{
-				{
-					Category: "jira",
-					Value:    "test",
-				},
-			},
+			wantTTL:            1 * time.Hour,
+			wantAudiences:      []string{DefaultAudience},
+			wantJustifications: jiraJustification,
 		},
 		{
 			name: "missing_validator",
 			request: &jvspb.CreateJustificationRequest{
-				Justifications: []*jvspb.Justification{
-					{
-						Category: "jira",
-						Value:    "test",
-					},
-				},
-				Ttl: durationpb.New(3600 * time.Second),
+				Justifications: jiraJustification,
+				Ttl:            durationpb.New(3600 * time.Second),
 			},
 			wantErr: "missing validator for category \"jira\"",
 		},
