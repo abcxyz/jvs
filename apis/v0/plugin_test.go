@@ -86,8 +86,8 @@ func TestGetUIDataInValidator(t *testing.T) {
 			name: "success",
 			req:  &GetUIDataRequest{},
 			wantResp: &UIData{
-				DisplayName: "Explanation",
-				Hint:        "A justification reason in free-form text.",
+				DisplayName: DefaultJustificationDisplayName,
+				Hint:        DefaultJustificationHint,
 			},
 		},
 	}
