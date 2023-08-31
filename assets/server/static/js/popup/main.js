@@ -15,6 +15,12 @@
 document.addEventListener("DOMContentLoaded", async function () {
   const categorySelect = document.querySelector("#category");
   const reasonInput = document.querySelector('#reason');
+  const form = document.querySelector('#form');
+
+  if (!form) {
+    alert("The form cannot be found");
+    return;
+  }
 
   if (!categorySelect) {
     alert("The category cell cannot be found in the form.");
@@ -37,6 +43,13 @@ document.addEventListener("DOMContentLoaded", async function () {
 
   // Call the function when select new category.
   categorySelect.addEventListener("change", updatePlaceholder);
+
+  form.addEventListener("reset", function(){
+    // After resetting, the selectedIndex should be set back to 0.
+    categorySelect.selectedIndex = 0;
+    const defaultOption = categorySelect.options[categorySelect.selectedIndex];
+    reasonInput.placeholder = defaultOption.getAttribute("hint");
+  });
 });
 
 window.addEventListener("DOMContentLoaded", async () => {
