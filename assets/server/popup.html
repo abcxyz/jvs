@@ -10,7 +10,7 @@
   {{ $context := . }}
   <div class="container">
     <h1 class="title">{{ .PageTitle }}</h1>
-    <form action="/popup" method="post">
+    <form action="/popup" method="post" id="form">
       <ul class="flex-outer">
 
         <!-- Username -->
@@ -66,7 +66,7 @@
 
         <!-- Action buttons -->
         <div class="form-btns">
-          <input class="secondary-btn" type="reset" value="Reset" id="resetButton">
+          <input class="secondary-btn" type="reset" value="Reset">
           <input class="primary-btn" type="submit" value="Submit">
         </div>
       </ul>
