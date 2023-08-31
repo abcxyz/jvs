@@ -37,6 +37,14 @@ document.addEventListener("DOMContentLoaded", async function () {
 
   // Call the function when select new category.
   categorySelect.addEventListener("change", updatePlaceholder);
+
+  const resetButton = document.querySelector('#resetButton');
+  resetButton.addEventListener("click", function () {
+    // After resetting, the selectedIndex should be set back to 0.
+    categorySelect.selectedIndex = 0;
+    const defaultOption = categorySelect.options[categorySelect.selectedIndex];
+    reasonInput.placeholder = defaultOption.getAttribute("hint");
+  });
 });
 
 window.addEventListener("DOMContentLoaded", async () => {
