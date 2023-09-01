@@ -29,7 +29,9 @@ const (
 	// DefaultJustificationCategory is the default justification category
 	// supported. An "explanation" justification represents a manual free text
 	// reason from the requester.
-	DefaultJustificationCategory = "explanation"
+	DefaultJustificationCategory    = "explanation"
+	DefaultJustificationDisplayName = "Explanation"
+	DefaultJustificationHint        = "A justification reason in free-form text."
 )
 
 // DefaultJustificationValidator is the [Validator] for the
@@ -73,8 +75,8 @@ func (v *ExplanationValidator) Validate(_ context.Context, req *ValidateJustific
 // GetUIData retrieves plugin's display data.
 func (v *ExplanationValidator) GetUIData(_ context.Context, req *GetUIDataRequest) (*UIData, error) {
 	return &UIData{
-		DisplayName: "Explanation",
-		Hint:        "A justification reason in free-form text.",
+		DisplayName: DefaultJustificationDisplayName,
+		Hint:        DefaultJustificationHint,
 	}, nil
 }
 

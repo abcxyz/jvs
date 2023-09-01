@@ -504,6 +504,35 @@ func TestGetCatagoriesDisplayData(t *testing.T) {
 				},
 			},
 		},
+		{
+			name: "success_with_default_validator_hidden",
+			validators: map[string]jvspb.Validator{
+				"jira": &mockValidator{
+					Valid:       true,
+					DisplayName: "Jira issue key",
+					Hint:        "Jira Issue key under JVS project",
+				},
+				jvspb.DefaultJustificationCategory: jvspb.DefaultJustificationValidator,
+			},
+			wantRes: map[string]*jvspb.UIData{
+				"jira": {
+					DisplayName: "Jira issue key",
+					Hint:        "Jira Issue key under JVS project",
+				},
+			},
+		},
+		{
+			name: "success_with_default_validator_only",
+			validators: map[string]jvspb.Validator{
+				jvspb.DefaultJustificationCategory: jvspb.DefaultJustificationValidator,
+			},
+			wantRes: map[string]*jvspb.UIData{
+				jvspb.DefaultJustificationCategory: {
+					DisplayName: jvspb.DefaultJustificationDisplayName,
+					Hint:        jvspb.DefaultJustificationHint,
+				},
+			},
+		},
 	}
 
 	for _, tc := range cases {

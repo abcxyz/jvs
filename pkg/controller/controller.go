@@ -20,6 +20,7 @@ import (
 	"net"
 	"net/http"
 	"net/url"
+	"sort"
 	"strings"
 	"time"
 
@@ -301,7 +302,7 @@ func (c *Controller) getFormDetails(r *http.Request) (*FormDetails, error) {
 	return &FormDetails{
 		WindowName:  r.FormValue("windowname"),
 		Origin:      r.FormValue("origin"),
-		Category:    r.FormValue("category"),
+		Category:    c.getCategory(),
 		Reason:      r.FormValue("reason"),
 		UserEmail:   email,
 		TTL:         r.FormValue("ttl"),
@@ -354,5 +355,22 @@ func catagoriesDisplayData(ctx context.Context, validators map[string]jvspb.Vali
 		}
 		displayData[k] = d
 	}
+
+	// In case there are additional category options available, we aim to hide the default option from users.
+	if len(displayData) > 1 {
+		delete(displayData, jvspb.DefaultJustificationCategory)
+	}
+
 	return displayData, nil
+}
+
+// The category with the lowest alphabetical value will be selected.
+func (c *Controller) getCategory() string {
+	// Due to the presence of the DefaultJustificationCategory, the categoryDisplayData list cannot be empty.
+	keys := make([]string, 0, len(c.categoryDisplayData))
+	for key := range c.categoryDisplayData {
+		keys = append(keys, key)
+	}
+	sort.Strings(keys)
+	return keys[0]
 }
