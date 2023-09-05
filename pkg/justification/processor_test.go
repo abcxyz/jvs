@@ -342,7 +342,7 @@ func TestCreateToken(t *testing.T) {
 					err: fmt.Errorf("Cannot connect to validator"),
 				},
 			},
-			wantErr: "unexpected error from validator \"jira\": Cannot connect to validator",
+			wantErr: "unable to validate request",
 		},
 		{
 			name: "validator_missing_ui_data",
