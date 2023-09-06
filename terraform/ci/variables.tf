@@ -44,3 +44,30 @@ variable "ci_iam_roles" {
   ]
   description = "List of IAM roles needed to run integration tests included in CI/CD."
 }
+
+variable "region" {
+  description = "The default Google Cloud region to deploy resources in (defaults to 'us-central1')."
+  type        = string
+  default     = "us-central1"
+}
+
+variable "jvs_container_image" {
+  description = "Container image for the jvsctl CLI and server entrypoints."
+  type        = string
+}
+
+variable "plugin_envvars" {
+  description = "Env vars for plugin."
+  type        = map(string)
+  default     = {}
+}
+
+variable "registry_repository_id" {
+  description = "name for artifact registry."
+  type        = string
+}
+
+variable "ci_service_account_email" {
+  description = "service account email."
+  type        = string
+}

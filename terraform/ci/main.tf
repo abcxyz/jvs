@@ -18,6 +18,10 @@ locals {
   github_repo_id  = 479173136 # abcxyz/jvs
 }
 
+resource "random_id" "default" {
+  byte_length = 2
+}
+
 resource "google_project_service" "services" {
   for_each = toset([
     "cloudkms.googleapis.com",
@@ -29,25 +33,29 @@ resource "google_project_service" "services" {
   disable_on_destroy = false
 }
 
-// IAM roles needed to run tests.
-resource "google_project_iam_member" "gh_access_acc_iam" {
-  for_each = toset(var.ci_iam_roles)
-
+resource "google_artifact_registry_repository" "artifact_repository" {
   project = var.project_id
 
-  role   = each.key
-  member = module.github_ci_infra.service_account_member
+  location      = var.region
+  repository_id = var.registry_repository_id
+  description   = "Container registry for docker images."
+  format        = "DOCKER"
+
+  depends_on = [
+    google_project_service.services["artifactregistry.googleapis.com"],
+  ]
 }
 
-module "github_ci_infra" {
-  source = "git::https://github.com/abcxyz/terraform-modules.git//modules/github_ci_infra?ref=46d3ffd82d7c3080bc5ec2cc788fe3e21176a8be"
+// ci service account will need repoAdmin role to read, write and delete images
+resource "google_artifact_registry_repository_iam_member" "ci_service_account_iam" {
+  project = google_artifact_registry_repository.artifact_repository.project
 
-  project_id = var.project_id
-
-  name                 = "jvs"
-  github_repository_id = local.github_repo_id
-  github_owner_id      = local.github_owner_id
+  location   = google_artifact_registry_repository.artifact_repository.location
+  repository = google_artifact_registry_repository.artifact_repository.name
+  role       = "roles/artifactregistry.repoAdmin"
+  member     = format("serviceAccount:%s", var.ci_service_account_email)
 }
+
 
 module "jvs_common" {
   source = "../modules/common"
@@ -56,3 +64,24 @@ module "jvs_common" {
 
   kms_key_location = var.kms_key_location
 }
+
+module "jvs_services" {
+  source = "../modules/jvs-services"
+
+  project_id = var.project_id
+
+  region          = var.region
+  service_ingress = "all"
+
+  jvs_api_service_account          = module.jvs_common.jvs_api_service_account_email
+  jvs_ui_service_account           = module.jvs_common.jvs_ui_service_account_email
+  jvs_cert_rotator_service_account = module.jvs_common.jvs_cert_rotator_service_account_email
+  jvs_public_key_service_account   = module.jvs_common.jvs_public_key_service_account_email
+
+  jvs_container_image = var.jvs_container_image
+
+  kms_keyring_id = module.jvs_common.kms_keyring_id
+  kms_key_name   = "signing-${random_id.default.hex}"
+  plugin_envvars = var.plugin_envvars
+}
+

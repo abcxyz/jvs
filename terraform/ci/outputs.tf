@@ -14,30 +14,6 @@
  * limitations under the License.
  */
 
-output "artifact_repository_name" {
-  description = "The Artifact Registry name."
-  value       = module.github_ci_infra.artifact_repository_name
-}
-
-output "wif_pool_name" {
-  description = "The Workload Identity Federation pool name."
-  value       = module.github_ci_infra.wif_pool_name
-}
-
-output "wif_provider_name" {
-  description = "The Workload Identity Federation provider name."
-  value       = module.github_ci_infra.wif_provider_name
-}
-
-output "ci_service_account_email" {
-  description = "CI service account identity email address."
-  value       = module.github_ci_infra.service_account_email
-}
-
-output "ci_service_account_member" {
-  description = "CI service account identity in the form serviceAccount:{email}."
-  value       = module.github_ci_infra.service_account_member
-}
 
 output "jvs_api_service_account_email" {
   description = "JVS API service account email."
