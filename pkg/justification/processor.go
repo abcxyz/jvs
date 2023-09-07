@@ -145,7 +145,6 @@ func (p *Processor) getPrimarySigner(ctx context.Context) (*signerWithID, error)
 	}, nil
 }
 
-// TODO: Each category should have its own validator struct, with a shared interface.
 // runValidations is an internal helper function that validates requests.
 // If any errors occur during validation, it returns a standard internal error message with codes.Internal.
 // If the request fails validation, it returns full error messages with codes.InvalidArgument.

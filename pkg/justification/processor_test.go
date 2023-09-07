@@ -43,6 +43,8 @@ import (
 	"github.com/lestrrat-go/jwx/v2/jwt"
 	"google.golang.org/api/option"
 	"google.golang.org/grpc"
+	"google.golang.org/grpc/codes"
+	"google.golang.org/grpc/status"
 	"google.golang.org/protobuf/types/known/durationpb"
 )
 
@@ -324,7 +326,7 @@ func TestCreateToken(t *testing.T) {
 					},
 				},
 			},
-			wantErr: "failed validation criteria with error [bad explanation] and warning []",
+			wantErr: status.Error(codes.InvalidArgument, "failed to validate request: failed validation criteria with error [bad explanation] and warning []").Error(),
 		},
 		{
 			name: "validator_err",
@@ -342,7 +344,7 @@ func TestCreateToken(t *testing.T) {
 					err: fmt.Errorf("Cannot connect to validator"),
 				},
 			},
-			wantErr: "unable to validate request",
+			wantErr: status.Error(codes.Internal, "unable to validate request").Error(),
 		},
 		{
 			name: "validator_missing_ui_data",
@@ -382,7 +384,7 @@ func TestCreateToken(t *testing.T) {
 				},
 				Ttl: durationpb.New(3600 * time.Second),
 			},
-			wantErr: "missing validator for category \"jira\"",
+			wantErr: status.Error(codes.InvalidArgument, "failed to validate request: category \"jira\" is not supported").Error(),
 		},
 	}
 
