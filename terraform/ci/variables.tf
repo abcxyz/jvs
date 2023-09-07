@@ -68,6 +68,6 @@ variable "registry_repository_id" {
 }
 
 variable "ci_service_account_email" {
-  description = "service account email."
+  description = "ci service account email."
   type        = string
 }

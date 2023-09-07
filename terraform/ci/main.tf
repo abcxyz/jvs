@@ -33,6 +33,7 @@ resource "google_project_service" "services" {
   disable_on_destroy = false
 }
 
+// Images build from the CI workflow will be uploaded to this AR repo
 resource "google_artifact_registry_repository" "artifact_repository" {
   project = var.project_id
 
