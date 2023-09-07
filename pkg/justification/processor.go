@@ -163,7 +163,7 @@ func (p *Processor) runValidations(ctx context.Context, req *jvspb.CreateJustifi
 
 		v, ok := p.validators[j.Category]
 		if !ok {
-			validationErr = errors.Join(validationErr, fmt.Errorf("missing validator for category %q", j.Category))
+			validationErr = errors.Join(validationErr, fmt.Errorf("category %q is not supported", j.Category))
 			continue
 		}
 		resp, verr := v.Validate(ctx, &jvspb.ValidateJustificationRequest{
@@ -202,16 +202,13 @@ func (p *Processor) runValidations(ctx context.Context, req *jvspb.CreateJustifi
 	// even if there are validation errors. The complete internal error message will be logged along
 	// with any additional validation errors.
 	if internalErr != nil {
-		logger.ErrorContext(ctx, "internal error during validation", "error", internalErr)
-		if validationErr != nil {
-			logger.WarnContext(ctx, "additional validation error", validationErr)
-		}
+		logger.ErrorContext(ctx, "internal error during validation", "error", internalErr, "validation_error", validationErr)
 		return status.Errorf(codes.Internal, "unable to validate request")
 	}
 
 	if validationErr != nil {
-		logger.WarnContext(ctx, "failed to validate token", validationErr)
-		return status.Errorf(codes.InvalidArgument, "failed to validate request: %s", validationErr.Error())
+		logger.WarnContext(ctx, "failed to validate token", "error", validationErr)
+		return status.Errorf(codes.InvalidArgument, "failed to validate request: %v", validationErr)
 	}
 	return nil
 }
