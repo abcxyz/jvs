@@ -147,8 +147,8 @@ func (p *Processor) getPrimarySigner(ctx context.Context) (*signerWithID, error)
 
 // TODO: Each category should have its own validator struct, with a shared interface.
 // runValidations is an internal helper function that validates requests.
-// If any errors occur during validation, it returns an error with codes.Internal.
-// If the request fails validation, it returns an error with codes.InvalidArgument.
+// If any errors occur during validation, it returns a standard internal error message with codes.Internal.
+// If the request fails validation, it returns full error messages with codes.InvalidArgument.
 func (p *Processor) runValidations(ctx context.Context, req *jvspb.CreateJustificationRequest) error {
 	logger := logging.FromContext(ctx)
 	if len(req.Justifications) < 1 {
@@ -198,13 +198,19 @@ func (p *Processor) runValidations(ctx context.Context, req *jvspb.CreateJustifi
 			got, max))
 	}
 
+	// In case of internal errors, a standard internal error message will be shown to the user,
+	// even if there are validation errors. The complete internal error message will be logged along
+	// with any additional validation errors.
 	if internalErr != nil {
-		logger.ErrorContext(ctx, "internal error during validation", internalErr)
+		logger.ErrorContext(ctx, "internal error during validation", "error", internalErr)
+		if validationErr != nil {
+			logger.WarnContext(ctx, "additional validation error", validationErr)
+		}
 		return status.Errorf(codes.Internal, "unable to validate request")
 	}
 
 	if validationErr != nil {
-		logger.WarnContext(ctx, "failed to validate token", "error", validationErr)
+		logger.WarnContext(ctx, "failed to validate token", validationErr)
 		return status.Errorf(codes.InvalidArgument, "failed to validate request: %s", validationErr.Error())
 	}
 	return nil
