@@ -33,30 +33,6 @@ resource "google_project_service" "services" {
   disable_on_destroy = false
 }
 
-// Images build from the CI workflow will be uploaded to this AR repo
-resource "google_artifact_registry_repository" "artifact_repository" {
-  project = var.project_id
-
-  location      = var.region
-  repository_id = var.registry_repository_id
-  description   = "Container registry for docker images."
-  format        = "DOCKER"
-
-  depends_on = [
-    google_project_service.services["artifactregistry.googleapis.com"],
-  ]
-}
-
-// ci service account will need repoAdmin role to read, write and delete images
-resource "google_artifact_registry_repository_iam_member" "ci_service_account_iam" {
-  project = google_artifact_registry_repository.artifact_repository.project
-
-  location   = google_artifact_registry_repository.artifact_repository.location
-  repository = google_artifact_registry_repository.artifact_repository.name
-  role       = "roles/artifactregistry.repoAdmin"
-  member     = format("serviceAccount:%s", var.ci_service_account_email)
-}
-
 
 module "jvs_common" {
   source = "../modules/common"
