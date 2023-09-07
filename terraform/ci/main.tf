@@ -13,11 +13,6 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-locals {
-  github_owner_id = 93787867  # abcxyz
-  github_repo_id  = 479173136 # abcxyz/jvs
-}
-
 resource "random_id" "default" {
   byte_length = 2
 }
