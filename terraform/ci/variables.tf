@@ -25,22 +25,13 @@ variable "kms_key_location" {
   description = "The location where kms key will be created."
 }
 
-variable "ci_iam_roles" {
-  type = list(string)
-  default = [
-    # To deploy and invoke cloud run services.
-    "roles/iam.serviceAccountUser",
-    "roles/run.admin",
+variable "region" {
+  description = "The default Google Cloud region to deploy resources in (defaults to 'us-central1')."
+  type        = string
+  default     = "us-central1"
+}
 
-    # To operate KMS.
-    "roles/cloudkms.admin",
-    "roles/cloudkms.cryptoOperator",
-
-    # To read and edit project service during CI.
-    "roles/serviceusage.serviceUsageAdmin",
-
-    # To set project IAM policies.
-    "roles/resourcemanager.projectIamAdmin",
-  ]
-  description = "List of IAM roles needed to run integration tests included in CI/CD."
+variable "jvs_container_image" {
+  description = "Container image for the jvsctl CLI and server entrypoints."
+  type        = string
 }
