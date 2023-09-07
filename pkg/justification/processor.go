@@ -93,8 +93,7 @@ func (p *Processor) CreateToken(ctx context.Context, requestor string, req *jvsp
 	logger := logging.FromContext(ctx)
 
 	if err := p.runValidations(ctx, req); err != nil {
-		logger.ErrorContext(ctx, "failed to validate request", "error", err)
-		return nil, status.Errorf(codes.InvalidArgument, "failed to validate request: %s", err)
+		return nil, err
 	}
 
 	token, err := p.createToken(ctx, requestor, req, now)
@@ -146,11 +145,16 @@ func (p *Processor) getPrimarySigner(ctx context.Context) (*signerWithID, error)
 	}, nil
 }
 
-// TODO: Each category should have its own validator struct, with a shared interface.
-func (p *Processor) runValidations(ctx context.Context, req *jvspb.CreateJustificationRequest) (merr error) {
+// runValidations is an internal helper function that validates requests.
+// If any errors occur during validation, it returns a standard internal error message with codes.Internal.
+// If the request fails validation, it returns full error messages with codes.InvalidArgument.
+func (p *Processor) runValidations(ctx context.Context, req *jvspb.CreateJustificationRequest) error {
+	logger := logging.FromContext(ctx)
 	if len(req.Justifications) < 1 {
-		return fmt.Errorf("no justifications specified")
+		return status.Errorf(codes.InvalidArgument, "failed to validate request: no justifications specified")
 	}
+
+	var validationErr, internalErr error
 
 	var justificationsLength int
 	for _, j := range req.Justifications {
@@ -158,19 +162,19 @@ func (p *Processor) runValidations(ctx context.Context, req *jvspb.CreateJustifi
 
 		v, ok := p.validators[j.Category]
 		if !ok {
-			merr = errors.Join(merr, fmt.Errorf("missing validator for category %q", j.Category))
+			validationErr = errors.Join(validationErr, fmt.Errorf("category %q is not supported", j.Category))
 			continue
 		}
 		resp, verr := v.Validate(ctx, &jvspb.ValidateJustificationRequest{
 			Justification: j,
 		})
 		if verr != nil {
-			merr = errors.Join(merr, fmt.Errorf("unexpected error from validator %q: %w", j.Category, verr))
+			internalErr = errors.Join(internalErr, fmt.Errorf("unexpected error from validator %q: %w", j.Category, verr))
 			continue
 		}
 
 		if !resp.Valid {
-			merr = errors.Join(merr,
+			validationErr = errors.Join(validationErr,
 				fmt.Errorf("failed validation criteria with error %v and warning %v", resp.Error, resp.Warning))
 		}
 
@@ -180,7 +184,7 @@ func (p *Processor) runValidations(ctx context.Context, req *jvspb.CreateJustifi
 	// This isn't perfect, but it's the easiest place to get "close" to limiting
 	// the size.
 	if got, max := justificationsLength, 4_000; got > max {
-		merr = errors.Join(merr, fmt.Errorf("justification size (%d bytes) must be less than %d bytes",
+		validationErr = errors.Join(validationErr, fmt.Errorf("justification size (%d bytes) must be less than %d bytes",
 			got, max))
 	}
 
@@ -189,11 +193,23 @@ func (p *Processor) runValidations(ctx context.Context, req *jvspb.CreateJustifi
 		audiencesLength += len(v)
 	}
 	if got, max := audiencesLength, 1_000; got > max {
-		merr = errors.Join(merr, fmt.Errorf("audiences size (%d bytes) must be less than %d bytes",
+		validationErr = errors.Join(validationErr, fmt.Errorf("audiences size (%d bytes) must be less than %d bytes",
 			got, max))
 	}
 
-	return
+	// In case of internal errors, a standard internal error message will be shown to the user,
+	// even if there are validation errors. The complete internal error message will be logged along
+	// with any additional validation errors.
+	if internalErr != nil {
+		logger.ErrorContext(ctx, "internal error during validation", "error", internalErr, "validation_error", validationErr)
+		return status.Errorf(codes.Internal, "unable to validate request")
+	}
+
+	if validationErr != nil {
+		logger.WarnContext(ctx, "failed to validate token", "error", validationErr)
+		return status.Errorf(codes.InvalidArgument, "failed to validate request: %v", validationErr)
+	}
+	return nil
 }
 
 // createToken is an internal helper for testing that builds an unsigned jwt
