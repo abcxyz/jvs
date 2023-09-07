@@ -59,6 +59,5 @@ module "jvs_services" {
 
   kms_keyring_id = module.jvs_common.kms_keyring_id
   kms_key_name   = "signing-${random_id.default.hex}"
-  plugin_envvars = var.plugin_envvars
 }
 

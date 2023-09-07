@@ -56,18 +56,7 @@ variable "jvs_container_image" {
   type        = string
 }
 
-variable "plugin_envvars" {
-  description = "Env vars for plugin."
-  type        = map(string)
-  default     = {}
-}
-
 variable "registry_repository_id" {
   description = "name for artifact registry."
-  type        = string
-}
-
-variable "ci_service_account_email" {
-  description = "ci service account email."
   type        = string
 }
