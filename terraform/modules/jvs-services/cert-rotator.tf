@@ -19,6 +19,13 @@ resource "google_project_service" "scheduler_api" {
   disable_on_destroy = false
 }
 
+resource "google_project_service" "compute_api" {
+  project = var.project_id
+
+  service            = "compute.googleapis.com"
+  disable_on_destroy = false
+}
+
 module "cert_rotator_cloud_run" {
   source = "git::https://github.com/abcxyz/terraform-modules.git//modules/cloud_run?ref=46d3ffd82d7c3080bc5ec2cc788fe3e21176a8be"
 
@@ -45,6 +52,10 @@ data "google_compute_default_service_account" "default" {
   count = var.kms_key_rotation_minutes > 0 ? 1 : 0
 
   project = var.project_id
+
+  depends_on = [
+    google_project_service.compute_api,
+  ]
 }
 
 resource "google_cloud_scheduler_job" "job" {
