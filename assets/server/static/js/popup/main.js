@@ -16,6 +16,7 @@ document.addEventListener("DOMContentLoaded", async function () {
   const categorySelect = document.querySelector("#category");
   const reasonInput = document.querySelector('#reason');
   const form = document.querySelector('#form');
+  const hintTooltipText = document.querySelector("#hint")
 
   if (!form) {
     alert("The form cannot be found");
@@ -32,10 +33,16 @@ document.addEventListener("DOMContentLoaded", async function () {
     return;
   }
 
+  if(!hintTooltipText){
+    alert("The hint tooltip cannot be found in the form.");
+    return;
+  }
+
   // Update the reason input's placeholder with the selected category's hint.
   function updatePlaceholder() {
     const selectedOption = categorySelect.options[categorySelect.selectedIndex];
     reasonInput.placeholder = selectedOption.getAttribute("hint");
+    hintTooltipText.innerHTML = selectedOption.getAttribute("hint");
   }
 
   // Call the function when the page loads.

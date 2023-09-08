@@ -64,3 +64,48 @@
   display: flex;
   justify-content: flex-end;
 }
+
+.tooltip {
+  position: relative;
+  display: inline-block;
+}
+
+.tooltip .tooltiptext {
+  visibility: hidden;
+  background-color: black;
+  word-wrap: break-word;
+  white-space: normal;
+  width: 150px;
+  color: #fff;
+  text-align: center;
+  padding: 10px;
+  border-radius: 6px;
+  position: absolute;
+  z-index: 1;
+  font-size: 0.7em;
+  font-weight: 200;
+  top: -5px;
+  left: 105%;
+  font-family: sans-serif;
+  text-transform: none;
+}
+
+.tooltip:hover .tooltiptext {
+  visibility: visible;
+}
+
+.infolink:after {
+  content: '?';
+  display: inline-block;
+  font-family: sans-serif;
+  font-weight: bold;
+  text-align: center;
+  font-size: 0.8em;
+  line-height: 0.8em;
+  border-radius: 50%;
+  padding: 0.13em 0.2em 0.09em 0.2em;
+  color: inherit;
+  border: 1px solid;
+  text-decoration: none;
+}
+
