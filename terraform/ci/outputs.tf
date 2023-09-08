@@ -20,9 +20,9 @@ output "jvs_api_service_account_email" {
   value       = module.jvs_common.jvs_api_service_account_email
 }
 
-output "jvs_api_service_account_id" {
-  description = "JVS API service account email."
-  value       = module.jvs_common.jvs_api_service_account_id
+output "jvs_api_service_account_name" {
+  description = "JVS API service account name."
+  value       = module.jvs_common.jvs_api_service_account_name
 }
 
 output "jvs_ui_service_account_email" {
@@ -30,9 +30,9 @@ output "jvs_ui_service_account_email" {
   value       = module.jvs_common.jvs_ui_service_account_email
 }
 
-output "jvs_ui_service_account_id" {
-  description = "JVS UI service account email."
-  value       = module.jvs_common.jvs_ui_service_account_id
+output "jvs_ui_service_account_name" {
+  description = "JVS UI service account name."
+  value       = module.jvs_common.jvs_ui_service_account_name
 }
 
 output "jvs_cert_rotator_service_account_email" {
@@ -40,9 +40,9 @@ output "jvs_cert_rotator_service_account_email" {
   value       = module.jvs_common.jvs_cert_rotator_service_account_email
 }
 
-output "jvs_cert_rotator_service_account_id" {
-  description = "JVS cert rotator service account email."
-  value       = module.jvs_common.jvs_cert_rotator_service_account_id
+output "jvs_cert_rotator_service_account_name" {
+  description = "JVS cert rotator service account name."
+  value       = module.jvs_common.jvs_cert_rotator_service_account_name
 }
 
 output "jvs_public_key_service_account_email" {
@@ -50,9 +50,9 @@ output "jvs_public_key_service_account_email" {
   value       = module.jvs_common.jvs_public_key_service_account_email
 }
 
-output "jvs_public_key_service_account_id" {
-  description = "JVS public key service account email."
-  value       = module.jvs_common.jvs_public_key_service_account_id
+output "jvs_public_key_service_account_name" {
+  description = "JVS public key service account name."
+  value       = module.jvs_common.jvs_public_key_service_account_name
 }
 
 output "kms_keyring_id" {
