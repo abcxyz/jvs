@@ -11,11 +11,15 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
+resource "google_project_service" "services" {
+  for_each = toset([
+    "cloudscheduler.googleapis.com",
+    "compute.googleapis.com"
+  ])
 
-resource "google_project_service" "scheduler_api" {
   project = var.project_id
 
-  service            = "cloudscheduler.googleapis.com"
+  service            = each.value
   disable_on_destroy = false
 }
 
@@ -45,6 +49,10 @@ data "google_compute_default_service_account" "default" {
   count = var.kms_key_rotation_minutes > 0 ? 1 : 0
 
   project = var.project_id
+
+  depends_on = [
+    google_project_service.services["compute.googleapis.com"]
+  ]
 }
 
 resource "google_cloud_scheduler_job" "job" {
@@ -69,6 +77,6 @@ resource "google_cloud_scheduler_job" "job" {
   }
 
   depends_on = [
-    google_project_service.scheduler_api,
+    google_project_service.services["cloudscheduler.googleapis.com"],
   ]
 }
