@@ -36,7 +36,12 @@
 
         <!-- Reason row -->
         <li class="content-row">
-          <label class="content-label" for="reason">Reason</label>
+          <label class="content-label" for="reason">Reason
+            <div class="tooltip">
+              <div class="infolink"></div>
+              <span class="tooltiptext" id="hint">i.e. issue/xxxxx</span>
+            </div>
+          </label>
           <input class="content-input" type="text" id="reason" name="reason" placeholder="i.e. issue/xxxxx">
         </li>
         {{ if .Errors.Reason }}
