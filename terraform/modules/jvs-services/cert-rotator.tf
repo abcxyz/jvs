@@ -11,14 +11,6 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
-
-resource "google_project_service" "serviceusage" {
-  project = var.project_id
-
-  service            = "serviceusage.googleapis.com"
-  disable_on_destroy = false
-}
-
 resource "google_project_service" "services" {
   for_each = toset([
     "cloudscheduler.googleapis.com",
@@ -29,10 +21,6 @@ resource "google_project_service" "services" {
 
   service            = each.value
   disable_on_destroy = false
-
-  depends_on = [
-    google_project_service.serviceusage,
-  ]
 }
 
 module "cert_rotator_cloud_run" {
