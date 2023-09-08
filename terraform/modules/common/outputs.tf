@@ -19,7 +19,7 @@ output "jvs_api_service_account_email" {
 
 output "jvs_api_service_account_name" {
   description = "JVS API service account name."
-  value       = google_service_account.api_acc.id
+  value       = google_service_account.api_acc.name
 }
 
 output "jvs_ui_service_account_email" {
@@ -29,7 +29,7 @@ output "jvs_ui_service_account_email" {
 
 output "jvs_ui_service_account_name" {
   description = "JVS UI service account name."
-  value       = google_service_account.ui_acc.id
+  value       = google_service_account.ui_acc.name
 }
 
 output "jvs_cert_rotator_service_account_email" {
@@ -39,7 +39,7 @@ output "jvs_cert_rotator_service_account_email" {
 
 output "jvs_cert_rotator_service_account_name" {
   description = "JVS cert rotator service account name."
-  value       = google_service_account.rotator_acc.id
+  value       = google_service_account.rotator_acc.name
 }
 
 output "jvs_public_key_service_account_email" {
@@ -49,7 +49,7 @@ output "jvs_public_key_service_account_email" {
 
 output "jvs_public_key_service_account_name" {
   description = "JVS public key service account name."
-  value       = google_service_account.public_key_acc.id
+  value       = google_service_account.public_key_acc.name
 }
 
 output "kms_keyring_id" {
