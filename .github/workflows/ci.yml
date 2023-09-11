@@ -27,6 +27,9 @@ jobs:
       directory: 'terraform'
       terraform_version: '1.2'
 
+  yaml_lint:
+    uses: 'abcxyz/pkg/.github/workflows/yaml-lint.yml@main' # ratchet:exclude
+
   go_lint:
     uses: 'abcxyz/pkg/.github/workflows/go-lint.yml@main' # ratchet:exclude
     with:
@@ -61,7 +64,7 @@ jobs:
           service_account: '${{ env.WIF_SERVICE_ACCOUNT }}'
           # The Artifact Registry maven wagon looks for Google Application Default Credentials.
           # https://github.com/GoogleCloudPlatform/artifact-registry-maven-tools
-      - name: Run test script
+      - name: 'Run test script'
         run: |-
           mvn clean test --no-transfer-progress -f client-lib/java
 

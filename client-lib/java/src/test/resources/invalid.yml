@@ -1,3 +1,3 @@
 version: 1
-jwks_endpoint: https://example.com/.well-known/jwks
-cache_timeout: PT-5M
+jwks_endpoint: 'https://example.com/.well-known/jwks'
+cache_timeout: 'PT-5M'
