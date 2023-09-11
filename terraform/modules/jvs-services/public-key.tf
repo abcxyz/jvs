@@ -12,6 +12,17 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+resource "google_project_service" "kms_services" {
+  for_each = toset([
+    "cloudkms.googleapis.com",
+  ])
+
+  project = var.project_id
+
+  service            = each.value
+  disable_on_destroy = false
+}
+
 module "public_key_cloud_run" {
   source = "git::https://github.com/abcxyz/terraform-modules.git//modules/cloud_run?ref=46d3ffd82d7c3080bc5ec2cc788fe3e21176a8be"
 
@@ -36,4 +47,8 @@ module "public_key_cloud_run" {
     "PROJECT_ID" : var.project_id
     "JVS_KEY_NAMES" : google_kms_crypto_key.signing_key.id,
   }, var.public_key_envvars)
+
+  depends_on = [
+    google_project_service.services["cloudkms.googleapis.com"],
+  ]
 }
