@@ -14,7 +14,6 @@
  * limitations under the License.
  */
 
-
 output "jvs_api_service_account_email" {
   description = "JVS API service account email."
   value       = module.jvs_common.jvs_api_service_account_email
@@ -23,6 +22,11 @@ output "jvs_api_service_account_email" {
 output "jvs_api_service_account_name" {
   description = "JVS API service account name."
   value       = module.jvs_common.jvs_api_service_account_name
+}
+
+output "jvs_api_service_account_member" {
+  description = "JVS API service account member."
+  value       = module.jvs_common.jvs_api_service_account_member
 }
 
 output "jvs_ui_service_account_email" {
@@ -35,6 +39,11 @@ output "jvs_ui_service_account_name" {
   value       = module.jvs_common.jvs_ui_service_account_name
 }
 
+output "jvs_ui_service_account_member" {
+  description = "JVS UI service account member."
+  value       = module.jvs_common.jvs_ui_service_account_member
+}
+
 output "jvs_cert_rotator_service_account_email" {
   description = "JVS cert rotator service account email."
   value       = module.jvs_common.jvs_cert_rotator_service_account_email
@@ -45,6 +54,11 @@ output "jvs_cert_rotator_service_account_name" {
   value       = module.jvs_common.jvs_cert_rotator_service_account_name
 }
 
+output "jvs_cert_rotator_service_account_member" {
+  description = "JVS cert rotator service account member."
+  value       = module.jvs_common.jvs_cert_rotator_service_account_member
+}
+
 output "jvs_public_key_service_account_email" {
   description = "JVS public key service account email."
   value       = module.jvs_common.jvs_public_key_service_account_email
@@ -53,6 +67,11 @@ output "jvs_public_key_service_account_email" {
 output "jvs_public_key_service_account_name" {
   description = "JVS public key service account name."
   value       = module.jvs_common.jvs_public_key_service_account_name
+}
+
+output "jvs_public_key_service_account_member" {
+  description = "JVS public key service account member."
+  value       = module.jvs_common.jvs_public_key_service_account_member
 }
 
 output "kms_keyring_id" {

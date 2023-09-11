@@ -22,6 +22,11 @@ output "jvs_api_service_account_name" {
   value       = google_service_account.api_acc.name
 }
 
+output "jvs_api_service_account_member" {
+  description = "JVS API service account member."
+  value       = google_service_account.api_acc.member
+}
+
 output "jvs_ui_service_account_email" {
   description = "JVS UI service account email."
   value       = google_service_account.ui_acc.email
@@ -30,6 +35,11 @@ output "jvs_ui_service_account_email" {
 output "jvs_ui_service_account_name" {
   description = "JVS UI service account name."
   value       = google_service_account.ui_acc.name
+}
+
+output "jvs_ui_service_account_member" {
+  description = "JVS UI service account member."
+  value       = google_service_account.ui_acc.member
 }
 
 output "jvs_cert_rotator_service_account_email" {
@@ -42,6 +52,11 @@ output "jvs_cert_rotator_service_account_name" {
   value       = google_service_account.rotator_acc.name
 }
 
+output "jvs_cert_rotator_service_account_member" {
+  description = "JVS cert rotator service account member."
+  value       = google_service_account.rotator_acc.member
+}
+
 output "jvs_public_key_service_account_email" {
   description = "JVS public key service account email."
   value       = google_service_account.public_key_acc.email
@@ -50,6 +65,11 @@ output "jvs_public_key_service_account_email" {
 output "jvs_public_key_service_account_name" {
   description = "JVS public key service account name."
   value       = google_service_account.public_key_acc.name
+}
+
+output "jvs_public_key_service_account_member" {
+  description = "JVS public key service account member."
+  value       = google_service_account.public_key_acc.member
 }
 
 output "kms_keyring_id" {
