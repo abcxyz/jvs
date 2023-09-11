@@ -50,7 +50,7 @@ builds:
 dockers:
   -
     ids:
-    - 'jvsctl'
+      - 'jvsctl'
     use: 'buildx'
     goos: 'linux'
     goarch: 'amd64'
@@ -70,7 +70,7 @@ dockers:
 
   -
     ids:
-    - 'jvsctl'
+      - 'jvsctl'
     use: 'buildx'
     goos: 'linux'
     goarch: 'arm64'
@@ -90,7 +90,7 @@ dockers:
 
   -
     ids:
-    - 'jvsctl'
+      - 'jvsctl'
     use: 'buildx'
     goos: 'linux'
     goarch: 'amd64'
@@ -98,7 +98,7 @@ dockers:
       - '{{ .Env.CONTAINER_REGISTRY }}/jvs-prober:{{ if index .Env "DOCKER_TAG"  }}{{ .Env.DOCKER_TAG }}{{ else }}{{ .Version }}{{ end }}-amd64'
     dockerfile: './prober/prober.dockerfile'
     extra_files:
-    - './prober/prober.sh'
+      - './prober/prober.sh'
     build_flag_templates:
       - '--platform=linux/amd64'
       - '--pull'
@@ -113,7 +113,7 @@ dockers:
 
   -
     ids:
-    - 'jvsctl'
+      - 'jvsctl'
     use: 'buildx'
     goos: 'linux'
     goarch: 'arm64'
@@ -121,7 +121,7 @@ dockers:
       - '{{ .Env.CONTAINER_REGISTRY }}/jvs-prober:{{ if index .Env "DOCKER_TAG"  }}{{ .Env.DOCKER_TAG }}{{ else }}{{ .Version }}{{ end }}-arm64'
     dockerfile: './prober/prober.dockerfile'
     extra_files:
-    - './prober/prober.sh'
+      - './prober/prober.sh'
     build_flag_templates:
       - '--platform=linux/arm64'
       - '--pull'
