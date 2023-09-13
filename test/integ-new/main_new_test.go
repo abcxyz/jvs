@@ -134,9 +134,7 @@ sub
 			var createCmd cli.TokenCreateCommand
 			_, stdout, _ := createCmd.Pipe()
 
-			server := fmt.Sprintf("%s---%s-%s:443", cfg.RevisionTagID, cfg.APIServiceName, cfg.ServiceURLPostfix)
-
-			createTokenArgs := []string{"-server", server, "-justification", tc.justification, "--auth-token", cfg.IDToken}
+			createTokenArgs := []string{"-server", cfg.APIServer, "-justification", tc.justification, "--auth-token", cfg.IDToken}
 			if tc.isBreakglass {
 				createTokenArgs = append(createTokenArgs, "-breakglass")
 			}
@@ -151,8 +149,7 @@ sub
 
 			token := stdout.String()
 
-			endpoint := fmt.Sprintf("%s%s---%s-%s/%s", serviceURLPrefix, cfg.RevisionTagID, cfg.PublicKeyServiceName, cfg.ServiceURLPostfix, jwkEndpointPostfix)
-			validateTokenArgs := []string{"-token", token, "-jwks-endpoint", endpoint}
+			validateTokenArgs := []string{"-token", token, "-jwks-endpoint", cfg.JWTEndpoint}
 
 			var validateCmd cli.TokenValidateCommand
 			_, stdout, _ = validateCmd.Pipe()

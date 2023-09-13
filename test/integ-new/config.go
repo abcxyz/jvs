@@ -22,15 +22,10 @@ import (
 )
 
 type config struct {
-	ProjectID              string `env:"PROJECT_ID,required"`
-	APIServiceName         string `env:"API_SERVICE_NAME,required"`
-	CertRotatorServiceName string `env:"CERT_ROTATOR_SERVICE_NAME,required"`
-	PublicKeyServiceName   string `env:"PUBLIC_KEY_SERVICE_NAME,required"`
-	UIServiceName          string `env:"UI_SERVICE_NAME,required"`
-	ServiceURLPostfix      string `env:"SERVICES_URL_POSTFIX,required"`
-	RevisionTagID          string `env:"TAG_ID,required"`
-	IDToken                string `env:"ID_TOKEN,required"`
-	ServiceAccount         string `env:"WIF_SERVICE_ACCOUNT,required"`
+	IDToken        string `env:"ID_TOKEN,required"`
+	ServiceAccount string `env:"WIF_SERVICE_ACCOUNT,required"`
+	JWTEndpoint    string `env:"JWT_ENDPOINT,required"`
+	APIServer      string `env:"API_SERVER,required"`
 }
 
 func newTestConfig(ctx context.Context) (*config, error) {
