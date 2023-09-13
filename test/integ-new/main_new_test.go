@@ -43,9 +43,9 @@ var (
 )
 
 const (
-	serviceURLPrefix   = "https://"
-	jwkEndpointPostfix = ".well-known/jwks"
-	timestampFormat    = "2006-01-02 3:04PM UTC"
+	timestampFormat = "2006-01-02 3:04PM UTC"
+	testTTLString   = "30m"
+	testTTLTime     = 30 * time.Minute
 )
 
 func TestMain(m *testing.M) {
@@ -80,7 +80,6 @@ func TestAPIAndPublicKeyService(t *testing.T) {
 	now := time.Now()
 	cases := []struct {
 		name                 string
-		ttl                  string
 		isBreakglass         bool
 		justification        string
 		wantValidationResult string
@@ -88,7 +87,6 @@ func TestAPIAndPublicKeyService(t *testing.T) {
 		{
 			name:          "none_breakglass",
 			justification: "issues/12345",
-			ttl:           "30m",
 			isBreakglass:  false,
 			wantValidationResult: fmt.Sprintf(`
 ----- Justifications -----
@@ -101,12 +99,11 @@ iat    %s
 iss    jvs.abcxyz.dev
 req    %s
 sub    %s
-`, now.Add(30*time.Minute).UTC().Format(timestampFormat), now.Format(timestampFormat), cfg.ServiceAccount, cfg.ServiceAccount),
+`, now.Add(testTTLTime).UTC().Format(timestampFormat), now.Format(timestampFormat), cfg.ServiceAccount, cfg.ServiceAccount),
 		},
 		{
 			name:          "breakglass",
 			justification: "issues/12345",
-			ttl:           "30m",
 			isBreakglass:  true,
 			wantValidationResult: fmt.Sprintf(`
 Warning! This is a breakglass token.
@@ -120,7 +117,7 @@ exp    %s
 iat    %s
 iss    jvsctl
 sub
-`, now.Add(30*time.Minute).UTC().Format(timestampFormat), now.Format(timestampFormat)),
+`, now.Add(testTTLTime).UTC().Format(timestampFormat), now.Format(timestampFormat)),
 		},
 	}
 
@@ -134,13 +131,9 @@ sub
 			var createCmd cli.TokenCreateCommand
 			_, stdout, _ := createCmd.Pipe()
 
-			createTokenArgs := []string{"-server", cfg.APIServer, "-justification", tc.justification, "--auth-token", cfg.IDToken}
+			createTokenArgs := []string{"-server", cfg.APIServer, "-justification", tc.justification, "-ttl", testTTLString, "--auth-token", cfg.IDToken}
 			if tc.isBreakglass {
 				createTokenArgs = append(createTokenArgs, "-breakglass")
-			}
-
-			if tc.ttl != "" {
-				createTokenArgs = append(createTokenArgs, "-ttl", tc.ttl)
 			}
 
 			if err := createCmd.Run(ctx, createTokenArgs); err != nil {
