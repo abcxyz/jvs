@@ -21,13 +21,6 @@ name: 'ci-new'
 # This will also be updated once the new integration
 # test implementation has finished
 on:
-  # this pull_request here is just for me to
-  # test this workflow works before merging to main
-  # I will remove pull_request and only keep
-  # workflow_dispatch before merging this PR to main.
-  pull_request:
-    branches:
-      - 'main'
   workflow_dispatch:
 
 env:
@@ -42,7 +35,6 @@ env:
   CERT_ROTATOR_SERVICE_NAME: 'jvs-cert-rotator-e04a'
   PUBLIC_KEY_SERVICE_NAME: 'jvs-public-key-f22e'
   UI_SERVICE_NAME: 'jvs-ui-8ab7'
-  SERVICES_URL_PREFIX: 'https://'
   SERVICES_URL_POSTFIX: '2nhpyabgtq-uc.a.run.app'
   TAG_ID: 'ci-${{ github.run_id }}-${{ github.run_number }}'
 
