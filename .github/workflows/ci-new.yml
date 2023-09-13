@@ -218,8 +218,17 @@ jobs:
         with:
           workload_identity_provider: '${{ env.WIF_PROVIDER }}'
           service_account: '${{ env.WIF_SERVICE_ACCOUNT }}'
+          id_token_audience: 'https://${{ env.API_SERVICE_NAME }}-${{ env.SERVICES_URL_POSTFIX }}'
+          id_token_include_email: 'true'
+          token_format: 'id_token'
       - name: 'Run integration tests'
         env:
           TEST_INTEGRATION: 'true'
+          ID_TOKEN: '${{ steps.auth.outputs.id_token }}'
         run: |-
-          echo 'fake integration test'
+          go test \
+            -count=1 \
+            -race \
+            -shuffle=on \
+            -timeout='10m' \
+            ./test/integ-new/...
