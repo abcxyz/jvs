@@ -26,6 +26,7 @@ import (
 	"fmt"
 	"log"
 	"os"
+	"strconv"
 	"strings"
 	"testing"
 	"time"
@@ -39,7 +40,10 @@ var (
 	cfg *config
 
 	// Keys we don't compare in validation result.
-	ignoreKeysMap map[string]struct{}
+	ignoreKeysMap map[string]struct{} = map[string]struct{}{
+		"nbf": {},
+		"jti": {},
+	}
 )
 
 const (
@@ -51,11 +55,6 @@ const (
 func TestMain(m *testing.M) {
 	os.Exit(func() int {
 		ctx := context.Background()
-
-		ignoreKeysMap = map[string]struct{}{
-			"nbf": {},
-			"jti": {},
-		}
 
 		if strings.ToLower(os.Getenv("TEST_INTEGRATION")) != "true" {
 			log.Printf("skipping (not integration)")
@@ -131,7 +130,7 @@ sub
 			var createCmd cli.TokenCreateCommand
 			_, stdout, _ := createCmd.Pipe()
 
-			createTokenArgs := []string{"-server", cfg.APIServer, "-justification", tc.justification, "-ttl", testTTLString, "--auth-token", cfg.IDToken}
+			createTokenArgs := []string{"-server", cfg.APIServer, "-justification", tc.justification, "-ttl", testTTLString, "--auth-token", cfg.IDToken, "--now", strconv.FormatInt(now.Unix(), 10)}
 			if tc.isBreakglass {
 				createTokenArgs = append(createTokenArgs, "-breakglass")
 			}
