@@ -25,9 +25,6 @@ name: 'update-ci-ar-cleanup-policy'
 
 on:
   workflow_dispatch:
-  pull_request:
-    branches:
-      - 'main'
 
 env:
   WIF_PROVIDER: 'projects/851681819867/locations/global/workloadIdentityPools/github-automation/providers/jvs-ci-i'
@@ -82,4 +79,4 @@ jobs:
             --project=${{ env.CI_PROJECT_ID }}\
             --location=us\
             --policy=${{ env.AR_CONFIG_FILE }}\
-            --dry-run
+            --no-dry-run
