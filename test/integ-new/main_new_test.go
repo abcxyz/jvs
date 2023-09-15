@@ -23,34 +23,45 @@ package integration
 
 import (
 	"context"
+	"encoding/json"
+	"errors"
 	"fmt"
 	"log"
 	"os"
-	"strconv"
 	"strings"
 	"testing"
 	"time"
 
+	v0 "github.com/abcxyz/jvs/apis/v0"
 	"github.com/abcxyz/jvs/pkg/cli"
 	"github.com/google/go-cmp/cmp"
+	"github.com/google/go-cmp/cmp/cmpopts"
+	"google.golang.org/protobuf/testing/protocmp"
 )
 
-var (
-	// Global integration test config.
-	cfg *config
-
-	// Keys we don't compare in validation result.
-	ignoreKeysMap map[string]struct{} = map[string]struct{}{
-		"nbf": {},
-		"jti": {},
-	}
-)
+// Global integration test config.
+var cfg *config
 
 const (
-	timestampFormat = "2006-01-02 3:04PM UTC"
+	timestampFormat = time.RFC3339
 	testTTLString   = "30m"
 	testTTLTime     = 30 * time.Minute
 )
+
+type testClaim struct {
+	Aud []string
+	Iat string
+	Exp string
+	Iss string
+	Req string
+	Sub string
+}
+
+type testValidationResult struct {
+	Breakglass     bool
+	Justifications []v0.Justification
+	Claims         testClaim
+}
 
 func TestMain(m *testing.M) {
 	os.Exit(func() int {
@@ -76,47 +87,54 @@ func TestMain(m *testing.M) {
 
 func TestAPIAndPublicKeyService(t *testing.T) {
 	t.Parallel()
-	now := time.Now()
+	ts := time.Now().UTC()
 	cases := []struct {
-		name                 string
-		isBreakglass         bool
-		justification        string
-		wantValidationResult string
+		name                     string
+		isBreakglass             bool
+		justification            string
+		wantTestValidationResult *testValidationResult
 	}{
 		{
 			name:          "none_breakglass",
 			justification: "issues/12345",
 			isBreakglass:  false,
-			wantValidationResult: fmt.Sprintf(`
------ Justifications -----
-explanation    issues/12345
-
------ Claims -----
-aud    [dev.abcxyz.jvs]
-exp    %s
-iat    %s
-iss    jvs.abcxyz.dev
-req    %s
-sub    %s
-`, now.Add(testTTLTime).UTC().Format(timestampFormat), now.Format(timestampFormat), cfg.ServiceAccount, cfg.ServiceAccount),
+			wantTestValidationResult: &testValidationResult{
+				Breakglass: false,
+				Justifications: []v0.Justification{
+					{
+						Category: "explanation",
+						Value:    "issues/12345",
+					},
+				},
+				Claims: testClaim{
+					Aud: []string{"dev.abcxyz.jvs"},
+					Exp: ts.Add(testTTLTime).UTC().Format(timestampFormat),
+					Iat: ts.Format(timestampFormat),
+					Iss: "jvs.abcxyz.dev",
+					Req: cfg.ServiceAccount,
+					Sub: cfg.ServiceAccount,
+				},
+			},
 		},
 		{
 			name:          "breakglass",
 			justification: "issues/12345",
 			isBreakglass:  true,
-			wantValidationResult: fmt.Sprintf(`
-Warning! This is a breakglass token.
-
------ Justifications -----
-breakglass    issues/12345
-
------ Claims -----
-aud    [dev.abcxyz.jvs]
-exp    %s
-iat    %s
-iss    jvsctl
-sub
-`, now.Add(testTTLTime).UTC().Format(timestampFormat), now.Format(timestampFormat)),
+			wantTestValidationResult: &testValidationResult{
+				Breakglass: true,
+				Justifications: []v0.Justification{
+					{
+						Category: "breakglass",
+						Value:    "issues/12345",
+					},
+				},
+				Claims: testClaim{
+					Aud: []string{"dev.abcxyz.jvs"},
+					Exp: ts.Add(testTTLTime).UTC().Format(timestampFormat),
+					Iat: ts.Format(timestampFormat),
+					Iss: "jvsctl",
+				},
+			},
 		},
 	}
 
@@ -130,7 +148,7 @@ sub
 			var createCmd cli.TokenCreateCommand
 			_, stdout, _ := createCmd.Pipe()
 
-			createTokenArgs := []string{"-server", cfg.APIServer, "-justification", tc.justification, "-ttl", testTTLString, "--auth-token", cfg.IDToken, "--now", strconv.FormatInt(now.Unix(), 10)}
+			createTokenArgs := []string{"-server", cfg.APIServer, "-justification", tc.justification, "-ttl", testTTLString, "--auth-token", cfg.IDToken}
 			if tc.isBreakglass {
 				createTokenArgs = append(createTokenArgs, "-breakglass")
 			}
@@ -141,7 +159,7 @@ sub
 
 			token := stdout.String()
 
-			validateTokenArgs := []string{"-token", token, "-jwks-endpoint", cfg.JWTEndpoint}
+			validateTokenArgs := []string{"-token", token, "-jwks-endpoint", cfg.JWTEndpoint, "--format", "json"}
 
 			var validateCmd cli.TokenValidateCommand
 			_, stdout, _ = validateCmd.Pipe()
@@ -150,46 +168,45 @@ sub
 				t.Fatal(err)
 			}
 
-			gotValidationResult := stdout.String()
-			if diff := cmp.Diff(testParseValidateResult(t, gotValidationResult, ignoreKeysMap), testParseValidateResult(t, tc.wantValidationResult, ignoreKeysMap)); diff != "" {
-				t.Errorf(diff)
+			gotTestValidationResult := &testValidationResult{}
+			if err := json.Unmarshal(stdout.Bytes(), gotTestValidationResult); err != nil {
+				t.Fatalf("failed to unmarshal validation result: %v", err)
+			}
+
+			cmpOpts := []cmp.Option{
+				protocmp.Transform(),
+				cmpopts.IgnoreFields(testClaim{}, "Exp", "Iat", "Iss"),
+			}
+
+			if diff := cmp.Diff(tc.wantTestValidationResult, gotTestValidationResult, cmpOpts...); diff != "" {
+				t.Errorf("wantValidationResult got unexpacted diff (-want, +got):\n%s", diff)
+			}
+
+			if err := testDiffClaimTimestamp(t, tc.wantTestValidationResult.Claims, gotTestValidationResult.Claims); err != nil {
+				t.Errorf("Claims got unexpected diff: %v", err)
 			}
 		})
 	}
 }
 
-// testParseValidateResult parse the validation result
-// and return a map with parsed key value pairs.
-// It will skip the keys from ignoreKeys.
-func testParseValidateResult(tb testing.TB, s string, ignoreKeys map[string]struct{}) map[string]string {
+// testDiffClaim compares the timestamp within the claims.
+// The seconds in timestamp will be trimed before comparing,
+// this is do help mitigate the delay when running tests.
+func testDiffClaimTimestamp(tb testing.TB, want, got testClaim) error {
 	tb.Helper()
 
-	vMap := map[string]string{}
+	var rErr error
 
-	r := strings.Split(s, "\n")
-	for _, value := range r {
-		// Skip empty lines
-		if len(value) == 0 {
-			continue
-		}
-
-		k := strings.Split(value, "    ")
-		// Handle headers like `----- Claims -----`
-		if len(k) == 1 {
-			vMap[k[0]] = ""
-			continue
-		}
-
-		// Handle key value pairs
-		if len(k) == 2 {
-			// ignore keys we don't want to compare
-			if _, ok := ignoreKeysMap[k[0]]; !ok {
-				vMap[k[0]] = k[1]
-			}
-			continue
-		}
-
-		tb.Fatalf("Validation result isn't in correct format. Got validation result: %s", s)
+	if want.Exp[:len(want.Exp)-3] != got.Exp[:len(got.Exp)-3] {
+		rErr = errors.Join(rErr, fmt.Errorf(fmt.Sprintf("got unexpected exp timestamp (-want, +got)\n -%s\n +%s\n", want.Exp, got.Exp)))
 	}
-	return vMap
+
+	if want.Exp[:len(want.Iat)-3] != got.Exp[:len(got.Iat)-3] {
+		rErr = errors.Join(rErr, fmt.Errorf(fmt.Sprintf("got unexpected iat timestamp (-want, +got)\n -%s\n +%s\n", want.Iat, got.Iat)))
+	}
+
+	if want.Exp[:len(want.Iss)-3] != got.Exp[:len(got.Iss)-3] {
+		rErr = errors.Join(rErr, fmt.Errorf(fmt.Sprintf("got unexpected expiration timestamp (-want, +got)\n -%s\n +%s\n", want.Iss, got.Iss)))
+	}
+	return rErr
 }
