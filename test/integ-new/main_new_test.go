@@ -175,7 +175,7 @@ func TestAPIAndPublicKeyService(t *testing.T) {
 
 			cmpOpts := []cmp.Option{
 				protocmp.Transform(),
-				cmpopts.IgnoreFields(testClaim{}, "Exp", "Iat", "Iss"),
+				cmpopts.IgnoreFields(testClaim{}, "Exp", "Iat"),
 			}
 
 			if diff := cmp.Diff(tc.wantTestValidationResult, gotTestValidationResult, cmpOpts...); diff != "" {
@@ -205,8 +205,5 @@ func testDiffClaimTimestamp(tb testing.TB, want, got testClaim) error {
 		rErr = errors.Join(rErr, fmt.Errorf(fmt.Sprintf("got unexpected iat timestamp (-want, +got)\n -%s\n +%s\n", want.Iat, got.Iat)))
 	}
 
-	if want.Exp[:len(want.Iss)-3] != got.Exp[:len(got.Iss)-3] {
-		rErr = errors.Join(rErr, fmt.Errorf(fmt.Sprintf("got unexpected expiration timestamp (-want, +got)\n -%s\n +%s\n", want.Iss, got.Iss)))
-	}
 	return rErr
 }
