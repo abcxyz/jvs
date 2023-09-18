@@ -23,45 +23,39 @@ package integration
 
 import (
 	"context"
-	"encoding/json"
-	"errors"
-	"fmt"
 	"log"
 	"os"
 	"strings"
 	"testing"
 	"time"
 
-	v0 "github.com/abcxyz/jvs/apis/v0"
 	"github.com/abcxyz/jvs/pkg/cli"
 	"github.com/google/go-cmp/cmp"
-	"github.com/google/go-cmp/cmp/cmpopts"
-	"google.golang.org/protobuf/testing/protocmp"
+	"github.com/lestrrat-go/jwx/v2/jwt"
 )
 
 // Global integration test config.
-var cfg *config
+var (
+	cfg *config
+
+	// Keys we don't compare in validation result.
+	ignoreKeysMap map[string]struct{} = map[string]struct{}{
+		"nbf": {},
+		"jti": {},
+	}
+
+	// The keys in token map where their values is of type time.Time
+	tokenTimeKeysMap map[string]struct{} = map[string]struct{}{
+		"exp": {},
+		"iat": {},
+	}
+)
 
 const (
-	timestampFormat = time.RFC3339
+	timestampFormat = "2006-01-02 3:04PM UTC"
 	testTTLString   = "30m"
 	testTTLTime     = 30 * time.Minute
 )
-
-type testClaim struct {
-	Aud []string
-	Iat string
-	Exp string
-	Iss string
-	Req string
-	Sub string
-}
-
-type testValidationResult struct {
-	Breakglass     bool
-	Justifications []v0.Justification
-	Claims         testClaim
-}
 
 func TestMain(m *testing.M) {
 	os.Exit(func() int {
@@ -88,52 +82,50 @@ func TestMain(m *testing.M) {
 func TestAPIAndPublicKeyService(t *testing.T) {
 	t.Parallel()
 	ts := time.Now().UTC()
+
 	cases := []struct {
-		name                     string
-		isBreakglass             bool
-		justification            string
-		wantTestValidationResult *testValidationResult
+		name          string
+		isBreakglass  bool
+		justification string
+		wantTokenMap  map[string]any
 	}{
 		{
 			name:          "none_breakglass",
 			justification: "issues/12345",
 			isBreakglass:  false,
-			wantTestValidationResult: &testValidationResult{
-				Breakglass: false,
-				Justifications: []v0.Justification{
-					{
-						Category: "explanation",
-						Value:    "issues/12345",
-					},
+			wantTokenMap: map[string]any{
+				"aud": []string{"dev.abcxyz.jvs"},
+				"exp": ts.Add(testTTLTime).UTC(),
+				"iat": ts.UTC(),
+				"iss": "jvs.abcxyz.dev",
+				"jti": "",
+				"justs": []any{map[string]any{
+					"category": "explanation",
+					"value":    "issues/12345",
 				},
-				Claims: testClaim{
-					Aud: []string{"dev.abcxyz.jvs"},
-					Exp: ts.Add(testTTLTime).UTC().Format(timestampFormat),
-					Iat: ts.Format(timestampFormat),
-					Iss: "jvs.abcxyz.dev",
-					Req: cfg.ServiceAccount,
-					Sub: cfg.ServiceAccount,
 				},
+				"nbf": "",
+				"req": cfg.ServiceAccount,
+				"sub": cfg.ServiceAccount,
 			},
 		},
 		{
 			name:          "breakglass",
 			justification: "issues/12345",
 			isBreakglass:  true,
-			wantTestValidationResult: &testValidationResult{
-				Breakglass: true,
-				Justifications: []v0.Justification{
-					{
-						Category: "breakglass",
-						Value:    "issues/12345",
-					},
+			wantTokenMap: map[string]any{
+				"aud": []string{"dev.abcxyz.jvs"},
+				"exp": ts.Add(testTTLTime).UTC(),
+				"iat": ts.UTC(),
+				"iss": "jvsctl",
+				"jti": "",
+				"justs": []any{map[string]any{
+					"category": "breakglass",
+					"value":    "issues/12345",
 				},
-				Claims: testClaim{
-					Aud: []string{"dev.abcxyz.jvs"},
-					Exp: ts.Add(testTTLTime).UTC().Format(timestampFormat),
-					Iat: ts.Format(timestampFormat),
-					Iss: "jvsctl",
 				},
+				"nbf": "",
+				"sub": "",
 			},
 		},
 	}
@@ -154,10 +146,20 @@ func TestAPIAndPublicKeyService(t *testing.T) {
 			}
 
 			if err := createCmd.Run(ctx, createTokenArgs); err != nil {
-				t.Fatal(err)
+				t.Fatalf("failed to create token: %v", err)
 			}
 
 			token := stdout.String()
+
+			parsedToken, err := jwt.ParseInsecure([]byte(token))
+			if err != nil {
+				t.Fatalf("failed to parse token: %v", err)
+			}
+
+			parsedTokenMap, err := parsedToken.AsMap(ctx)
+			if err != nil {
+				t.Fatalf("failed to parse token to map: %v", err)
+			}
 
 			validateTokenArgs := []string{"-token", token, "-jwks-endpoint", cfg.JWTEndpoint, "--format", "json"}
 
@@ -165,45 +167,37 @@ func TestAPIAndPublicKeyService(t *testing.T) {
 			_, stdout, _ = validateCmd.Pipe()
 
 			if err := validateCmd.Run(ctx, validateTokenArgs); err != nil {
-				t.Fatal(err)
+				t.Fatalf("jvs service failed to validate token: %v", err)
 			}
 
-			gotTestValidationResult := &testValidationResult{}
-			if err := json.Unmarshal(stdout.Bytes(), gotTestValidationResult); err != nil {
-				t.Fatalf("failed to unmarshal validation result: %v", err)
-			}
-
-			cmpOpts := []cmp.Option{
-				protocmp.Transform(),
-				cmpopts.IgnoreFields(testClaim{}, "Exp", "Iat"),
-			}
-
-			if diff := cmp.Diff(tc.wantTestValidationResult, gotTestValidationResult, cmpOpts...); diff != "" {
-				t.Errorf("wantValidationResult got unexpacted diff (-want, +got):\n%s", diff)
-			}
-
-			if err := testDiffClaimTimestamp(t, tc.wantTestValidationResult.Claims, gotTestValidationResult.Claims); err != nil {
-				t.Errorf("Claims got unexpected diff: %v", err)
+			if diff := cmp.Diff(testParseTokenMap(t, tc.wantTokenMap), testParseTokenMap(t, parsedTokenMap)); diff != "" {
+				t.Errorf("token got unexpacted diff (-want, +got):\n%s", diff)
 			}
 		})
 	}
 }
 
-// testDiffClaim compares the timestamp within the claims.
-// The seconds in timestamp will be trimed before comparing,
-// this is do help mitigate the delay when running tests.
-func testDiffClaimTimestamp(tb testing.TB, want, got testClaim) error {
+// testParseToken parses the tokenMap by overwriting the value for ignoreKeys
+// to empty and parsing the timestamp to the format without seconds to make
+// test on timestamps less flaky.
+func testParseTokenMap(tb testing.TB, m map[string]any) map[string]any {
 	tb.Helper()
 
-	var rErr error
+	for k, v := range m {
+		// set the values of ignored key to empty
+		if _, ok := ignoreKeysMap[k]; ok {
+			m[k] = ""
+			continue
+		}
 
-	if want.Exp[:len(want.Exp)-3] != got.Exp[:len(got.Exp)-3] {
-		rErr = errors.Join(rErr, fmt.Errorf(fmt.Sprintf("got unexpected exp timestamp (-want, +got)\n -%s\n +%s\n", want.Exp, got.Exp)))
+		// format timestamp
+		if _, ok := tokenTimeKeysMap[k]; ok {
+			ts, ok := v.(time.Time)
+			if !ok {
+				tb.Fatalf("failed to parse %v to time.Time", v)
+			}
+			m[k] = ts.Format(timestampFormat)
+		}
 	}
-
-	if want.Exp[:len(want.Iat)-3] != got.Exp[:len(got.Iat)-3] {
-		rErr = errors.Join(rErr, fmt.Errorf(fmt.Sprintf("got unexpected iat timestamp (-want, +got)\n -%s\n +%s\n", want.Iat, got.Iat)))
-	}
-
-	return rErr
+	return m
 }
