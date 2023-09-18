@@ -224,9 +224,10 @@ jobs:
       - name: 'Run integration tests'
         env:
           TEST_INTEGRATION: 'true'
-          ID_TOKEN: '${{ steps.auth.outputs.id_token }}'
-          JWKS_ENDPOINT: 'https://${{ env.TAG_ID}}---${{ env.PUBLIC_KEY_SERVICE_NAME}}-${{ env.SERVICES_URL_POSTFIX}}/.well-known/jwks'
-          API_SERVER: '${{ env.TAG_ID}}---${{ env.API_SERVICE_NAME }}-${{env.SERVICES_URL_POSTFIX}}:443'
+          INTEG_TEST_API_SERVER: '${{ env.TAG_ID}}---${{ env.API_SERVICE_NAME }}-${{env.SERVICES_URL_POSTFIX}}:443'
+          INTEG_TEST_ID_TOKEN: '${{ steps.auth.outputs.id_token }}'
+          INTEG_TEST_JWKS_ENDPOINT: 'https://${{ env.TAG_ID}}---${{ env.PUBLIC_KEY_SERVICE_NAME}}-${{ env.SERVICES_URL_POSTFIX}}/.well-known/jwks'
+          INTEG_TEST_WIF_SERVICE_ACCOUNT: '${{ env.WIF_SERVICE_ACCOUNT }}'
         run: |-
           go test \
             -count=1 \

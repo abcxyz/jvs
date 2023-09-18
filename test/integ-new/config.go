@@ -22,10 +22,10 @@ import (
 )
 
 type config struct {
-	IDToken        string `env:"ID_TOKEN,required"`
-	ServiceAccount string `env:"WIF_SERVICE_ACCOUNT,required"`
-	JWKSEndpoint   string `env:"JWKS_ENDPOINT,required"`
-	APIServer      string `env:"API_SERVER,required"`
+	APIServer      string `env:"INTEG_TEST_API_SERVER,required"`
+	IDToken        string `env:"INTEG_TEST_ID_TOKEN,required"`
+	JWKSEndpoint   string `env:"INTEG_TEST_JWKS_ENDPOINT,required"`
+	ServiceAccount string `env:"INTEG_TEST_WIF_SERVICE_ACCOUNT,required"`
 }
 
 func newTestConfig(ctx context.Context) (*config, error) {
