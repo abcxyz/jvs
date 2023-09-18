@@ -24,7 +24,7 @@ import (
 type config struct {
 	IDToken        string `env:"ID_TOKEN,required"`
 	ServiceAccount string `env:"WIF_SERVICE_ACCOUNT,required"`
-	JWTEndpoint    string `env:"JWT_ENDPOINT,required"`
+	JWKSEndpoint   string `env:"JWKS_ENDPOINT,required"`
 	APIServer      string `env:"API_SERVER,required"`
 }
 

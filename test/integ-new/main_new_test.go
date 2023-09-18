@@ -163,7 +163,7 @@ func TestAPIAndPublicKeyService(t *testing.T) {
 				t.Fatalf("failed to parse token to map: %v", err)
 			}
 
-			validateTokenArgs := []string{"-token", token, "-jwks-endpoint", cfg.JWTEndpoint, "--format", "json"}
+			validateTokenArgs := []string{"-token", token, "-jwks-endpoint", cfg.JWKSEndpoint, "--format", "json"}
 
 			var validateCmd cli.TokenValidateCommand
 			_, _, _ = validateCmd.Pipe()

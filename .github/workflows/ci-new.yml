@@ -225,7 +225,7 @@ jobs:
         env:
           TEST_INTEGRATION: 'true'
           ID_TOKEN: '${{ steps.auth.outputs.id_token }}'
-          JWT_ENDPOINT: 'https://${{ env.TAG_ID}}---${{ env.PUBLIC_KEY_SERVICE_NAME}}-${{ env.SERVICES_URL_POSTFIX}}/.well-known/jwks'
+          JWKS_ENDPOINT: 'https://${{ env.TAG_ID}}---${{ env.PUBLIC_KEY_SERVICE_NAME}}-${{ env.SERVICES_URL_POSTFIX}}/.well-known/jwks'
           API_SERVER: '${{ env.TAG_ID}}---${{ env.API_SERVICE_NAME }}-${{env.SERVICES_URL_POSTFIX}}:443'
         run: |-
           go test \
