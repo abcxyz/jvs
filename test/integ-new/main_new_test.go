@@ -44,7 +44,7 @@ var (
 		"jti": {},
 	}
 
-	// The keys in token map where their values is of type time.Time
+	// The keys in token map where their values is of type time.Time.
 	tokenTimeKeysMap map[string]struct{} = map[string]struct{}{
 		"exp": {},
 		"iat": {},
@@ -99,10 +99,11 @@ func TestAPIAndPublicKeyService(t *testing.T) {
 				"iat": ts.UTC(),
 				"iss": "jvs.abcxyz.dev",
 				"jti": "",
-				"justs": []any{map[string]any{
-					"category": "explanation",
-					"value":    "issues/12345",
-				},
+				"justs": []any{
+					map[string]any{
+						"category": "explanation",
+						"value":    "issues/12345",
+					},
 				},
 				"nbf": "",
 				"req": cfg.ServiceAccount,
@@ -119,10 +120,11 @@ func TestAPIAndPublicKeyService(t *testing.T) {
 				"iat": ts.UTC(),
 				"iss": "jvsctl",
 				"jti": "",
-				"justs": []any{map[string]any{
-					"category": "breakglass",
-					"value":    "issues/12345",
-				},
+				"justs": []any{
+					map[string]any{
+						"category": "breakglass",
+						"value":    "issues/12345",
+					},
 				},
 				"nbf": "",
 				"sub": "",
@@ -164,7 +166,7 @@ func TestAPIAndPublicKeyService(t *testing.T) {
 			validateTokenArgs := []string{"-token", token, "-jwks-endpoint", cfg.JWTEndpoint, "--format", "json"}
 
 			var validateCmd cli.TokenValidateCommand
-			_, stdout, _ = validateCmd.Pipe()
+			_, _, _ = validateCmd.Pipe()
 
 			if err := validateCmd.Run(ctx, validateTokenArgs); err != nil {
 				t.Fatalf("jvs service failed to validate token: %v", err)
