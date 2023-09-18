@@ -173,17 +173,17 @@ func TestAPIAndPublicKeyService(t *testing.T) {
 				t.Fatalf("jvs service failed to validate token: %v", err)
 			}
 
-			if diff := cmp.Diff(testParseTokenMap(t, tc.wantTokenMap), testParseTokenMap(t, parsedTokenMap)); diff != "" {
-				t.Errorf("token got unexpacted diff (-want, +got):\n%s", diff)
+			if diff := cmp.Diff(testNormalizeTokenMap(t, tc.wantTokenMap), testNormalizeTokenMap(t, parsedTokenMap)); diff != "" {
+				t.Errorf("token got unexpected diff (-want, +got):\n%s", diff)
 			}
 		})
 	}
 }
 
-// testParseToken parses the tokenMap by overwriting the value for ignoreKeys
+// testNormalizeTokenMap parses the tokenMap by overwriting the value for ignoreKeys
 // to empty and parsing the timestamp to the format without seconds to make
 // test on timestamps less flaky.
-func testParseTokenMap(tb testing.TB, m map[string]any) map[string]any {
+func testNormalizeTokenMap(tb testing.TB, m map[string]any) map[string]any {
 	tb.Helper()
 
 	for k, v := range m {
