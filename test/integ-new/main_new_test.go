@@ -81,6 +81,7 @@ func TestMain(m *testing.M) {
 
 func TestAPIAndPublicKeyService(t *testing.T) {
 	t.Parallel()
+
 	ts := time.Now().UTC()
 
 	cases := []struct {
