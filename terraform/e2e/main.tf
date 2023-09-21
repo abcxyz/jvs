@@ -91,4 +91,5 @@ module "jvs_monitoring" {
   jvs_prober_image               = var.jvs_prober_image
   # Default to JVS API backend url.
   prober_audience = var.prober_audience == "" ? module.jvs_services.jvs_api_service_url : var.prober_audience
+  alert_enabled   = var.alert_enabled
 }
