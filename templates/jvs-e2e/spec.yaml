@@ -18,11 +18,15 @@ kind: 'Template'
 desc: 'Generate infrastructure needed for JVS'
 
 inputs:
+  - name: 'repo_path'
+    desc: 'The path of the repo to store the generated files.'
+    default: ''
+
   - name: 'project_id'
     desc: 'The GCP project to host the justification verification system.'
 
-  - name: 'jvs_sha'
-    desc: 'The SHA of the abcxyz/jvs.'
+  - name: 'jvs_release_version'
+    desc: 'The release version of the abcxyz/jvs. For example: 0.0.1'
 
   - name: 'region'
     desc: 'The default Google Cloud region to deploy resources in.'
@@ -45,14 +49,8 @@ inputs:
     desc: 'The location where kms key will be created.'
     default: 'global'
 
-  - name: 'jvs_container_image'
-    desc: 'Container image for the jvsctl CLI and server entrypoints.'
-
   - name: 'notification_channel_email'
     desc: 'The Email address where alert notifications send to.'
-
-  - name: 'jvs_prober_image'
-    desc: 'docker image for jvs-prober.'
 
   - name: 'prober_audience'
     desc: 'The cloud run url for jvs api service or app address.If not set, the cloud run url for jvs api service will be used.'
@@ -79,15 +77,12 @@ steps:
       paths:
         - 'jvs-e2e.tf'
         - 'terraform.tf'
-      as:
-        - 'terraform/jvs/jvs-e2e.tf'
-        - 'terraform/jvs/terraform.tf'
 
   - desc: 'Replace variables to define the Terraform block'
     action: 'string_replace'
     params:
       paths:
-        - 'terraform/jvs/terraform.tf'
+        - 'terraform.tf'
       replacements:
         - to_replace: 'REPLACE_TERRAFORM_STATE_BUCKET'
           with: '{{.terraform_state_bucket}}'
@@ -99,13 +94,13 @@ steps:
     action: 'string_replace'
     params:
       paths:
-        - 'terraform/jvs/jvs-e2e.tf'
+        - 'jvs-e2e.tf'
       replacements:
         - to_replace: 'REPLACE_PROJECT_ID'
           with: '{{.project_id}}'
 
-        - to_replace: 'REPLACE_JVS_SHA'
-          with: '{{.jvs_sha}}'
+        - to_replace: 'REPLACE_JVS_RELEASE_VERSION'
+          with: '{{.jvs_release_version}}'
 
         - to_replace: 'REPLACE_REGION'
           with: '{{.region}}'
@@ -115,9 +110,6 @@ steps:
 
         - to_replace: 'REPLACE_JVS_INVOKE_MEMBERS'
           with: '{{.jvs_invoker_members}}'
-
-        - to_replace: 'REPLACE_JVS_CONTAINER_IMAGE'
-          with: '{{.jvs_container_image}}'
 
         - to_replace: 'REPLACE_JVS_API_DOMAIN'
           with: '{{.jvs_api_domain}}'
@@ -133,9 +125,6 @@ steps:
 
         - to_replace: 'REPLACE_PROBER_AUDIENCE'
           with: '{{.prober_audience}}'
-
-        - to_replace: 'REPLACE_JVS_PROBER_IMAGE'
-          with: '{{.jvs_prober_image}}'
 
         - to_replace: 'REPLACE_PLUGIN_ENVVARS'
           with: '{{.plugin_envvars}}'
