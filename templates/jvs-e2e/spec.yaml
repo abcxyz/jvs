@@ -64,7 +64,7 @@ inputs:
 
   - name: 'alert_enabled'
     desc: 'True if alerts are enabled, otherwise false..'
-    default: true
+    default: 'true'
 
   - name: 'terraform_state_bucket'
     desc: 'The Google Cloud storage bucket for Terraform backend state'
