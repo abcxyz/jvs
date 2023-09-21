@@ -79,3 +79,9 @@ variable "plugin_envvars" {
   type        = map(string)
   default     = {}
 }
+
+variable "alert_enabled" {
+  type        = bool
+  description = "True if alerts are enabled, otherwise false."
+  default     = false
+}
