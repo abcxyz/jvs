@@ -212,8 +212,10 @@ jobs:
         uses: 'actions/setup-go@4d34df0c2316fe8122ab82dc22947d607c0c91f9' # ratchet:actions/setup-go@v4
         with:
           go-version: '1.21'
-      - id: 'auth'
-        name: 'Authenticate to Google Cloud'
+      # the id token we get from google-github-actions/auth can only be used to its
+      # audience, so we have to get different id token for different services.
+      - id: 'get_api_service_id_token'
+        name: 'Get Google Cloud ID token'
         uses: 'google-github-actions/auth@ef5d53e30bbcd8d0836f4288f5e50ff3e086997d' # ratchet:google-github-actions/auth@v1
         with:
           workload_identity_provider: '${{ env.WIF_PROVIDER }}'
@@ -221,12 +223,23 @@ jobs:
           id_token_audience: 'https://${{ env.API_SERVICE_NAME }}-${{ env.SERVICES_URL_POSTFIX }}'
           id_token_include_email: 'true'
           token_format: 'id_token'
+      - id: 'get_ui_service_id_token'
+        name: 'Get Google Cloud ID token'
+        uses: 'google-github-actions/auth@ef5d53e30bbcd8d0836f4288f5e50ff3e086997d' # ratchet:google-github-actions/auth@v1
+        with:
+          workload_identity_provider: '${{ env.WIF_PROVIDER }}'
+          service_account: '${{ env.WIF_SERVICE_ACCOUNT }}'
+          id_token_audience: 'https://${{ env.UI_SERVICE_NAME }}-${{ env.SERVICES_URL_POSTFIX }}'
+          id_token_include_email: 'true'
+          token_format: 'id_token'
       - name: 'Run integration tests'
         env:
           TEST_INTEGRATION: 'true'
-          INTEG_TEST_API_SERVER: '${{ env.TAG_ID}}---${{ env.API_SERVICE_NAME }}-${{env.SERVICES_URL_POSTFIX}}:443'
-          INTEG_TEST_ID_TOKEN: '${{ steps.auth.outputs.id_token }}'
-          INTEG_TEST_JWKS_ENDPOINT: 'https://${{ env.TAG_ID}}---${{ env.PUBLIC_KEY_SERVICE_NAME}}-${{ env.SERVICES_URL_POSTFIX}}/.well-known/jwks'
+          INTEG_TEST_API_SERVER: '${{ env.TAG_ID }}---${{ env.API_SERVICE_NAME }}-${{ env.SERVICES_URL_POSTFIX }}:443'
+          INTEG_TEST_API_SERVICE_ID_TOKEN: '${{ steps.get_api_service_id_token.outputs.id_token }}'
+          INTEG_TEST_UI_SERVICE_ADDR: 'https://${{ env.TAG_ID }}---${{ env.UI_SERVICE_NAME }}-${{ env.SERVICES_URL_POSTFIX }}'
+          INTEG_TEST_UI_SERVICE_ID_TOKEN: '${{ steps.get_ui_service_id_token.outputs.id_token }}'
+          INTEG_TEST_JWKS_ENDPOINT: 'https://${{ env.TAG_ID }}---${{ env.PUBLIC_KEY_SERVICE_NAME }}-${{ env.SERVICES_URL_POSTFIX }}/.well-known/jwks'
           INTEG_TEST_WIF_SERVICE_ACCOUNT: '${{ env.WIF_SERVICE_ACCOUNT }}'
         run: |-
           go test \

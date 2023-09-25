@@ -23,7 +23,9 @@ package integration
 
 import (
 	"context"
+	"fmt"
 	"log"
+	"net/http"
 	"os"
 	"strings"
 	"testing"
@@ -143,7 +145,7 @@ func TestAPIAndPublicKeyService(t *testing.T) {
 			var createCmd cli.TokenCreateCommand
 			_, stdout, _ := createCmd.Pipe()
 
-			createTokenArgs := []string{"-server", cfg.APIServer, "-justification", tc.justification, "-ttl", testTTLString, "--auth-token", cfg.IDToken}
+			createTokenArgs := []string{"-server", cfg.APIServer, "-justification", tc.justification, "-ttl", testTTLString, "--auth-token", cfg.APIServiceIDToken}
 			if tc.isBreakglass {
 				createTokenArgs = append(createTokenArgs, "-breakglass")
 			}
@@ -175,6 +177,53 @@ func TestAPIAndPublicKeyService(t *testing.T) {
 
 			if diff := cmp.Diff(testNormalizeTokenMap(t, tc.wantTokenMap), testNormalizeTokenMap(t, parsedTokenMap)); diff != "" {
 				t.Errorf("token got unexpected diff (-want, +got):\n%s", diff)
+			}
+		})
+	}
+}
+
+func TestUIService(t *testing.T) {
+	t.Parallel()
+
+	cases := []struct {
+		name           string
+		wantStatusCode int
+	}{
+		{
+			name:           "test_health_checkpoint",
+			wantStatusCode: 200,
+		},
+	}
+
+	for _, tc := range cases {
+		tc := tc
+		t.Run(tc.name, func(t *testing.T) {
+			t.Parallel()
+
+			ctx := context.Background()
+
+			client := &http.Client{
+				Timeout: 5 * time.Second,
+			}
+
+			uri := cfg.UIServiceAddr + "/health"
+			req, err := http.NewRequestWithContext(ctx, "GET", uri, nil)
+			if err != nil {
+				t.Fatalf("failed to create request: %v", err)
+			}
+
+			req.Header.Set("Authorization", fmt.Sprintf("Bearer %s", cfg.UIServiceIDToken))
+
+			resp, err := client.Do(req)
+			if err != nil {
+				t.Fatalf("client failed to get response: %V", err)
+			}
+
+			defer resp.Body.Close()
+
+			if diff := cmp.Diff(tc.wantStatusCode, resp.StatusCode); diff != "" {
+				t.Errorf("response status code got unexpected diff (-want, +got):\n%s", diff)
+				t.Errorf(uri)
 			}
 		})
 	}
