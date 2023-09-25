@@ -68,7 +68,11 @@ func (s *Server) Routes(ctx context.Context) http.Handler {
 	fileServer := http.FileServer(http.FS(staticFS))
 
 	mux := http.NewServeMux()
-	mux.Handle("/healthz", s.c.HandleHealth())
+
+	// Use /health instead of /healthz to avoid cloud run reserved path
+	//
+	// See: https://cloud.google.com/run/docs/issues#ah
+	mux.Handle("/health", s.c.HandleHealth())
 	mux.Handle("/static/", http.StripPrefix("/static/", fileServer))
 	mux.Handle("/popup", s.c.HandlePopup())
 

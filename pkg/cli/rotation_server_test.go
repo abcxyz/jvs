@@ -108,7 +108,7 @@ func TestRotationServerCommand(t *testing.T) {
 				Timeout: 5 * time.Second,
 			}
 
-			uri := "http://" + srv.Addr() + "/healthz"
+			uri := "http://" + srv.Addr() + "/health"
 			req, err := http.NewRequestWithContext(ctx, "GET", uri, nil)
 			if err != nil {
 				t.Fatal(err)
