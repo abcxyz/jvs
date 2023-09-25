@@ -121,7 +121,10 @@ func (c *RotationServerCommand) RunUnstarted(ctx context.Context, args []string)
 	rotationHandler := jvscrypto.NewRotationHandler(ctx, kmsClient, c.cfg)
 
 	mux := http.NewServeMux()
-	// This is the health checkpoint.
+
+	// Use /health instead of /healthz to avoid cloud run reserved path
+	//
+	// See: https://cloud.google.com/run/docs/issues#ah
 	mux.Handle("/health", healthcheck.HandleHTTPHealthCheck())
 	mux.Handle("/", http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		ctx := r.Context()

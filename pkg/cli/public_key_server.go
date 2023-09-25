@@ -119,7 +119,10 @@ func (c *PublicKeyServerCommand) RunUnstarted(ctx context.Context, args []string
 	keyServer := jvscrypto.NewKeyServer(ctx, kmsClient, c.cfg, h)
 
 	mux := http.NewServeMux()
-	// This is the healthz checkpoint.
+
+	// Use /health instead of /healthz to avoid cloud run reserved path
+	//
+	// See: https://cloud.google.com/run/docs/issues#ah
 	mux.Handle("/health", healthcheck.HandleHTTPHealthCheck())
 	mux.Handle("/.well-known/jwks", keyServer)
 
