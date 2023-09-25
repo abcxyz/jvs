@@ -68,11 +68,8 @@ func (s *Server) Routes(ctx context.Context) http.Handler {
 	fileServer := http.FileServer(http.FS(staticFS))
 
 	mux := http.NewServeMux()
-	// This is the healthz checkpoint, but in cloud run url ending with z
-	// could be reserved. This is to fix that.
-	//
-	// See: https://cloud.google.com/run/docs/issues#ah
-	mux.Handle("/healthz-check", s.c.HandleHealth())
+	// This is the health checkpoint.
+	mux.Handle("/health", s.c.HandleHealth())
 	mux.Handle("/static/", http.StripPrefix("/static/", fileServer))
 	mux.Handle("/popup", s.c.HandlePopup())
 
