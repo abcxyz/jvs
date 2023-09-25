@@ -69,7 +69,7 @@ func (s *Server) Routes(ctx context.Context) http.Handler {
 
 	mux := http.NewServeMux()
 	// This is the healthz checkpoint, but in cloud run url ending with z
-	// could be reservered. This is to fix that.
+	// could be reserved. This is to fix that.
 	//
 	// See: https://cloud.google.com/run/docs/issues#ah
 	mux.Handle("/healthz-check", s.c.HandleHealth())
