@@ -185,48 +185,36 @@ func TestAPIAndPublicKeyService(t *testing.T) {
 func TestUIService(t *testing.T) {
 	t.Parallel()
 
-	cases := []struct {
-		name           string
-		wantStatusCode int
-	}{
-		{
-			name:           "test_health_checkpoint",
-			wantStatusCode: 200,
-		},
-	}
+	addr := cfg.UIServiceAddr
+	wantStatusCode := http.StatusOK
+	endpoint := "/health"
 
-	for _, tc := range cases {
-		tc := tc
-		t.Run(tc.name, func(t *testing.T) {
-			t.Parallel()
+	t.Run("test_health_checkpoint", func(t *testing.T) {
+		ctx := context.Background()
 
-			ctx := context.Background()
+		client := &http.Client{
+			Timeout: 5 * time.Second,
+		}
 
-			client := &http.Client{
-				Timeout: 5 * time.Second,
-			}
+		uri := fmt.Sprintf("%s%s", addr, endpoint)
+		req, err := http.NewRequestWithContext(ctx, "GET", uri, nil)
+		if err != nil {
+			t.Fatalf("failed to create request: %v", err)
+		}
 
-			uri := cfg.UIServiceAddr + "/health"
-			req, err := http.NewRequestWithContext(ctx, "GET", uri, nil)
-			if err != nil {
-				t.Fatalf("failed to create request: %v", err)
-			}
+		req.Header.Set("Authorization", fmt.Sprintf("Bearer %s", cfg.UIServiceIDToken))
 
-			req.Header.Set("Authorization", fmt.Sprintf("Bearer %s", cfg.UIServiceIDToken))
+		resp, err := client.Do(req)
+		if err != nil {
+			t.Fatalf("client failed to get response: %V", err)
+		}
 
-			resp, err := client.Do(req)
-			if err != nil {
-				t.Fatalf("client failed to get response: %V", err)
-			}
+		defer resp.Body.Close()
 
-			defer resp.Body.Close()
-
-			if diff := cmp.Diff(tc.wantStatusCode, resp.StatusCode); diff != "" {
-				t.Errorf("response status code got unexpected diff (-want, +got):\n%s", diff)
-				t.Errorf(uri)
-			}
-		})
-	}
+		if diff := cmp.Diff(wantStatusCode, resp.StatusCode); diff != "" {
+			t.Errorf("response status code got unexpected diff (-want, +got):\n%s", diff)
+		}
+	})
 }
 
 // testNormalizeTokenMap parses the tokenMap by overwriting the value for ignoreKeys
