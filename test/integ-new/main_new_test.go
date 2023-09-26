@@ -220,6 +220,63 @@ func TestUIServiceHealthCheck(t *testing.T) {
 	}
 }
 
+func TestCertRotatorService(t *testing.T) {
+	t.Parallel()
+
+	cases := []struct {
+		name           string
+		path           string
+		wantStatusCode int
+	}{
+		{
+			name:           "cert_rotator_health_check",
+			path:           "/health",
+			wantStatusCode: http.StatusOK,
+		},
+		{
+			name:           "cert_rotator_key_rotation",
+			path:           "/",
+			wantStatusCode: http.StatusOK,
+		},
+	}
+
+	for _, tc := range cases {
+		tc := tc
+		t.Run(tc.name, func(t *testing.T) {
+			t.Parallel()
+
+			ctx := context.Background()
+
+			client := &http.Client{
+				Timeout: 5 * time.Second,
+			}
+
+			uri := cfg.CertRotatorServiceAddr + tc.path
+			req, err := http.NewRequestWithContext(ctx, http.MethodGet, uri, nil)
+			if err != nil {
+				t.Fatalf("failed to create request: %v", err)
+			}
+
+			req.Header.Set("Authorization", fmt.Sprintf("Bearer %s", cfg.CertRotatorServiceIDToken))
+
+			resp, err := client.Do(req)
+			if err != nil {
+				t.Fatalf("client failed to get response: %V", err)
+			}
+
+			defer resp.Body.Close()
+
+			if got, want := resp.StatusCode, tc.wantStatusCode; got != want {
+				b, err := io.ReadAll(resp.Body)
+				if err != nil {
+					t.Fatal(err)
+				}
+				t.Errorf("Got unexpected status code, got=%d want=%d, response=%s", got, want, string(b))
+			}
+		})
+	}
+}
+
 // testNormalizeTokenMap parses the tokenMap by overwriting the value for ignoreKeys
 // to empty and parsing the timestamp to the format without seconds to make
 // test on timestamps less flaky.

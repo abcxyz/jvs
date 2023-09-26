@@ -36,6 +36,7 @@ env:
   PUBLIC_KEY_SERVICE_NAME: 'jvs-public-key-f22e'
   UI_SERVICE_NAME: 'jvs-ui-8ab7'
   SERVICES_URL_POSTFIX: '2nhpyabgtq-uc.a.run.app'
+  KMS_KEYRING_ID: 'jvs-keyring-0666'
   TAG_ID: 'ci-${{ github.run_id }}-${{ github.run_number }}'
 
 concurrency:
@@ -160,6 +161,14 @@ jobs:
           service_account: '${{ env.WIF_SERVICE_ACCOUNT }}'
       - name: 'Setup gcloud'
         uses: 'google-github-actions/setup-gcloud@e30db14379863a8c79331b04a9969f4c1e225e0b' # ratchet:google-github-actions/setup-gcloud@v1
+      - name: 'create_kms_key'
+        run: |-
+          gcloud kms keys create ${{ env.TAG_ID }} \
+            --keyring ${{ env.KMS_KEYRING_ID }} \
+            --location global \
+            --purpose "asymmetric-signing" \
+            --default-algorithm "ec-sign-p256-sha256" \
+            --project ${{ env.PROJECT_ID }}
       - name: 'Update API service'
         run: |-
           gcloud run services update ${{ env.API_SERVICE_NAME }} \
@@ -167,6 +176,7 @@ jobs:
             --region="us-central1" \
             --image="${{ env.CONTAINER_REGISTRY }}/${{ env.IMAGE_NAME }}:${{ env.DOCKER_TAG }}-amd64" \
             --tag="${{ env.TAG_ID }}" \
+            --update-env-vars="JVS_KEY=projects/${{ env.PROJECT_ID }}/locations/global/keyRings/${{ env.KMS_KEYRING_ID }}/cryptoKeys/${{ env.TAG_ID }}" \
             --no-traffic
       - name: 'Update Cert rotator service'
         run: |-
@@ -175,6 +185,7 @@ jobs:
             --region="us-central1" \
             --image="${{ env.CONTAINER_REGISTRY }}/${{ env.IMAGE_NAME }}:${{ env.DOCKER_TAG }}-amd64" \
             --tag="${{ env.TAG_ID }}" \
+            --update-env-vars="JVS_KEY=projects/${{ env.PROJECT_ID }}/locations/global/keyRings/${{ env.KMS_KEYRING_ID }}/cryptoKeys/${{ env.TAG_ID }}" \
             --no-traffic
       - name: 'Update Public key service'
         run: |-
@@ -183,6 +194,7 @@ jobs:
             --region="us-central1" \
             --image="${{ env.CONTAINER_REGISTRY }}/${{ env.IMAGE_NAME }}:${{ env.DOCKER_TAG }}-amd64" \
             --tag="${{ env.TAG_ID }}" \
+            --update-env-vars="JVS_KEY=projects/${{ env.PROJECT_ID }}/locations/global/keyRings/${{ env.KMS_KEYRING_ID }}/cryptoKeys/${{ env.TAG_ID }}" \
             --no-traffic
       - name: 'Update UI service'
         run: |-
@@ -191,6 +203,7 @@ jobs:
             --region="us-central1" \
             --image="${{ env.CONTAINER_REGISTRY }}/${{ env.IMAGE_NAME }}:${{ env.DOCKER_TAG }}-amd64" \
             --tag="${{ env.TAG_ID }}" \
+            --update-env-vars="JVS_KEY=projects/${{ env.PROJECT_ID }}/locations/global/keyRings/${{ env.KMS_KEYRING_ID }}/cryptoKeys/${{ env.TAG_ID }}" \
             --no-traffic
 
   # TODO(#158): to be replaced with real service integration test.
@@ -232,6 +245,15 @@ jobs:
           id_token_audience: 'https://${{ env.UI_SERVICE_NAME }}-${{ env.SERVICES_URL_POSTFIX }}'
           id_token_include_email: 'true'
           token_format: 'id_token'
+      - id: 'get_cert_rotator_service_id_token'
+        name: 'Get Google Cloud ID token'
+        uses: 'google-github-actions/auth@ef5d53e30bbcd8d0836f4288f5e50ff3e086997d' # ratchet:google-github-actions/auth@v1
+        with:
+          workload_identity_provider: '${{ env.WIF_PROVIDER }}'
+          service_account: '${{ env.WIF_SERVICE_ACCOUNT }}'
+          id_token_audience: 'https://${{ env.CERT_ROTATOR_SERVICE_NAME }}-${{ env.SERVICES_URL_POSTFIX }}'
+          id_token_include_email: 'true'
+          token_format: 'id_token'
       - name: 'Run integration tests'
         env:
           TEST_INTEGRATION: 'true'
@@ -239,6 +261,8 @@ jobs:
           INTEG_TEST_API_SERVICE_ID_TOKEN: '${{ steps.get_api_service_id_token.outputs.id_token }}'
           INTEG_TEST_UI_SERVICE_ADDR: 'https://${{ env.TAG_ID }}---${{ env.UI_SERVICE_NAME }}-${{ env.SERVICES_URL_POSTFIX }}'
           INTEG_TEST_UI_SERVICE_ID_TOKEN: '${{ steps.get_ui_service_id_token.outputs.id_token }}'
+          INTEG_TEST_CERT_ROTATOR_SERVICE_ADDR: 'https://${{ env.TAG_ID }}---${{ env.CERT_ROTATOR_SERVICE_NAME }}-${{ env.SERVICES_URL_POSTFIX }}'
+          INTEG_TEST_CERT_ROTATOR_SERVICE_ID_TOKEN: '${{ steps.get_cert_rotator_service_id_token.outputs.id_token }}'
           INTEG_TEST_JWKS_ENDPOINT: 'https://${{ env.TAG_ID }}---${{ env.PUBLIC_KEY_SERVICE_NAME }}-${{ env.SERVICES_URL_POSTFIX }}/.well-known/jwks'
           INTEG_TEST_WIF_SERVICE_ACCOUNT: '${{ env.WIF_SERVICE_ACCOUNT }}'
         run: |-
