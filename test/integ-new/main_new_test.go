@@ -188,7 +188,7 @@ func TestUIServiceHealthCheck(t *testing.T) {
 
 	addr := cfg.UIServiceAddr
 	wantStatusCode := http.StatusOK
-	endpoint := "/health"
+	healthCheckPath := "/health"
 
 	ctx := context.Background()
 
@@ -196,7 +196,7 @@ func TestUIServiceHealthCheck(t *testing.T) {
 		Timeout: 5 * time.Second,
 	}
 
-	uri := fmt.Sprintf("%s%s", addr, endpoint)
+	uri := addr + healthCheckPath
 	req, err := http.NewRequestWithContext(ctx, http.MethodGet, uri, nil)
 	if err != nil {
 		t.Fatalf("failed to create request: %v", err)
