@@ -24,6 +24,7 @@ package integration
 import (
 	"context"
 	"fmt"
+	"io"
 	"log"
 	"net/http"
 	"os"
@@ -210,8 +211,12 @@ func TestUIServiceHealthCheck(t *testing.T) {
 
 	defer resp.Body.Close()
 
-	if want, got := wantStatusCode, resp.StatusCode; got != want {
-		t.Errorf("response status code got unexpected diff (-want, +got):\n - %v\n+ %v\n", want, got)
+	if got, want := resp.StatusCode, wantStatusCode; got != want {
+		b, err := io.ReadAll(resp.Body)
+		if err != nil {
+			t.Fatal(err)
+		}
+		t.Errorf("expected status code %d to be %d: %s", got, want, string(b))
 	}
 }
 
