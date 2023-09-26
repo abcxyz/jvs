@@ -23,7 +23,10 @@ package integration
 
 import (
 	"context"
+	"fmt"
+	"io"
 	"log"
+	"net/http"
 	"os"
 	"strings"
 	"testing"
@@ -143,7 +146,7 @@ func TestAPIAndPublicKeyService(t *testing.T) {
 			var createCmd cli.TokenCreateCommand
 			_, stdout, _ := createCmd.Pipe()
 
-			createTokenArgs := []string{"-server", cfg.APIServer, "-justification", tc.justification, "-ttl", testTTLString, "--auth-token", cfg.IDToken}
+			createTokenArgs := []string{"-server", cfg.APIServer, "-justification", tc.justification, "-ttl", testTTLString, "--auth-token", cfg.APIServiceIDToken}
 			if tc.isBreakglass {
 				createTokenArgs = append(createTokenArgs, "-breakglass")
 			}
@@ -177,6 +180,43 @@ func TestAPIAndPublicKeyService(t *testing.T) {
 				t.Errorf("token got unexpected diff (-want, +got):\n%s", diff)
 			}
 		})
+	}
+}
+
+func TestUIServiceHealthCheck(t *testing.T) {
+	t.Parallel()
+
+	addr := cfg.UIServiceAddr
+	wantStatusCode := http.StatusOK
+	healthCheckPath := "/health"
+
+	ctx := context.Background()
+
+	client := &http.Client{
+		Timeout: 5 * time.Second,
+	}
+
+	uri := addr + healthCheckPath
+	req, err := http.NewRequestWithContext(ctx, http.MethodGet, uri, nil)
+	if err != nil {
+		t.Fatalf("failed to create request: %v", err)
+	}
+
+	req.Header.Set("Authorization", fmt.Sprintf("Bearer %s", cfg.UIServiceIDToken))
+
+	resp, err := client.Do(req)
+	if err != nil {
+		t.Fatalf("client failed to get response: %V", err)
+	}
+
+	defer resp.Body.Close()
+
+	if got, want := resp.StatusCode, wantStatusCode; got != want {
+		b, err := io.ReadAll(resp.Body)
+		if err != nil {
+			t.Fatal(err)
+		}
+		t.Errorf("health check status code got=%d want=%d, response=%s", got, want, string(b))
 	}
 }
 
