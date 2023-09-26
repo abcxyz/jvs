@@ -216,7 +216,7 @@ func TestUIServiceHealthCheck(t *testing.T) {
 		if err != nil {
 			t.Fatal(err)
 		}
-		t.Errorf("expected status code %d to be %d: %s", got, want, string(b))
+		t.Errorf("health check status code got=%d want=%d, response=%s", got, want, string(b))
 	}
 }
 
