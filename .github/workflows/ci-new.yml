@@ -168,7 +168,8 @@ jobs:
             --location global \
             --purpose "asymmetric-signing" \
             --default-algorithm "ec-sign-p256-sha256" \
-            --project ${{ env.PROJECT_ID }}
+            --project ${{ env.PROJECT_ID }} \
+            --labels="primary=ver_1"
       - name: 'Update API service'
         run: |-
           gcloud run services update ${{ env.API_SERVICE_NAME }} \
