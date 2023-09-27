@@ -186,7 +186,7 @@ jobs:
             --region="us-central1" \
             --image="${{ env.CONTAINER_REGISTRY }}/${{ env.IMAGE_NAME }}:${{ env.DOCKER_TAG }}-amd64" \
             --tag="${{ env.TAG_ID }}" \
-            --update-env-vars="JVS_KEY=projects/${{ env.PROJECT_ID }}/locations/global/keyRings/${{ env.KMS_KEYRING_ID }}/cryptoKeys/${{ env.TAG_ID }}" \
+            --update-env-vars="JVS_KEY_NAMES=projects/${{ env.PROJECT_ID }}/locations/global/keyRings/${{ env.KMS_KEYRING_ID }}/cryptoKeys/${{ env.TAG_ID }}" \
             --no-traffic
       - name: 'Update Public key service'
         run: |-
@@ -195,7 +195,7 @@ jobs:
             --region="us-central1" \
             --image="${{ env.CONTAINER_REGISTRY }}/${{ env.IMAGE_NAME }}:${{ env.DOCKER_TAG }}-amd64" \
             --tag="${{ env.TAG_ID }}" \
-            --update-env-vars="JVS_KEY=projects/${{ env.PROJECT_ID }}/locations/global/keyRings/${{ env.KMS_KEYRING_ID }}/cryptoKeys/${{ env.TAG_ID }}" \
+            --update-env-vars="JVS_KEY_NAMES=projects/${{ env.PROJECT_ID }}/locations/global/keyRings/${{ env.KMS_KEYRING_ID }}/cryptoKeys/${{ env.TAG_ID }}" \
             --no-traffic
       - name: 'Update UI service'
         run: |-
