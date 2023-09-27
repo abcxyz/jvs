@@ -176,7 +176,6 @@ jobs:
             --region="us-central1" \
             --image="${{ env.CONTAINER_REGISTRY }}/${{ env.IMAGE_NAME }}:${{ env.DOCKER_TAG }}-amd64" \
             --tag="${{ env.TAG_ID }}" \
-            --update-env-vars="JVS_KEY=projects/${{ env.PROJECT_ID }}/locations/global/keyRings/${{ env.KMS_KEYRING_ID }}/cryptoKeys/${{ env.TAG_ID }}" \
             --no-traffic
       - name: 'Update Cert rotator service'
         run: |-
@@ -194,7 +193,6 @@ jobs:
             --region="us-central1" \
             --image="${{ env.CONTAINER_REGISTRY }}/${{ env.IMAGE_NAME }}:${{ env.DOCKER_TAG }}-amd64" \
             --tag="${{ env.TAG_ID }}" \
-            --update-env-vars="JVS_KEY=projects/${{ env.PROJECT_ID }}/locations/global/keyRings/${{ env.KMS_KEYRING_ID }}/cryptoKeys/${{ env.TAG_ID }}" \
             --no-traffic
       - name: 'Update UI service'
         run: |-
@@ -203,7 +201,6 @@ jobs:
             --region="us-central1" \
             --image="${{ env.CONTAINER_REGISTRY }}/${{ env.IMAGE_NAME }}:${{ env.DOCKER_TAG }}-amd64" \
             --tag="${{ env.TAG_ID }}" \
-            --update-env-vars="JVS_KEY=projects/${{ env.PROJECT_ID }}/locations/global/keyRings/${{ env.KMS_KEYRING_ID }}/cryptoKeys/${{ env.TAG_ID }}" \
             --no-traffic
 
   # TODO(#158): to be replaced with real service integration test.
