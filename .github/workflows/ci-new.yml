@@ -182,8 +182,7 @@ jobs:
             --region="us-central1" \
             --image="${{ env.CONTAINER_REGISTRY }}/${{ env.IMAGE_NAME }}:${{ env.DOCKER_TAG }}-amd64" \
             --tag="${{ env.TAG_ID }}" \
-            --update-env-vars="JVS_KEY=projects/${{ env.PROJECT_ID }}/locations/global/keyRings/${{ env.KMS_KEYRING_ID }}/cryptoKeys/${{ env.TAG_ID }}" \
-            --no-traffic
+            --update-env-vars="JVS_KEY=projects/${{ env.PROJECT_ID }}/locations/global/keyRings/${{ env.KMS_KEYRING_ID }}/cryptoKeys/${{ env.TAG_ID }}"
       - name: 'Update Cert rotator service'
         run: |-
           gcloud run services update ${{ env.CERT_ROTATOR_SERVICE_NAME }} \
@@ -191,8 +190,7 @@ jobs:
             --region="us-central1" \
             --image="${{ env.CONTAINER_REGISTRY }}/${{ env.IMAGE_NAME }}:${{ env.DOCKER_TAG }}-amd64" \
             --tag="${{ env.TAG_ID }}" \
-            --update-env-vars="JVS_KEY_NAMES=projects/${{ env.PROJECT_ID }}/locations/global/keyRings/${{ env.KMS_KEYRING_ID }}/cryptoKeys/${{ env.TAG_ID }}" \
-            --no-traffic
+            --update-env-vars="JVS_KEY_NAMES=projects/${{ env.PROJECT_ID }}/locations/global/keyRings/${{ env.KMS_KEYRING_ID }}/cryptoKeys/${{ env.TAG_ID }}"
       - name: 'Update Public key service'
         run: |-
           gcloud run services update ${{ env.PUBLIC_KEY_SERVICE_NAME }} \
@@ -200,17 +198,15 @@ jobs:
             --region="us-central1" \
             --image="${{ env.CONTAINER_REGISTRY }}/${{ env.IMAGE_NAME }}:${{ env.DOCKER_TAG }}-amd64" \
             --tag="${{ env.TAG_ID }}" \
-            --update-env-vars="JVS_KEY_NAMES=projects/${{ env.PROJECT_ID }}/locations/global/keyRings/${{ env.KMS_KEYRING_ID }}/cryptoKeys/${{ env.TAG_ID }}" \
-            --no-traffic
+            --update-env-vars="JVS_KEY_NAMES=projects/${{ env.PROJECT_ID }}/locations/global/keyRings/${{ env.KMS_KEYRING_ID }}/cryptoKeys/${{ env.TAG_ID }}"
       - name: 'Update UI service'
         run: |-
           gcloud run services update ${{ env.UI_SERVICE_NAME }} \
             --project="${{ env.PROJECT_ID }}" \
             --region="us-central1" \
             --image="${{ env.CONTAINER_REGISTRY }}/${{ env.IMAGE_NAME }}:${{ env.DOCKER_TAG }}-amd64" \
-            --update-env-vars="JVS_KEY=projects/${{ env.PROJECT_ID }}/locations/global/keyRings/${{ env.KMS_KEYRING_ID }}/cryptoKeys/${{ env.TAG_ID }}" \
             --tag="${{ env.TAG_ID }}" \
-            --no-traffic
+            --update-env-vars="JVS_KEY=projects/${{ env.PROJECT_ID }}/locations/global/keyRings/${{ env.KMS_KEYRING_ID }}/cryptoKeys/${{ env.TAG_ID }}"
       # the id token we get from google-github-actions/auth can only be used to its
       # audience, so we have to get different id token for different services.
       - id: 'get_api_service_id_token'
