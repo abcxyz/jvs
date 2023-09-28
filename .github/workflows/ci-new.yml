@@ -143,7 +143,7 @@ jobs:
           version: 'v1.16.1' # Manually pinned
           args: 'release -f .goreleaser.docker.yaml --clean'
 
-  deployment:
+  deployment_and_integration_test:
     runs-on: 'ubuntu-latest'
     needs:
       - 'build'
@@ -207,26 +207,6 @@ jobs:
             --update-env-vars="JVS_KEY=projects/${{ env.PROJECT_ID }}/locations/global/keyRings/${{ env.KMS_KEYRING_ID }}/cryptoKeys/${{ env.TAG_ID }}" \
             --tag="${{ env.TAG_ID }}" \
             --no-traffic
-
-  # TODO(#158): to be replaced with real service integration test.
-  # The current integration test requires setting up kms keyring,
-  # the new infra doesn't provide it and the new integration test
-  # won't need it. But integration job's stautus is required for
-  # merging a PR, therefore we just run some dummy echo here.
-  # It will be replaced to run the new integration test in the next PR.
-  integration:
-    needs: ['deployment']
-    permissions:
-      contents: 'read'
-      id-token: 'write'
-    runs-on: 'ubuntu-latest'
-    steps:
-      - name: 'Checkout'
-        uses: 'actions/checkout@2541b1294d2704b0964813337f33b291d3f8596b' # ratchet:actions/checkout@v3
-      - name: 'Setup Go'
-        uses: 'actions/setup-go@4d34df0c2316fe8122ab82dc22947d607c0c91f9' # ratchet:actions/setup-go@v4
-        with:
-          go-version: '1.21'
       # the id token we get from google-github-actions/auth can only be used to its
       # audience, so we have to get different id token for different services.
       - id: 'get_api_service_id_token'
@@ -274,11 +254,11 @@ jobs:
             -shuffle=on \
             -timeout='10m' \
             ./test/integ-new/...
-      # Keys can not be deleted, we can only destroy them.
-      # We are not charged by keys that are destried.
+      # Keys can not be deleted, we can destroy key versions to avoid billing.
+      #
       # See: https://cloud.google.com/kms/docs/faq#cannot_delete.
-      - name: 'clean up kms key'
-        if: '${{ always()  && needs.deployment.steps.create_kms_key.outcome == ''success'' }}'
+      - name: 'Clean up kms key'
+        if: '${{ always()  && steps.create_kms_key.outcome == ''success'' }}'
         run: |-
           gcloud kms keys versions destroy 1 \
             --key ${{ env.TAG_ID }} \
