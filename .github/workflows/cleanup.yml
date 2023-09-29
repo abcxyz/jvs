@@ -1,0 +1,70 @@
+# Copyright 2023 The Authors (see AUTHORS file)
+#
+# Licensed under the Apache License, Version 2.0 (the "License");
+# you may not use this file except in compliance with the License.
+# You may obtain a copy of the License at
+#
+#     http://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+# See the License for the specific language governing permissions and
+# limitations under the License.
+
+name: 'cleanup'
+
+on:
+  pull_request:
+    paths:
+      - '.github/workflows/cleanup.yml'
+  schedule:
+    - cron: '0 0 */1 * *'
+  workflow_dispatch:
+
+env:
+  WIF_PROVIDER: 'projects/851681819867/locations/global/workloadIdentityPools/github-automation/providers/jvs-ci-i'
+  WIF_SERVICE_ACCOUNT: 'github-automation-bot@gha-jvs-ci-i-31a91c.iam.gserviceaccount.com'
+  INTEGRATION_PROJECT_ID: 'jvs-i-e5'
+  INTEGRATION_REGION: 'us-central1'
+
+permissions:
+  contents: 'read'
+  id-token: 'write'
+
+jobs:
+  # cleanup_services_cloudrun_revisions deletes all Cloud Run revisions for
+  # api, public key, cert rotator, ui services when the revison is more than 5 hours old.
+  cleanup_services_cloudrun_revisions:
+    runs-on: 'ubuntu-latest'
+    strategy:
+      matrix:
+        service_name:
+          - 'jvs-api-4527'
+          - 'jvs-cert-rotator-e04a'
+          - 'jvs-public-key-f22e'
+          - 'jvs-ui-8ab7'
+    steps:
+      - uses: 'actions/checkout@8e5e7e5ab8b370d6c329ec480221332ada57f0ab' # ratchet:actions/checkout@v3
+      - uses: 'google-github-actions/auth@35b0e87d162680511bf346c299f71c9c5c379033' # ratchet:google-github-actions/auth@v1
+        with:
+          workload_identity_provider: '${{ env.WIF_PROVIDER }}'
+          service_account: '${{ env.WIF_SERVICE_ACCOUNT }}'
+      - uses: 'google-github-actions/setup-gcloud@e30db14379863a8c79331b04a9969f4c1e225e0b' # ratchet:google-github-actions/setup-gcloud@v1
+      - name: 'Remove old Cloud Run revisions'
+        shell: 'bash'
+        run: |-
+          # List all revisions that were deployed 5 hours ago or later, excluding the latest revision
+          # There must be at least one revisions running at all times
+          REVISIONS=$(gcloud run revisions list \
+            --project="$INTEGRATION_PROJECT_ID" \
+            --region="$INTEGRATION_REGION" \
+            --service="${{ matrix.service_name }}" \
+            --format="value(name)" \
+            --sort-by="~metadata.creationTimestamp" \
+            --filter="metadata.creationTimestamp < '-p5h'" | sed 1d)
+
+          IFS=$'\n'; for NAME in $REVISIONS; do
+            echo "Deleting ${NAME}..."
+            gcloud run revisions delete ${NAME} --project="$INTEGRATION_PROJECT_ID" --region="$INTEGRATION_REGION" --quiet --async
+          done
