@@ -36,6 +36,7 @@ env:
   PUBLIC_KEY_SERVICE_NAME: 'jvs-public-key-f22e'
   UI_SERVICE_NAME: 'jvs-ui-8ab7'
   SERVICES_URL_POSTFIX: '2nhpyabgtq-uc.a.run.app'
+  KMS_KEYRING_ID: 'jvs-keyring-0666'
   TAG_ID: 'ci-${{ github.run_id }}-${{ github.run_number }}'
 
 concurrency:
@@ -142,7 +143,7 @@ jobs:
           version: 'v1.16.1' # Manually pinned
           args: 'release -f .goreleaser.docker.yaml --clean'
 
-  deployment:
+  deployment_and_integration_test:
     runs-on: 'ubuntu-latest'
     needs:
       - 'build'
@@ -152,6 +153,10 @@ jobs:
     steps:
       - name: 'Checkout'
         uses: 'actions/checkout@f43a0e5ff2bd294095638e18286ca9a3d1956744' # ratchet:actions/checkout@v3
+      - name: 'Setup Go'
+        uses: 'actions/setup-go@6edd4406fa81c3da01a34fa6f6343087c207a568' # ratchet:actions/setup-go@v3
+        with:
+          go-version: '1.21'
       - id: 'auth'
         name: 'Authenticate to Google Cloud'
         uses: 'google-github-actions/auth@35b0e87d162680511bf346c299f71c9c5c379033' # ratchet:google-github-actions/auth@v1
@@ -160,6 +165,16 @@ jobs:
           service_account: '${{ env.WIF_SERVICE_ACCOUNT }}'
       - name: 'Setup gcloud'
         uses: 'google-github-actions/setup-gcloud@e30db14379863a8c79331b04a9969f4c1e225e0b' # ratchet:google-github-actions/setup-gcloud@v1
+      - id: 'create_kms_key'
+        name: 'Create kms key'
+        run: |-
+          gcloud kms keys create ${{ env.TAG_ID }} \
+            --keyring ${{ env.KMS_KEYRING_ID }} \
+            --location global \
+            --purpose "asymmetric-signing" \
+            --default-algorithm "ec-sign-p256-sha256" \
+            --project ${{ env.PROJECT_ID }} \
+            --labels="primary=ver_1"
       - name: 'Update API service'
         run: |-
           gcloud run services update ${{ env.API_SERVICE_NAME }} \
@@ -167,7 +182,7 @@ jobs:
             --region="us-central1" \
             --image="${{ env.CONTAINER_REGISTRY }}/${{ env.IMAGE_NAME }}:${{ env.DOCKER_TAG }}-amd64" \
             --tag="${{ env.TAG_ID }}" \
-            --no-traffic
+            --update-env-vars="JVS_KEY=projects/${{ env.PROJECT_ID }}/locations/global/keyRings/${{ env.KMS_KEYRING_ID }}/cryptoKeys/${{ env.TAG_ID }}"
       - name: 'Update Cert rotator service'
         run: |-
           gcloud run services update ${{ env.CERT_ROTATOR_SERVICE_NAME }} \
@@ -175,7 +190,7 @@ jobs:
             --region="us-central1" \
             --image="${{ env.CONTAINER_REGISTRY }}/${{ env.IMAGE_NAME }}:${{ env.DOCKER_TAG }}-amd64" \
             --tag="${{ env.TAG_ID }}" \
-            --no-traffic
+            --update-env-vars="JVS_KEY_NAMES=projects/${{ env.PROJECT_ID }}/locations/global/keyRings/${{ env.KMS_KEYRING_ID }}/cryptoKeys/${{ env.TAG_ID }}"
       - name: 'Update Public key service'
         run: |-
           gcloud run services update ${{ env.PUBLIC_KEY_SERVICE_NAME }} \
@@ -183,7 +198,7 @@ jobs:
             --region="us-central1" \
             --image="${{ env.CONTAINER_REGISTRY }}/${{ env.IMAGE_NAME }}:${{ env.DOCKER_TAG }}-amd64" \
             --tag="${{ env.TAG_ID }}" \
-            --no-traffic
+            --update-env-vars="JVS_KEY_NAMES=projects/${{ env.PROJECT_ID }}/locations/global/keyRings/${{ env.KMS_KEYRING_ID }}/cryptoKeys/${{ env.TAG_ID }}"
       - name: 'Update UI service'
         run: |-
           gcloud run services update ${{ env.UI_SERVICE_NAME }} \
@@ -191,27 +206,7 @@ jobs:
             --region="us-central1" \
             --image="${{ env.CONTAINER_REGISTRY }}/${{ env.IMAGE_NAME }}:${{ env.DOCKER_TAG }}-amd64" \
             --tag="${{ env.TAG_ID }}" \
-            --no-traffic
-
-  # TODO(#158): to be replaced with real service integration test.
-  # The current integration test requires setting up kms keyring,
-  # the new infra doesn't provide it and the new integration test
-  # won't need it. But integration job's stautus is required for
-  # merging a PR, therefore we just run some dummy echo here.
-  # It will be replaced to run the new integration test in the next PR.
-  integration:
-    needs: ['deployment']
-    permissions:
-      contents: 'read'
-      id-token: 'write'
-    runs-on: 'ubuntu-latest'
-    steps:
-      - name: 'Checkout'
-        uses: 'actions/checkout@2541b1294d2704b0964813337f33b291d3f8596b' # ratchet:actions/checkout@v3
-      - name: 'Setup Go'
-        uses: 'actions/setup-go@4d34df0c2316fe8122ab82dc22947d607c0c91f9' # ratchet:actions/setup-go@v4
-        with:
-          go-version: '1.21'
+            --update-env-vars="JVS_KEY=projects/${{ env.PROJECT_ID }}/locations/global/keyRings/${{ env.KMS_KEYRING_ID }}/cryptoKeys/${{ env.TAG_ID }}"
       # the id token we get from google-github-actions/auth can only be used to its
       # audience, so we have to get different id token for different services.
       - id: 'get_api_service_id_token'
@@ -232,6 +227,15 @@ jobs:
           id_token_audience: 'https://${{ env.UI_SERVICE_NAME }}-${{ env.SERVICES_URL_POSTFIX }}'
           id_token_include_email: 'true'
           token_format: 'id_token'
+      - id: 'get_cert_rotator_service_id_token'
+        name: 'Get Google Cloud ID token'
+        uses: 'google-github-actions/auth@ef5d53e30bbcd8d0836f4288f5e50ff3e086997d' # ratchet:google-github-actions/auth@v1
+        with:
+          workload_identity_provider: '${{ env.WIF_PROVIDER }}'
+          service_account: '${{ env.WIF_SERVICE_ACCOUNT }}'
+          id_token_audience: 'https://${{ env.CERT_ROTATOR_SERVICE_NAME }}-${{ env.SERVICES_URL_POSTFIX }}'
+          id_token_include_email: 'true'
+          token_format: 'id_token'
       - name: 'Run integration tests'
         env:
           TEST_INTEGRATION: 'true'
@@ -239,6 +243,8 @@ jobs:
           INTEG_TEST_API_SERVICE_ID_TOKEN: '${{ steps.get_api_service_id_token.outputs.id_token }}'
           INTEG_TEST_UI_SERVICE_ADDR: 'https://${{ env.TAG_ID }}---${{ env.UI_SERVICE_NAME }}-${{ env.SERVICES_URL_POSTFIX }}'
           INTEG_TEST_UI_SERVICE_ID_TOKEN: '${{ steps.get_ui_service_id_token.outputs.id_token }}'
+          INTEG_TEST_CERT_ROTATOR_SERVICE_ADDR: 'https://${{ env.TAG_ID }}---${{ env.CERT_ROTATOR_SERVICE_NAME }}-${{ env.SERVICES_URL_POSTFIX }}'
+          INTEG_TEST_CERT_ROTATOR_SERVICE_ID_TOKEN: '${{ steps.get_cert_rotator_service_id_token.outputs.id_token }}'
           INTEG_TEST_JWKS_ENDPOINT: 'https://${{ env.TAG_ID }}---${{ env.PUBLIC_KEY_SERVICE_NAME }}-${{ env.SERVICES_URL_POSTFIX }}/.well-known/jwks'
           INTEG_TEST_WIF_SERVICE_ACCOUNT: '${{ env.WIF_SERVICE_ACCOUNT }}'
         run: |-
@@ -248,3 +254,14 @@ jobs:
             -shuffle=on \
             -timeout='10m' \
             ./test/integ-new/...
+      # Keys can not be deleted, we can destroy key versions to avoid billing.
+      #
+      # See: https://cloud.google.com/kms/docs/faq#cannot_delete.
+      - name: 'Clean up kms key'
+        if: '${{ always()  && steps.create_kms_key.outcome == ''success'' }}'
+        run: |-
+          gcloud kms keys versions destroy 1 \
+            --key ${{ env.TAG_ID }} \
+            --keyring ${{ env.KMS_KEYRING_ID }} \
+            --location global \
+            --project ${{ env.PROJECT_ID }}
