@@ -13,7 +13,7 @@
 # limitations under the License.
 
 module "api_cloud_run" {
-  source = "git::https://github.com/abcxyz/terraform-modules.git//modules/cloud_run?ref=580de3cc99dce5f37f7698b14e04fdd1c86ab15a"
+  source = "git::https://github.com/abcxyz/terraform-modules.git//modules/cloud_run?ref=46d3ffd82d7c3080bc5ec2cc788fe3e21176a8be"
 
   project_id = var.project_id
 
