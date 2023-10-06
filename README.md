@@ -71,7 +71,7 @@ JVS consists of the following components:
 ## Installation
 
 ### Via abc CLI
-You can also leverage [abc CLI](https://github.com/abcxyz/abc#abc) to set up the basic infrastructure
+You can leverage [abc CLI](https://github.com/abcxyz/abc#abc) to set up the basic infrastructure
 needed for this service.
 You will need to install [abc CLI](https://github.com/abcxyz/abc#abc)
 by following docs [here](https://github.com/abcxyz/abc#installation).
