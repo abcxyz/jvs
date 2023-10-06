@@ -70,6 +70,27 @@ JVS consists of the following components:
 
 ## Installation
 
+### Via abc CLI
+You can also leverage [abc CLI](https://github.com/abcxyz/abc#abc) to set up the basic infrastructure
+needed for this service.
+You will need to install [abc CLI](https://github.com/abcxyz/abc#abc)
+by following docs [here](https://github.com/abcxyz/abc#installation).
+
+```sh
+abc templates render \
+ -input="<YOUR_PROJECT_ID>" \
+ -input="jvs_release_version=<JVS_RELEASE_VERSION>" \
+ -input="jvs_api_domain=<YOUR_JVS_API_DOMAIN>" \
+ -input="jvs_ui_domain=<YOUR_JVS_UI_DOMAIN>" \
+ -input="iap_support_email=<YOUR_IAP_SUPPORT_EMAIL>" \
+ -input="notification_channel_email=<YOUR_NOTIFICATION_CHANNEL_EMAIL>" \
+ -input="jvs_invoker_members=<YOUR_JVS_INVOKE_MEMBERS>" \
+ -input="prober_audience=<YOUR_CLOUD_RUN_URL_FOR_JVS_API_SERVICE_OR_APP_ADDRESS>" \
+ -input="terraform_state_bucket=<YOUR_TERRAFORM_STATE_BUCKET>" \
+ -input="terraform_state_prefix=<YOUR_TERRAFORM_STATE_PREFIX>" \
+ github.com/abcxyz/jvs.git//templates/jvs-e2e
+```
+
 ### Via Terraform Module
 You can use the provided Terraform module to setup the basic infrastructure
 needed for this service. Otherwise you can refer to the provided module to see
@@ -101,27 +122,6 @@ module "jvs" {
   prober_audience = "https://example-api-jvs-cloud-run.run.app"
 }
 ```
-### Via [abc CLI](https://github.com/abcxyz/abc#abc)
-You can also leverage [abc CLI](https://github.com/abcxyz/abc#abc) to set up the basic infrastructure
-needed for this service.
-You will need to install [abc CLI](https://github.com/abcxyz/abc#abc)
-by following docs [here]https://github.com/abcxyz/abc#installation.
-
-```sh
-abc templates render \
- -input="<YOUR_PROJECT_ID>" \
- -input="jvs_release_version=<JVS_RELEASE_VERSION>" \
- -input="jvs_api_domain=<YOUR_JVS_API_DOMAIN>" \
- -input="jvs_ui_domain=<YOUR_JVS_UI_DOMAIN>" \
- -input="iap_support_email=<YOUR_IAP_SUPPORT_EMAIL>" \
- -input="notification_channel_email=<YOUR_NOTIFICATION_CHANNEL_EMAIL>" \
- -input="jvs_invoker_members=<YOUR_JVS_INVOKE_MEMBERS>" \
- -input="prober_audience=<YOUR_CLOUD_RUN_URL_FOR_JVS_API_SERVICE_OR_APP_ADDRESS>" \
- -input="terraform_state_bucket=<YOUR_TERRAFORM_STATE_BUCKET>" \
- -input="terraform_state_prefix=<YOUR_TERRAFORM_STATE_PREFIX>" \
- github.com/abcxyz/jvs.git//templates/jvs-e2e
-```
-
 ## External Verifier
 
 JVS itself only supports two types of reasons:
