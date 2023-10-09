@@ -36,7 +36,7 @@ env:
   PUBLIC_KEY_SERVICE_NAME: 'jvs-public-key-f22e'
   UI_SERVICE_NAME: 'jvs-ui-8ab7'
   SERVICES_URL_POSTFIX: '2nhpyabgtq-uc.a.run.app'
-  KMS_KEYRING_ID: 'jvs-keyring-0666'
+  KMS_KEYRING_ID: 'jvs-keyring-ci-${{ github.run_id }}-${{ github.run_number }}'
   TAG_ID: 'ci-${{ github.run_id }}-${{ github.run_number }}'
 
 concurrency:
@@ -165,6 +165,12 @@ jobs:
           service_account: '${{ env.WIF_SERVICE_ACCOUNT }}'
       - name: 'Setup gcloud'
         uses: 'google-github-actions/setup-gcloud@e30db14379863a8c79331b04a9969f4c1e225e0b' # ratchet:google-github-actions/setup-gcloud@v1
+      - id: 'create_kms_keyring'
+        name: 'Create kms keyring'
+        run: |-
+          gcloud kms keyrings create ${{ env.KMS_KEYRING_ID }} \
+            --project ${{ env.PROJECT_ID }} \
+            --location global
       - id: 'create_kms_key'
         name: 'Create kms key'
         run: |-
