@@ -22,6 +22,7 @@ import (
 )
 
 type config struct {
+	ProjectID                 string `env:"PROJECT_ID,required"`
 	APIServer                 string `env:"INTEG_TEST_API_SERVER,required"`
 	APIServiceIDToken         string `env:"INTEG_TEST_API_SERVICE_ID_TOKEN,required"`
 	UIServiceIDToken          string `env:"INTEG_TEST_UI_SERVICE_ID_TOKEN,required"`
@@ -30,6 +31,8 @@ type config struct {
 	UIServiceAddr             string `env:"INTEG_TEST_UI_SERVICE_ADDR,required"`
 	CertRotatorServiceAddr    string `env:"INTEG_TEST_CERT_ROTATOR_SERVICE_ADDR,required"`
 	CertRotatorServiceIDToken string `env:"INTEG_TEST_CERT_ROTATOR_SERVICE_ID_TOKEN,required"`
+	KeyRing                   string `env:"KMS_KEYRING_ID,required"`
+	KeyName                   string `env:"KMS_KEY_NAME,required"`
 }
 
 func newTestConfig(ctx context.Context) (*config, error) {

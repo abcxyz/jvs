@@ -23,18 +23,26 @@ package integration
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"io"
 	"log"
 	"net/http"
 	"os"
+	"strconv"
 	"strings"
 	"testing"
 	"time"
 
+	kms "cloud.google.com/go/kms/apiv1"
+	"cloud.google.com/go/kms/apiv1/kmspb"
 	"github.com/abcxyz/jvs/pkg/cli"
+	"github.com/abcxyz/jvs/pkg/jvscrypto"
+	"github.com/abcxyz/pkg/logging"
+	"github.com/abcxyz/pkg/testutil"
 	"github.com/google/go-cmp/cmp"
 	"github.com/lestrrat-go/jwx/v2/jwt"
+	"google.golang.org/api/iterator"
 )
 
 // Global integration test config.
@@ -212,47 +220,72 @@ func TestUIServiceHealthCheck(t *testing.T) {
 	}
 }
 
-func TestCertRotatorService(t *testing.T) {
+func TestCertRotatorHealthCheck(t *testing.T) {
 	t.Parallel()
 
-	cases := []struct {
-		name           string
-		path           string
-		wantStatusCode int
-	}{
-		{
-			name:           "cert_rotator_health_check",
-			path:           "/health",
-			wantStatusCode: http.StatusOK,
-		},
-		{
-			name:           "cert_rotator_key_rotation",
-			path:           "/",
-			wantStatusCode: http.StatusOK,
-		},
+	healthCheckPath := "/health"
+	wantStatusCode := http.StatusOK
+
+	t.Parallel()
+
+	ctx := context.Background()
+
+	uri := cfg.CertRotatorServiceAddr + healthCheckPath
+	resp := testSendHTTPReq(ctx, t, uri, cfg.CertRotatorServiceIDToken)
+
+	defer resp.Body.Close()
+
+	if got, want := resp.StatusCode, wantStatusCode; got != want {
+		b, err := io.ReadAll(resp.Body)
+		if err != nil {
+			t.Fatal(err)
+		}
+		t.Errorf("Got unexpected status code, got=%d want=%d, response=%s", got, want, string(b))
 	}
+}
 
-	for _, tc := range cases {
-		tc := tc
-		t.Run(tc.name, func(t *testing.T) {
-			t.Parallel()
+func TestCertRotatorKeyRotation(t *testing.T) {
+	t.Parallel()
+	testutil.SkipIfNotIntegration(t)
 
-			ctx := context.Background()
+	ctx := logging.WithLogger(context.Background(), logging.TestLogger(t))
 
-			uri := cfg.CertRotatorServiceAddr + tc.path
-			resp := testSendHTTPReq(ctx, t, uri, cfg.CertRotatorServiceIDToken)
+	kmsClient := testSetupKMSClient(ctx, t)
 
-			defer resp.Body.Close()
+	keyResouceName := fmt.Sprintf("projects/%s/locations/global/keyRings/%s/cryptoKeys/%s", cfg.ProjectID, cfg.KeyRing, cfg.KeyName)
 
-			if got, want := resp.StatusCode, tc.wantStatusCode; got != want {
-				b, err := io.ReadAll(resp.Body)
-				if err != nil {
-					t.Fatal(err)
-				}
-				t.Errorf("Got unexpected status code, got=%d want=%d, response=%s", got, want, string(b))
-			}
+	testValidateKeyVersionState(ctx, t, kmsClient, keyResouceName, 1,
+		map[int]kmspb.CryptoKeyVersion_CryptoKeyVersionState{
+			1: kmspb.CryptoKeyVersion_ENABLED,
 		})
-	}
+
+	t.Run("rotate_key", func(t *testing.T) {
+		time.Sleep(5001 * time.Millisecond) // Wait past the next rotation event
+
+		path := "/"
+		wantStatusCode := http.StatusOK
+
+		uri := cfg.CertRotatorServiceAddr + path
+
+		resp := testSendHTTPReq(ctx, t, uri, cfg.CertRotatorServiceIDToken)
+
+		defer resp.Body.Close()
+
+		if got, want := resp.StatusCode, wantStatusCode; got != want {
+			b, err := io.ReadAll(resp.Body)
+			if err != nil {
+				t.Fatal(err)
+			}
+			t.Errorf("Got unexpected status code, got=%d want=%d, response=%s", got, want, string(b))
+		}
+
+		time.Sleep(1001 * time.Millisecond) // Wait past the propagation delay.
+		testValidateKeyVersionState(ctx, t, kmsClient, keyResouceName, 2,
+			map[int]kmspb.CryptoKeyVersion_CryptoKeyVersionState{
+				1: kmspb.CryptoKeyVersion_ENABLED,
+				2: kmspb.CryptoKeyVersion_ENABLED,
+			})
+	})
 }
 
 // testNormalizeTokenMap parses the tokenMap by overwriting the value for ignoreKeys
@@ -296,4 +329,60 @@ func testSendHTTPReq(ctx context.Context, tb testing.TB, uri, token string) *htt
 	}
 
 	return resp
+}
+
+func testSetupKMSClient(ctx context.Context, tb testing.TB) *kms.KeyManagementClient {
+	tb.Helper()
+
+	kmsClient, err := kms.NewKeyManagementClient(ctx)
+	if err != nil {
+		tb.Fatalf("failed to setup kms client: %s", err)
+	}
+	return kmsClient
+}
+
+func testValidateKeyVersionState(ctx context.Context, tb testing.TB, kmsClient *kms.KeyManagementClient, keyName string,
+	expectedPrimary int, expectedStates map[int]kmspb.CryptoKeyVersion_CryptoKeyVersionState,
+) {
+	tb.Helper()
+	// validate that each version is in the expected state.
+	it := kmsClient.ListCryptoKeyVersions(ctx, &kmspb.ListCryptoKeyVersionsRequest{
+		Parent: keyName,
+	})
+	count := 0
+	for {
+		ver, err := it.Next()
+		if errors.Is(err, iterator.Done) {
+			break
+		}
+		if err != nil {
+			tb.Fatalf("err while calling kms to get key versions: %s", err)
+		}
+		number, err := strconv.Atoi(ver.Name[strings.LastIndex(ver.Name, "/")+1:])
+		if err != nil {
+			tb.Fatalf("couldn't convert version %s to number: %s", ver.Name, err)
+		}
+		if ver.State != expectedStates[number] {
+			tb.Errorf("version %s was in state %s, but expected %s", ver.Name, ver.State, expectedStates[number])
+		}
+		count++
+	}
+	if count != len(expectedStates) {
+		tb.Errorf("got %d versions, expected %d", count, len(expectedStates))
+	}
+
+	// validate the primary is set correctly.
+	resp, err := kmsClient.GetCryptoKey(ctx, &kmspb.GetCryptoKeyRequest{Name: keyName})
+	if err != nil {
+		tb.Fatalf("err while calling kms: %s", err)
+	}
+	primaryName := resp.Labels[jvscrypto.PrimaryKey]
+	primaryLabel := primaryName[strings.LastIndex(primaryName, "/")+1:]
+	primaryNumber, err := strconv.Atoi(strings.TrimPrefix(primaryLabel, jvscrypto.PrimaryLabelPrefix))
+	if err != nil {
+		tb.Fatalf("couldn't convert version %s to number: %s", primaryName, err)
+	}
+	if primaryNumber != expectedPrimary {
+		tb.Errorf("primary was set to version %d, but expected %d", primaryNumber, expectedPrimary)
+	}
 }
