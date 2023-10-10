@@ -265,14 +265,14 @@ jobs:
             -shuffle=on \
             -timeout='10m' \
             ./test/integ-new/...
-      # Keys can not be deleted, we can destroy key versions to avoid billing.
-      #
-      # See: https://cloud.google.com/kms/docs/faq#cannot_delete.
-      - name: 'Clean up kms key'
-        if: '${{ always()  && steps.create_kms_key.outcome == ''success'' }}'
-        run: |-
-          gcloud kms keys versions destroy 1 \
-            --key ${{ env.TAG_ID }} \
-            --keyring ${{ env.KMS_KEYRING_ID }} \
-            --location global \
-            --project ${{ env.PROJECT_ID }}
+      # # Keys can not be deleted, we can destroy key versions to avoid billing.
+      # #
+      # # See: https://cloud.google.com/kms/docs/faq#cannot_delete.
+      # - name: 'Clean up kms key'
+      #   if: '${{ always()  && steps.create_kms_key.outcome == ''success'' }}'
+      #   run: |-
+      #     gcloud kms keys versions destroy 1 \
+      #       --key ${{ env.TAG_ID }} \
+      #       --keyring ${{ env.KMS_KEYRING_ID }} \
+      #       --location global \
+      #       --project ${{ env.PROJECT_ID }}

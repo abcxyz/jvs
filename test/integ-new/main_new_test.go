@@ -43,6 +43,8 @@ import (
 	"github.com/google/go-cmp/cmp"
 	"github.com/lestrrat-go/jwx/v2/jwt"
 	"google.golang.org/api/iterator"
+	grpccodes "google.golang.org/grpc/codes"
+	grpcstatus "google.golang.org/grpc/status"
 )
 
 // Global integration test config.
@@ -255,6 +257,13 @@ func TestCertRotatorKeyRotation(t *testing.T) {
 	kmsClient := testSetupKMSClient(ctx, t)
 
 	keyResouceName := fmt.Sprintf("projects/%s/locations/global/keyRings/%s/cryptoKeys/%s", cfg.ProjectID, cfg.KeyRing, cfg.KeyName)
+
+	t.Cleanup(func() {
+		testCleanUpKey(ctx, t, kmsClient, keyResouceName)
+		if err := kmsClient.Close(); err != nil {
+			t.Errorf("Clean up of key %s failed: %s", keyResouceName, err)
+		}
+	})
 
 	// Validate we have a single enabled key that is primary.
 	testValidateKeyVersionState(ctx, t, kmsClient, keyResouceName, 1,
@@ -469,5 +478,43 @@ func testValidateKeyVersionState(ctx context.Context, tb testing.TB, kmsClient *
 	}
 	if primaryNumber != expectedPrimary {
 		tb.Errorf("primary was set to version %d, but expected %d", primaryNumber, expectedPrimary)
+	}
+}
+
+// Destroy all versions within a key in order to clean up tests.
+func testCleanUpKey(ctx context.Context, tb testing.TB, kmsClient *kms.KeyManagementClient, keyName string) {
+	tb.Helper()
+
+	it := kmsClient.ListCryptoKeyVersions(ctx, &kmspb.ListCryptoKeyVersionsRequest{
+		Parent: keyName,
+	})
+
+	for {
+		ver, err := it.Next()
+		if errors.Is(err, iterator.Done) {
+			break
+		}
+		if err != nil {
+			tb.Fatalf("err while reading crypto key version list: %s", err)
+		}
+
+		if ver.State == kmspb.CryptoKeyVersion_DESTROYED ||
+			ver.State == kmspb.CryptoKeyVersion_DESTROY_SCHEDULED {
+			// no need to destroy again
+			continue
+		}
+
+		if _, err := kmsClient.DestroyCryptoKeyVersion(ctx, &kmspb.DestroyCryptoKeyVersionRequest{
+			Name: ver.Name,
+		}); err != nil {
+			// Cloud KMS returns the following errors when the key is already
+			// destroyed or does not exist.
+			code := grpcstatus.Code(err)
+			if code == grpccodes.NotFound || code == grpccodes.FailedPrecondition {
+				return
+			}
+
+			tb.Errorf("cleanup: failed to destroy crypto key version %q: %s", ver.Name, err)
+		}
 	}
 }
