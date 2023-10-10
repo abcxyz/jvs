@@ -292,7 +292,7 @@ func testSendHTTPReq(ctx context.Context, tb testing.TB, uri, token string) *htt
 
 	resp, err := httpClient.Do(req)
 	if err != nil {
-		tb.Fatalf("client failed to get response: %V", err)
+		tb.Fatalf("client failed to get response: %v", err)
 	}
 
 	return resp
