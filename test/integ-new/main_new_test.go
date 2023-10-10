@@ -41,6 +41,8 @@ import (
 var (
 	cfg *config
 
+	httpClient *http.Client
+
 	// Keys we don't compare in validation result.
 	ignoreKeysMap map[string]struct{} = map[string]struct{}{
 		"nbf": {},
@@ -77,6 +79,10 @@ func TestMain(m *testing.M) {
 			return 2
 		}
 		cfg = c
+
+		httpClient = &http.Client{
+			Timeout: 5 * time.Second,
+		}
 
 		return m.Run()
 	}())
@@ -192,22 +198,8 @@ func TestUIServiceHealthCheck(t *testing.T) {
 
 	ctx := context.Background()
 
-	client := &http.Client{
-		Timeout: 5 * time.Second,
-	}
-
 	uri := addr + healthCheckPath
-	req, err := http.NewRequestWithContext(ctx, http.MethodGet, uri, nil)
-	if err != nil {
-		t.Fatalf("failed to create request: %v", err)
-	}
-
-	req.Header.Set("Authorization", fmt.Sprintf("Bearer %s", cfg.UIServiceIDToken))
-
-	resp, err := client.Do(req)
-	if err != nil {
-		t.Fatalf("client failed to get response: %V", err)
-	}
+	resp := testSendHTTPReq(ctx, t, uri, cfg.UIServiceIDToken)
 
 	defer resp.Body.Close()
 
@@ -247,22 +239,8 @@ func TestCertRotatorService(t *testing.T) {
 
 			ctx := context.Background()
 
-			client := &http.Client{
-				Timeout: 5 * time.Second,
-			}
-
 			uri := cfg.CertRotatorServiceAddr + tc.path
-			req, err := http.NewRequestWithContext(ctx, http.MethodGet, uri, nil)
-			if err != nil {
-				t.Fatalf("failed to create request: %v", err)
-			}
-
-			req.Header.Set("Authorization", fmt.Sprintf("Bearer %s", cfg.CertRotatorServiceIDToken))
-
-			resp, err := client.Do(req)
-			if err != nil {
-				t.Fatalf("client failed to get response: %V", err)
-			}
+			resp := testSendHTTPReq(ctx, t, uri, cfg.CertRotatorServiceIDToken)
 
 			defer resp.Body.Close()
 
@@ -300,4 +278,22 @@ func testNormalizeTokenMap(tb testing.TB, m map[string]any) map[string]any {
 		}
 	}
 	return m
+}
+
+func testSendHTTPReq(ctx context.Context, tb testing.TB, uri, token string) *http.Response {
+	tb.Helper()
+
+	req, err := http.NewRequestWithContext(ctx, http.MethodGet, uri, nil)
+	if err != nil {
+		tb.Fatalf("failed to create request: %v", err)
+	}
+
+	req.Header.Set("Authorization", fmt.Sprintf("Bearer %s", token))
+
+	resp, err := httpClient.Do(req)
+	if err != nil {
+		tb.Fatalf("client failed to get response: %v", err)
+	}
+
+	return resp
 }
