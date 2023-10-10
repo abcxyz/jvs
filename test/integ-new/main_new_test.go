@@ -226,8 +226,6 @@ func TestCertRotatorHealthCheck(t *testing.T) {
 	healthCheckPath := "/health"
 	wantStatusCode := http.StatusOK
 
-	t.Parallel()
-
 	ctx := context.Background()
 
 	uri := cfg.CertRotatorServiceAddr + healthCheckPath
@@ -244,6 +242,10 @@ func TestCertRotatorHealthCheck(t *testing.T) {
 	}
 }
 
+// Subtests must be run in sequence, and they have waits in between.
+// Therefore, they cannot be parallelized, and aren't a good fit for table testing.
+//
+//nolint:paralleltest
 func TestCertRotatorKeyRotation(t *testing.T) {
 	t.Parallel()
 	testutil.SkipIfNotIntegration(t)
@@ -254,12 +256,13 @@ func TestCertRotatorKeyRotation(t *testing.T) {
 
 	keyResouceName := fmt.Sprintf("projects/%s/locations/global/keyRings/%s/cryptoKeys/%s", cfg.ProjectID, cfg.KeyRing, cfg.KeyName)
 
+	// Validate we have a single enabled key that is primary.
 	testValidateKeyVersionState(ctx, t, kmsClient, keyResouceName, 1,
 		map[int]kmspb.CryptoKeyVersion_CryptoKeyVersionState{
 			1: kmspb.CryptoKeyVersion_ENABLED,
 		})
 
-	t.Run("rotate_key", func(t *testing.T) {
+	t.Run("new_key_creation", func(t *testing.T) {
 		time.Sleep(5001 * time.Millisecond) // Wait past the next rotation event
 
 		path := "/"
@@ -279,11 +282,92 @@ func TestCertRotatorKeyRotation(t *testing.T) {
 			t.Errorf("Got unexpected status code, got=%d want=%d, response=%s", got, want, string(b))
 		}
 
+		// Validate we have created a new key, but haven't set it as primary yet.
+		testValidateKeyVersionState(ctx, t, kmsClient, keyResouceName, 1,
+			map[int]kmspb.CryptoKeyVersion_CryptoKeyVersionState{
+				1: kmspb.CryptoKeyVersion_ENABLED,
+				2: kmspb.CryptoKeyVersion_ENABLED,
+			})
+	})
+
+	t.Run("new_key_promotion", func(t *testing.T) {
+		path := "/"
+		wantStatusCode := http.StatusOK
+
+		uri := cfg.CertRotatorServiceAddr + path
+
+		resp := testSendHTTPReq(ctx, t, uri, cfg.CertRotatorServiceIDToken)
+		defer resp.Body.Close()
+
+		if got, want := resp.StatusCode, wantStatusCode; got != want {
+			b, err := io.ReadAll(resp.Body)
+			if err != nil {
+				t.Fatal(err)
+			}
+			t.Errorf("Got unexpected status code, got=%d want=%d, response=%s", got, want, string(b))
+		}
+
 		time.Sleep(1001 * time.Millisecond) // Wait past the propagation delay.
+		// Validate our new key has been set to primary
 		testValidateKeyVersionState(ctx, t, kmsClient, keyResouceName, 2,
 			map[int]kmspb.CryptoKeyVersion_CryptoKeyVersionState{
 				1: kmspb.CryptoKeyVersion_ENABLED,
 				2: kmspb.CryptoKeyVersion_ENABLED,
+			})
+	})
+
+	t.Run("old_key_disable", func(t *testing.T) {
+		time.Sleep(2001 * time.Millisecond) // Wait past the grace period.
+
+		path := "/"
+		wantStatusCode := http.StatusOK
+
+		uri := cfg.CertRotatorServiceAddr + path
+
+		resp := testSendHTTPReq(ctx, t, uri, cfg.CertRotatorServiceIDToken)
+		defer resp.Body.Close()
+
+		if got, want := resp.StatusCode, wantStatusCode; got != want {
+			b, err := io.ReadAll(resp.Body)
+			if err != nil {
+				t.Fatal(err)
+			}
+			t.Errorf("Got unexpected status code, got=%d want=%d, response=%s", got, want, string(b))
+		}
+
+		// Validate that our old key has been disabled.
+		testValidateKeyVersionState(ctx, t, kmsClient, keyResouceName, 2,
+			map[int]kmspb.CryptoKeyVersion_CryptoKeyVersionState{
+				1: kmspb.CryptoKeyVersion_DISABLED,
+				2: kmspb.CryptoKeyVersion_ENABLED,
+			})
+	})
+
+	t.Run("old_key_destroy", func(t *testing.T) {
+		time.Sleep(2001 * time.Millisecond) // Wait past the disabled period and next rotation event.
+
+		path := "/"
+		wantStatusCode := http.StatusOK
+
+		uri := cfg.CertRotatorServiceAddr + path
+
+		resp := testSendHTTPReq(ctx, t, uri, cfg.CertRotatorServiceIDToken)
+		defer resp.Body.Close()
+
+		if got, want := resp.StatusCode, wantStatusCode; got != want {
+			b, err := io.ReadAll(resp.Body)
+			if err != nil {
+				t.Fatal(err)
+			}
+			t.Errorf("Got unexpected status code, got=%d want=%d, response=%s", got, want, string(b))
+		}
+
+		// Validate that our old key has been scheduled for destruction, and cycle has started again.
+		testValidateKeyVersionState(ctx, t, kmsClient, keyResouceName, 2,
+			map[int]kmspb.CryptoKeyVersion_CryptoKeyVersionState{
+				1: kmspb.CryptoKeyVersion_DESTROY_SCHEDULED,
+				2: kmspb.CryptoKeyVersion_ENABLED,
+				3: kmspb.CryptoKeyVersion_ENABLED,
 			})
 	})
 }
