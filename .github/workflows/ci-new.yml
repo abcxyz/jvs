@@ -36,8 +36,8 @@ env:
   PUBLIC_KEY_SERVICE_NAME: 'jvs-public-key-f22e'
   UI_SERVICE_NAME: 'jvs-ui-8ab7'
   SERVICES_URL_POSTFIX: '2nhpyabgtq-uc.a.run.app'
-  KMS_KEYRING_ID: 'jvs-keyring-ci-${{ github.run_id }}-${{ github.run_number }}'
-  TAG_ID: 'ci-${{ github.run_id }}-${{ github.run_number }}'
+  KMS_KEYRING_ID: 'jvs-keyring-ci-${{ github.run_id }}-${{ github.run_attempt }}'
+  TAG_ID: 'ci-${{ github.run_id }}-${{ github.run_attempt }}'
 
 concurrency:
   group: '${{ github.workflow }}-${{ github.head_ref || github.ref }}'
