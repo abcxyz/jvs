@@ -254,7 +254,10 @@ func TestCertRotatorKeyRotation(t *testing.T) {
 
 	ctx := logging.WithLogger(context.Background(), logging.TestLogger(t))
 
-	kmsClient := testSetupKMSClient(ctx, t)
+	kmsClient, err := kms.NewKeyManagementClient(ctx)
+	if err != nil {
+		t.Fatalf("failed to setup kms client: %s", err)
+	}
 
 	keyResouceName := fmt.Sprintf("projects/%s/locations/global/keyRings/%s/cryptoKeys/%s", cfg.ProjectID, cfg.KeyRing, cfg.KeyName)
 
@@ -387,16 +390,6 @@ func testCallKeyRotationEndpoint(ctx context.Context, tb testing.TB) {
 		}
 		tb.Errorf("Got unexpected status code, got=%d want=%d, response=%s", got, want, string(b))
 	}
-}
-
-func testSetupKMSClient(ctx context.Context, tb testing.TB) *kms.KeyManagementClient {
-	tb.Helper()
-
-	kmsClient, err := kms.NewKeyManagementClient(ctx)
-	if err != nil {
-		tb.Fatalf("failed to setup kms client: %s", err)
-	}
-	return kmsClient
 }
 
 func testValidateKeyVersionState(ctx context.Context, tb testing.TB, kmsClient *kms.KeyManagementClient, keyName string,
