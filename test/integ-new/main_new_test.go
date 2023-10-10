@@ -291,6 +291,8 @@ func TestCertRotatorKeyRotation(t *testing.T) {
 	})
 
 	t.Run("new_key_promotion", func(t *testing.T) {
+		time.Sleep(1001 * time.Millisecond) // Wait past the propagation delay.
+
 		path := "/"
 		wantStatusCode := http.StatusOK
 
@@ -307,7 +309,6 @@ func TestCertRotatorKeyRotation(t *testing.T) {
 			t.Errorf("Got unexpected status code, got=%d want=%d, response=%s", got, want, string(b))
 		}
 
-		time.Sleep(1001 * time.Millisecond) // Wait past the propagation delay.
 		// Validate our new key has been set to primary
 		testValidateKeyVersionState(ctx, t, kmsClient, keyResouceName, 2,
 			map[int]kmspb.CryptoKeyVersion_CryptoKeyVersionState{
