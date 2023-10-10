@@ -198,25 +198,10 @@ func TestUIServiceHealthCheck(t *testing.T) {
 
 	ctx := context.Background()
 
-	// client := &http.Client{
-	// 	Timeout: 5 * time.Second,
-	// }
-
 	uri := addr + healthCheckPath
-	resp := testSendHttpReq(ctx, t, uri, cfg.UIServiceIDToken)
-	// req, err := http.NewRequestWithContext(ctx, http.MethodGet, uri, nil)
-	// if err != nil {
-	// 	t.Fatalf("failed to create request: %v", err)
-	// }
+	resp := testSendHTTPReq(ctx, t, uri, cfg.UIServiceIDToken)
 
-	// req.Header.Set("Authorization", fmt.Sprintf("Bearer %s", cfg.UIServiceIDToken))
-
-	// resp, err := client.Do(req)
-	// if err != nil {
-	// 	t.Fatalf("client failed to get response: %V", err)
-	// }
-
-	// defer resp.Body.Close()
+	defer resp.Body.Close()
 
 	if got, want := resp.StatusCode, wantStatusCode; got != want {
 		b, err := io.ReadAll(resp.Body)
@@ -254,25 +239,10 @@ func TestCertRotatorService(t *testing.T) {
 
 			ctx := context.Background()
 
-			// client := &http.Client{
-			// 	Timeout: 5 * time.Second,
-			// }
-
 			uri := cfg.CertRotatorServiceAddr + tc.path
-			resp := testSendHttpReq(ctx, t, uri, cfg.CertRotatorServiceIDToken)
-			// req, err := http.NewRequestWithContext(ctx, http.MethodGet, uri, nil)
-			// if err != nil {
-			// 	t.Fatalf("failed to create request: %v", err)
-			// }
+			resp := testSendHTTPReq(ctx, t, uri, cfg.CertRotatorServiceIDToken)
 
-			// req.Header.Set("Authorization", fmt.Sprintf("Bearer %s", cfg.CertRotatorServiceIDToken))
-
-			// resp, err := client.Do(req)
-			// if err != nil {
-			// 	t.Fatalf("client failed to get response: %V", err)
-			// }
-
-			// defer resp.Body.Close()
+			defer resp.Body.Close()
 
 			if got, want := resp.StatusCode, tc.wantStatusCode; got != want {
 				b, err := io.ReadAll(resp.Body)
@@ -310,7 +280,7 @@ func testNormalizeTokenMap(tb testing.TB, m map[string]any) map[string]any {
 	return m
 }
 
-func testSendHttpReq(ctx context.Context, tb testing.TB, uri, token string) *http.Response {
+func testSendHTTPReq(ctx context.Context, tb testing.TB, uri, token string) *http.Response {
 	tb.Helper()
 
 	req, err := http.NewRequestWithContext(ctx, http.MethodGet, uri, nil)
@@ -325,6 +295,5 @@ func testSendHttpReq(ctx context.Context, tb testing.TB, uri, token string) *htt
 		tb.Fatalf("client failed to get response: %V", err)
 	}
 
-	defer resp.Body.Close()
 	return resp
 }
