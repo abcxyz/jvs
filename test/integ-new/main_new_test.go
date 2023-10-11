@@ -239,6 +239,12 @@ func TestCertRotatorKeyRotation(t *testing.T) {
 		t.Fatalf("failed to setup kms client: %s", err)
 	}
 
+	t.Cleanup(func() {
+		if err := kmsClient.Close(); err != nil {
+			t.Errorf("Clean up of key %s failed: %s", keyResouceName, err)
+		}
+	})
+
 	// Validate we have a single enabled key that is primary.
 	testValidateKeyVersionState(ctx, t, kmsClient, keyResouceName, 1,
 		map[int]kmspb.CryptoKeyVersion_CryptoKeyVersionState{
@@ -296,12 +302,6 @@ func TestCertRotatorKeyRotation(t *testing.T) {
 				2: kmspb.CryptoKeyVersion_ENABLED,
 				3: kmspb.CryptoKeyVersion_ENABLED,
 			})
-	})
-
-	t.Cleanup(func() {
-		if err := kmsClient.Close(); err != nil {
-			t.Errorf("Clean up of key %s failed: %s", keyResouceName, err)
-		}
 	})
 }
 
