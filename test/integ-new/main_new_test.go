@@ -39,12 +39,9 @@ import (
 	"github.com/abcxyz/jvs/pkg/cli"
 	"github.com/abcxyz/jvs/pkg/jvscrypto"
 	"github.com/abcxyz/pkg/logging"
-	"github.com/abcxyz/pkg/testutil"
 	"github.com/google/go-cmp/cmp"
 	"github.com/lestrrat-go/jwx/v2/jwt"
 	"google.golang.org/api/iterator"
-	grpccodes "google.golang.org/grpc/codes"
-	grpcstatus "google.golang.org/grpc/status"
 )
 
 // Global integration test config.
@@ -52,6 +49,8 @@ var (
 	cfg *config
 
 	httpClient *http.Client
+
+	keyResouceName string
 
 	// Keys we don't compare in validation result.
 	ignoreKeysMap map[string]struct{} = map[string]struct{}{
@@ -93,6 +92,8 @@ func TestMain(m *testing.M) {
 		httpClient = &http.Client{
 			Timeout: 5 * time.Second,
 		}
+
+		keyResouceName = fmt.Sprintf("projects/%s/locations/global/keyRings/%s/cryptoKeys/%s", cfg.ProjectID, cfg.KeyRing, cfg.KeyName)
 
 		return m.Run()
 	}())
@@ -202,46 +203,25 @@ func TestAPIAndPublicKeyService(t *testing.T) {
 func TestUIServiceHealthCheck(t *testing.T) {
 	t.Parallel()
 
-	addr := cfg.UIServiceAddr
-	wantStatusCode := http.StatusOK
 	healthCheckPath := "/health"
 
 	ctx := context.Background()
 
-	uri := addr + healthCheckPath
-	resp := testSendHTTPReq(ctx, t, uri, cfg.UIServiceIDToken)
+	uri := cfg.UIServiceAddr + healthCheckPath
 
-	defer resp.Body.Close()
-
-	if got, want := resp.StatusCode, wantStatusCode; got != want {
-		b, err := io.ReadAll(resp.Body)
-		if err != nil {
-			t.Fatal(err)
-		}
-		t.Errorf("health check status code got=%d want=%d, response=%s", got, want, string(b))
-	}
+	testCallEndpoint(ctx, t, uri, cfg.UIServiceIDToken, http.StatusOK)
 }
 
 func TestCertRotatorHealthCheck(t *testing.T) {
 	t.Parallel()
 
 	healthCheckPath := "/health"
-	wantStatusCode := http.StatusOK
 
 	ctx := context.Background()
 
 	uri := cfg.CertRotatorServiceAddr + healthCheckPath
-	resp := testSendHTTPReq(ctx, t, uri, cfg.CertRotatorServiceIDToken)
 
-	defer resp.Body.Close()
-
-	if got, want := resp.StatusCode, wantStatusCode; got != want {
-		b, err := io.ReadAll(resp.Body)
-		if err != nil {
-			t.Fatal(err)
-		}
-		t.Errorf("Got unexpected status code, got=%d want=%d, response=%s", got, want, string(b))
-	}
+	testCallEndpoint(ctx, t, uri, cfg.CertRotatorServiceIDToken, http.StatusOK)
 }
 
 // Subtests must be run in sequence, and they have waits in between.
@@ -250,16 +230,15 @@ func TestCertRotatorHealthCheck(t *testing.T) {
 //nolint:paralleltest
 func TestCertRotatorKeyRotation(t *testing.T) {
 	t.Parallel()
-	testutil.SkipIfNotIntegration(t)
 
 	ctx := logging.WithLogger(context.Background(), logging.TestLogger(t))
+
+	uri := cfg.CertRotatorServiceAddr + "/"
 
 	kmsClient, err := kms.NewKeyManagementClient(ctx)
 	if err != nil {
 		t.Fatalf("failed to setup kms client: %s", err)
 	}
-
-	keyResouceName := fmt.Sprintf("projects/%s/locations/global/keyRings/%s/cryptoKeys/%s", cfg.ProjectID, cfg.KeyRing, cfg.KeyName)
 
 	// Validate we have a single enabled key that is primary.
 	testValidateKeyVersionState(ctx, t, kmsClient, keyResouceName, 1,
@@ -270,7 +249,7 @@ func TestCertRotatorKeyRotation(t *testing.T) {
 	t.Run("new_key_creation", func(t *testing.T) {
 		time.Sleep(5001 * time.Millisecond) // Wait past the next rotation event
 
-		testCallKeyRotationEndpoint(ctx, t)
+		testCallEndpoint(ctx, t, uri, cfg.CertRotatorServiceIDToken, http.StatusOK)
 
 		// Validate we have created a new key, but haven't set it as primary yet.
 		testValidateKeyVersionState(ctx, t, kmsClient, keyResouceName, 1,
@@ -283,7 +262,7 @@ func TestCertRotatorKeyRotation(t *testing.T) {
 	t.Run("new_key_promotion", func(t *testing.T) {
 		time.Sleep(1001 * time.Millisecond) // Wait past the propagation delay.
 
-		testCallKeyRotationEndpoint(ctx, t)
+		testCallEndpoint(ctx, t, uri, cfg.CertRotatorServiceIDToken, http.StatusOK)
 
 		// Validate our new key has been set to primary
 		testValidateKeyVersionState(ctx, t, kmsClient, keyResouceName, 2,
@@ -296,7 +275,7 @@ func TestCertRotatorKeyRotation(t *testing.T) {
 	t.Run("old_key_disable", func(t *testing.T) {
 		time.Sleep(2001 * time.Millisecond) // Wait past the grace period.
 
-		testCallKeyRotationEndpoint(ctx, t)
+		testCallEndpoint(ctx, t, uri, cfg.CertRotatorServiceIDToken, http.StatusOK)
 
 		// Validate that our old key has been disabled.
 		testValidateKeyVersionState(ctx, t, kmsClient, keyResouceName, 2,
@@ -309,7 +288,7 @@ func TestCertRotatorKeyRotation(t *testing.T) {
 	t.Run("old_key_destroy", func(t *testing.T) {
 		time.Sleep(2001 * time.Millisecond) // Wait past the disabled period and next rotation event.
 
-		testCallKeyRotationEndpoint(ctx, t)
+		testCallEndpoint(ctx, t, uri, cfg.CertRotatorServiceIDToken, http.StatusOK)
 
 		// Validate that our old key has been scheduled for destruction, and cycle has started again.
 		testValidateKeyVersionState(ctx, t, kmsClient, keyResouceName, 2,
@@ -318,13 +297,6 @@ func TestCertRotatorKeyRotation(t *testing.T) {
 				2: kmspb.CryptoKeyVersion_ENABLED,
 				3: kmspb.CryptoKeyVersion_ENABLED,
 			})
-	})
-
-	t.Cleanup(func() {
-		testCleanUpKey(ctx, t, kmsClient, keyResouceName)
-		if err := kmsClient.Close(); err != nil {
-			t.Errorf("Clean up of key %s failed: %s", keyResouceName, err)
-		}
 	})
 }
 
@@ -353,7 +325,7 @@ func testNormalizeTokenMap(tb testing.TB, m map[string]any) map[string]any {
 	return m
 }
 
-func testSendHTTPReq(ctx context.Context, tb testing.TB, uri, token string) *http.Response {
+func testCallEndpoint(ctx context.Context, tb testing.TB, uri, token string, wantStatusCode int) {
 	tb.Helper()
 
 	req, err := http.NewRequestWithContext(ctx, http.MethodGet, uri, nil)
@@ -367,19 +339,6 @@ func testSendHTTPReq(ctx context.Context, tb testing.TB, uri, token string) *htt
 	if err != nil {
 		tb.Fatalf("client failed to get response: %v", err)
 	}
-
-	return resp
-}
-
-func testCallKeyRotationEndpoint(ctx context.Context, tb testing.TB) {
-	tb.Helper()
-
-	path := "/"
-	wantStatusCode := http.StatusOK
-
-	uri := cfg.CertRotatorServiceAddr + path
-
-	resp := testSendHTTPReq(ctx, tb, uri, cfg.CertRotatorServiceIDToken)
 
 	defer resp.Body.Close()
 
@@ -435,43 +394,5 @@ func testValidateKeyVersionState(ctx context.Context, tb testing.TB, kmsClient *
 	}
 	if primaryNumber != expectedPrimary {
 		tb.Errorf("primary was set to version %d, but expected %d", primaryNumber, expectedPrimary)
-	}
-}
-
-// Destroy all versions within a key in order to clean up tests.
-func testCleanUpKey(ctx context.Context, tb testing.TB, kmsClient *kms.KeyManagementClient, keyName string) {
-	tb.Helper()
-
-	it := kmsClient.ListCryptoKeyVersions(ctx, &kmspb.ListCryptoKeyVersionsRequest{
-		Parent: keyName,
-	})
-
-	for {
-		ver, err := it.Next()
-		if errors.Is(err, iterator.Done) {
-			break
-		}
-		if err != nil {
-			tb.Fatalf("err while reading crypto key version list: %s", err)
-		}
-
-		if ver.State == kmspb.CryptoKeyVersion_DESTROYED ||
-			ver.State == kmspb.CryptoKeyVersion_DESTROY_SCHEDULED {
-			// no need to destroy again
-			continue
-		}
-
-		if _, err := kmsClient.DestroyCryptoKeyVersion(ctx, &kmspb.DestroyCryptoKeyVersionRequest{
-			Name: ver.Name,
-		}); err != nil {
-			// Cloud KMS returns the following errors when the key is already
-			// destroyed or does not exist.
-			code := grpcstatus.Code(err)
-			if code == grpccodes.NotFound || code == grpccodes.FailedPrecondition {
-				return
-			}
-
-			tb.Errorf("cleanup: failed to destroy crypto key version %q: %s", ver.Name, err)
-		}
 	}
 }

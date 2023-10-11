@@ -40,11 +40,10 @@ env:
   KMS_KEY_NAME: 'ci-${{ github.run_id }}-${{ github.run_attempt }}'
   TAG_ID: 'ci-${{ github.run_id }}-${{ github.run_attempt }}'
 
-  INTEG_TEST_JVS_ROTATION_KEY_TTL: '7s'
-  INTEG_TEST_JVS_ROTATION_GRACE_PERIOD: '2s'
-  INTEG_TEST_JVS_ROTATION_PROPAGATION_DELAY: '1s'
-  INTEG_TEST_JVS_ROTATION_DISABLED_PERIOD: '1s'
-  INTEG_TEST_KeyNames: '[ci-${{ github.run_id }}-${{ github.run_attempt }}]'
+  JVS_ROTATION_KEY_TTL: '7s'
+  JVS_ROTATION_GRACE_PERIOD: '2s'
+  JVS_ROTATION_PROPAGATION_DELAY: '1s'
+  JVS_ROTATION_DISABLED_PERIOD: '1s'
 
 concurrency:
   group: '${{ github.workflow }}-${{ github.head_ref || github.ref }}'
@@ -198,10 +197,10 @@ jobs:
             --image="${{ env.CONTAINER_REGISTRY }}/${{ env.IMAGE_NAME }}:${{ env.DOCKER_TAG }}-amd64" \
             --tag="${{ env.TAG_ID }}" \
             --update-env-vars="JVS_KEY_NAMES=projects/${{ env.PROJECT_ID }}/locations/global/keyRings/${{ env.KMS_KEYRING_ID }}/cryptoKeys/${{ env.KMS_KEY_NAME }},\
-              JVS_ROTATION_GRACE_PERIOD=${{ env.INTEG_TEST_JVS_ROTATION_GRACE_PERIOD }},\
-              JVS_ROTATION_KEY_TTL=${{ env.INTEG_TEST_JVS_ROTATION_KEY_TTL }},\
-              JVS_ROTATION_PROPAGATION_DELAY=${{ env.INTEG_TEST_JVS_ROTATION_PROPAGATION_DELAY }},\
-              JVS_ROTATION_DISABLED_PERIOD=${{ env.INTEG_TEST_JVS_ROTATION_DISABLED_PERIOD}}"
+              JVS_ROTATION_GRACE_PERIOD=${{ env.JVS_ROTATION_GRACE_PERIOD }},\
+              JVS_ROTATION_KEY_TTL=${{ env.JVS_ROTATION_KEY_TTL }},\
+              JVS_ROTATION_PROPAGATION_DELAY=${{ env.JVS_ROTATION_PROPAGATION_DELAY }},\
+              JVS_ROTATION_DISABLED_PERIOD=${{ env.JVS_ROTATION_DISABLED_PERIOD}}"
       - name: 'Update Public key service'
         run: |-
           gcloud run services update ${{ env.PUBLIC_KEY_SERVICE_NAME }} \
@@ -269,13 +268,25 @@ jobs:
       # Keys can not be deleted, we can destroy key versions to avoid billing.
       #
       # See: https://cloud.google.com/kms/docs/faq#cannot_delete.
-      - name: 'Clean up kms key'
-        # if integration test is success, all keys will be deleted
-        # this steps is only ran when keys are created but integ test is not ran or failed
+      - name: 'Clean up kms key when integ test failed'
+        # if integration test is success, key version 1 will be destroyed
+        # so we need to clean up version 1 if integ test failed
         if: '${{ always()  && steps.create_kms_key.outcome == ''success'' && steps.run_integ_test.outcome == ''failure''}}'
         run: |-
           gcloud kms keys versions destroy 1 \
-            --key ${{ env.TAG_ID }} \
+            --key ${{ env.KMS_KEY_NAME }} \
             --keyring ${{ env.KMS_KEYRING_ID }} \
             --location global \
             --project ${{ env.PROJECT_ID }}
+      - name: 'Clean up kms key'
+        # clean up key version 2&3
+        if: '${{ always()}}'
+        run: |-
+          for key_Version in 2 3
+          do
+            gcloud kms keys versions destroy $key_version \
+              --key ${{ env.KMS_KEY_NAME }} \
+              --keyring ${{ env.KMS_KEYRING_ID }} \
+              --location global \
+              --project ${{ env.PROJECT_ID }}
+          done
