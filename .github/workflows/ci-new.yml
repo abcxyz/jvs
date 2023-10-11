@@ -270,14 +270,14 @@ jobs:
       # See: https://cloud.google.com/kms/docs/faq#cannot_delete.
       - name: 'Clean up kms key'
         # clean up key version 2&3
-        if: '${{ always()}}'
+        if: '${{ always() && steps.create_kms_key.outcome == ''success'' }}'
         run: |-
           KEY_VERSIONS=$(gcloud kms keys versions list \
             --location=global \
             --keyring=${{ env.KMS_KEYRING_ID }} \
             --key=${{ env.KMS_KEY_NAME }} \
             --project=${{ env.PROJECT_ID }} \
-            --filter="state=enabled" \
+            --filter="state!=DESTROY_SCHEDULED AND state!=DESTROYED" \
             --format="value(name)")
 
           IFS=$'\n'; for VERSION in $KEY_VERSIONS; do
