@@ -38,7 +38,6 @@ import (
 	"cloud.google.com/go/kms/apiv1/kmspb"
 	"github.com/abcxyz/jvs/pkg/cli"
 	"github.com/abcxyz/jvs/pkg/jvscrypto"
-	"github.com/abcxyz/pkg/logging"
 	"github.com/google/go-cmp/cmp"
 	"github.com/lestrrat-go/jwx/v2/jwt"
 	"google.golang.org/api/iterator"
@@ -231,7 +230,7 @@ func TestCertRotatorHealthCheck(t *testing.T) {
 func TestCertRotatorKeyRotation(t *testing.T) {
 	t.Parallel()
 
-	ctx := logging.WithLogger(context.Background(), logging.TestLogger(t))
+	ctx := context.Background()
 
 	uri := cfg.CertRotatorServiceAddr + "/"
 
@@ -297,6 +296,12 @@ func TestCertRotatorKeyRotation(t *testing.T) {
 				2: kmspb.CryptoKeyVersion_ENABLED,
 				3: kmspb.CryptoKeyVersion_ENABLED,
 			})
+	})
+
+	t.Cleanup(func() {
+		if err := kmsClient.Close(); err != nil {
+			t.Errorf("Clean up of key %s failed: %s", keyResouceName, err)
+		}
 	})
 }
 

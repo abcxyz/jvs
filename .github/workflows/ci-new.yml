@@ -268,25 +268,19 @@ jobs:
       # Keys can not be deleted, we can destroy key versions to avoid billing.
       #
       # See: https://cloud.google.com/kms/docs/faq#cannot_delete.
-      - name: 'Clean up kms key when integ test failed'
-        # if integration test is success, key version 1 will be destroyed
-        # so we need to clean up version 1 if integ test failed
-        if: '${{ always()  && steps.create_kms_key.outcome == ''success'' && steps.run_integ_test.outcome == ''failure''}}'
-        run: |-
-          gcloud kms keys versions destroy 1 \
-            --key ${{ env.KMS_KEY_NAME }} \
-            --keyring ${{ env.KMS_KEYRING_ID }} \
-            --location global \
-            --project ${{ env.PROJECT_ID }}
       - name: 'Clean up kms key'
         # clean up key version 2&3
         if: '${{ always()}}'
         run: |-
-          for key_version in 2 3
-          do
-            gcloud kms keys versions destroy $key_version \
-              --key ${{ env.KMS_KEY_NAME }} \
-              --keyring ${{ env.KMS_KEYRING_ID }} \
-              --location global \
-              --project ${{ env.PROJECT_ID }}
+          KEY_VERSIONS=$(gcloud kms keys versions list \
+            --location=global \
+            --keyring=${{ env.KMS_KEYRING_ID }} \
+            --key=${{ env.KMS_KEY_NAME }} \
+            --project=${{ env.PROJECT_ID }} \
+            --filter="state=enabled" \
+            --format="value(name)")
+
+          IFS=$'\n'; for VERSION in $KEY_VERSIONS; do
+            echo "Deleting ${VERSION}"
+            gcloud kms keys versions destroy ${VERSION} --quiet
           done
