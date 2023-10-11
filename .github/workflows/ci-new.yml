@@ -282,7 +282,7 @@ jobs:
         # clean up key version 2&3
         if: '${{ always()}}'
         run: |-
-          for key_Version in 2 3
+          for key_version in 2 3
           do
             gcloud kms keys versions destroy $key_version \
               --key ${{ env.KMS_KEY_NAME }} \
