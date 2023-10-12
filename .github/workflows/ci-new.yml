@@ -96,7 +96,7 @@ jobs:
           # https://github.com/GoogleCloudPlatform/artifact-registry-maven-tools
       - name: 'Run test script'
         run: |-
-          mvn clean test --no-transfer-progress -f client-lib/java
+          mvn clean flatten:flatten test --no-transfer-progress -f client-lib/java
 
   lint_and_unit:
     runs-on: 'ubuntu-latest'
