@@ -37,7 +37,13 @@ env:
   UI_SERVICE_NAME: 'jvs-ui-8ab7'
   SERVICES_URL_POSTFIX: '2nhpyabgtq-uc.a.run.app'
   KMS_KEYRING_ID: 'jvs-keyring-0666'
-  TAG_ID: 'ci-${{ github.run_id }}-${{ github.run_number }}'
+  KMS_KEY_NAME: 'ci-${{ github.run_id }}-${{ github.run_attempt }}'
+  TAG_ID: 'ci-${{ github.run_id }}-${{ github.run_attempt }}'
+
+  JVS_ROTATION_KEY_TTL: '7s'
+  JVS_ROTATION_GRACE_PERIOD: '2s'
+  JVS_ROTATION_PROPAGATION_DELAY: '1s'
+  JVS_ROTATION_DISABLED_PERIOD: '1s'
 
 concurrency:
   group: '${{ github.workflow }}-${{ github.head_ref || github.ref }}'
@@ -168,7 +174,7 @@ jobs:
       - id: 'create_kms_key'
         name: 'Create kms key'
         run: |-
-          gcloud kms keys create ${{ env.TAG_ID }} \
+          gcloud kms keys create ${{ env.KMS_KEY_NAME }} \
             --keyring ${{ env.KMS_KEYRING_ID }} \
             --location global \
             --purpose "asymmetric-signing" \
@@ -182,7 +188,7 @@ jobs:
             --region="us-central1" \
             --image="${{ env.CONTAINER_REGISTRY }}/${{ env.IMAGE_NAME }}:${{ env.DOCKER_TAG }}-amd64" \
             --tag="${{ env.TAG_ID }}" \
-            --update-env-vars="JVS_KEY=projects/${{ env.PROJECT_ID }}/locations/global/keyRings/${{ env.KMS_KEYRING_ID }}/cryptoKeys/${{ env.TAG_ID }}"
+            --update-env-vars="JVS_KEY=projects/${{ env.PROJECT_ID }}/locations/global/keyRings/${{ env.KMS_KEYRING_ID }}/cryptoKeys/${{ env.KMS_KEY_NAME }}"
       - name: 'Update Cert rotator service'
         run: |-
           gcloud run services update ${{ env.CERT_ROTATOR_SERVICE_NAME }} \
@@ -190,7 +196,11 @@ jobs:
             --region="us-central1" \
             --image="${{ env.CONTAINER_REGISTRY }}/${{ env.IMAGE_NAME }}:${{ env.DOCKER_TAG }}-amd64" \
             --tag="${{ env.TAG_ID }}" \
-            --update-env-vars="JVS_KEY_NAMES=projects/${{ env.PROJECT_ID }}/locations/global/keyRings/${{ env.KMS_KEYRING_ID }}/cryptoKeys/${{ env.TAG_ID }}"
+            --update-env-vars="JVS_KEY_NAMES=projects/${{ env.PROJECT_ID }}/locations/global/keyRings/${{ env.KMS_KEYRING_ID }}/cryptoKeys/${{ env.KMS_KEY_NAME }},\
+              JVS_ROTATION_GRACE_PERIOD=${{ env.JVS_ROTATION_GRACE_PERIOD }},\
+              JVS_ROTATION_KEY_TTL=${{ env.JVS_ROTATION_KEY_TTL }},\
+              JVS_ROTATION_PROPAGATION_DELAY=${{ env.JVS_ROTATION_PROPAGATION_DELAY }},\
+              JVS_ROTATION_DISABLED_PERIOD=${{ env.JVS_ROTATION_DISABLED_PERIOD}}"
       - name: 'Update Public key service'
         run: |-
           gcloud run services update ${{ env.PUBLIC_KEY_SERVICE_NAME }} \
@@ -198,7 +208,7 @@ jobs:
             --region="us-central1" \
             --image="${{ env.CONTAINER_REGISTRY }}/${{ env.IMAGE_NAME }}:${{ env.DOCKER_TAG }}-amd64" \
             --tag="${{ env.TAG_ID }}" \
-            --update-env-vars="JVS_KEY_NAMES=projects/${{ env.PROJECT_ID }}/locations/global/keyRings/${{ env.KMS_KEYRING_ID }}/cryptoKeys/${{ env.TAG_ID }}"
+            --update-env-vars="JVS_KEY_NAMES=projects/${{ env.PROJECT_ID }}/locations/global/keyRings/${{ env.KMS_KEYRING_ID }}/cryptoKeys/${{ env.KMS_KEY_NAME }}"
       - name: 'Update UI service'
         run: |-
           gcloud run services update ${{ env.UI_SERVICE_NAME }} \
@@ -206,11 +216,11 @@ jobs:
             --region="us-central1" \
             --image="${{ env.CONTAINER_REGISTRY }}/${{ env.IMAGE_NAME }}:${{ env.DOCKER_TAG }}-amd64" \
             --tag="${{ env.TAG_ID }}" \
-            --update-env-vars="JVS_KEY=projects/${{ env.PROJECT_ID }}/locations/global/keyRings/${{ env.KMS_KEYRING_ID }}/cryptoKeys/${{ env.TAG_ID }}"
+            --update-env-vars="JVS_KEY=projects/${{ env.PROJECT_ID }}/locations/global/keyRings/${{ env.KMS_KEYRING_ID }}/cryptoKeys/${{ env.KMS_KEY_NAME }}"
       # the id token we get from google-github-actions/auth can only be used to its
       # audience, so we have to get different id token for different services.
       - id: 'get_api_service_id_token'
-        name: 'Get Google Cloud ID token'
+        name: 'Get API Service ID token'
         uses: 'google-github-actions/auth@ef5d53e30bbcd8d0836f4288f5e50ff3e086997d' # ratchet:google-github-actions/auth@v1
         with:
           workload_identity_provider: '${{ env.WIF_PROVIDER }}'
@@ -219,7 +229,7 @@ jobs:
           id_token_include_email: 'true'
           token_format: 'id_token'
       - id: 'get_ui_service_id_token'
-        name: 'Get Google Cloud ID token'
+        name: 'Get UI Service ID token'
         uses: 'google-github-actions/auth@ef5d53e30bbcd8d0836f4288f5e50ff3e086997d' # ratchet:google-github-actions/auth@v1
         with:
           workload_identity_provider: '${{ env.WIF_PROVIDER }}'
@@ -228,7 +238,7 @@ jobs:
           id_token_include_email: 'true'
           token_format: 'id_token'
       - id: 'get_cert_rotator_service_id_token'
-        name: 'Get Google Cloud ID token'
+        name: 'Get Cert Rotator ID token'
         uses: 'google-github-actions/auth@ef5d53e30bbcd8d0836f4288f5e50ff3e086997d' # ratchet:google-github-actions/auth@v1
         with:
           workload_identity_provider: '${{ env.WIF_PROVIDER }}'
@@ -236,7 +246,8 @@ jobs:
           id_token_audience: 'https://${{ env.CERT_ROTATOR_SERVICE_NAME }}-${{ env.SERVICES_URL_POSTFIX }}'
           id_token_include_email: 'true'
           token_format: 'id_token'
-      - name: 'Run integration tests'
+      - id: 'run_integ_test'
+        name: 'Run integration tests'
         env:
           TEST_INTEGRATION: 'true'
           INTEG_TEST_API_SERVER: '${{ env.TAG_ID }}---${{ env.API_SERVICE_NAME }}-${{ env.SERVICES_URL_POSTFIX }}:443'
@@ -258,10 +269,18 @@ jobs:
       #
       # See: https://cloud.google.com/kms/docs/faq#cannot_delete.
       - name: 'Clean up kms key'
-        if: '${{ always()  && steps.create_kms_key.outcome == ''success'' }}'
+        # clean up key version 2&3
+        if: '${{ always() && steps.create_kms_key.outcome == ''success'' }}'
         run: |-
-          gcloud kms keys versions destroy 1 \
-            --key ${{ env.TAG_ID }} \
-            --keyring ${{ env.KMS_KEYRING_ID }} \
-            --location global \
-            --project ${{ env.PROJECT_ID }}
+          KEY_VERSIONS=$(gcloud kms keys versions list \
+            --location=global \
+            --keyring=${{ env.KMS_KEYRING_ID }} \
+            --key=${{ env.KMS_KEY_NAME }} \
+            --project=${{ env.PROJECT_ID }} \
+            --filter="state!=DESTROY_SCHEDULED AND state!=DESTROYED" \
+            --format="value(name)")
+
+          IFS=$'\n'; for VERSION in $KEY_VERSIONS; do
+            echo "Deleting ${VERSION}"
+            gcloud kms keys versions destroy ${VERSION} --quiet
+          done

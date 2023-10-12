@@ -23,18 +23,24 @@ package integration
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"io"
 	"log"
 	"net/http"
 	"os"
+	"strconv"
 	"strings"
 	"testing"
 	"time"
 
+	kms "cloud.google.com/go/kms/apiv1"
+	"cloud.google.com/go/kms/apiv1/kmspb"
 	"github.com/abcxyz/jvs/pkg/cli"
+	"github.com/abcxyz/jvs/pkg/jvscrypto"
 	"github.com/google/go-cmp/cmp"
 	"github.com/lestrrat-go/jwx/v2/jwt"
+	"google.golang.org/api/iterator"
 )
 
 // Global integration test config.
@@ -42,6 +48,8 @@ var (
 	cfg *config
 
 	httpClient *http.Client
+
+	keyResouceName string
 
 	// Keys we don't compare in validation result.
 	ignoreKeysMap map[string]struct{} = map[string]struct{}{
@@ -83,6 +91,8 @@ func TestMain(m *testing.M) {
 		httpClient = &http.Client{
 			Timeout: 5 * time.Second,
 		}
+
+		keyResouceName = fmt.Sprintf("projects/%s/locations/global/keyRings/%s/cryptoKeys/%s", cfg.ProjectID, cfg.KeyRing, cfg.KeyName)
 
 		return m.Run()
 	}())
@@ -192,67 +202,107 @@ func TestAPIAndPublicKeyService(t *testing.T) {
 func TestUIServiceHealthCheck(t *testing.T) {
 	t.Parallel()
 
-	addr := cfg.UIServiceAddr
-	wantStatusCode := http.StatusOK
 	healthCheckPath := "/health"
 
 	ctx := context.Background()
 
-	uri := addr + healthCheckPath
-	resp := testSendHTTPReq(ctx, t, uri, cfg.UIServiceIDToken)
+	uri := cfg.UIServiceAddr + healthCheckPath
 
-	defer resp.Body.Close()
-
-	if got, want := resp.StatusCode, wantStatusCode; got != want {
-		b, err := io.ReadAll(resp.Body)
-		if err != nil {
-			t.Fatal(err)
-		}
-		t.Errorf("health check status code got=%d want=%d, response=%s", got, want, string(b))
-	}
+	testCallEndpoint(ctx, t, uri, cfg.UIServiceIDToken, http.StatusOK)
 }
 
-func TestCertRotatorService(t *testing.T) {
+func TestCertRotatorHealthCheck(t *testing.T) {
 	t.Parallel()
 
-	cases := []struct {
-		name           string
-		path           string
-		wantStatusCode int
-	}{
-		{
-			name:           "cert_rotator_health_check",
-			path:           "/health",
-			wantStatusCode: http.StatusOK,
-		},
-		{
-			name:           "cert_rotator_key_rotation",
-			path:           "/",
-			wantStatusCode: http.StatusOK,
-		},
+	healthCheckPath := "/health"
+
+	ctx := context.Background()
+
+	uri := cfg.CertRotatorServiceAddr + healthCheckPath
+
+	testCallEndpoint(ctx, t, uri, cfg.CertRotatorServiceIDToken, http.StatusOK)
+}
+
+// Subtests must be run in sequence, and they have waits in between.
+// Therefore, they cannot be parallelized, and aren't a good fit for table testing.
+//
+//nolint:paralleltest
+func TestCertRotatorKeyRotation(t *testing.T) {
+	t.Parallel()
+
+	ctx := context.Background()
+
+	uri := cfg.CertRotatorServiceAddr + "/"
+
+	kmsClient, err := kms.NewKeyManagementClient(ctx)
+	if err != nil {
+		t.Fatalf("failed to setup kms client: %s", err)
 	}
 
-	for _, tc := range cases {
-		tc := tc
-		t.Run(tc.name, func(t *testing.T) {
-			t.Parallel()
+	t.Cleanup(func() {
+		if err := kmsClient.Close(); err != nil {
+			t.Errorf("Clean up of key %s failed: %s", keyResouceName, err)
+		}
+	})
 
-			ctx := context.Background()
-
-			uri := cfg.CertRotatorServiceAddr + tc.path
-			resp := testSendHTTPReq(ctx, t, uri, cfg.CertRotatorServiceIDToken)
-
-			defer resp.Body.Close()
-
-			if got, want := resp.StatusCode, tc.wantStatusCode; got != want {
-				b, err := io.ReadAll(resp.Body)
-				if err != nil {
-					t.Fatal(err)
-				}
-				t.Errorf("Got unexpected status code, got=%d want=%d, response=%s", got, want, string(b))
-			}
+	// Validate we have a single enabled key that is primary.
+	testValidateKeyVersionState(ctx, t, kmsClient, keyResouceName, 1,
+		map[int]kmspb.CryptoKeyVersion_CryptoKeyVersionState{
+			1: kmspb.CryptoKeyVersion_ENABLED,
 		})
-	}
+
+	t.Run("new_key_creation", func(t *testing.T) {
+		time.Sleep(5001 * time.Millisecond) // Wait past the next rotation event
+
+		testCallEndpoint(ctx, t, uri, cfg.CertRotatorServiceIDToken, http.StatusOK)
+
+		// Validate we have created a new key, but haven't set it as primary yet.
+		testValidateKeyVersionState(ctx, t, kmsClient, keyResouceName, 1,
+			map[int]kmspb.CryptoKeyVersion_CryptoKeyVersionState{
+				1: kmspb.CryptoKeyVersion_ENABLED,
+				2: kmspb.CryptoKeyVersion_ENABLED,
+			})
+	})
+
+	t.Run("new_key_promotion", func(t *testing.T) {
+		time.Sleep(1001 * time.Millisecond) // Wait past the propagation delay.
+
+		testCallEndpoint(ctx, t, uri, cfg.CertRotatorServiceIDToken, http.StatusOK)
+
+		// Validate our new key has been set to primary
+		testValidateKeyVersionState(ctx, t, kmsClient, keyResouceName, 2,
+			map[int]kmspb.CryptoKeyVersion_CryptoKeyVersionState{
+				1: kmspb.CryptoKeyVersion_ENABLED,
+				2: kmspb.CryptoKeyVersion_ENABLED,
+			})
+	})
+
+	t.Run("old_key_disable", func(t *testing.T) {
+		time.Sleep(2001 * time.Millisecond) // Wait past the grace period.
+
+		testCallEndpoint(ctx, t, uri, cfg.CertRotatorServiceIDToken, http.StatusOK)
+
+		// Validate that our old key has been disabled.
+		testValidateKeyVersionState(ctx, t, kmsClient, keyResouceName, 2,
+			map[int]kmspb.CryptoKeyVersion_CryptoKeyVersionState{
+				1: kmspb.CryptoKeyVersion_DISABLED,
+				2: kmspb.CryptoKeyVersion_ENABLED,
+			})
+	})
+
+	t.Run("old_key_destroy", func(t *testing.T) {
+		time.Sleep(2001 * time.Millisecond) // Wait past the disabled period and next rotation event.
+
+		testCallEndpoint(ctx, t, uri, cfg.CertRotatorServiceIDToken, http.StatusOK)
+
+		// Validate that our old key has been scheduled for destruction, and cycle has started again.
+		testValidateKeyVersionState(ctx, t, kmsClient, keyResouceName, 2,
+			map[int]kmspb.CryptoKeyVersion_CryptoKeyVersionState{
+				1: kmspb.CryptoKeyVersion_DESTROY_SCHEDULED,
+				2: kmspb.CryptoKeyVersion_ENABLED,
+				3: kmspb.CryptoKeyVersion_ENABLED,
+			})
+	})
 }
 
 // testNormalizeTokenMap parses the tokenMap by overwriting the value for ignoreKeys
@@ -280,7 +330,7 @@ func testNormalizeTokenMap(tb testing.TB, m map[string]any) map[string]any {
 	return m
 }
 
-func testSendHTTPReq(ctx context.Context, tb testing.TB, uri, token string) *http.Response {
+func testCallEndpoint(ctx context.Context, tb testing.TB, uri, token string, wantStatusCode int) {
 	tb.Helper()
 
 	req, err := http.NewRequestWithContext(ctx, http.MethodGet, uri, nil)
@@ -295,5 +345,59 @@ func testSendHTTPReq(ctx context.Context, tb testing.TB, uri, token string) *htt
 		tb.Fatalf("client failed to get response: %v", err)
 	}
 
-	return resp
+	defer resp.Body.Close()
+
+	if got, want := resp.StatusCode, wantStatusCode; got != want {
+		b, err := io.ReadAll(resp.Body)
+		if err != nil {
+			tb.Fatal(err)
+		}
+		tb.Errorf("Got unexpected status code, got=%d want=%d, response=%s", got, want, string(b))
+	}
+}
+
+func testValidateKeyVersionState(ctx context.Context, tb testing.TB, kmsClient *kms.KeyManagementClient, keyName string,
+	expectedPrimary int, expectedStates map[int]kmspb.CryptoKeyVersion_CryptoKeyVersionState,
+) {
+	tb.Helper()
+	// validate that each version is in the expected state.
+	it := kmsClient.ListCryptoKeyVersions(ctx, &kmspb.ListCryptoKeyVersionsRequest{
+		Parent: keyName,
+	})
+	count := 0
+	for {
+		ver, err := it.Next()
+		if errors.Is(err, iterator.Done) {
+			break
+		}
+		if err != nil {
+			tb.Fatalf("err while calling kms to get key versions: %s", err)
+		}
+		number, err := strconv.Atoi(ver.Name[strings.LastIndex(ver.Name, "/")+1:])
+		if err != nil {
+			tb.Fatalf("couldn't convert version %s to number: %s", ver.Name, err)
+		}
+		if ver.State != expectedStates[number] {
+			tb.Errorf("version %s was in state %s, but expected %s", ver.Name, ver.State, expectedStates[number])
+		}
+		count++
+	}
+	if count != len(expectedStates) {
+		tb.Errorf("got %d versions, expected %d", count, len(expectedStates))
+	}
+
+	// validate the primary is set correctly.
+	resp, err := kmsClient.GetCryptoKey(ctx, &kmspb.GetCryptoKeyRequest{Name: keyName})
+	if err != nil {
+		tb.Fatalf("err while calling kms: %s", err)
+	}
+	primaryName := resp.Labels[jvscrypto.PrimaryKey]
+	primaryLabel := primaryName[strings.LastIndex(primaryName, "/")+1:]
+	primaryNumber, err := strconv.Atoi(strings.TrimPrefix(primaryLabel, jvscrypto.PrimaryLabelPrefix))
+	if err != nil {
+		tb.Fatalf("couldn't convert version %s to number: %s", primaryName, err)
+	}
+	if primaryNumber != expectedPrimary {
+		tb.Errorf("primary was set to version %d, but expected %d", primaryNumber, expectedPrimary)
+	}
 }
