@@ -41,6 +41,7 @@ import (
 	"github.com/google/go-cmp/cmp"
 	"github.com/lestrrat-go/jwx/v2/jwt"
 	"google.golang.org/api/iterator"
+	fieldmask "google.golang.org/genproto/protobuf/field_mask"
 	"google.golang.org/protobuf/types/known/fieldmaskpb"
 )
 
@@ -307,8 +308,13 @@ func TestCertRotatorKeyRotation(t *testing.T) {
 
 	t.Run("invalid_primary", func(t *testing.T) {
 		// Set primary to a version that doesn't exist
-		if err := jvscrypto.SetPrimary(ctx, kmsClient, keyResouceName, keyResouceName+"/cryptoKeyVersions/99"); err != nil {
-			t.Fatalf("unable to set primary: %s", err)
+		// if err := jvscrypto.SetPrimary(ctx, kmsClient, keyResouceName, keyResouceName+"/cryptoKeyVersions/99"); err != nil {
+		// 	t.Fatalf("unable to set primary: %s", err)
+		// }
+
+		// Remove the primary key version
+		if err := testRemoveLabelPrimary(ctx, t, kmsClient, keyResouceName); err != nil {
+			t.Errorf("failed to remove label: %s", err)
 		}
 
 		testCallEndpoint(ctx, t, uri, cfg.CertRotatorServiceIDToken, http.StatusOK)
@@ -433,6 +439,24 @@ func testValidateKeyVersionState(ctx context.Context, tb testing.TB, kmsClient *
 	if primaryNumber != expectedPrimary {
 		tb.Errorf("primary was set to version %d, but expected %d", primaryNumber, expectedPrimary)
 	}
+}
+
+func testRemoveLabelPrimary(ctx context.Context, tb testing.TB, kmsClient *kms.KeyManagementClient, keyName string) error {
+	tb.Helper()
+	req := &kmspb.UpdateCryptoKeyRequest{
+		CryptoKey: &kmspb.CryptoKey{
+			Name:   keyName,
+			Labels: nil,
+		},
+		UpdateMask: &fieldmask.FieldMask{
+			Paths: []string{"labels"},
+		},
+	}
+	_, err := kmsClient.UpdateCryptoKey(ctx, req)
+	if err != nil {
+		return fmt.Errorf("failed to update key: %w", err)
+	}
+	return nil
 }
 
 // This is intended to mock an event where we need to emergently rotate the key.
