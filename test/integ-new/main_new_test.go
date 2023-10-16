@@ -458,6 +458,26 @@ func testRemoveLabelPrimary(ctx context.Context, tb testing.TB, kmsClient *kms.K
 // We disable the key version and remove it as primary.
 func testEmergentDisable(ctx context.Context, tb testing.TB, kmsClient *kms.KeyManagementClient, keyName, versionName string) {
 	tb.Helper()
+
+	key, err := kmsClient.GetCryptoKey(ctx, &kmspb.GetCryptoKeyRequest{Name: keyName})
+	if err != nil {
+		tb.Fatalf("unable to retrieve key %s: %s", keyName, err)
+	}
+
+	// Remove the labels for the key.
+	labels := make(map[string]string, 0)
+	key.Labels = labels
+
+	var mT *kmspb.CryptoKey
+	mask, err := fieldmaskpb.New(mT, "labels")
+	if err != nil {
+		tb.Fatalf("unable to create field mask: %s", err)
+	}
+	if _, err := kmsClient.UpdateCryptoKey(ctx, &kmspb.UpdateCryptoKeyRequest{CryptoKey: key, UpdateMask: mask}); err != nil {
+		tb.Fatalf("unable to set labels: %s", err)
+	}
+
+	// Disable keyversion
 	ver, err := kmsClient.GetCryptoKeyVersion(ctx, &kmspb.GetCryptoKeyVersionRequest{Name: versionName})
 	if err != nil {
 		tb.Fatalf("unable to retrieve version %s: %s", versionName, err)
@@ -465,7 +485,7 @@ func testEmergentDisable(ctx context.Context, tb testing.TB, kmsClient *kms.KeyM
 
 	ver.State = kmspb.CryptoKeyVersion_DISABLED
 	var messageType *kmspb.CryptoKeyVersion
-	mask, err := fieldmaskpb.New(messageType, "state")
+	mask, err = fieldmaskpb.New(messageType, "state")
 	if err != nil {
 		tb.Fatalf("unable to create field mask: %s", err)
 	}
@@ -475,22 +495,5 @@ func testEmergentDisable(ctx context.Context, tb testing.TB, kmsClient *kms.KeyM
 	}
 	if _, err := kmsClient.UpdateCryptoKeyVersion(ctx, updateReq); err != nil {
 		tb.Fatalf("unable to disable version: %s", err)
-	}
-
-	key, err := kmsClient.GetCryptoKey(ctx, &kmspb.GetCryptoKeyRequest{Name: keyName})
-	if err != nil {
-		tb.Fatalf("unable to retrieve key %s: %s", keyName, err)
-	}
-
-	labels := make(map[string]string, 0)
-	key.Labels = labels
-
-	var mT *kmspb.CryptoKey
-	mask, err = fieldmaskpb.New(mT, "labels")
-	if err != nil {
-		tb.Fatalf("unable to create field mask: %s", err)
-	}
-	if _, err := kmsClient.UpdateCryptoKey(ctx, &kmspb.UpdateCryptoKeyRequest{CryptoKey: key, UpdateMask: mask}); err != nil {
-		tb.Fatalf("unable to set labels: %s", err)
 	}
 }
