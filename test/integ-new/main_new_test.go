@@ -307,7 +307,6 @@ func TestCertRotatorKeyRotation(t *testing.T) {
 	})
 
 	t.Run("invalid_primary", func(t *testing.T) {
-
 		// Remove the primary key version
 		if err := testRemoveLabelPrimary(ctx, t, kmsClient, keyResouceName); err != nil {
 			t.Errorf("failed to remove label: %s", err)
