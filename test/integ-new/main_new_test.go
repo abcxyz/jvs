@@ -307,10 +307,6 @@ func TestCertRotatorKeyRotation(t *testing.T) {
 	})
 
 	t.Run("invalid_primary", func(t *testing.T) {
-		// Set primary to a version that doesn't exist
-		// if err := jvscrypto.SetPrimary(ctx, kmsClient, keyResouceName, keyResouceName+"/cryptoKeyVersions/99"); err != nil {
-		// 	t.Fatalf("unable to set primary: %s", err)
-		// }
 
 		// Remove the primary key version
 		if err := testRemoveLabelPrimary(ctx, t, kmsClient, keyResouceName); err != nil {
