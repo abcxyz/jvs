@@ -334,6 +334,22 @@ func TestCertRotatorKeyRotation(t *testing.T) {
 				3: kmspb.CryptoKeyVersion_DISABLED,
 			})
 	})
+
+	t.Run("disable_all_key", func(t *testing.T) {
+		// Disable the last enabled key
+		testEmergentDisable(ctx, t, kmsClient, keyResouceName, keyResouceName+"/cryptoKeyVersions/2")
+
+		// Validate that the rotator will fix the situation by creating a new version and setting it to primary
+		testCallEndpoint(ctx, t, uri, cfg.CertRotatorServiceIDToken, http.StatusOK)
+
+		testValidateKeyVersionState(ctx, t, kmsClient, keyResouceName, 4,
+			map[int]kmspb.CryptoKeyVersion_CryptoKeyVersionState{
+				1: kmspb.CryptoKeyVersion_DESTROY_SCHEDULED,
+				2: kmspb.CryptoKeyVersion_DISABLED,
+				3: kmspb.CryptoKeyVersion_DISABLED,
+				4: kmspb.CryptoKeyVersion_ENABLED,
+			})
+	})
 }
 
 // testNormalizeTokenMap parses the tokenMap by overwriting the value for ignoreKeys
