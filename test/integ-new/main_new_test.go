@@ -325,7 +325,7 @@ func TestCertRotatorKeyRotation(t *testing.T) {
 
 	t.Run("emergent_disable", func(t *testing.T) {
 		// Emergently disable our primary.
-		testEmergentDisable(ctx, t, kmsClient, keyResouceName, keyResouceName+"/cryptoKeyVersions/2")
+		testEmergentDisable(ctx, t, kmsClient, keyResouceName, keyResouceName+"/cryptoKeyVersions/3")
 
 		// Validate that the rotator will fix the situation by creating a new version and setting it to primary
 		testCallEndpoint(ctx, t, uri, cfg.CertRotatorServiceIDToken, http.StatusOK)
