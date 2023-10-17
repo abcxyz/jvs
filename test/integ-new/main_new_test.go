@@ -41,7 +41,6 @@ import (
 	"github.com/google/go-cmp/cmp"
 	"github.com/lestrrat-go/jwx/v2/jwt"
 	"google.golang.org/api/iterator"
-	fieldmask "google.golang.org/genproto/protobuf/field_mask"
 	"google.golang.org/protobuf/types/known/fieldmaskpb"
 )
 
@@ -308,9 +307,7 @@ func TestCertRotatorKeyRotation(t *testing.T) {
 
 	t.Run("invalid_primary", func(t *testing.T) {
 		// Remove the primary key version
-		if err := testRemoveLabelPrimary(ctx, t, kmsClient, keyResouceName); err != nil {
-			t.Errorf("failed to remove label: %s", err)
-		}
+		testRemoveLabelPrimary(ctx, t, kmsClient, keyResouceName)
 
 		testCallEndpoint(ctx, t, uri, cfg.CertRotatorServiceIDToken, http.StatusOK)
 
@@ -330,11 +327,11 @@ func TestCertRotatorKeyRotation(t *testing.T) {
 		// Validate that the rotator will fix the situation by creating a new version and setting it to primary
 		testCallEndpoint(ctx, t, uri, cfg.CertRotatorServiceIDToken, http.StatusOK)
 
-		testValidateKeyVersionState(ctx, t, kmsClient, keyResouceName, 3,
+		testValidateKeyVersionState(ctx, t, kmsClient, keyResouceName, 2,
 			map[int]kmspb.CryptoKeyVersion_CryptoKeyVersionState{
 				1: kmspb.CryptoKeyVersion_DESTROY_SCHEDULED,
-				2: kmspb.CryptoKeyVersion_DISABLED,
-				3: kmspb.CryptoKeyVersion_ENABLED,
+				2: kmspb.CryptoKeyVersion_ENABLED,
+				3: kmspb.CryptoKeyVersion_DISABLED,
 			})
 	})
 }
@@ -436,29 +433,8 @@ func testValidateKeyVersionState(ctx context.Context, tb testing.TB, kmsClient *
 	}
 }
 
-func testRemoveLabelPrimary(ctx context.Context, tb testing.TB, kmsClient *kms.KeyManagementClient, keyName string) error {
+func testRemoveLabelPrimary(ctx context.Context, tb testing.TB, kmsClient *kms.KeyManagementClient, keyName string) {
 	tb.Helper()
-	req := &kmspb.UpdateCryptoKeyRequest{
-		CryptoKey: &kmspb.CryptoKey{
-			Name:   keyName,
-			Labels: nil,
-		},
-		UpdateMask: &fieldmask.FieldMask{
-			Paths: []string{"labels"},
-		},
-	}
-	_, err := kmsClient.UpdateCryptoKey(ctx, req)
-	if err != nil {
-		return fmt.Errorf("failed to update key: %w", err)
-	}
-	return nil
-}
-
-// This is intended to mock an event where we need to emergently rotate the key.
-// We disable the key version and remove it as primary.
-func testEmergentDisable(ctx context.Context, tb testing.TB, kmsClient *kms.KeyManagementClient, keyName, versionName string) {
-	tb.Helper()
-
 	key, err := kmsClient.GetCryptoKey(ctx, &kmspb.GetCryptoKeyRequest{Name: keyName})
 	if err != nil {
 		tb.Fatalf("unable to retrieve key %s: %s", keyName, err)
@@ -474,8 +450,16 @@ func testEmergentDisable(ctx context.Context, tb testing.TB, kmsClient *kms.KeyM
 		tb.Fatalf("unable to create field mask: %s", err)
 	}
 	if _, err := kmsClient.UpdateCryptoKey(ctx, &kmspb.UpdateCryptoKeyRequest{CryptoKey: key, UpdateMask: mask}); err != nil {
-		tb.Fatalf("unable to set labels: %s", err)
+		tb.Fatalf("failed to remove labels: %s", err)
 	}
+}
+
+// This is intended to mock an event where we need to emergently rotate the key.
+// We disable the key version and remove it as primary.
+func testEmergentDisable(ctx context.Context, tb testing.TB, kmsClient *kms.KeyManagementClient, keyName, versionName string) {
+	tb.Helper()
+
+	testRemoveLabelPrimary(ctx, tb, kmsClient, keyName)
 
 	// Disable keyversion
 	ver, err := kmsClient.GetCryptoKeyVersion(ctx, &kmspb.GetCryptoKeyVersionRequest{Name: versionName})
@@ -485,7 +469,7 @@ func testEmergentDisable(ctx context.Context, tb testing.TB, kmsClient *kms.KeyM
 
 	ver.State = kmspb.CryptoKeyVersion_DISABLED
 	var messageType *kmspb.CryptoKeyVersion
-	mask, err = fieldmaskpb.New(messageType, "state")
+	mask, err := fieldmaskpb.New(messageType, "state")
 	if err != nil {
 		tb.Fatalf("unable to create field mask: %s", err)
 	}
