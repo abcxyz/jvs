@@ -94,18 +94,18 @@ jobs:
       - name: 'Destroy all key version in the keyring'
         shell: 'bash'
         run: |-
-          KEY=$(gcloud kms keys list \
+          KEYS=$(gcloud kms keys list \
             --location=global \
             --keyring=${{ env.INTEGRATION_KEY_RING_ID }} \
             --project=${{ env.INTEGRATION_PROJECT_ID }} \
             --format="value(name)" \
             --filter="createTime >= '-p${{ env.TIME_SPAN }}'")
-          for K in $KEYS; do
+          for KEY in $KEYS; do
             echo "Getting active key version from key ${KEY}"
             KEY_VERSIONS=$(gcloud kms keys versions list \
               --location=global \
               --keyring=${{ env.INTEGRATION_KEY_RING_ID }} \
-              --key=${K} \
+              --key=${KEY} \
               --project=${{ env.INTEGRATION_PROJECT_ID }} \
               --filter="state!=DESTROY_SCHEDULED AND state!=DESTROYED" \
               --format="value(name)")
