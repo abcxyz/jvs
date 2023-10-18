@@ -84,15 +84,13 @@ jobs:
           service_account: '${{ env.WIF_SERVICE_ACCOUNT }}'
       - uses: 'google-github-actions/setup-gcloud@e30db14379863a8c79331b04a9969f4c1e225e0b' # ratchet:google-github-actions/setup-gcloud@v1
       - name: 'create time span env var'
-        if: '${{ github.event_name == ''workflow_dispatch''}}'
         shell: 'bash'
         run: |-
-          echo "TIME_SPAN=${{ inputs.time_span }}" >> $GITHUB_ENV
-      - name: 'create time span env var'
-        if: '${{ github.event_name != ''workflow_dispatch''}}'
-        shell: 'bash'
-        run: |-
-          echo "TIME_SPAN=1d" >> $GITHUB_ENV
+          if [ '${{ github.event_name }}' == 'workflow_dispatch' ]; then
+            echo "TIME_SPAN=${{ inputs.time_span }}" >> $GITHUB_ENV
+          else
+            echo "TIME_SPAN=1d" >> $GITHUB_ENV
+          fi
       - name: 'Destroy all key version in the keyring'
         shell: 'bash'
         run: |-
