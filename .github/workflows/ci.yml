@@ -264,7 +264,7 @@ jobs:
             -race \
             -shuffle=on \
             -timeout='10m' \
-            ./test/integ-new/...
+            ./test/integ/...
       # Keys can not be deleted, we can destroy key versions to avoid billing.
       #
       # See: https://cloud.google.com/kms/docs/faq#cannot_delete.
