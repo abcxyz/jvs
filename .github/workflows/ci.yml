@@ -18,10 +18,15 @@
 # has finished.
 name: 'ci'
 
-# This will also be updated once the new integration
-# test implementation has finished
 on:
+  push:
+    branches:
+      - 'main'
+  pull_request:
+    branches:
+      - 'main'
   workflow_dispatch:
+  workflow_call:
 
 env:
   PROJECT_ID: 'jvs-i-e5'

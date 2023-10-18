@@ -12,12 +12,6 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-// This folder (test/integ-new) will be used to replace
-// folder test/integ after all new integ tests are implemented.
-// For now these tests will be ran by ci-new.yml.
-// If you are making changes to this file, please manully
-// run the ci-new workflow to make sure things works.
-
 // Main entry point for integration tests.
 package integration
 
