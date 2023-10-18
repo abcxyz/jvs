@@ -27,6 +27,7 @@ env:
   WIF_SERVICE_ACCOUNT: 'github-automation-bot@gha-jvs-ci-i-31a91c.iam.gserviceaccount.com'
   INTEGRATION_PROJECT_ID: 'jvs-i-e5'
   INTEGRATION_REGION: 'us-central1'
+  INTEGATION_KMS_KEYRING_ID: 'jvs-keyring-0666'
 
 permissions:
   contents: 'read'
@@ -68,3 +69,28 @@ jobs:
             echo "Deleting ${NAME}..."
             gcloud run revisions delete ${NAME} --project="$INTEGRATION_PROJECT_ID" --region="$INTEGRATION_REGION" --quiet --async
           done
+      - name: "Remove newly created KMS keys"
+        shell: 'bash'
+        run: |-
+          # List all keys created in the last 24 hours, and destroy all their key versions
+          KEY=$(gcloud kms keys list \
+            --location=global \
+            --keyring=${{ env.INTEGATION_KMS_KEYRING_ID }} \
+            --project=${{ env.INTEGRATION_PROJECT_ID }} \
+            --format="value(name)" \
+            --filter="createTime >= '-p1d'")
+            IFS=$'\n'; for K in $KEYS; do
+            echo "Getting active key version in key ${KEY}"
+            KEY_VERSIONS=$(gcloud kms keys versions list \
+              --location=global \
+              --keyring=${{ env.INTEGATION_KMS_KEYRING_ID }} \
+              --key=${K} \
+              --project=${{ env.INTEGRATION_PROJECT_ID }} \
+              --filter="state!=DESTROY_SCHEDULED AND state!=DESTROYED" \
+              --format="value(name)")
+            IFS=$'\n'; for VERSION in $KEY_VERSIONS; do
+              echo "Deleting ${VERSION}"
+              gcloud kms keys versions destroy ${VERSION} --quiet
+            done
+          done         
+
