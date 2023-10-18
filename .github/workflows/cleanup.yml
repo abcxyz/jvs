@@ -69,7 +69,7 @@ jobs:
             echo "Deleting ${NAME}..."
             gcloud run revisions delete ${NAME} --project="$INTEGRATION_PROJECT_ID" --region="$INTEGRATION_REGION" --quiet --async
           done
-      - name: "Remove newly created KMS keys"
+      - name: 'Remove newly created KMS keys'
         shell: 'bash'
         run: |-
           # List all keys created in the last 24 hours, and destroy all their key versions
@@ -92,5 +92,4 @@ jobs:
               echo "Deleting ${VERSION}"
               gcloud kms keys versions destroy ${VERSION} --quiet
             done
-          done         
-
+          done
