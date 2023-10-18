@@ -24,10 +24,22 @@ on:
         description: 'id for the keyring'
         required: true
         default: 'jvs-keyring-0666'
-      key_id:
-        description: 'id for the kms key'
+      time_span:
+        description: 'keys created in past time span'
+        default: '1d'
+        type: 'string'
+  workflow_call:
+    inputs:
+      key_ring_id:
+        description: 'id for the keyring'
         required: true
-        default: ''
+        default: 'jvs-keyring-0666'
+        type: 'string'
+      time_span:
+        description: 'keys created in past time span'
+        default: '1d'
+        type: 'string'
+
 
 env:
   WIF_PROVIDER: 'projects/851681819867/locations/global/workloadIdentityPools/github-automation/providers/jvs-ci-i'
@@ -39,7 +51,8 @@ permissions:
   id-token: 'write'
 
 jobs:
-  # clean_up will destroy all keyversions that is not DESTROY_SCHEDULED or DESTROYED
+  # clean_up will destroy all keyversions of key in the provided keyring
+  # that are not in state DESTROY_SCHEDULED or DESTROYED
   clean_up:
     runs-on: 'ubuntu-latest'
     steps:
@@ -48,34 +61,17 @@ jobs:
         with:
           workload_identity_provider: '${{ env.WIF_PROVIDER }}'
           service_account: '${{ env.WIF_SERVICE_ACCOUNT }}'
-      - uses: 'google-github-actions/setup-gcloud@e30db14379863a8c79331b04a9969f4c1e225e0b' # ratchet:google-github-actions/setup-gcloud@v1
-      - name: 'Destroy all key version in a key'
-        if: '${{ inputs.key_id != '''' }}'
-        shell: 'bash'
-        run: |-
-          KEY_VERSIONS=$(gcloud kms keys versions list \
-            --location=global \
-            --keyring=${{ inputs.key_ring_id }} \
-            --key=${{ inputs.key_id }} \
-            --project=${{ env.PROJECT_ID }} \
-            --filter="state!=DESTROY_SCHEDULED AND state!=DESTROYED" \
-            --format="value(name)")
-
-          IFS=$'\n'; for VERSION in $KEY_VERSIONS; do
-            echo "Deleting ${VERSION}"
-            gcloud kms keys versions destroy ${VERSION} --quiet
-          done
       - name: 'Destroy all key version in the keyring'
-        if: '${{ inputs.key_id == '''' }}'
         shell: 'bash'
         run: |-
           KEY=$(gcloud kms keys list \
             --location=global \
             --keyring=${{ inputs.key_ring_id }} \
             --project=${{ env.PROJECT_ID }} \
-            --format="value(name)")
-          IFS=$'\n'; for K in $KEYS; do
-            echo "Getting active key version in key ${KEY}"
+            --format="value(name)" \
+            --filter="createTime >= '-p${{ inputs.time_span }}'")
+          for K in $KEYS; do
+            echo "Getting active key version from key ${KEY}"
             KEY_VERSIONS=$(gcloud kms keys versions list \
               --location=global \
               --keyring=${{ inputs.key_ring_id }} \
@@ -83,7 +79,7 @@ jobs:
               --project=${{ env.PROJECT_ID }} \
               --filter="state!=DESTROY_SCHEDULED AND state!=DESTROYED" \
               --format="value(name)")
-            IFS=$'\n'; for VERSION in $KEY_VERSIONS; do
+            for VERSION in $KEY_VERSIONS; do
               echo "Deleting ${VERSION}"
               gcloud kms keys versions destroy ${VERSION} --quiet
             done
