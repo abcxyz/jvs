@@ -12,10 +12,6 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-
-# We will remove ci.yml and rename this to ci.yml
-# after the new integration test implementation
-# has finished.
 name: 'ci'
 
 on:
