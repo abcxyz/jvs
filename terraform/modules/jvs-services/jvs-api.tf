@@ -30,4 +30,6 @@ module "api_cloud_run" {
     "PROJECT_ID" : var.project_id
     "JVS_KEY" : google_kms_crypto_key.signing_key.id,
   }, var.api_envvars, var.plugin_envvars)
+
+  secret_envvars = var.plugin_secret_envvars
 }
