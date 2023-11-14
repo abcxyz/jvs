@@ -109,10 +109,12 @@ func (c *APIServerCommand) RunUnstarted(ctx context.Context, args []string) (*se
 	}
 	closer = multicloser.Append(closer, kmsClient.Close)
 
-	grpcServer := grpc.NewServer(grpc.ChainUnaryInterceptor(
-		logging.GRPCUnaryInterceptor(logger, c.cfg.ProjectID),
-		otelgrpc.UnaryServerInterceptor(),
-	))
+	grpcServer := grpc.NewServer(
+		grpc.UnaryInterceptor(
+			logging.GRPCUnaryInterceptor(logger, c.cfg.ProjectID),
+		),
+		grpc.StatsHandler(otelgrpc.NewServerHandler()),
+	)
 
 	// Create basic health check
 	healthcheck.RegisterGRPCHealthCheck(grpcServer)
