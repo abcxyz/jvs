@@ -85,3 +85,12 @@ variable "alert_enabled" {
   description = "True if alerts are enabled, otherwise false."
   default     = false
 }
+
+variable "plugin_secret_envvars" {
+  description = "Secret environment variables from Secret Manager for the plugin."
+  type = map(object({
+    name    = string
+    version = string
+  }))
+  default = {}
+}

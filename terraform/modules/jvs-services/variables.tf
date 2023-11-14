@@ -115,3 +115,12 @@ variable "plugin_envvars" {
   type        = map(string)
   default     = {}
 }
+
+variable "plugin_secret_envvars" {
+  description = "Secret environment variables from Secret Manager for the plugin."
+  type = map(object({
+    name    = string
+    version = string
+  }))
+  default = {}
+}
