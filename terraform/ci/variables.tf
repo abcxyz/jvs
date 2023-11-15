@@ -35,3 +35,18 @@ variable "jvs_container_image" {
   description = "Container image for the jvsctl CLI and server entrypoints."
   type        = string
 }
+
+variable "plugin_envvars" {
+  description = "Env vars for plugin."
+  type        = map(string)
+  default     = {}
+}
+
+variable "plugin_secret_envvars" {
+  description = "Secret environment variables from Secret Manager for the plugin."
+  type = map(object({
+    name    = string
+    version = string
+  }))
+  default = {}
+}
