@@ -29,12 +29,6 @@ import (
 
 	kms "cloud.google.com/go/kms/apiv1"
 	"cloud.google.com/go/kms/apiv1/kmspb"
-	jvspb "github.com/abcxyz/jvs/apis/v0"
-	"github.com/abcxyz/jvs/pkg/config"
-	"github.com/abcxyz/jvs/pkg/jvscrypto"
-	"github.com/abcxyz/jvs/pkg/testutil"
-	"github.com/abcxyz/pkg/logging"
-	pkgtestutil "github.com/abcxyz/pkg/testutil"
 	"github.com/google/go-cmp/cmp"
 	"github.com/google/go-cmp/cmp/cmpopts"
 	"github.com/lestrrat-go/jwx/v2/jwa"
@@ -46,6 +40,13 @@ import (
 	"google.golang.org/grpc/codes"
 	"google.golang.org/grpc/status"
 	"google.golang.org/protobuf/types/known/durationpb"
+
+	jvspb "github.com/abcxyz/jvs/apis/v0"
+	"github.com/abcxyz/jvs/pkg/config"
+	"github.com/abcxyz/jvs/pkg/jvscrypto"
+	"github.com/abcxyz/jvs/pkg/testutil"
+	"github.com/abcxyz/pkg/logging"
+	pkgtestutil "github.com/abcxyz/pkg/testutil"
 )
 
 type mockValidator struct {

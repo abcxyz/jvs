@@ -21,9 +21,10 @@ import (
 	"os/exec"
 	"path/filepath"
 
+	"github.com/hashicorp/go-plugin"
+
 	jvspb "github.com/abcxyz/jvs/apis/v0"
 	"github.com/abcxyz/pkg/multicloser"
-	"github.com/hashicorp/go-plugin"
 )
 
 const (

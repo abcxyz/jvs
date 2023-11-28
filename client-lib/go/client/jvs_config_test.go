@@ -20,9 +20,10 @@ import (
 	"testing"
 	"time"
 
-	"github.com/abcxyz/pkg/testutil"
 	"github.com/google/go-cmp/cmp"
 	"github.com/sethvargo/go-envconfig"
+
+	"github.com/abcxyz/pkg/testutil"
 )
 
 func TestLoadJVSConfig(t *testing.T) {

@@ -22,8 +22,9 @@ import (
 	"io"
 	"sort"
 
-	jvspb "github.com/abcxyz/jvs/apis/v0"
 	"github.com/lestrrat-go/jwx/v2/jwt"
+
+	jvspb "github.com/abcxyz/jvs/apis/v0"
 )
 
 // Formatter is an interface which all formatters must implement.

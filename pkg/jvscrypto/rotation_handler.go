@@ -21,14 +21,14 @@ import (
 	"strings"
 	"time"
 
-	"github.com/abcxyz/jvs/pkg/config"
-	"github.com/abcxyz/pkg/logging"
-	"github.com/sethvargo/go-retry"
-	"google.golang.org/protobuf/types/known/fieldmaskpb"
-
 	kms "cloud.google.com/go/kms/apiv1"
 	"cloud.google.com/go/kms/apiv1/kmspb"
+	"github.com/sethvargo/go-retry"
 	"google.golang.org/api/iterator"
+	"google.golang.org/protobuf/types/known/fieldmaskpb"
+
+	"github.com/abcxyz/jvs/pkg/config"
+	"github.com/abcxyz/pkg/logging"
 )
 
 // RotationHandler handles all necessary rotation actions for asymmetric keys

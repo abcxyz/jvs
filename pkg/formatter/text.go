@@ -25,8 +25,9 @@ import (
 	"strings"
 	"time"
 
-	jvspb "github.com/abcxyz/jvs/apis/v0"
 	"github.com/lestrrat-go/jwx/v2/jwt"
+
+	jvspb "github.com/abcxyz/jvs/apis/v0"
 )
 
 // Text outputs the token into three sections:

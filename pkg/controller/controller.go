@@ -24,13 +24,13 @@ import (
 	"strings"
 	"time"
 
+	"golang.org/x/exp/slices"
+	"google.golang.org/protobuf/types/known/durationpb"
+
 	jvspb "github.com/abcxyz/jvs/apis/v0"
 	"github.com/abcxyz/jvs/internal/project"
 	"github.com/abcxyz/jvs/pkg/justification"
 	"github.com/abcxyz/pkg/renderer"
-
-	"golang.org/x/exp/slices"
-	"google.golang.org/protobuf/types/known/durationpb"
 )
 
 var ttls = map[string]struct{}{

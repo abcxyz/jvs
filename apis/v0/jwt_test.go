@@ -20,11 +20,12 @@ import (
 	"time"
 	"unsafe"
 
-	"github.com/abcxyz/pkg/testutil"
 	"github.com/google/go-cmp/cmp"
 	"github.com/google/go-cmp/cmp/cmpopts"
 	"github.com/lestrrat-go/jwx/v2/jwa"
 	"github.com/lestrrat-go/jwx/v2/jwt"
+
+	"github.com/abcxyz/pkg/testutil"
 )
 
 func TestGetRequestor(t *testing.T) {
