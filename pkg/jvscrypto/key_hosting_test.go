@@ -28,14 +28,15 @@ import (
 
 	kms "cloud.google.com/go/kms/apiv1"
 	"cloud.google.com/go/kms/apiv1/kmspb"
+	"github.com/google/go-cmp/cmp"
+	"google.golang.org/api/option"
+	"google.golang.org/grpc"
+
 	"github.com/abcxyz/jvs/pkg/config"
 	"github.com/abcxyz/jvs/pkg/testutil"
 	"github.com/abcxyz/pkg/logging"
 	"github.com/abcxyz/pkg/renderer"
 	pkgtestutil "github.com/abcxyz/pkg/testutil"
-	"github.com/google/go-cmp/cmp"
-	"google.golang.org/api/option"
-	"google.golang.org/grpc"
 )
 
 func TestGenerateJWKString(t *testing.T) {

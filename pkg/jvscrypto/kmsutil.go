@@ -24,10 +24,11 @@ import (
 
 	kms "cloud.google.com/go/kms/apiv1"
 	"cloud.google.com/go/kms/apiv1/kmspb"
-	"github.com/abcxyz/pkg/workerpool"
 	"github.com/lestrrat-go/jwx/v2/jwk"
 	"google.golang.org/api/iterator"
 	"google.golang.org/protobuf/types/known/fieldmaskpb"
+
+	"github.com/abcxyz/pkg/workerpool"
 )
 
 const (

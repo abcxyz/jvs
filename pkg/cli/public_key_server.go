@@ -20,6 +20,8 @@ import (
 	"net/http"
 
 	kms "cloud.google.com/go/kms/apiv1"
+	"google.golang.org/api/option"
+
 	"github.com/abcxyz/jvs/internal/version"
 	"github.com/abcxyz/jvs/pkg/config"
 	"github.com/abcxyz/jvs/pkg/jvscrypto"
@@ -29,7 +31,6 @@ import (
 	"github.com/abcxyz/pkg/multicloser"
 	"github.com/abcxyz/pkg/renderer"
 	"github.com/abcxyz/pkg/serving"
-	"google.golang.org/api/option"
 )
 
 var _ cli.Command = (*PublicKeyServerCommand)(nil)

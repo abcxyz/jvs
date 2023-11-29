@@ -25,6 +25,9 @@ import (
 
 	kms "cloud.google.com/go/kms/apiv1"
 	"cloud.google.com/go/kms/apiv1/kmspb"
+	"google.golang.org/api/option"
+	"google.golang.org/grpc"
+
 	"github.com/abcxyz/jvs/assets"
 	"github.com/abcxyz/jvs/pkg/config"
 	"github.com/abcxyz/jvs/pkg/justification"
@@ -34,8 +37,6 @@ import (
 	"github.com/abcxyz/pkg/logging"
 	"github.com/abcxyz/pkg/renderer"
 	pkgtestutil "github.com/abcxyz/pkg/testutil"
-	"google.golang.org/api/option"
-	"google.golang.org/grpc"
 )
 
 // ServerConfigResponse is the response from creating a server config.

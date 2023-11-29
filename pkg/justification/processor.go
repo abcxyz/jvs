@@ -21,12 +21,6 @@ import (
 	"time"
 
 	kms "cloud.google.com/go/kms/apiv1"
-	jvspb "github.com/abcxyz/jvs/apis/v0"
-	"github.com/abcxyz/jvs/pkg/config"
-	"github.com/abcxyz/jvs/pkg/jvscrypto"
-	"github.com/abcxyz/pkg/cache"
-	"github.com/abcxyz/pkg/logging"
-	"github.com/abcxyz/pkg/timeutil"
 	"github.com/google/uuid"
 	"github.com/lestrrat-go/jwx/v2/jwa"
 	"github.com/lestrrat-go/jwx/v2/jws"
@@ -34,6 +28,13 @@ import (
 	"github.com/sethvargo/go-gcpkms/pkg/gcpkms"
 	"google.golang.org/grpc/codes"
 	"google.golang.org/grpc/status"
+
+	jvspb "github.com/abcxyz/jvs/apis/v0"
+	"github.com/abcxyz/jvs/pkg/config"
+	"github.com/abcxyz/jvs/pkg/jvscrypto"
+	"github.com/abcxyz/pkg/cache"
+	"github.com/abcxyz/pkg/logging"
+	"github.com/abcxyz/pkg/timeutil"
 )
 
 // Processor performs the necessary logic to validate a justification, then

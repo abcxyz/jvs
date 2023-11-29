@@ -28,15 +28,16 @@ import (
 	"testing"
 	"time"
 
-	jvspb "github.com/abcxyz/jvs/apis/v0"
-	"github.com/abcxyz/jvs/pkg/justification"
-	"github.com/abcxyz/pkg/logging"
-	"github.com/abcxyz/pkg/testutil"
 	"github.com/google/go-cmp/cmp"
 	"github.com/lestrrat-go/jwx/v2/jwa"
 	"github.com/lestrrat-go/jwx/v2/jwk"
 	"github.com/lestrrat-go/jwx/v2/jws"
 	"github.com/lestrrat-go/jwx/v2/jwt"
+
+	jvspb "github.com/abcxyz/jvs/apis/v0"
+	"github.com/abcxyz/jvs/pkg/justification"
+	"github.com/abcxyz/pkg/logging"
+	"github.com/abcxyz/pkg/testutil"
 )
 
 func TestNewValidateCmd(t *testing.T) {

@@ -20,10 +20,11 @@ import (
 	"fmt"
 	"time"
 
-	jvspb "github.com/abcxyz/jvs/apis/v0"
 	"github.com/lestrrat-go/jwx/v2/jwk"
 	"github.com/lestrrat-go/jwx/v2/jws"
 	"github.com/lestrrat-go/jwx/v2/jwt"
+
+	jvspb "github.com/abcxyz/jvs/apis/v0"
 )
 
 // JVSClient allows for getting JWK keys from the JVS and validating JWTs with

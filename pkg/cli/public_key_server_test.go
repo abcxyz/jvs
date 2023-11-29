@@ -21,10 +21,11 @@ import (
 	"testing"
 	"time"
 
+	"google.golang.org/api/option"
+
 	"github.com/abcxyz/pkg/cli"
 	"github.com/abcxyz/pkg/logging"
 	"github.com/abcxyz/pkg/testutil"
-	"google.golang.org/api/option"
 )
 
 func TestPublicKeyServerCommand(t *testing.T) {

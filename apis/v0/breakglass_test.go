@@ -19,11 +19,12 @@ import (
 	"testing"
 	"time"
 
-	"github.com/abcxyz/pkg/testutil"
 	"github.com/google/go-cmp/cmp"
 	"github.com/google/go-cmp/cmp/cmpopts"
 	"github.com/lestrrat-go/jwx/v2/jwa"
 	"github.com/lestrrat-go/jwx/v2/jwt"
+
+	"github.com/abcxyz/pkg/testutil"
 )
 
 func TestCreateBreakglassToken(t *testing.T) {

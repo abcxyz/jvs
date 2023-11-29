@@ -19,10 +19,11 @@ import (
 	"testing"
 	"time"
 
-	"github.com/abcxyz/pkg/testutil"
 	"github.com/lestrrat-go/jwx/v2/jwa"
 	"github.com/lestrrat-go/jwx/v2/jwt"
 	"google.golang.org/grpc/metadata"
+
+	"github.com/abcxyz/pkg/testutil"
 )
 
 func TestExtractRequestorFromIncomingContext(t *testing.T) {

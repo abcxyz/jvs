@@ -30,12 +30,13 @@ import (
 
 	kms "cloud.google.com/go/kms/apiv1"
 	"cloud.google.com/go/kms/apiv1/kmspb"
-	"github.com/abcxyz/jvs/pkg/cli"
-	"github.com/abcxyz/jvs/pkg/jvscrypto"
 	"github.com/google/go-cmp/cmp"
 	"github.com/lestrrat-go/jwx/v2/jwt"
 	"google.golang.org/api/iterator"
 	"google.golang.org/protobuf/types/known/fieldmaskpb"
+
+	"github.com/abcxyz/jvs/pkg/cli"
+	"github.com/abcxyz/jvs/pkg/jvscrypto"
 )
 
 // Global integration test config.

@@ -18,13 +18,14 @@ import (
 	"context"
 	"testing"
 
-	"github.com/abcxyz/pkg/cli"
-	"github.com/abcxyz/pkg/logging"
-	"github.com/abcxyz/pkg/testutil"
 	"google.golang.org/api/option"
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/credentials/insecure"
 	healthpb "google.golang.org/grpc/health/grpc_health_v1"
+
+	"github.com/abcxyz/pkg/cli"
+	"github.com/abcxyz/pkg/logging"
+	"github.com/abcxyz/pkg/testutil"
 )
 
 func TestAPIServerCommand(t *testing.T) {
