@@ -224,7 +224,9 @@ func (h *RotationHandler) actionsForOlderVersions(ctx context.Context, vers []*k
 				actions = append(actions, &actionTuple{ActionDestroy, ver})
 			}
 		default:
-			logger.InfoContext(ctx, "no action needed for key version in current state.", "version", ver, "state", ver.State)
+			logger.InfoContext(ctx, "no action needed for key version in current state",
+				"version", ver,
+				"state", ver.State)
 		}
 	}
 	return actions
@@ -235,9 +237,13 @@ func (h *RotationHandler) shouldDestroy(ctx context.Context, ver *kmspb.CryptoKe
 	cutoff := curTime.Add(-h.config.DestroyAge())
 	shouldDestroy := ver.CreateTime.AsTime().Before(cutoff)
 	if shouldDestroy {
-		logger.InfoContext(ctx, "version created before cutoff date, should destroy.", "version", ver, "cutoff", cutoff)
+		logger.InfoContext(ctx, "version created before cutoff date, should destroy",
+			"version", ver,
+			"cutoff", cutoff)
 	} else {
-		logger.DebugContext(ctx, "version created after cutoff date, no action necessary.", "version", ver, "cutoff", cutoff)
+		logger.DebugContext(ctx, "version created after cutoff date, no action necessary",
+			"version", ver,
+			"cutoff", cutoff)
 	}
 	return shouldDestroy
 }
@@ -247,9 +253,13 @@ func (h *RotationHandler) shouldDisable(ctx context.Context, ver *kmspb.CryptoKe
 	cutoff := curTime.Add(-h.config.KeyTTL)
 	shouldDisable := ver.CreateTime.AsTime().Before(cutoff)
 	if shouldDisable {
-		logger.InfoContext(ctx, "version created before cutoff date, should disable.", "version", ver, "cutoff", cutoff)
+		logger.InfoContext(ctx, "version created before cutoff date, should disable",
+			"version", ver,
+			"cutoff", cutoff)
 	} else {
-		logger.DebugContext(ctx, "version created after cutoff date, no action necessary.", "version", ver, "cutoff", cutoff)
+		logger.DebugContext(ctx, "version created after cutoff date, no action necessary",
+			"version", ver,
+			"cutoff", cutoff)
 	}
 	return shouldDisable
 }
@@ -260,15 +270,20 @@ func (h *RotationHandler) shouldDisable(ctx context.Context, ver *kmspb.CryptoKe
 func (h *RotationHandler) shouldRotate(ctx context.Context, primary, newest *kmspb.CryptoKeyVersion, curTime time.Time) bool {
 	logger := logging.FromContext(ctx)
 	if newest != nil {
-		logger.DebugContext(ctx, "new version already created, no action necessary.", "version", newest)
+		logger.DebugContext(ctx, "new version already created, no action necessary",
+			"version", newest)
 		return false
 	}
 	cutoff := curTime.Add(-h.config.RotationAge())
 	shouldRotate := primary.CreateTime.AsTime().Before(cutoff)
 	if shouldRotate {
-		logger.InfoContext(ctx, "version created before cutoff date, should rotate.", "version", primary, "cutoff", cutoff)
+		logger.InfoContext(ctx, "version created before cutoff date, should rotate",
+			"version", primary,
+			"cutoff", cutoff)
 	} else {
-		logger.DebugContext(ctx, "version created after cutoff date, no action necessary.", "version", primary, "cutoff", cutoff)
+		logger.DebugContext(ctx, "version created after cutoff date, no action necessary",
+			"version", primary,
+			"cutoff", cutoff)
 	}
 	return shouldRotate
 }
@@ -282,15 +297,20 @@ func (h *RotationHandler) shouldPromote(ctx context.Context, primary, newest *km
 		return false
 	}
 	if primary == nil {
-		logger.InfoContext(ctx, "primary does not exist, should promote the newest key to primary regardless of propagation delay.", "version", newest)
+		logger.InfoContext(ctx, "primary does not exist, should promote the newest key to primary regardless of propagation delay",
+			"version", newest)
 		return true
 	}
 	cutoff := curTime.Add(-h.config.PropagationDelay)
 	canPromote := newest.CreateTime.AsTime().Before(cutoff)
 	if canPromote {
-		logger.InfoContext(ctx, "version created before cutoff date, should promote to primary.", "version", newest, "cutoff", cutoff)
+		logger.InfoContext(ctx, "version created before cutoff date, should promote to primary",
+			"version", newest,
+			"cutoff", cutoff)
 	} else {
-		logger.DebugContext(ctx, "version created after cutoff date, no action necessary.", "version", newest, "cutoff", cutoff)
+		logger.DebugContext(ctx, "version created after cutoff date, no action necessary",
+			"version", newest,
+			"cutoff", cutoff)
 	}
 	return canPromote
 }

@@ -202,7 +202,9 @@ func (p *Processor) runValidations(ctx context.Context, req *jvspb.CreateJustifi
 	// even if there are validation errors. The complete internal error message will be logged along
 	// with any additional validation errors.
 	if internalErr != nil {
-		logger.ErrorContext(ctx, "internal error during validation", "error", internalErr, "validation_error", validationErr)
+		logger.ErrorContext(ctx, "internal error during validation",
+			"error", internalErr,
+			"validation_error", validationErr)
 		return status.Errorf(codes.Internal, "unable to validate request")
 	}
 
