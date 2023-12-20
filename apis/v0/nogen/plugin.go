@@ -12,12 +12,15 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-package v0
+package nogen
 
 import (
 	"context"
 	"fmt"
 
+	"connectrpc.com/connect"
+	"github.com/abcxyz/jvs/gen"
+	"github.com/abcxyz/jvs/gen/genconnect"
 	"github.com/hashicorp/go-plugin"
 	grpc "google.golang.org/grpc"
 )
@@ -52,8 +55,8 @@ var Handshake = plugin.HandshakeConfig{
 
 // The interface we are exposing as a plugin.
 type Validator interface {
-	Validate(context.Context, *ValidateJustificationRequest) (*ValidateJustificationResponse, error)
-	GetUIData(context.Context, *GetUIDataRequest) (*UIData, error)
+	Validate(context.Context, *connect.Request[gen.ValidateJustificationRequest]) (*connect.Response[gen.ValidateJustificationResponse], error)
+	GetUIData(context.Context, *connect.Request[gen.GetUIDataRequest]) (*connect.Response[gen.UIData], error)
 }
 
 // ExplanationValidator is the built-in [Validator] for the "explanation"
@@ -62,19 +65,19 @@ type Validator interface {
 type ExplanationValidator struct{}
 
 // Validate only checks if the input is not empty.
-func (v *ExplanationValidator) Validate(_ context.Context, req *ValidateJustificationRequest) (*ValidateJustificationResponse, error) {
+func (v *ExplanationValidator) Validate(_ context.Context, req *gen.ValidateJustificationRequest) (*gen.ValidateJustificationResponse, error) {
 	if req.Justification == nil || req.Justification.Value == "" {
-		return &ValidateJustificationResponse{
+		return &gen.ValidateJustificationResponse{
 			Valid: false,
 			Error: []string{"explanation cannot be empty"},
 		}, nil
 	}
-	return &ValidateJustificationResponse{Valid: true}, nil
+	return &gen.ValidateJustificationResponse{Valid: true}, nil
 }
 
 // GetUIData retrieves plugin's display data.
-func (v *ExplanationValidator) GetUIData(_ context.Context, req *GetUIDataRequest) (*UIData, error) {
-	return &UIData{
+func (v *ExplanationValidator) GetUIData(_ context.Context, req *gen.GetUIDataRequest) (*gen.UIData, error) {
+	return &gen.UIData{
 		DisplayName: DefaultJustificationDisplayName,
 		Hint:        DefaultJustificationHint,
 	}, nil
@@ -103,15 +106,15 @@ func (p *ValidatorPlugin) GRPCServer(broker *plugin.GRPCBroker, s *grpc.Server) 
 //
 // [plugin.GRPCPlugin]: https://github.com/hashicorp/go-plugin/blob/a88a423a8813d0b26c8e3219f71b0f30447b5d2e/plugin.go#L36
 func (p *ValidatorPlugin) GRPCClient(ctx context.Context, broker *plugin.GRPCBroker, c *grpc.ClientConn) (any, error) {
-	return &PluginClient{client: NewJVSPluginClient(c)}, nil
+	return &PluginClient{client: genconnect.NewJVSPluginClient(c)}, nil
 }
 
 // PluginClient is an implementation of Validator that talks over RPC.
 type PluginClient struct {
-	client JVSPluginClient
+	client genconnect.JVSPluginClient
 }
 
-func (m *PluginClient) Validate(ctx context.Context, req *ValidateJustificationRequest) (*ValidateJustificationResponse, error) {
+func (m *PluginClient) Validate(ctx context.Context, req *connect.Request[gen.ValidateJustificationRequest]) (*connect.Response[gen.ValidateJustificationResponse], error) {
 	resp, err := m.client.Validate(ctx, req)
 	if err != nil {
 		return resp, fmt.Errorf("failed to validate justification: %w", err)
@@ -120,7 +123,7 @@ func (m *PluginClient) Validate(ctx context.Context, req *ValidateJustificationR
 }
 
 // GetUIData retrieves plugin's display data.
-func (m *PluginClient) GetUIData(ctx context.Context, req *GetUIDataRequest) (*UIData, error) {
+func (m *PluginClient) GetUIData(ctx context.Context, req *connect.Request[gen.GetUIDataRequest]) (*connect.Response[gen.UIData], error) {
 	resp, err := m.client.GetUIData(ctx, req)
 	if err != nil {
 		return resp, fmt.Errorf("failed to get UI data: %w", err)
@@ -130,12 +133,12 @@ func (m *PluginClient) GetUIData(ctx context.Context, req *GetUIDataRequest) (*U
 
 // Here is the gRPC server that PluginClient talks to.
 type PluginServer struct {
-	JVSPluginServer
+	genconnect.JVSPluginHandler
 	// This is the real implementation
 	Impl Validator
 }
 
-func (m *PluginServer) Validate(ctx context.Context, req *ValidateJustificationRequest) (*ValidateJustificationResponse, error) {
+func (m *PluginServer) Validate(ctx context.Context, req *connect.Request[gen.ValidateJustificationRequest]) (*connect.Response[gen.ValidateJustificationResponse], error) {
 	resp, err := m.Impl.Validate(ctx, req)
 	if err != nil {
 		return resp, fmt.Errorf("failed to validate justification: %w", err)
@@ -144,7 +147,7 @@ func (m *PluginServer) Validate(ctx context.Context, req *ValidateJustificationR
 }
 
 // GetUIData retrieves plugin's display data.
-func (m *PluginServer) GetUIData(ctx context.Context, req *GetUIDataRequest) (*UIData, error) {
+func (m *PluginServer) GetUIData(ctx context.Context, req *connect.Request[gen.GetUIDataRequest]) (*connect.Response[gen.UIData], error) {
 	resp, err := m.Impl.GetUIData(ctx, req)
 	if err != nil {
 		return resp, fmt.Errorf("failed to get UI data: %w", err)

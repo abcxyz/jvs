@@ -23,10 +23,12 @@ import (
 	"testing"
 	"time"
 
+	"connectrpc.com/connect"
+	"github.com/abcxyz/jvs/apis/v0/nogen"
+	"github.com/abcxyz/jvs/gen"
 	"github.com/google/go-cmp/cmp"
 	"google.golang.org/protobuf/testing/protocmp"
 
-	jvspb "github.com/abcxyz/jvs/apis/v0"
 	"github.com/abcxyz/jvs/internal/envtest"
 	"github.com/abcxyz/jvs/pkg/config"
 	"github.com/abcxyz/jvs/pkg/justification"
@@ -34,20 +36,21 @@ import (
 )
 
 type mockValidator struct {
+	nogen.Validator
 	Valid       bool
 	DisplayName string
 	Hint        string
 }
 
-func (v *mockValidator) Validate(context.Context, *jvspb.ValidateJustificationRequest) (*jvspb.ValidateJustificationResponse, error) {
-	return &jvspb.ValidateJustificationResponse{Valid: v.Valid}, nil
+func (v *mockValidator) Validate(context.Context, *connect.Request[gen.ValidateJustificationRequest]) (*connect.Response[gen.ValidateJustificationResponse], error) {
+	return &connect.Response[gen.ValidateJustificationResponse]{Msg: &gen.ValidateJustificationResponse{Valid: v.Valid}}, nil
 }
 
-func (v *mockValidator) GetUIData(context.Context, *jvspb.GetUIDataRequest) (*jvspb.UIData, error) {
-	return &jvspb.UIData{
+func (v *mockValidator) GetUIData(context.Context, *connect.Request[gen.GetUIDataRequest]) (*connect.Response[gen.UIData], error) {
+	return &connect.Response[gen.UIData]{Msg: &gen.UIData{
 		DisplayName: v.DisplayName,
 		Hint:        v.Hint,
-	}, nil
+	}}, nil
 }
 
 type testValidateFormParam struct {
@@ -283,7 +286,7 @@ func TestValidateForm(t *testing.T) {
 
 	p := justification.NewProcessor(nil, &config.JustificationConfig{
 		SignerCacheTimeout: 5 * time.Minute,
-	}).WithValidators(map[string]jvspb.Validator{
+	}).WithValidators(map[string]nogen.Validator{
 		"jira": &mockValidator{
 			Valid:       true,
 			DisplayName: "Jira issue key",
@@ -471,18 +474,18 @@ func TestGetCatagoriesDisplayData(t *testing.T) {
 
 	cases := []struct {
 		name       string
-		validators map[string]jvspb.Validator
+		validators map[string]nogen.Validator
 		wantRes    map[string]*jvspb.UIData
 		wantErr    string
 	}{
 		{
 			name:       "empty_validators",
-			validators: make(map[string]jvspb.Validator),
+			validators: make(map[string]nogen.Validator),
 			wantRes:    make(map[string]*jvspb.UIData),
 		},
 		{
 			name: "success_when_validator_with_ui_data",
-			validators: map[string]jvspb.Validator{
+			validators: map[string]nogen.Validator{
 				"jira": &mockValidator{
 					Valid:       true,
 					DisplayName: "Jira issue key",
@@ -507,7 +510,7 @@ func TestGetCatagoriesDisplayData(t *testing.T) {
 		},
 		{
 			name: "success_with_default_validator_hidden",
-			validators: map[string]jvspb.Validator{
+			validators: map[string]nogen.Validator{
 				"jira": &mockValidator{
 					Valid:       true,
 					DisplayName: "Jira issue key",
@@ -524,7 +527,7 @@ func TestGetCatagoriesDisplayData(t *testing.T) {
 		},
 		{
 			name: "success_with_default_validator_only",
-			validators: map[string]jvspb.Validator{
+			validators: map[string]nogen.Validator{
 				jvspb.DefaultJustificationCategory: jvspb.DefaultJustificationValidator,
 			},
 			wantRes: map[string]*jvspb.UIData{

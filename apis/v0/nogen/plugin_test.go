@@ -12,12 +12,13 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-package v0
+package nogen
 
 import (
 	"context"
 	"testing"
 
+	"github.com/abcxyz/jvs/gen"
 	"github.com/google/go-cmp/cmp"
 	"google.golang.org/protobuf/testing/protocmp"
 )
@@ -27,29 +28,29 @@ func TestExplanationValidator(t *testing.T) {
 
 	cases := []struct {
 		name     string
-		req      *ValidateJustificationRequest
-		wantResp *ValidateJustificationResponse
+		req      *gen.ValidateJustificationRequest
+		wantResp *gen.ValidateJustificationResponse
 	}{
 		{
 			name: "success",
-			req: &ValidateJustificationRequest{
-				Justification: &Justification{
+			req: &gen.ValidateJustificationRequest{
+				Justification: &gen.Justification{
 					Category: "explanation",
 					Value:    "I have reasons",
 				},
 			},
-			wantResp: &ValidateJustificationResponse{
+			wantResp: &gen.ValidateJustificationResponse{
 				Valid: true,
 			},
 		},
 		{
 			name: "success",
-			req: &ValidateJustificationRequest{
-				Justification: &Justification{
+			req: &gen.ValidateJustificationRequest{
+				Justification: &gen.Justification{
 					Category: "explanation",
 				},
 			},
-			wantResp: &ValidateJustificationResponse{
+			wantResp: &gen.ValidateJustificationResponse{
 				Valid: false,
 				Error: []string{"explanation cannot be empty"},
 			},
@@ -79,13 +80,13 @@ func TestGetUIDataInValidator(t *testing.T) {
 
 	cases := []struct {
 		name     string
-		req      *GetUIDataRequest
-		wantResp *UIData
+		req      *gen.GetUIDataRequest
+		wantResp *gen.UIData
 	}{
 		{
 			name: "success",
-			req:  &GetUIDataRequest{},
-			wantResp: &UIData{
+			req:  &gen.GetUIDataRequest{},
+			wantResp: &gen.UIData{
 				DisplayName: "Explanation",
 				Hint:        "A justification reason in free-form text.",
 			},

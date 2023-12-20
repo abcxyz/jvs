@@ -23,13 +23,16 @@ import (
 	"testing"
 	"time"
 
+	"connectrpc.com/connect"
+	"github.com/abcxyz/jvs/apis/v0/nogen"
+	"github.com/abcxyz/jvs/gen"
+	"github.com/abcxyz/jvs/gen/genconnect"
 	"github.com/google/go-cmp/cmp"
 	"github.com/google/go-cmp/cmp/cmpopts"
 	"github.com/lestrrat-go/jwx/v2/jwa"
 	"github.com/lestrrat-go/jwx/v2/jwt"
 	"google.golang.org/grpc"
 
-	jvspb "github.com/abcxyz/jvs/apis/v0"
 	"github.com/abcxyz/jvs/pkg/justification"
 	"github.com/abcxyz/pkg/logging"
 	"github.com/abcxyz/pkg/testutil"
@@ -54,7 +57,7 @@ func TestTokenCreateCommand(t *testing.T) {
 		args              []string
 		expSubject        string
 		expAudiences      []string
-		expJustifications []*jvspb.Justification
+		expJustifications []*gen.Justification
 		expErr            string
 	}{
 		{
@@ -82,7 +85,7 @@ func TestTokenCreateCommand(t *testing.T) {
 				"-server", goodJVS,
 			},
 			expAudiences: []string{justification.DefaultAudience},
-			expJustifications: []*jvspb.Justification{
+			expJustifications: []*gen.Justification{
 				{
 					Category: "explanation",
 					Value:    "for testing purposes",
@@ -96,7 +99,7 @@ func TestTokenCreateCommand(t *testing.T) {
 				"-server", goodJVS,
 			},
 			expAudiences: []string{justification.DefaultAudience},
-			expJustifications: []*jvspb.Justification{
+			expJustifications: []*gen.Justification{
 				{
 					Category: "explanation",
 					Value:    "for testing purposes",
@@ -111,7 +114,7 @@ func TestTokenCreateCommand(t *testing.T) {
 				"-server", goodJVS,
 			},
 			expAudiences: []string{justification.DefaultAudience},
-			expJustifications: []*jvspb.Justification{
+			expJustifications: []*gen.Justification{
 				{
 					Category: "jira",
 					Value:    "JIRACOMPONENT/123",
@@ -125,7 +128,7 @@ func TestTokenCreateCommand(t *testing.T) {
 				"-breakglass",
 			},
 			expAudiences: []string{justification.DefaultAudience},
-			expJustifications: []*jvspb.Justification{
+			expJustifications: []*gen.Justification{
 				{
 					Category: "breakglass",
 					Value:    "prod is down",
@@ -141,7 +144,7 @@ func TestTokenCreateCommand(t *testing.T) {
 			},
 			expSubject:   "user@example.com",
 			expAudiences: []string{justification.DefaultAudience},
-			expJustifications: []*jvspb.Justification{
+			expJustifications: []*gen.Justification{
 				{
 					Category: "breakglass",
 					Value:    "prod is down",
@@ -157,7 +160,7 @@ func TestTokenCreateCommand(t *testing.T) {
 				"-audience=baz",
 			},
 			expAudiences: []string{"foo", "bar", "baz"},
-			expJustifications: []*jvspb.Justification{
+			expJustifications: []*gen.Justification{
 				{
 					Category: "breakglass",
 					Value:    "prod is down",
@@ -196,7 +199,7 @@ func TestTokenCreateCommand(t *testing.T) {
 			token, err := jwt.ParseInsecure([]byte(tokenStr),
 				jwt.WithContext(ctx),
 				jwt.WithAcceptableSkew(5*time.Second),
-				jvspb.WithTypedJustifications(),
+				nogen.WithTypedJustifications(),
 			)
 			if err != nil {
 				t.Fatal(err)
@@ -220,11 +223,11 @@ func TestTokenCreateCommand(t *testing.T) {
 			}
 
 			// Validate custom claims.
-			justifications, err := jvspb.GetJustifications(token)
+			justifications, err := nogen.GetJustifications(token)
 			if err != nil {
 				t.Fatal(err)
 			}
-			if diff := cmp.Diff(tc.expJustifications, justifications, cmpopts.IgnoreUnexported(jvspb.Justification{})); diff != "" {
+			if diff := cmp.Diff(tc.expJustifications, justifications, cmpopts.IgnoreUnexported(gen.Justification{})); diff != "" {
 				t.Errorf("justs: diff (-want, +got):\n%s", diff)
 			}
 		})
@@ -232,11 +235,11 @@ func TestTokenCreateCommand(t *testing.T) {
 }
 
 type fakeJVS struct {
-	jvspb.UnimplementedJVSServiceServer
+	genconnect.UnimplementedJVSServiceHandler
 	returnErr error
 }
 
-func (j *fakeJVS) CreateJustification(ctx context.Context, req *jvspb.CreateJustificationRequest) (*jvspb.CreateJustificationResponse, error) {
+func (j *fakeJVS) CreateJustification(ctx context.Context, req *connect.Request[gen.CreateJustificationRequest]) (*connect.Response[gen.CreateJustificationResponse], error) {
 	if j.returnErr != nil {
 		return nil, j.returnErr
 	}
@@ -249,13 +252,13 @@ func (j *fakeJVS) CreateJustification(ctx context.Context, req *jvspb.CreateJust
 		Issuer(Issuer).
 		JwtID("test-jwt").
 		NotBefore(now).
-		Subject(req.Subject).
+		Subject(req.Msg.Subject).
 		Build()
 	if err != nil {
 		return nil, fmt.Errorf("failed to create token: %w", err)
 	}
 
-	if err := jvspb.SetJustifications(token, req.Justifications); err != nil {
+	if err := nogen.SetJustifications(token, req.Msg.Justifications); err != nil {
 		return nil, fmt.Errorf("failed to set justifications: %w", err)
 	}
 
@@ -264,7 +267,10 @@ func (j *fakeJVS) CreateJustification(ctx context.Context, req *jvspb.CreateJust
 		return nil, fmt.Errorf("failed to sign token: %w", err)
 	}
 
-	return &jvspb.CreateJustificationResponse{
+	var response connect.Response[gen.CreateJustificationResponse]
+	response.Msg = &gen.CreateJustificationResponse{
 		Token: string(b),
-	}, nil
+	}
+
+	return &response, nil
 }

@@ -20,14 +20,14 @@ import (
 
 	kms "cloud.google.com/go/kms/apiv1"
 	"cloud.google.com/go/kms/apiv1/kmspb"
-
-	jvspb "github.com/abcxyz/jvs/apis/v0"
+	"github.com/abcxyz/jvs/gen"
+	"github.com/abcxyz/jvs/gen/genconnect"
 )
 
 // CertificateActionService allows for performing manual actions on certificate
 // versions.
 type CertificateActionService struct {
-	jvspb.CertificateActionServiceServer
+	genconnect.CertificateActionServiceHandler
 	Handler   *RotationHandler
 	KMSClient *kms.KeyManagementClient
 }
@@ -35,11 +35,11 @@ type CertificateActionService struct {
 // CertificateAction implements the certificate action API which performs manual
 // actions on cert versions. this wraps certificateAction and adds a blank
 // response.
-func (p *CertificateActionService) CertificateAction(ctx context.Context, request *jvspb.CertificateActionRequest) (*jvspb.CertificateActionResponse, error) {
-	return &jvspb.CertificateActionResponse{}, p.certificateAction(ctx, request)
+func (p *CertificateActionService) CertificateAction(ctx context.Context, request *gen.CertificateActionRequest) (*gen.CertificateActionResponse, error) {
+	return &gen.CertificateActionResponse{}, p.certificateAction(ctx, request)
 }
 
-func (p *CertificateActionService) certificateAction(ctx context.Context, request *jvspb.CertificateActionRequest) error {
+func (p *CertificateActionService) certificateAction(ctx context.Context, request *gen.CertificateActionRequest) error {
 	// create map of key -> version actions list
 	actions := make(map[string][]*actionTuple)
 	for _, action := range request.GetActions() {
@@ -77,7 +77,7 @@ func (p *CertificateActionService) certificateAction(ctx context.Context, reques
 
 // determineActions decides which changes we should make based on the asked for
 // action, and current primary.
-func determineActions(ver *kmspb.CryptoKeyVersion, action jvspb.Action_ACTION, primary string) []*actionTuple {
+func determineActions(ver *kmspb.CryptoKeyVersion, action gen.Action_ACTION, primary string) []*actionTuple {
 	actionsToPerform := make([]*actionTuple, 0)
 	if primary == ver.Name {
 		// We are modifying the current primary, we should create a new version and
@@ -92,12 +92,12 @@ func determineActions(ver *kmspb.CryptoKeyVersion, action jvspb.Action_ACTION, p
 	// version is primary, we have already created a new key and set the new key
 	// as primary. If we have specified we also want to force disable or destroy
 	// the key, there are additional actions that need to be taken.
-	if action == jvspb.Action_FORCE_DISABLE {
+	if action == gen.Action_FORCE_DISABLE {
 		actionsToPerform = append(actionsToPerform, &actionTuple{
 			Action:  ActionDisable,
 			Version: ver,
 		})
-	} else if action == jvspb.Action_FORCE_DESTROY {
+	} else if action == gen.Action_FORCE_DESTROY {
 		actionsToPerform = append(actionsToPerform, &actionTuple{
 			Action:  ActionDestroy,
 			Version: ver,

@@ -12,13 +12,14 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-package v0
+package nogen
 
 import (
 	context "context"
 	"fmt"
 	"time"
 
+	"github.com/abcxyz/jvs/gen"
 	"github.com/lestrrat-go/jwx/v2/jwa"
 	"github.com/lestrrat-go/jwx/v2/jws"
 	"github.com/lestrrat-go/jwx/v2/jwt"
@@ -42,7 +43,7 @@ const (
 // justification, and sign JWT with an HMAC signature.
 func CreateBreakglassToken(token jwt.Token, explanation string) (string, error) {
 	// Set the breakglass justification.
-	if err := SetJustifications(token, []*Justification{
+	if err := SetJustifications(token, []*gen.Justification{
 		{
 			Category: breakglassJustificationCategory,
 			Value:    explanation,

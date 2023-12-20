@@ -17,8 +17,11 @@ package cli
 import (
 	"context"
 	"fmt"
+	"net/http"
 
 	kms "cloud.google.com/go/kms/apiv1"
+	"github.com/abcxyz/jvs/gen/genconnect"
+	"github.com/abcxyz/jvs/pkg/jvscrypto"
 	"go.opentelemetry.io/contrib/instrumentation/google.golang.org/grpc/otelgrpc"
 	"google.golang.org/api/option"
 	"google.golang.org/grpc"
@@ -109,6 +112,16 @@ func (c *APIServerCommand) RunUnstarted(ctx context.Context, args []string) (*se
 		return nil, nil, closer, fmt.Errorf("failed to setup kms client: %w", err)
 	}
 	closer = multicloser.Append(closer, kmsClient.Close)
+
+	connectMux := http.NewServeMux()
+	path, handler := genconnect.NewCertificateActionServiceHandler(jvscrypto.CertificateActionService{
+		CertificateActionServiceHandler: nil,
+		Handler:                         nil,
+		KMSClient:                       nil,
+	})
+	connectMux.Handle(path, handler)
+	path, handler = genconnect.NewJVSServiceHandler()
+	connectMux.Handle(path, handler)
 
 	grpcServer := grpc.NewServer(
 		grpc.UnaryInterceptor(

@@ -24,10 +24,11 @@ import (
 	"strings"
 	"time"
 
+	"github.com/abcxyz/jvs/apis/v0/nogen"
+	"github.com/abcxyz/jvs/gen"
 	"golang.org/x/exp/slices"
 	"google.golang.org/protobuf/types/known/durationpb"
 
-	jvspb "github.com/abcxyz/jvs/apis/v0"
 	"github.com/abcxyz/jvs/internal/project"
 	"github.com/abcxyz/jvs/pkg/justification"
 	"github.com/abcxyz/pkg/renderer"
@@ -48,7 +49,7 @@ type Controller struct {
 	h                   *renderer.Renderer
 	p                   *justification.Processor
 	allowlist           []string
-	categoryDisplayData map[string]*jvspb.UIData
+	categoryDisplayData map[string]*gen.UIData
 }
 
 // Content defines the displayable parts of the token retrieval form.
@@ -57,7 +58,7 @@ type Content struct {
 	CategoryLabel string
 	ReasonLabel   string
 	TTLLabel      string
-	Categories    map[string]*jvspb.UIData
+	Categories    map[string]*gen.UIData
 	TTLs          map[string]struct{}
 }
 
@@ -136,7 +137,7 @@ func (c *Controller) handlePopupGet(w http.ResponseWriter, r *http.Request) {
 
 	// set some defaults for the form
 	if formDetails.Category == "" {
-		formDetails.Category = jvspb.DefaultJustificationCategory
+		formDetails.Category = nogen.DefaultJustificationCategory
 	}
 	if formDetails.TTL == "" {
 		formDetails.TTL = defaultTTL
@@ -180,8 +181,8 @@ func (c *Controller) handlePopupPost(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	req := &jvspb.CreateJustificationRequest{
-		Justifications: []*jvspb.Justification{
+	req := &gen.CreateJustificationRequest{
+		Justifications: []*gen.Justification{
 			{
 				Category: formDetails.Category,
 				Value:    formDetails.Reason,
@@ -345,11 +346,11 @@ func getEmail(r *http.Request) (string, error) {
 }
 
 // categoriesDisplayData gathers the plugins' display data.
-func catagoriesDisplayData(ctx context.Context, validators map[string]jvspb.Validator) (map[string]*jvspb.UIData, error) {
-	displayData := make(map[string]*jvspb.UIData, len(validators))
+func catagoriesDisplayData(ctx context.Context, validators map[string]nogen.Validator) (map[string]*gen.UIData, error) {
+	displayData := make(map[string]*gen.UIData, len(validators))
 
 	for k, v := range validators {
-		d, err := v.GetUIData(ctx, &jvspb.GetUIDataRequest{})
+		d, err := v.GetUIData(ctx, &gen.GetUIDataRequest{})
 		if err != nil {
 			return nil, fmt.Errorf("failed to get display data for category %q: %w", k, err)
 		}
@@ -358,7 +359,7 @@ func catagoriesDisplayData(ctx context.Context, validators map[string]jvspb.Vali
 
 	// In case there are additional category options available, we aim to hide the default option from users.
 	if len(displayData) > 1 {
-		delete(displayData, jvspb.DefaultJustificationCategory)
+		delete(displayData, nogen.DefaultJustificationCategory)
 	}
 
 	return displayData, nil

@@ -20,7 +20,7 @@ import (
 	"strings"
 	"time"
 
-	jvspb "github.com/abcxyz/jvs/apis/v0"
+	"github.com/abcxyz/jvs/apis/v0/nogen"
 	"github.com/abcxyz/jvs/client-lib/go/client"
 	"github.com/abcxyz/jvs/pkg/formatter"
 	"github.com/abcxyz/pkg/cli"
@@ -146,7 +146,7 @@ func (c *TokenValidateCommand) Run(ctx context.Context, args []string) error {
 
 	// Validate token
 	breakglass := false
-	token, err := jvspb.ParseBreakglassToken(ctx, c.flagToken)
+	token, err := nogen.ParseBreakglassToken(ctx, c.flagToken)
 	if err != nil {
 		return fmt.Errorf("failed to parse breakglass token: %w", err)
 	}

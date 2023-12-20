@@ -21,6 +21,9 @@ import (
 	"fmt"
 	"time"
 
+	"github.com/abcxyz/jvs/apis/v0/nogen"
+	"github.com/abcxyz/jvs/gen"
+	"github.com/abcxyz/jvs/gen/genconnect"
 	"github.com/google/uuid"
 	"github.com/lestrrat-go/jwx/v2/jwt"
 	"golang.org/x/oauth2"
@@ -30,7 +33,6 @@ import (
 	"google.golang.org/grpc/credentials/oauth"
 	"google.golang.org/protobuf/types/known/durationpb"
 
-	jvspb "github.com/abcxyz/jvs/apis/v0"
 	"github.com/abcxyz/jvs/pkg/justification"
 	"github.com/abcxyz/pkg/cli"
 )
@@ -142,7 +144,7 @@ func (c *TokenCreateCommand) Flags() *cli.FlagSet {
 		Name:    "category",
 		Target:  &c.flagCategory,
 		EnvVar:  "JVSCTL_CATEGORY",
-		Default: jvspb.DefaultJustificationCategory,
+		Default: nogen.DefaultJustificationCategory,
 		Usage:   `The justification category.`,
 	})
 
@@ -248,16 +250,16 @@ func (c *TokenCreateCommand) Run(ctx context.Context, args []string) error {
 	if err != nil {
 		return fmt.Errorf("failed to connect to JVS service: %w", err)
 	}
-	jvsclient := jvspb.NewJVSServiceClient(conn)
+	jvsclient := genconnect.NewJVSServiceClient(conn)
 
 	callOpts, err := callOptions(ctx, c.flagAuthToken)
 	if err != nil {
 		return err
 	}
 
-	req := &jvspb.CreateJustificationRequest{
+	req := &gen.CreateJustificationRequest{
 		Subject: c.flagSubject,
-		Justifications: []*jvspb.Justification{{
+		Justifications: []*gen.Justification{{
 			Category: c.flagCategory,
 			Value:    c.flagJustificationText,
 		}},
@@ -268,7 +270,7 @@ func (c *TokenCreateCommand) Run(ctx context.Context, args []string) error {
 		return fmt.Errorf("failed to create justification: %w", err)
 	}
 
-	fmt.Fprintln(c.Stdout(), resp.Token)
+	fmt.Fprintln(c.Stdout(), resp.Msg.Token)
 	return nil
 }
 
@@ -312,7 +314,7 @@ func callOptions(ctx context.Context, authToken string) ([]grpc.CallOption, erro
 }
 
 // breakglassToken creates a new breakglass token from the CLI flags. See
-// [jvspb.CreateBreakglassToken] for more information.
+// [gen.CreateBreakglassToken] for more information.
 func (c *TokenCreateCommand) breakglassToken(ctx context.Context) (string, error) {
 	now := time.Unix(c.flagNowUnix, 0)
 	id := uuid.New().String()
@@ -331,7 +333,7 @@ func (c *TokenCreateCommand) breakglassToken(ctx context.Context) (string, error
 		return "", fmt.Errorf("failed to build breakglass token: %w", err)
 	}
 
-	str, err := jvspb.CreateBreakglassToken(token, c.flagJustificationText)
+	str, err := nogen.CreateBreakglassToken(token, c.flagJustificationText)
 	if err != nil {
 		return "", fmt.Errorf("failed to create breakglass token: %w", err)
 	}

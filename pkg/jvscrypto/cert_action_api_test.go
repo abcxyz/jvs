@@ -21,6 +21,7 @@ import (
 
 	kms "cloud.google.com/go/kms/apiv1"
 	"cloud.google.com/go/kms/apiv1/kmspb"
+	"github.com/abcxyz/jvs/gen"
 	"github.com/google/go-cmp/cmp"
 	"google.golang.org/api/option"
 	"google.golang.org/grpc"
@@ -28,7 +29,6 @@ import (
 	"google.golang.org/protobuf/testing/protocmp"
 	"google.golang.org/protobuf/types/known/fieldmaskpb"
 
-	jvspb "github.com/abcxyz/jvs/apis/v0"
 	"github.com/abcxyz/jvs/pkg/config"
 	"github.com/abcxyz/jvs/pkg/testutil"
 	"github.com/abcxyz/pkg/logging"
@@ -44,7 +44,7 @@ func TestCertificateAction(t *testing.T) {
 
 	cases := []struct {
 		name             string
-		request          *jvspb.CertificateActionRequest
+		request          *gen.CertificateActionRequest
 		priorPrimary     string
 		expectedRequests []proto.Message
 		expectedPrimary  string
@@ -53,11 +53,11 @@ func TestCertificateAction(t *testing.T) {
 	}{
 		{
 			name: "rotate",
-			request: &jvspb.CertificateActionRequest{
-				Actions: []*jvspb.Action{
+			request: &gen.CertificateActionRequest{
+				Actions: []*gen.Action{
 					{
 						Version: versionName,
-						Action:  jvspb.Action_ROTATE,
+						Action:  gen.Action_ROTATE,
 					},
 				},
 			},
@@ -101,11 +101,11 @@ func TestCertificateAction(t *testing.T) {
 		},
 		{
 			name: "force_disable",
-			request: &jvspb.CertificateActionRequest{
-				Actions: []*jvspb.Action{
+			request: &gen.CertificateActionRequest{
+				Actions: []*gen.Action{
 					{
 						Version: versionName,
-						Action:  jvspb.Action_FORCE_DISABLE,
+						Action:  gen.Action_FORCE_DISABLE,
 					},
 				},
 			},
@@ -159,11 +159,11 @@ func TestCertificateAction(t *testing.T) {
 		},
 		{
 			name: "force_disable_non_primary",
-			request: &jvspb.CertificateActionRequest{
-				Actions: []*jvspb.Action{
+			request: &gen.CertificateActionRequest{
+				Actions: []*gen.Action{
 					{
 						Version: versionName + "2",
-						Action:  jvspb.Action_FORCE_DISABLE,
+						Action:  gen.Action_FORCE_DISABLE,
 					},
 				},
 			},
@@ -194,11 +194,11 @@ func TestCertificateAction(t *testing.T) {
 		},
 		{
 			name: "force_destroy",
-			request: &jvspb.CertificateActionRequest{
-				Actions: []*jvspb.Action{
+			request: &gen.CertificateActionRequest{
+				Actions: []*gen.Action{
 					{
 						Version: versionName,
-						Action:  jvspb.Action_FORCE_DESTROY,
+						Action:  gen.Action_FORCE_DESTROY,
 					},
 				},
 			},
@@ -246,15 +246,15 @@ func TestCertificateAction(t *testing.T) {
 		},
 		{
 			name: "multi_action",
-			request: &jvspb.CertificateActionRequest{
-				Actions: []*jvspb.Action{
+			request: &gen.CertificateActionRequest{
+				Actions: []*gen.Action{
 					{
 						Version: versionName + "2",
-						Action:  jvspb.Action_FORCE_DISABLE,
+						Action:  gen.Action_FORCE_DISABLE,
 					},
 					{
 						Version: versionName,
-						Action:  jvspb.Action_ROTATE,
+						Action:  gen.Action_ROTATE,
 					},
 				},
 			},

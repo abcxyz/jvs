@@ -12,7 +12,7 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-package v0
+package nogen
 
 import (
 	context "context"
@@ -20,6 +20,7 @@ import (
 	"time"
 	"unsafe"
 
+	"github.com/abcxyz/jvs/gen"
 	"github.com/google/go-cmp/cmp"
 	"github.com/google/go-cmp/cmp/cmpopts"
 	"github.com/lestrrat-go/jwx/v2/jwa"
@@ -78,7 +79,7 @@ func TestGetRequestor(t *testing.T) {
 				return
 			}
 
-			if diff := cmp.Diff(tc.exp, justs, cmpopts.IgnoreUnexported(Justification{})); diff != "" {
+			if diff := cmp.Diff(tc.exp, justs, cmpopts.IgnoreUnexported(gen.Justification{})); diff != "" {
 				t.Errorf("justs: diff (-want, +got):\n%s", diff)
 			}
 		})
@@ -188,7 +189,7 @@ func TestClearRequestor(t *testing.T) {
 				t.Fatal(err)
 			}
 
-			if diff := cmp.Diff(tc.exp, justs, cmpopts.IgnoreUnexported(Justification{})); diff != "" {
+			if diff := cmp.Diff(tc.exp, justs, cmpopts.IgnoreUnexported(gen.Justification{})); diff != "" {
 				t.Errorf("justs: diff (-want, +got):\n%s", diff)
 			}
 		})
@@ -203,7 +204,7 @@ func TestGetJustifications(t *testing.T) {
 	cases := []struct {
 		name   string
 		token  jwt.Token
-		exp    []*Justification
+		exp    []*gen.Justification
 		expErr string
 	}{
 		{
@@ -214,7 +215,7 @@ func TestGetJustifications(t *testing.T) {
 		{
 			name:  "no_justs",
 			token: testTokenBuilder(t, jwt.NewBuilder()),
-			exp:   []*Justification{},
+			exp:   []*gen.Justification{},
 		},
 		{
 			name: "wrong_type",
@@ -231,7 +232,7 @@ func TestGetJustifications(t *testing.T) {
 			name: "not_decoded_claims",
 			token: func() jwt.Token {
 				token, err := jwt.NewBuilder().
-					Claim(JustificationsKey, []*Justification{
+					Claim(JustificationsKey, []*gen.Justification{
 						{
 							Category: "category",
 							Value:    "value",
@@ -257,7 +258,7 @@ func TestGetJustifications(t *testing.T) {
 				}
 				return parsed
 			}(),
-			exp: []*Justification{
+			exp: []*gen.Justification{
 				{
 					Category: "category",
 					Value:    "value",
@@ -268,12 +269,12 @@ func TestGetJustifications(t *testing.T) {
 			name: "single_justification",
 			token: testTokenBuilder(t, jwt.
 				NewBuilder().
-				Claim(JustificationsKey, &Justification{
+				Claim(JustificationsKey, &gen.Justification{
 					Category: "category",
 					Value:    "value",
 				}),
 			),
-			exp: []*Justification{
+			exp: []*gen.Justification{
 				{
 					Category: "category",
 					Value:    "value",
@@ -284,14 +285,14 @@ func TestGetJustifications(t *testing.T) {
 			name: "returns_justifications",
 			token: testTokenBuilder(t, jwt.
 				NewBuilder().
-				Claim(JustificationsKey, []*Justification{
+				Claim(JustificationsKey, []*gen.Justification{
 					{
 						Category: "category",
 						Value:    "value",
 					},
 				}),
 			),
-			exp: []*Justification{
+			exp: []*gen.Justification{
 				{
 					Category: "category",
 					Value:    "value",
@@ -314,7 +315,7 @@ func TestGetJustifications(t *testing.T) {
 				return
 			}
 
-			if diff := cmp.Diff(tc.exp, justs, cmpopts.IgnoreUnexported(Justification{})); diff != "" {
+			if diff := cmp.Diff(tc.exp, justs, cmpopts.IgnoreUnexported(gen.Justification{})); diff != "" {
 				t.Errorf("justs: diff (-want, +got):\n%s", diff)
 			}
 		})
@@ -324,7 +325,7 @@ func TestGetJustifications(t *testing.T) {
 func TestSetJustifications(t *testing.T) {
 	t.Parallel()
 
-	justs := []*Justification{
+	justs := []*gen.Justification{
 		{
 			Category: "category",
 			Value:    "value",
@@ -334,7 +335,7 @@ func TestSetJustifications(t *testing.T) {
 	cases := []struct {
 		name   string
 		token  jwt.Token
-		exp    []*Justification
+		exp    []*gen.Justification
 		expErr string
 	}{
 		{
@@ -351,7 +352,7 @@ func TestSetJustifications(t *testing.T) {
 			name: "overwrites",
 			token: testTokenBuilder(t, jwt.
 				NewBuilder().
-				Claim(JustificationsKey, []*Justification{
+				Claim(JustificationsKey, []*gen.Justification{
 					{
 						Category: "old",
 						Value:    "value",
@@ -376,7 +377,7 @@ func TestSetJustifications(t *testing.T) {
 				return
 			}
 
-			if diff := cmp.Diff(tc.exp, justs, cmpopts.IgnoreUnexported(Justification{})); diff != "" {
+			if diff := cmp.Diff(tc.exp, justs, cmpopts.IgnoreUnexported(gen.Justification{})); diff != "" {
 				t.Errorf("justs: diff (-want, +got):\n%s", diff)
 			}
 
@@ -393,7 +394,7 @@ func TestClearJustifications(t *testing.T) {
 	cases := []struct {
 		name   string
 		token  jwt.Token
-		exp    []*Justification
+		exp    []*gen.Justification
 		expErr string
 	}{
 		{
@@ -404,20 +405,20 @@ func TestClearJustifications(t *testing.T) {
 		{
 			name:  "sets",
 			token: testTokenBuilder(t, jwt.NewBuilder()),
-			exp:   []*Justification{},
+			exp:   []*gen.Justification{},
 		},
 		{
 			name: "overwrites",
 			token: testTokenBuilder(t, jwt.
 				NewBuilder().
-				Claim(JustificationsKey, []*Justification{
+				Claim(JustificationsKey, []*gen.Justification{
 					{
 						Category: "category",
 						Value:    "value",
 					},
 				}),
 			),
-			exp: []*Justification{},
+			exp: []*gen.Justification{},
 		},
 	}
 
@@ -440,7 +441,7 @@ func TestClearJustifications(t *testing.T) {
 				t.Fatal(err)
 			}
 
-			if diff := cmp.Diff(tc.exp, justs, cmpopts.IgnoreUnexported(Justification{})); diff != "" {
+			if diff := cmp.Diff(tc.exp, justs, cmpopts.IgnoreUnexported(gen.Justification{})); diff != "" {
 				t.Errorf("justs: diff (-want, +got):\n%s", diff)
 			}
 		})

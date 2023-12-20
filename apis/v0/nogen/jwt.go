@@ -12,11 +12,12 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-package v0
+package nogen
 
 import (
 	"fmt"
 
+	"github.com/abcxyz/jvs/gen"
 	"github.com/lestrrat-go/jwx/v2/jwt"
 	"github.com/mitchellh/mapstructure"
 )
@@ -86,7 +87,7 @@ func ClearRequestor(t jwt.Token) error {
 // decode the [Justification] claims into the correct Go structure. If this is
 // not supplied, the claims will be "any" and future type assertions may fail.
 func WithTypedJustifications() jwt.ParseOption {
-	return jwt.WithTypedClaim(JustificationsKey, []*Justification{})
+	return jwt.WithTypedClaim(JustificationsKey, []*gen.Justification{})
 }
 
 // GetJustifications retrieves a copy of the justifications on the token. If the
@@ -100,24 +101,24 @@ func WithTypedJustifications() jwt.ParseOption {
 //
 // Modifying the slice does not modify the underlying token - you must call
 // [SetJustifications] to update the data on the token.
-func GetJustifications(t jwt.Token) ([]*Justification, error) {
+func GetJustifications(t jwt.Token) ([]*gen.Justification, error) {
 	if t == nil {
 		return nil, fmt.Errorf("token cannot be nil")
 	}
 
 	raw, ok := t.Get(JustificationsKey)
 	if !ok {
-		return []*Justification{}, nil
+		return []*gen.Justification{}, nil
 	}
 
-	var claims []*Justification
+	var claims []*gen.Justification
 	switch list := raw.(type) {
-	case []*Justification:
+	case []*gen.Justification:
 		// Token was decoded with typed claims.
 		claims = list
-	case *Justification:
+	case *gen.Justification:
 		// Token did not provide a list.
-		claims = []*Justification{list}
+		claims = []*gen.Justification{list}
 	case []any:
 		// Token was a proto but wasn't decoded.
 		if err := mapstructure.Decode(list, &claims); err != nil {
@@ -128,19 +129,19 @@ func GetJustifications(t jwt.Token) ([]*Justification, error) {
 	}
 
 	// Make a copy of the slice so we don't modify the underlying data structure.
-	cp := make([]*Justification, 0, len(claims))
+	cp := make([]*gen.Justification, 0, len(claims))
 	cp = append(cp, claims...)
 	return cp, nil
 }
 
 // SetJustifications updates the justifications on the token. It overwrites any
 // existing values and uses a copy of the inbound slice.
-func SetJustifications(t jwt.Token, justifications []*Justification) error {
+func SetJustifications(t jwt.Token, justifications []*gen.Justification) error {
 	if t == nil {
 		return fmt.Errorf("token cannot be nil")
 	}
 
-	cp := make([]*Justification, 0, len(justifications))
+	cp := make([]*gen.Justification, 0, len(justifications))
 	cp = append(cp, justifications...)
 	if err := t.Set(JustificationsKey, cp); err != nil {
 		return fmt.Errorf("failed to set justifications: %w", err)

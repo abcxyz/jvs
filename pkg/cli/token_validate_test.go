@@ -28,13 +28,14 @@ import (
 	"testing"
 	"time"
 
+	"github.com/abcxyz/jvs/apis/v0/nogen"
+	"github.com/abcxyz/jvs/gen"
 	"github.com/google/go-cmp/cmp"
 	"github.com/lestrrat-go/jwx/v2/jwa"
 	"github.com/lestrrat-go/jwx/v2/jwk"
 	"github.com/lestrrat-go/jwx/v2/jws"
 	"github.com/lestrrat-go/jwx/v2/jwt"
 
-	jvspb "github.com/abcxyz/jvs/apis/v0"
 	"github.com/abcxyz/jvs/pkg/justification"
 	"github.com/abcxyz/pkg/logging"
 	"github.com/abcxyz/pkg/testutil"
@@ -79,7 +80,7 @@ func TestNewValidateCmd(t *testing.T) {
 
 	// Build test tokens
 	token := testTokenBuilder(t)
-	if err := jvspb.SetJustifications(token, []*jvspb.Justification{
+	if err := nogen.SetJustifications(token, []*gen.Justification{
 		{
 			Category: "explanation",
 			Value:    "test",
@@ -92,7 +93,7 @@ func TestNewValidateCmd(t *testing.T) {
 		t.Fatalf("failed to set justifications in token: %v", err)
 	}
 	signedToken := testSignToken(t, token, privateKey, keyID)
-	breakglassToken, err := jvspb.CreateBreakglassToken(token, "prod is down")
+	breakglassToken, err := nogen.CreateBreakglassToken(token, "prod is down")
 	if err != nil {
 		t.Fatalf("failed to build breakglass token: %v", err)
 	}
