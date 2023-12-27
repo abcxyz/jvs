@@ -8,5 +8,5 @@ plugins:
   out: apis/v0
   opt: paths=source_relative
 - plugin: buf.build/connectrpc/go
-  out: aps/v0
+  out: apis/v0
   opt: paths=source_relative

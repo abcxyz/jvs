@@ -21,6 +21,7 @@ import (
 	"fmt"
 	"time"
 
+	"github.com/abcxyz/jvs/apis/v0/v0connect"
 	"github.com/google/uuid"
 	"github.com/lestrrat-go/jwx/v2/jwt"
 	"golang.org/x/oauth2"
@@ -248,7 +249,7 @@ func (c *TokenCreateCommand) Run(ctx context.Context, args []string) error {
 	if err != nil {
 		return fmt.Errorf("failed to connect to JVS service: %w", err)
 	}
-	jvsclient := jvspb.NewJVSServiceClient(conn)
+	jvsclient := v0connect.NewJVSServiceClient(conn)
 
 	callOpts, err := callOptions(ctx, c.flagAuthToken)
 	if err != nil {
@@ -268,7 +269,7 @@ func (c *TokenCreateCommand) Run(ctx context.Context, args []string) error {
 		return fmt.Errorf("failed to create justification: %w", err)
 	}
 
-	fmt.Fprintln(c.Stdout(), resp.Token)
+	fmt.Fprintln(c.Stdout(), resp.Msg.Token)
 	return nil
 }
 

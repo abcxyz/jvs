@@ -23,6 +23,7 @@ import (
 	"testing"
 	"time"
 
+	"github.com/abcxyz/jvs/apis/v0/v0connect"
 	"github.com/google/go-cmp/cmp"
 	"github.com/google/go-cmp/cmp/cmpopts"
 	"github.com/lestrrat-go/jwx/v2/jwa"
@@ -232,7 +233,7 @@ func TestTokenCreateCommand(t *testing.T) {
 }
 
 type fakeJVS struct {
-	jvspb.UnimplementedJVSServiceServer
+	v0connect.JVSServiceHandler
 	returnErr error
 }
 

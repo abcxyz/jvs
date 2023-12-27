@@ -20,6 +20,7 @@ import (
 
 	kms "cloud.google.com/go/kms/apiv1"
 	"cloud.google.com/go/kms/apiv1/kmspb"
+	"github.com/abcxyz/jvs/apis/v0/v0connect"
 
 	jvspb "github.com/abcxyz/jvs/apis/v0"
 )
@@ -27,7 +28,7 @@ import (
 // CertificateActionService allows for performing manual actions on certificate
 // versions.
 type CertificateActionService struct {
-	jvspb.CertificateActionServiceServer
+	v0connect.CertificateActionServiceHandler
 	Handler   *RotationHandler
 	KMSClient *kms.KeyManagementClient
 }

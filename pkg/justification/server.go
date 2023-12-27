@@ -20,6 +20,7 @@ import (
 	"strings"
 	"time"
 
+	"github.com/abcxyz/jvs/apis/v0/v0connect"
 	"github.com/lestrrat-go/jwx/v2/jwt"
 	grpcmetadata "google.golang.org/grpc/metadata"
 
@@ -28,7 +29,7 @@ import (
 
 // JVSAgent is the implementation of the justification verification server.
 type JVSAgent struct {
-	jvspb.JVSServiceServer
+	v0connect.JVSServiceHandler
 
 	Processor *Processor
 }

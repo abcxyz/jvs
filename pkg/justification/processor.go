@@ -21,6 +21,7 @@ import (
 	"time"
 
 	kms "cloud.google.com/go/kms/apiv1"
+	"github.com/abcxyz/jvs/apis/v0/v0connect"
 	"github.com/google/uuid"
 	"github.com/lestrrat-go/jwx/v2/jwa"
 	"github.com/lestrrat-go/jwx/v2/jws"
@@ -40,7 +41,7 @@ import (
 // Processor performs the necessary logic to validate a justification, then
 // mints a token.
 type Processor struct {
-	jvspb.UnimplementedJVSServiceServer
+	v0connect.UnimplementedJVSServiceHandler
 	kms        *kms.KeyManagementClient
 	config     *config.JustificationConfig
 	cache      *cache.Cache[*signerWithID]

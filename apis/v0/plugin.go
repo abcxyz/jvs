@@ -18,6 +18,7 @@ import (
 	"context"
 	"fmt"
 
+	"github.com/abcxyz/jvs/apis/v0/v0connect"
 	"github.com/hashicorp/go-plugin"
 	grpc "google.golang.org/grpc"
 )
@@ -95,7 +96,7 @@ type ValidatorPlugin struct {
 //
 // [plugin.GRPCPlugin]: https://github.com/hashicorp/go-plugin/blob/a88a423a8813d0b26c8e3219f71b0f30447b5d2e/plugin.go#L36
 func (p *ValidatorPlugin) GRPCServer(broker *plugin.GRPCBroker, s *grpc.Server) error {
-	RegisterJVSPluginServer(s, &PluginServer{Impl: p.Impl})
+	RegisterJVSPluginHandler(s, &PluginServer{Impl: p.Impl})
 	return nil
 }
 
@@ -108,29 +109,29 @@ func (p *ValidatorPlugin) GRPCClient(ctx context.Context, broker *plugin.GRPCBro
 
 // PluginClient is an implementation of Validator that talks over RPC.
 type PluginClient struct {
-	client JVSPluginClient
+	client v0connect.JVSPluginClient
 }
 
 func (m *PluginClient) Validate(ctx context.Context, req *ValidateJustificationRequest) (*ValidateJustificationResponse, error) {
 	resp, err := m.client.Validate(ctx, req)
 	if err != nil {
-		return resp, fmt.Errorf("failed to validate justification: %w", err)
+		return resp.Msg, fmt.Errorf("failed to validate justification: %w", err)
 	}
-	return resp, nil
+	return resp.Msg, nil
 }
 
 // GetUIData retrieves plugin's display data.
 func (m *PluginClient) GetUIData(ctx context.Context, req *GetUIDataRequest) (*UIData, error) {
 	resp, err := m.client.GetUIData(ctx, req)
 	if err != nil {
-		return resp, fmt.Errorf("failed to get UI data: %w", err)
+		return resp.Msg, fmt.Errorf("failed to get UI data: %w", err)
 	}
-	return resp, nil
+	return resp.Msg, nil
 }
 
 // Here is the gRPC server that PluginClient talks to.
 type PluginServer struct {
-	JVSPluginServer
+	v0connect.JVSPluginHandler
 	// This is the real implementation
 	Impl Validator
 }
