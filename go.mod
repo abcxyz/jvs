@@ -8,7 +8,7 @@ require (
 	github.com/google/go-cmp v0.6.0
 	github.com/google/uuid v1.5.0
 	github.com/hashicorp/go-plugin v1.6.0
-	github.com/lestrrat-go/jwx/v2 v2.0.18
+	github.com/lestrrat-go/jwx/v2 v2.0.19
 	github.com/mitchellh/mapstructure v1.5.0
 	github.com/sethvargo/go-envconfig v0.9.0
 	github.com/sethvargo/go-gcpkms v0.2.0
