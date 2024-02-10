@@ -37,7 +37,7 @@ type config struct {
 
 func newTestConfig(ctx context.Context) (*config, error) {
 	var c config
-	if err := envconfig.ProcessWith(ctx, &c, envconfig.OsLookuper()); err != nil {
+	if err := envconfig.Process(ctx, &c); err != nil {
 		return nil, fmt.Errorf("failed to process environment: %w", err)
 	}
 	return &c, nil

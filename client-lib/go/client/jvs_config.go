@@ -61,7 +61,10 @@ func loadJVSConfigFromLookuper(ctx context.Context, b []byte, lookuper envconfig
 	}
 
 	// Process overrides from env vars.
-	if err := envconfig.ProcessWith(ctx, &cfg, lookuper); err != nil {
+	if err := envconfig.ProcessWith(ctx, &envconfig.Config{
+		Target:   &cfg,
+		Lookuper: lookuper,
+	}); err != nil {
 		return nil, fmt.Errorf("failed to process environment variables: %w", err)
 	}
 
