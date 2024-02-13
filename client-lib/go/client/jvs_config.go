@@ -15,61 +15,16 @@
 package client
 
 import (
-	"context"
-	"errors"
-	"fmt"
-	"time"
-
-	"github.com/sethvargo/go-envconfig"
-	"gopkg.in/yaml.v3"
+	jvspb "github.com/abcxyz/jvs/apis/v0"
 )
 
-// JVSConfig is the jvs client configuration.
-type JVSConfig struct {
-	// JWKSEndpoint is the full path (including protocol and port) to the JWKS
-	// endpoint on a JVS server (e.g. https://jvs.corp:8080/.well-known/jwks).
-	JWKSEndpoint string `yaml:"endpoint,omitempty" env:"ENDPOINT,overwrite"`
+// JVSConfig is the config. This is an alias for jvspb.
+//
+// Deprecated: Use [jvspb.Config] directly instead.
+type JVSConfig = jvspb.Config
 
-	// CacheTimeout is the duration that keys stay in cache before being revoked.
-	CacheTimeout time.Duration `yaml:"cache_timeout" env:"CACHE_TIMEOUT,overwrite,default=5m"`
-
-	// AllowBreakglass represents whether the jvs client allows breakglass.
-	AllowBreakglass bool `yaml:"allow_breakglass" env:"ALLOW_BREAKGLASS,overwrite,default=false"`
-}
-
-// Validate checks if the config is valid.
-func (cfg *JVSConfig) Validate() (merr error) {
-	if cfg.JWKSEndpoint == "" {
-		merr = errors.Join(merr, fmt.Errorf("endpoint must be set"))
-	}
-	if cfg.CacheTimeout <= 0 {
-		merr = errors.Join(merr, fmt.Errorf("cache timeout must be a positive duration, got %q", cfg.CacheTimeout))
-	}
-	return
-}
-
-// LoadJVSConfig calls the necessary methods to load in config using the OsLookuper which finds env variables specified on the host.
-func LoadJVSConfig(ctx context.Context, b []byte) (*JVSConfig, error) {
-	return loadJVSConfigFromLookuper(ctx, b, envconfig.OsLookuper())
-}
-
-// loadConfigFromLooker reads in a yaml file, applies ENV config overrides from the lookuper, and finally validates the config.
-func loadJVSConfigFromLookuper(ctx context.Context, b []byte, lookuper envconfig.Lookuper) (*JVSConfig, error) {
-	var cfg JVSConfig
-	if err := yaml.Unmarshal(b, &cfg); err != nil {
-		return nil, fmt.Errorf("failed to parse yaml: %w", err)
-	}
-
-	// Process overrides from env vars.
-	if err := envconfig.ProcessWith(ctx, &envconfig.Config{
-		Target:   &cfg,
-		Lookuper: lookuper,
-	}); err != nil {
-		return nil, fmt.Errorf("failed to process environment variables: %w", err)
-	}
-
-	if err := cfg.Validate(); err != nil {
-		return nil, fmt.Errorf("failed validating config: %w", err)
-	}
-	return &cfg, nil
-}
+// LoadJVSConfig calls the necessary methods to load in config using the
+// OsLookuper which finds env variables specified on the host.
+//
+// Deprecated: Use [jvspb.LoadConfig] directly instead.
+var LoadJVSConfig = jvspb.LoadConfig

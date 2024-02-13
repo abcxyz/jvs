@@ -12,7 +12,7 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-package client
+package v0
 
 import (
 	"bytes"
@@ -34,7 +34,7 @@ func TestLoadJVSConfig(t *testing.T) {
 		name       string
 		cfg        string
 		envs       map[string]string
-		wantConfig *JVSConfig
+		wantConfig *Config
 		wantErr    string
 	}{
 		{
@@ -45,7 +45,7 @@ endpoint: https://jvs.corp:8080/.well-known/jwks
 cache_timeout: 1m
 allow_breakglass: true
 `,
-			wantConfig: &JVSConfig{
+			wantConfig: &Config{
 				JWKSEndpoint:    "https://jvs.corp:8080/.well-known/jwks",
 				CacheTimeout:    time.Minute,
 				AllowBreakglass: true,
@@ -56,7 +56,7 @@ allow_breakglass: true
 			cfg: `
 endpoint: https://jvs.corp:8080/.well-known/jwks
 `,
-			wantConfig: &JVSConfig{
+			wantConfig: &Config{
 				JWKSEndpoint:    "https://jvs.corp:8080/.well-known/jwks",
 				CacheTimeout:    5 * time.Minute,
 				AllowBreakglass: false,
@@ -87,7 +87,7 @@ allow_breakglass: false
 				"CACHE_TIMEOUT":    "2m",
 				"ALLOW_BREAKGLASS": "true",
 			},
-			wantConfig: &JVSConfig{
+			wantConfig: &Config{
 				JWKSEndpoint:    "other.net:443",
 				CacheTimeout:    2 * time.Minute,
 				AllowBreakglass: true,
@@ -101,7 +101,7 @@ allow_breakglass: false
 			t.Parallel()
 			lookuper := envconfig.MapLookuper(tc.envs)
 			content := bytes.NewBufferString(tc.cfg).Bytes()
-			gotConfig, err := loadJVSConfigFromLookuper(ctx, content, lookuper)
+			gotConfig, err := loadConfigFromLookuper(ctx, content, lookuper)
 			if diff := testutil.DiffErrString(err, tc.wantErr); diff != "" {
 				t.Errorf("Unexpected err: %s", diff)
 			}
