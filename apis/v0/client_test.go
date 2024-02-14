@@ -12,7 +12,7 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-package client
+package v0
 
 import (
 	"context"
@@ -32,7 +32,6 @@ import (
 	"github.com/lestrrat-go/jwx/v2/jws"
 	"github.com/lestrrat-go/jwx/v2/jwt"
 
-	jvspb "github.com/abcxyz/jvs/apis/v0"
 	"github.com/abcxyz/pkg/testutil"
 )
 
@@ -109,13 +108,13 @@ func TestValidateJWT(t *testing.T) {
 	}{
 		{
 			name:      "happy_path",
-			jwt:       testSignToken(t, tok, privateKey, keyID),
+			jwt:       testSignTokenPrivateKey(t, tok, privateKey, keyID),
 			sub:       "test_sub",
 			wantToken: tok,
 		},
 		{
 			name:      "other_key",
-			jwt:       testSignToken(t, tok2, privateKey2, keyID2),
+			jwt:       testSignTokenPrivateKey(t, tok2, privateKey2, keyID2),
 			sub:       "test_sub",
 			wantToken: tok2,
 		},
@@ -135,13 +134,13 @@ func TestValidateJWT(t *testing.T) {
 		},
 		{
 			name:    "invalid",
-			jwt:     testSignToken(t, tok, unregisteredKey, keyID),
+			jwt:     testSignTokenPrivateKey(t, tok, unregisteredKey, keyID),
 			sub:     "test_sub",
 			wantErr: "failed to verify jwt",
 		},
 		{
 			name:    "bad_subject",
-			jwt:     testSignToken(t, tok, privateKey, keyID),
+			jwt:     testSignTokenPrivateKey(t, tok, privateKey, keyID),
 			sub:     "bad_sub",
 			wantErr: "does not match expected subject",
 		},
@@ -153,7 +152,7 @@ func TestValidateJWT(t *testing.T) {
 		t.Run(tc.name, func(t *testing.T) {
 			t.Parallel()
 
-			client, err := NewJVSClient(ctx, &JVSConfig{
+			client, err := NewClient(ctx, &Config{
 				JWKSEndpoint:    svr.URL + path,
 				CacheTimeout:    5 * time.Minute,
 				AllowBreakglass: tc.allowBreakglass,
@@ -200,7 +199,7 @@ func testCreateToken(tb testing.TB, id string) jwt.Token {
 		tb.Fatalf("failed to build token: %s\n", err)
 	}
 
-	if err := jvspb.SetJustifications(tok, []*jvspb.Justification{
+	if err := SetJustifications(tok, []*Justification{
 		{
 			Category: "explanation",
 			Value:    "this is a test explanation",
@@ -216,7 +215,7 @@ func testCreateBreakglassToken(tb testing.TB) jwt.Token {
 
 	tok := testCreateToken(tb, "breakglass")
 
-	if err := jvspb.SetJustifications(tok, []*jvspb.Justification{
+	if err := SetJustifications(tok, []*Justification{
 		{
 			Category: "breakglass",
 			Value:    "this is a breakglass token",
@@ -227,7 +226,7 @@ func testCreateBreakglassToken(tb testing.TB) jwt.Token {
 	return tok
 }
 
-func testSignToken(tb testing.TB, tok jwt.Token, privateKey *ecdsa.PrivateKey, keyID string) string {
+func testSignTokenPrivateKey(tb testing.TB, tok jwt.Token, privateKey *ecdsa.PrivateKey, keyID string) string {
 	tb.Helper()
 
 	hdrs := jws.NewHeaders()
@@ -245,7 +244,7 @@ func testSignToken(tb testing.TB, tok jwt.Token, privateKey *ecdsa.PrivateKey, k
 func testSignBreakglassToken(tb testing.TB, token jwt.Token) string {
 	tb.Helper()
 
-	str, err := jvspb.CreateBreakglassToken(token, "testing")
+	str, err := CreateBreakglassToken(token, "testing")
 	if err != nil {
 		tb.Fatal(err)
 	}

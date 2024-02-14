@@ -21,7 +21,6 @@ import (
 	"time"
 
 	jvspb "github.com/abcxyz/jvs/apis/v0"
-	"github.com/abcxyz/jvs/client-lib/go/client"
 	"github.com/abcxyz/jvs/pkg/formatter"
 	"github.com/abcxyz/pkg/cli"
 )
@@ -153,7 +152,7 @@ func (c *TokenValidateCommand) Run(ctx context.Context, args []string) error {
 	if token != nil {
 		breakglass = true
 	} else {
-		jvsclient, err := client.NewJVSClient(ctx, &client.JVSConfig{
+		jvsclient, err := jvspb.NewClient(ctx, &jvspb.Config{
 			JWKSEndpoint:    c.flagJWKSEndpoint,
 			CacheTimeout:    cacheTimeout,
 			AllowBreakglass: true,
