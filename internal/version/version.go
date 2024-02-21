@@ -19,14 +19,19 @@ import "github.com/abcxyz/pkg/buildinfo"
 var (
 	// Name is the name of the binary. This can be overridden by the build
 	// process.
-	Name = "jvs"
+	name string
+	Name = valueOrFallback(name, func() string {
+		return "jvs"
+	})
 
 	// Version is the main package version. This can be overridden by the build
 	// process.
-	Version = buildinfo.Version()
+	version string
+	Version = valueOrFallback(version, buildinfo.Version)
 
 	// Commit is the git sha. This can be overridden by the build process.
-	Commit = buildinfo.Commit()
+	commit string
+	Commit = valueOrFallback(commit, buildinfo.Commit)
 
 	// OSArch is the operating system and architecture combination.
 	OSArch = buildinfo.OSArch()
@@ -34,3 +39,10 @@ var (
 	// HumanVersion is the compiled version.
 	HumanVersion = Name + " " + Version + " (" + Commit + ", " + OSArch + ")"
 )
+
+func valueOrFallback(val string, fn func() string) string {
+	if val != "" {
+		return val
+	}
+	return fn()
+}
