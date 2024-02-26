@@ -60,14 +60,14 @@ jobs:
       contents: 'read'
       id-token: 'write'
     steps:
-      - uses: 'actions/checkout@v4'
+      - uses: 'actions/checkout@b4ffde65f46336ab88eb53be808477a3936bae11' # ratchet:actions/checkout@v4
 
       # We don't actually need to authenticate here, but the Artifact Regsitry
       # Wagon[1] expects authentication and infinitely retries if it does not
       # find any.
       #
       # [1]: https://github.com/GoogleCloudPlatform/artifact-registry-maven-tools
-      - uses: 'google-github-actions/auth@v2'
+      - uses: 'google-github-actions/auth@55bd3a7c6e2ae7cf1877fd1ccb9d54c0503c457c' # ratchet:google-github-actions/auth@v2
         with:
           workload_identity_provider: '${{ vars.WIF_PROVIDER }}'
           service_account: '${{ vars.WIF_SERVICE_ACCOUNT }}'
@@ -100,13 +100,13 @@ jobs:
       SERVICES_URL_POSTFIX: '2nhpyabgtq-uc.a.run.app'
       KMS_KEYRING_NAME: 'projects/${{ vars.PROJECT_ID }}/locations/global/keyRings/jvs-keyring-0666'
     steps:
-      - uses: 'actions/checkout@v4'
+      - uses: 'actions/checkout@b4ffde65f46336ab88eb53be808477a3936bae11' # ratchet:actions/checkout@v4
 
-      - uses: 'actions/setup-go@v5'
+      - uses: 'actions/setup-go@0c52d547c9bc32b1aa3301fd7a9cb496313a4491' # ratchet:actions/setup-go@v5
         with:
           go-version-file: 'go.mod'
 
-      - uses: 'google-github-actions/auth@v2'
+      - uses: 'google-github-actions/auth@55bd3a7c6e2ae7cf1877fd1ccb9d54c0503c457c' # ratchet:google-github-actions/auth@v2
         id: 'auth'
         with:
           workload_identity_provider: '${{ vars.WIF_PROVIDER }}'
@@ -135,7 +135,7 @@ jobs:
       # Build ID tokens for each audience.
       - id: 'api-service-id-token'
         name: 'Get API Service ID token'
-        uses: 'google-github-actions/auth@v2'
+        uses: 'google-github-actions/auth@55bd3a7c6e2ae7cf1877fd1ccb9d54c0503c457c' # ratchet:google-github-actions/auth@v2
         with:
           workload_identity_provider: '${{ vars.WIF_PROVIDER }}'
           service_account: '${{ vars.WIF_SERVICE_ACCOUNT }}'
@@ -146,7 +146,7 @@ jobs:
           export_environment_variables: false
       - id: 'ui-service-id-token'
         name: 'Get UI Service ID token'
-        uses: 'google-github-actions/auth@v2'
+        uses: 'google-github-actions/auth@55bd3a7c6e2ae7cf1877fd1ccb9d54c0503c457c' # ratchet:google-github-actions/auth@v2
         with:
           workload_identity_provider: '${{ vars.WIF_PROVIDER }}'
           service_account: '${{ vars.WIF_SERVICE_ACCOUNT }}'
@@ -157,7 +157,7 @@ jobs:
           export_environment_variables: false
       - id: 'cert-rotator-service-id-token'
         name: 'Get Cert Rotator ID token'
-        uses: 'google-github-actions/auth@v2'
+        uses: 'google-github-actions/auth@55bd3a7c6e2ae7cf1877fd1ccb9d54c0503c457c' # ratchet:google-github-actions/auth@v2
         with:
           workload_identity_provider: '${{ vars.WIF_PROVIDER }}'
           service_account: '${{ vars.WIF_SERVICE_ACCOUNT }}'

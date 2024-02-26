@@ -53,7 +53,7 @@ jobs:
               }
             }
 
-      - uses: 'actions/github-script@v7'
+      - uses: 'actions/github-script@60a0d83039c74a4aee543508d2ffcb1c3799cdea' # ratchet:actions/github-script@v7
         id: 'create-release'
         env:
           EXPECTED_EMAIL: '${{ vars.TOKEN_MINTER_GITHUB_EMAIL }}'
@@ -167,7 +167,7 @@ jobs:
               }
             }
 
-      - uses: 'actions/download-artifact@v4'
+      - uses: 'actions/download-artifact@87c55149d96e628cc2ef7e6fc2aab372015aec85' # ratchet:actions/download-artifact@v4
         with:
           pattern: '*'
           path: 'dist/'
@@ -230,7 +230,7 @@ jobs:
         run: |-
           curl -fsL https://github.com/google/go-containerregistry/releases/download/${VERSION}/go-containerregistry_Linux_x86_64.tar.gz | sudo tar xzf - -C /usr/local/bin crane
 
-      - uses: 'google-github-actions/auth@v2'
+      - uses: 'google-github-actions/auth@55bd3a7c6e2ae7cf1877fd1ccb9d54c0503c457c' # ratchet:google-github-actions/auth@v2
         id: 'auth'
         with:
           project_id: '${{ vars.PROJECT_ID }}'
@@ -238,13 +238,13 @@ jobs:
           service_account: '${{ vars.WIF_SERVICE_ACCOUNT }}'
           token_format: 'access_token'
 
-      - uses: 'docker/login-action@v3'
+      - uses: 'docker/login-action@343f7c4344506bcbf9b4de18042ae17996df046d' # ratchet:docker/login-action@v3
         with:
           username: 'oauth2accesstoken'
           password: '${{ steps.auth.outputs.access_token }}'
           registry: '${{ vars.AUTOPUSH_CONTAINER_REGISTRY }}'
 
-      - uses: 'docker/login-action@v3'
+      - uses: 'docker/login-action@343f7c4344506bcbf9b4de18042ae17996df046d' # ratchet:docker/login-action@v3
         with:
           username: 'oauth2accesstoken'
           password: '${{ steps.auth.outputs.access_token }}'
