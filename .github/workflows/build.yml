@@ -141,11 +141,12 @@ jobs:
           create_credentials_file: false
           workload_identity_provider: '${{ vars.WIF_PROVIDER }}'
           service_account: '${{ vars.WIF_SERVICE_ACCOUNT }}'
+          token_format: 'access_token'
 
       - uses: 'docker/login-action@v3'
         with:
           username: 'oauth2accesstoken'
-          password: '${{ steps.auth.outputs.auth_token }}'
+          password: '${{ steps.auth.outputs.access_token }}'
           registry: '${{ vars.AUTOPUSH_CONTAINER_REGISTRY }}'
 
       - name: 'Build containers'
