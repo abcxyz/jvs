@@ -31,8 +31,6 @@ type config struct {
 	UIServiceAddr             string `env:"INTEG_TEST_UI_SERVICE_ADDR,required"`
 	CertRotatorServiceAddr    string `env:"INTEG_TEST_CERT_ROTATOR_SERVICE_ADDR,required"`
 	CertRotatorServiceIDToken string `env:"INTEG_TEST_CERT_ROTATOR_SERVICE_ID_TOKEN,required"`
-	KeyRing                   string `env:"KMS_KEYRING_ID,required"`
-	KeyName                   string `env:"KMS_KEY_NAME,required"`
 }
 
 func newTestConfig(ctx context.Context) (*config, error) {
