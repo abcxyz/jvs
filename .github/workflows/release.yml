@@ -222,7 +222,8 @@ jobs:
       matrix:
         build: '${{ fromJSON(needs.build.outputs.matrix).build }}'
         include:
-          - name: 'jvs-prober'
+          - build:
+              name: 'jvs-prober'
     steps:
       - name: 'Install crane'
         env:
