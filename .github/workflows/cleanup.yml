@@ -20,98 +20,48 @@ on:
       - '.github/workflows/cleanup.yml'
   schedule:
     - cron: '0 0 */1 * *'
-  workflow_dispatch:
-    inputs:
-      time_span:
-        description: 'keys created in past time span'
-        default: '1d'
-        type: 'string'
-
-env:
-  WIF_PROVIDER: 'projects/851681819867/locations/global/workloadIdentityPools/github-automation/providers/jvs-ci-i'
-  WIF_SERVICE_ACCOUNT: 'github-automation-bot@gha-jvs-ci-i-31a91c.iam.gserviceaccount.com'
-  INTEGRATION_PROJECT_ID: 'jvs-i-e5'
-  INTEGRATION_REGION: 'us-central1'
-  INTEGRATION_KEY_RING_ID: 'jvs-keyring-0666'
-
-permissions:
-  contents: 'read'
-  id-token: 'write'
 
 jobs:
-  # cleanup_services_cloudrun_revisions deletes all Cloud Run revisions for
-  # api, public key, cert rotator, ui services when the revison is more than 5 hours old.
-  cleanup_services_cloudrun_revisions:
+  # cleanup-revisions deletes all Cloud Run revisions for api, public key, cert
+  # rotator, ui services when the revison is more than 5 hours old.
+  cleanup-revisions:
     runs-on: 'ubuntu-latest'
-    strategy:
-      matrix:
-        service_name:
-          - 'jvs-api-4527'
-          - 'jvs-cert-rotator-e04a'
-          - 'jvs-public-key-f22e'
-          - 'jvs-ui-8ab7'
+    permissions:
+      contents: 'read'
+      id-token: 'write'
     steps:
-      - uses: 'actions/checkout@8e5e7e5ab8b370d6c329ec480221332ada57f0ab' # ratchet:actions/checkout@v3
-      - uses: 'google-github-actions/auth@35b0e87d162680511bf346c299f71c9c5c379033' # ratchet:google-github-actions/auth@v1
-        with:
-          workload_identity_provider: '${{ env.WIF_PROVIDER }}'
-          service_account: '${{ env.WIF_SERVICE_ACCOUNT }}'
-      - uses: 'google-github-actions/setup-gcloud@e30db14379863a8c79331b04a9969f4c1e225e0b' # ratchet:google-github-actions/setup-gcloud@v1
-      - name: 'Remove old Cloud Run revisions'
-        shell: 'bash'
-        run: |-
-          # List all revisions that were deployed 5 hours ago or later, excluding the latest revision
-          # There must be at least one revisions running at all times
-          REVISIONS=$(gcloud run revisions list \
-            --project="$INTEGRATION_PROJECT_ID" \
-            --region="$INTEGRATION_REGION" \
-            --service="${{ matrix.service_name }}" \
-            --format="value(name)" \
-            --sort-by="~metadata.creationTimestamp" \
-            --filter="metadata.creationTimestamp < '-p5h'" | sed 1d)
+      - uses: 'actions/checkout@b4ffde65f46336ab88eb53be808477a3936bae11' # ratchet:actions/checkout@v4
 
-          IFS=$'\n'; for NAME in $REVISIONS; do
-            echo "Deleting ${NAME}..."
-            gcloud run revisions delete ${NAME} --project="$INTEGRATION_PROJECT_ID" --region="$INTEGRATION_REGION" --quiet --async
-          done
-  key_cleanup:
-    runs-on: 'ubuntu-latest'
-    steps:
-      - uses: 'actions/checkout@8e5e7e5ab8b370d6c329ec480221332ada57f0ab' # ratchet:actions/checkout@v3
-      - uses: 'google-github-actions/auth@35b0e87d162680511bf346c299f71c9c5c379033' # ratchet:google-github-actions/auth@v1
+      - uses: 'google-github-actions/auth@55bd3a7c6e2ae7cf1877fd1ccb9d54c0503c457c' # ratchet:google-github-actions/auth@v2
         with:
-          workload_identity_provider: '${{ env.WIF_PROVIDER }}'
-          service_account: '${{ env.WIF_SERVICE_ACCOUNT }}'
-      - uses: 'google-github-actions/setup-gcloud@e30db14379863a8c79331b04a9969f4c1e225e0b' # ratchet:google-github-actions/setup-gcloud@v1
-      - name: 'create time span env var'
-        shell: 'bash'
+          workload_identity_provider: '${{ vars.WIF_PROVIDER }}'
+          service_account: '${{ vars.WIF_SERVICE_ACCOUNT }}'
+
+      - uses: 'google-github-actions/setup-gcloud@98ddc00a17442e89a24bbf282954a3b65ce6d200' # ratchet:google-github-actions/setup-gcloud@v2
+
+      - name: 'Remove old Cloud Run revisions'
+        env:
+          SERVICES: 'jvs-api-4527 jvs-cert-rotator-e04a jvs-public-key-f22e jvs-ui-8ab7'
         run: |-
-          if [ '${{ github.event_name }}' == 'workflow_dispatch' ]; then
-            echo "TIME_SPAN=${{ inputs.time_span }}" >> $GITHUB_ENV
-          else
-            echo "TIME_SPAN=1d" >> $GITHUB_ENV
-          fi
-      - name: 'Destroy all key version in the keyring'
-        shell: 'bash'
-        run: |-
-          KEYS=$(gcloud kms keys list \
-            --location=global \
-            --keyring=${{ env.INTEGRATION_KEY_RING_ID }} \
-            --project=${{ env.INTEGRATION_PROJECT_ID }} \
-            --format="value(name)" \
-            --filter="createTime >= '-p${{ env.TIME_SPAN }}'")
-          for KEY in $KEYS; do
-            echo "Getting active key version from key ${KEY}"
-            KEY_VERSIONS=$(gcloud kms keys versions list \
-              --location=global \
-              --keyring=${{ env.INTEGRATION_KEY_RING_ID }} \
-              --key=${KEY} \
-              --project=${{ env.INTEGRATION_PROJECT_ID }} \
-              --filter="state!=DESTROY_SCHEDULED AND state!=DESTROYED" \
-              --format="value(name)")
-            for VERSION in $KEY_VERSIONS; do
-              echo "Deleting ${VERSION}"
-              gcloud kms keys versions destroy ${VERSION} --quiet
+          for SERVICE in ${SERVICES}; do
+            echo "🧹 Cleaning up revisions for ${SERVICE}..."
+
+            REVISIONS=$(gcloud run revisions list \
+              --project="${PROJECT_ID}" \
+              --region="us-central1" \
+              --service="${SERVICE}" \
+              --format="value(name)" \
+              --sort-by="~metadata.creationTimestamp" \
+              --filter="metadata.creationTimestamp < '-p5h'" | sed 1d)
+
+            IFS=$'\n'; for NAME in $REVISIONS; do
+              echo "Deleting ${NAME}..."
+              gcloud run revisions delete ${NAME} \
+                --quiet \
+                --verbosity="warning" \
+                --no-user-output-enabled \
+                --project="${PROJECT_ID}" \
+                --region="us-central1" \
+                --async
             done
           done
-

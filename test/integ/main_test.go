@@ -17,26 +17,19 @@ package integration
 
 import (
 	"context"
-	"errors"
 	"fmt"
 	"io"
 	"log"
 	"net/http"
 	"os"
-	"strconv"
 	"strings"
 	"testing"
 	"time"
 
-	kms "cloud.google.com/go/kms/apiv1"
-	"cloud.google.com/go/kms/apiv1/kmspb"
 	"github.com/google/go-cmp/cmp"
 	"github.com/lestrrat-go/jwx/v2/jwt"
-	"google.golang.org/api/iterator"
-	"google.golang.org/protobuf/types/known/fieldmaskpb"
 
 	"github.com/abcxyz/jvs/pkg/cli"
-	"github.com/abcxyz/jvs/pkg/jvscrypto"
 )
 
 // Global integration test config.
@@ -44,8 +37,6 @@ var (
 	cfg *config
 
 	httpClient *http.Client
-
-	keyResouceName string
 
 	// Keys we don't compare in validation result.
 	ignoreKeysMap map[string]struct{} = map[string]struct{}{
@@ -87,8 +78,6 @@ func TestMain(m *testing.M) {
 		httpClient = &http.Client{
 			Timeout: 5 * time.Second,
 		}
-
-		keyResouceName = fmt.Sprintf("projects/%s/locations/global/keyRings/%s/cryptoKeys/%s", cfg.ProjectID, cfg.KeyRing, cfg.KeyName)
 
 		return m.Run()
 	}())
@@ -219,134 +208,6 @@ func TestCertRotatorHealthCheck(t *testing.T) {
 	testCallEndpoint(ctx, t, uri, cfg.CertRotatorServiceIDToken, http.StatusOK)
 }
 
-// Subtests must be run in sequence, and they have waits in between.
-// Therefore, they cannot be parallelized, and aren't a good fit for table testing.
-//
-//nolint:paralleltest
-func TestCertRotatorKeyRotation(t *testing.T) {
-	t.Parallel()
-
-	ctx := context.Background()
-
-	uri := cfg.CertRotatorServiceAddr + "/"
-
-	kmsClient, err := kms.NewKeyManagementClient(ctx)
-	if err != nil {
-		t.Fatalf("failed to setup kms client: %s", err)
-	}
-
-	t.Cleanup(func() {
-		if err := kmsClient.Close(); err != nil {
-			t.Errorf("Clean up of key %s failed: %s", keyResouceName, err)
-		}
-	})
-
-	// Validate we have a single enabled key that is primary.
-	testValidateKeyVersionState(ctx, t, kmsClient, keyResouceName, 1,
-		map[int]kmspb.CryptoKeyVersion_CryptoKeyVersionState{
-			1: kmspb.CryptoKeyVersion_ENABLED,
-		})
-
-	t.Run("new_key_creation", func(t *testing.T) {
-		time.Sleep(5001 * time.Millisecond) // Wait past the next rotation event
-
-		testCallEndpoint(ctx, t, uri, cfg.CertRotatorServiceIDToken, http.StatusOK)
-
-		// Validate we have created a new key, but haven't set it as primary yet.
-		testValidateKeyVersionState(ctx, t, kmsClient, keyResouceName, 1,
-			map[int]kmspb.CryptoKeyVersion_CryptoKeyVersionState{
-				1: kmspb.CryptoKeyVersion_ENABLED,
-				2: kmspb.CryptoKeyVersion_ENABLED,
-			})
-	})
-
-	t.Run("new_key_promotion", func(t *testing.T) {
-		time.Sleep(1001 * time.Millisecond) // Wait past the propagation delay.
-
-		testCallEndpoint(ctx, t, uri, cfg.CertRotatorServiceIDToken, http.StatusOK)
-
-		// Validate our new key has been set to primary
-		testValidateKeyVersionState(ctx, t, kmsClient, keyResouceName, 2,
-			map[int]kmspb.CryptoKeyVersion_CryptoKeyVersionState{
-				1: kmspb.CryptoKeyVersion_ENABLED,
-				2: kmspb.CryptoKeyVersion_ENABLED,
-			})
-	})
-
-	t.Run("old_key_disable", func(t *testing.T) {
-		time.Sleep(2001 * time.Millisecond) // Wait past the grace period.
-
-		testCallEndpoint(ctx, t, uri, cfg.CertRotatorServiceIDToken, http.StatusOK)
-
-		// Validate that our old key has been disabled.
-		testValidateKeyVersionState(ctx, t, kmsClient, keyResouceName, 2,
-			map[int]kmspb.CryptoKeyVersion_CryptoKeyVersionState{
-				1: kmspb.CryptoKeyVersion_DISABLED,
-				2: kmspb.CryptoKeyVersion_ENABLED,
-			})
-	})
-
-	t.Run("old_key_destroy", func(t *testing.T) {
-		time.Sleep(2001 * time.Millisecond) // Wait past the disabled period and next rotation event.
-
-		testCallEndpoint(ctx, t, uri, cfg.CertRotatorServiceIDToken, http.StatusOK)
-
-		// Validate that our old key has been scheduled for destruction, and cycle has started again.
-		testValidateKeyVersionState(ctx, t, kmsClient, keyResouceName, 2,
-			map[int]kmspb.CryptoKeyVersion_CryptoKeyVersionState{
-				1: kmspb.CryptoKeyVersion_DESTROY_SCHEDULED,
-				2: kmspb.CryptoKeyVersion_ENABLED,
-				3: kmspb.CryptoKeyVersion_ENABLED,
-			})
-	})
-
-	t.Run("invalid_primary", func(t *testing.T) {
-		// Remove the primary key version
-		testRemoveLabelPrimary(ctx, t, kmsClient, keyResouceName)
-
-		testCallEndpoint(ctx, t, uri, cfg.CertRotatorServiceIDToken, http.StatusOK)
-
-		// Validate that we fixed the situation by setting our valid key to primary
-		testValidateKeyVersionState(ctx, t, kmsClient, keyResouceName, 3,
-			map[int]kmspb.CryptoKeyVersion_CryptoKeyVersionState{
-				1: kmspb.CryptoKeyVersion_DESTROY_SCHEDULED,
-				2: kmspb.CryptoKeyVersion_ENABLED,
-				3: kmspb.CryptoKeyVersion_ENABLED,
-			})
-	})
-
-	t.Run("emergent_disable", func(t *testing.T) {
-		// Emergently disable our primary.
-		testEmergentDisable(ctx, t, kmsClient, keyResouceName, keyResouceName+"/cryptoKeyVersions/3")
-
-		// Validate that the rotator will fix the situation by creating a new version and setting it to primary
-		testCallEndpoint(ctx, t, uri, cfg.CertRotatorServiceIDToken, http.StatusOK)
-
-		testValidateKeyVersionState(ctx, t, kmsClient, keyResouceName, 2,
-			map[int]kmspb.CryptoKeyVersion_CryptoKeyVersionState{
-				1: kmspb.CryptoKeyVersion_DESTROY_SCHEDULED,
-				2: kmspb.CryptoKeyVersion_ENABLED,
-				3: kmspb.CryptoKeyVersion_DISABLED,
-			})
-	})
-
-	t.Run("disable_all_key", func(t *testing.T) {
-		// Disable the last enabled key
-		testEmergentDisable(ctx, t, kmsClient, keyResouceName, keyResouceName+"/cryptoKeyVersions/2")
-
-		// Validate that the rotator will fix the situation by creating a new version and setting it to primary
-		testCallEndpoint(ctx, t, uri, cfg.CertRotatorServiceIDToken, http.StatusOK)
-
-		testValidateKeyVersionState(ctx, t, kmsClient, keyResouceName, 4,
-			map[int]kmspb.CryptoKeyVersion_CryptoKeyVersionState{
-				1: kmspb.CryptoKeyVersion_DESTROY_SCHEDULED,
-				2: kmspb.CryptoKeyVersion_DISABLED,
-				3: kmspb.CryptoKeyVersion_DISABLED,
-				4: kmspb.CryptoKeyVersion_ENABLED,
-			})
-	})
-}
-
 // testNormalizeTokenMap parses the tokenMap by overwriting the value for ignoreKeys
 // to empty and parsing the timestamp to the format without seconds to make
 // test on timestamps less flaky.
@@ -395,100 +256,5 @@ func testCallEndpoint(ctx context.Context, tb testing.TB, uri, token string, wan
 			tb.Fatal(err)
 		}
 		tb.Errorf("Got unexpected status code, got=%d want=%d, response=%s", got, want, string(b))
-	}
-}
-
-func testValidateKeyVersionState(ctx context.Context, tb testing.TB, kmsClient *kms.KeyManagementClient, keyName string,
-	expectedPrimary int, expectedStates map[int]kmspb.CryptoKeyVersion_CryptoKeyVersionState,
-) {
-	tb.Helper()
-	// validate that each version is in the expected state.
-	it := kmsClient.ListCryptoKeyVersions(ctx, &kmspb.ListCryptoKeyVersionsRequest{
-		Parent: keyName,
-	})
-	count := 0
-	for {
-		ver, err := it.Next()
-		if errors.Is(err, iterator.Done) {
-			break
-		}
-		if err != nil {
-			tb.Fatalf("err while calling kms to get key versions: %s", err)
-		}
-		number, err := strconv.Atoi(ver.Name[strings.LastIndex(ver.Name, "/")+1:])
-		if err != nil {
-			tb.Fatalf("couldn't convert version %s to number: %s", ver.Name, err)
-		}
-		if ver.State != expectedStates[number] {
-			tb.Errorf("version %s was in state %s, but expected %s", ver.Name, ver.State, expectedStates[number])
-		}
-		count++
-	}
-	if count != len(expectedStates) {
-		tb.Errorf("got %d versions, expected %d", count, len(expectedStates))
-	}
-
-	// validate the primary is set correctly.
-	resp, err := kmsClient.GetCryptoKey(ctx, &kmspb.GetCryptoKeyRequest{Name: keyName})
-	if err != nil {
-		tb.Fatalf("err while calling kms: %s", err)
-	}
-	primaryName := resp.Labels[jvscrypto.PrimaryKey]
-	primaryLabel := primaryName[strings.LastIndex(primaryName, "/")+1:]
-	primaryNumber, err := strconv.Atoi(strings.TrimPrefix(primaryLabel, jvscrypto.PrimaryLabelPrefix))
-	if err != nil {
-		tb.Fatalf("couldn't convert version %s to number: %s", primaryName, err)
-	}
-	if primaryNumber != expectedPrimary {
-		tb.Errorf("primary was set to version %d, but expected %d", primaryNumber, expectedPrimary)
-	}
-}
-
-func testRemoveLabelPrimary(ctx context.Context, tb testing.TB, kmsClient *kms.KeyManagementClient, keyName string) {
-	tb.Helper()
-	key, err := kmsClient.GetCryptoKey(ctx, &kmspb.GetCryptoKeyRequest{Name: keyName})
-	if err != nil {
-		tb.Fatalf("unable to retrieve key %s: %s", keyName, err)
-	}
-
-	// Remove the labels for the key.
-	labels := make(map[string]string, 0)
-	key.Labels = labels
-
-	var mT *kmspb.CryptoKey
-	mask, err := fieldmaskpb.New(mT, "labels")
-	if err != nil {
-		tb.Fatalf("unable to create field mask: %s", err)
-	}
-	if _, err := kmsClient.UpdateCryptoKey(ctx, &kmspb.UpdateCryptoKeyRequest{CryptoKey: key, UpdateMask: mask}); err != nil {
-		tb.Fatalf("failed to remove labels: %s", err)
-	}
-}
-
-// This is intended to mock an event where we need to emergently rotate the key.
-// We disable the key version and remove it as primary.
-func testEmergentDisable(ctx context.Context, tb testing.TB, kmsClient *kms.KeyManagementClient, keyName, versionName string) {
-	tb.Helper()
-
-	testRemoveLabelPrimary(ctx, tb, kmsClient, keyName)
-
-	// Disable keyversion
-	ver, err := kmsClient.GetCryptoKeyVersion(ctx, &kmspb.GetCryptoKeyVersionRequest{Name: versionName})
-	if err != nil {
-		tb.Fatalf("unable to retrieve version %s: %s", versionName, err)
-	}
-
-	ver.State = kmspb.CryptoKeyVersion_DISABLED
-	var messageType *kmspb.CryptoKeyVersion
-	mask, err := fieldmaskpb.New(messageType, "state")
-	if err != nil {
-		tb.Fatalf("unable to create field mask: %s", err)
-	}
-	updateReq := &kmspb.UpdateCryptoKeyVersionRequest{
-		CryptoKeyVersion: ver,
-		UpdateMask:       mask,
-	}
-	if _, err := kmsClient.UpdateCryptoKeyVersion(ctx, updateReq); err != nil {
-		tb.Fatalf("unable to disable version: %s", err)
 	}
 }

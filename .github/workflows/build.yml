@@ -1,0 +1,195 @@
+# Copyright 2024 The Authors (see AUTHORS file)
+#
+# Licensed under the Apache License, Version 2.0 (the "License");
+# you may not use this file except in compliance with the License.
+# You may obtain a copy of the License at
+#
+#     http://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+# See the License for the specific language governing permissions and
+# limitations under the License.
+
+name: 'build'
+
+on:
+  workflow_call:
+    inputs:
+      version:
+        description: 'Version information to inject into the binary'
+        type: 'string'
+        required: true
+
+    outputs:
+      matrix:
+        description: 'JSON-encoded build matrix'
+        value: '${{ jobs.compute-matrix.outputs.matrix }}'
+
+jobs:
+  compute-matrix:
+    runs-on: 'ubuntu-latest'
+    outputs:
+      matrix: '${{ steps.compute-matrix.outputs.matrix }}'
+    steps:
+      - uses: 'actions/github-script@60a0d83039c74a4aee543508d2ffcb1c3799cdea' # ratchet:actions/github-script@v7
+        id: 'compute-matrix'
+        with:
+          script: |-
+            const matrix = {
+              goarch: [
+                'amd64',
+                'arm64',
+              ],
+              goos: [
+                'darwin',
+                'linux',
+                'windows',
+              ],
+              build: [
+                {
+                  name: 'jvsctl',
+                  package: './cmd/jvsctl',
+                },
+              ],
+            };
+
+            core.setOutput('matrix', JSON.stringify(matrix));
+
+  build-binaries:
+    runs-on: 'ubuntu-latest'
+    needs:
+      - 'compute-matrix'
+    permissions:
+      contents: 'read'
+      id-token: 'write'
+    strategy:
+      fail-fast: false
+      matrix: '${{ fromJSON(needs.compute-matrix.outputs.matrix) }}'
+    name: 'build ${{ matrix.build.name }} (${{ matrix.goos }}/${{ matrix.goarch }})'
+    env:
+      GOARCH: '${{ matrix.goarch }}'
+      GOOS: '${{ matrix.goos }}'
+      PLATFORM: '${{ matrix.goos }}/${{ matrix.goarch }}'
+      BINARY_NAME: '${{ matrix.build.name }}'
+      BINARY_FILENAME: |-
+        ${{ matrix.build.name }}_${{ inputs.version }}_${{ matrix.goos }}_${{ matrix.goarch }}${{ (matrix.goos == 'windows' && '.exe') || '' }}
+      PACKAGE: '${{ matrix.build.package }}'
+      VERSION: '${{ inputs.version }}'
+    steps:
+      - uses: 'actions/checkout@b4ffde65f46336ab88eb53be808477a3936bae11' # ratchet:actions/checkout@v4
+
+      - uses: 'actions/setup-go@0c52d547c9bc32b1aa3301fd7a9cb496313a4491' # ratchet:actions/setup-go@v5
+        with:
+          go-version-file: 'go.mod'
+
+      - name: 'Build'
+        env:
+          GOPROXY: 'https://proxy.golang.org,direct'
+        run: |-
+          export MODULE="$(go list -m)"
+          export CGO_ENABLED=0
+
+          go build -a -trimpath -o "dist/${BINARY_FILENAME}" \
+            -ldflags="-s -w -extldflags=-static \
+              -X=${MODULE}/internal/version.name=${BINARY_NAME} \
+              -X=${MODULE}/internal/version.version=${VERSION} \
+              -X=${MODULE}/internal/version.commit=${GITHUB_SHA} \
+            " \
+            "${PACKAGE}"
+
+      - uses: 'actions/upload-artifact@5d5d22a31266ced268874388b861e4b58bb5c2f3' # ratchet:actions/upload-artifact@v4
+        with:
+          name: '${{ env.BINARY_FILENAME }}'
+          path: 'dist/'
+          if-no-files-found: 'error'
+          retention-days: 1
+          overwrite: true
+
+  build-containers:
+    runs-on: 'ubuntu-latest'
+    needs:
+      - 'build-binaries'
+      - 'compute-matrix'
+    permissions:
+      contents: 'read'
+      id-token: 'write'
+    strategy:
+      matrix:
+        build: '${{ fromJSON(needs.compute-matrix.outputs.matrix).build }}'
+    steps:
+      - uses: 'actions/checkout@b4ffde65f46336ab88eb53be808477a3936bae11' # ratchet:actions/checkout@v4
+
+      - uses: 'actions/download-artifact@87c55149d96e628cc2ef7e6fc2aab372015aec85' # ratchet:actions/download-artifact@v4
+        with:
+          pattern: '*'
+          merge-multiple: true
+          path: 'dist/'
+
+      - name: 'Mark binaries as executable'
+        run: |-
+          find ./dist/ -type f -exec chmod +x {} \;
+
+      - uses: 'docker/setup-qemu-action@68827325e0b33c7199eb31dd4e31fbe9023e06e3' # ratchet:docker/setup-qemu-action@v3
+
+      - uses: 'docker/setup-buildx-action@f95db51fddba0c2d1ec667646a06c2ce06100226' # ratchet:docker/setup-buildx-action@v3
+
+      - uses: 'google-github-actions/auth@55bd3a7c6e2ae7cf1877fd1ccb9d54c0503c457c' # ratchet:google-github-actions/auth@v2
+        id: 'auth'
+        with:
+          create_credentials_file: false
+          workload_identity_provider: '${{ vars.WIF_PROVIDER }}'
+          service_account: '${{ vars.WIF_SERVICE_ACCOUNT }}'
+          token_format: 'access_token'
+
+      - uses: 'docker/login-action@343f7c4344506bcbf9b4de18042ae17996df046d' # ratchet:docker/login-action@v3
+        with:
+          username: 'oauth2accesstoken'
+          password: '${{ steps.auth.outputs.access_token }}'
+          registry: '${{ vars.AUTOPUSH_CONTAINER_REGISTRY }}'
+
+      - name: 'Build containers'
+        env:
+          CONTAINER_REGISTRY: '${{ vars.AUTOPUSH_CONTAINER_REGISTRY }}'
+          NAME: '${{ matrix.build.name }}'
+          VERSION: '${{ inputs.version }}'
+        run: |-
+          docker buildx build \
+            --pull \
+            --platform="linux/amd64,linux/arm64" \
+            --build-arg="NAME=${NAME}" \
+            --build-arg="VERSION=${VERSION}" \
+            --label="org.opencontainers.image.created=$(date --rfc-3339=date)" \
+            --label="org.opencontainers.image.name=${NAME}" \
+            --label="org.opencontainers.image.revision=${GITHUB_SHA}" \
+            --label="org.opencontainers.image.source=${GITHUB_SERVER_URL}/${GITHUB_REPOSITORY}" \
+            --label="org.opencontainers.image.title=${NAME}" \
+            --label="org.opencontainers.image.version=${VERSION}" \
+            --tag="${CONTAINER_REGISTRY}/${NAME}:${GITHUB_SHA}" \
+            --push \
+            .
+
+        # The prober is special and depends on the other container images. This
+        # is a separate step because it uses the previously-built containers to
+        # build a new container.
+      - name: 'Build prober'
+        env:
+          CONTAINER_REGISTRY: '${{ vars.AUTOPUSH_CONTAINER_REGISTRY }}'
+          NAME: '${{ matrix.build.name }}'
+          VERSION: '${{ inputs.version }}'
+        run: |-
+          docker buildx build \
+            --pull \
+            --file prober/prober.dockerfile \
+            --platform="linux/amd64,linux/arm64" \
+            --build-arg="PARENT=${CONTAINER_REGISTRY}/${NAME}:${GITHUB_SHA}" \
+            --label="org.opencontainers.image.created=$(date --rfc-3339=date)" \
+            --label="org.opencontainers.image.name=jvs-prober" \
+            --label="org.opencontainers.image.revision=${GITHUB_SHA}" \
+            --label="org.opencontainers.image.source=${GITHUB_SERVER_URL}/${GITHUB_REPOSITORY}" \
+            --label="org.opencontainers.image.title=jvs-prober" \
+            --label="org.opencontainers.image.version=${VERSION}" \
+            --tag="${CONTAINER_REGISTRY}/jvs-prober:${GITHUB_SHA}" \
+            --push \
+            .
