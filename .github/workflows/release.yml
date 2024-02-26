@@ -131,6 +131,32 @@ jobs:
             core.setOutput('created', true);
             core.info(`✅ Created release "${response.data.name}" at ${response.data.html_url}`);
 
+  maven:
+    runs-on: 'ubuntu-latest'
+    needs:
+      - 'create-release'
+    permissions:
+      contents: 'read'
+      id-token: 'write'
+    steps:
+      - uses: 'actions/checkout@b4ffde65f46336ab88eb53be808477a3936bae11' # ratchet:actions/checkout@v4
+
+      - uses: 'actions/setup-java@387ac29b308b003ca37ba93a6cab5eb57c8f5f93' # ratchet:actions/setup-java@v4
+        with:
+          java-version: '11'
+          distribution: 'adopt'
+
+      - uses: 'google-github-actions/auth@55bd3a7c6e2ae7cf1877fd1ccb9d54c0503c457c' # ratchet:google-github-actions/auth@v2
+        with:
+          workload_identity_provider: '${{ vars.WIF_PROVIDER }}'
+          service_account: '${{ vars.WIF_SERVICE_ACCOUNT }}'
+
+      - name: 'Maven deploy'
+        env:
+          VERSION: '${{ needs.create-release.outputs.version }}'
+        run: |-
+          mvn clean flatten:flatten deploy -Drevision=${VERSION}
+
   build:
     uses: './.github/workflows/build.yml'
     needs:
