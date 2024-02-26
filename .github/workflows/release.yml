@@ -237,6 +237,8 @@ jobs:
           workload_identity_provider: '${{ vars.WIF_PROVIDER }}'
           service_account: '${{ vars.WIF_SERVICE_ACCOUNT }}'
           token_format: 'access_token'
+          create_credentials_file: false
+          export_environment_variables: false
 
       - uses: 'docker/login-action@343f7c4344506bcbf9b4de18042ae17996df046d' # ratchet:docker/login-action@v3
         with:
