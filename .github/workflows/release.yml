@@ -144,9 +144,9 @@ jobs:
 
       - name: 'Maven deploy'
         env:
-          VERSION: '${{ needs.create-release.outputs.version }}'
+          RELEASE_VERSION: '${{ needs.create-release.outputs.version }}'
         run: |-
-          mvn clean flatten:flatten deploy -Drevision=${VERSION}
+          mvn --no-transfer-progress --batch-mode clean flatten:flatten deploy -Drevision=${RELEASE_VERSION}
 
   build:
     uses: './.github/workflows/build.yml'
