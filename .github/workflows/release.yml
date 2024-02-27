@@ -107,14 +107,6 @@ jobs:
             // Compute prerelase.
             const prerelease = ['-', 'pre', 'alpha', 'beta', 'preview'].some((v) => version.includes(v));
 
-            // Compute release notes.
-            const releaseNotes = commitMessage.
-              split('\n').
-              slice(1).
-              filter((line) => !line.startsWith('Co-authored-by:')).
-              join('\n').
-              trim();
-
             // Create the release.
             const response = await github.rest.repos.createRelease({
               owner: context.repo.owner,
@@ -122,8 +114,7 @@ jobs:
               tag_name: tag,
               target_commitish: headCommit.id,
               name: tag,
-              body: releaseNotes,
-              generate_release_notes: false,
+              generate_release_notes: true,
               prerelease: prerelease,
               draft: true,
               make_latest: 'legacy',
