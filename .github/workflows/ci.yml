@@ -79,7 +79,7 @@ jobs:
 
       - name: 'Run tests'
         run: |-
-          mvn clean flatten:flatten test --no-transfer-progress -f client-lib/java
+          mvn --no-transfer-progress --batch-mode clean flatten:flatten test -f client-lib/java
 
   build:
     uses: './.github/workflows/build.yml'
