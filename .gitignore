@@ -34,8 +34,7 @@ tmp/
 
 ### Terraform related ###
 # Local .terraform directories
-**/.terraform/*
-**/.terraform.lock.hcl
+**/.terraform*
 .tfvars
 
 # .tfstate files
