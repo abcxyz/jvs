@@ -43,18 +43,18 @@ func (p *CertificateActionService) certificateAction(ctx context.Context, reques
 	// create map of key -> version actions list
 	actions := make(map[string][]*actionTuple)
 	for _, action := range request.GetActions() {
-		key, err := getKeyNameFromVersion(action.Version)
+		key, err := getKeyNameFromVersion(action.GetVersion())
 		if err != nil {
-			return fmt.Errorf("couldn't determine key name from version %s: %w", action.Version, err)
+			return fmt.Errorf("couldn't determine key name from version %s: %w", action.GetVersion(), err)
 		}
 		keyActions, ok := actions[key]
 		if !ok {
 			keyActions = make([]*actionTuple, 0)
 		}
 
-		ver, err := p.KMSClient.GetCryptoKeyVersion(ctx, &kmspb.GetCryptoKeyVersionRequest{Name: action.Version})
+		ver, err := p.KMSClient.GetCryptoKeyVersion(ctx, &kmspb.GetCryptoKeyVersionRequest{Name: action.GetVersion()})
 		if err != nil {
-			return fmt.Errorf("couldn't get key version %s: %w", action.Version, err)
+			return fmt.Errorf("couldn't get key version %s: %w", action.GetVersion(), err)
 		}
 
 		primary, err := GetPrimary(ctx, p.KMSClient, key)
@@ -62,7 +62,7 @@ func (p *CertificateActionService) certificateAction(ctx context.Context, reques
 			return fmt.Errorf("couldn't determine current primary: %w", err)
 		}
 
-		keyActions = append(keyActions, determineActions(ver, action.Action, primary)...)
+		keyActions = append(keyActions, determineActions(ver, action.GetAction(), primary)...)
 		actions[key] = keyActions
 	}
 
@@ -79,7 +79,7 @@ func (p *CertificateActionService) certificateAction(ctx context.Context, reques
 // action, and current primary.
 func determineActions(ver *kmspb.CryptoKeyVersion, action jvspb.Action_ACTION, primary string) []*actionTuple {
 	actionsToPerform := make([]*actionTuple, 0)
-	if primary == ver.Name {
+	if primary == ver.GetName() {
 		// We are modifying the current primary, we should create a new version and
 		// immediately promote it.
 		actionsToPerform = append(actionsToPerform, &actionTuple{

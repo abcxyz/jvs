@@ -268,7 +268,7 @@ func (c *TokenCreateCommand) Run(ctx context.Context, args []string) error {
 		return fmt.Errorf("failed to create justification: %w", err)
 	}
 
-	fmt.Fprintln(c.Stdout(), resp.Token)
+	fmt.Fprintln(c.Stdout(), resp.GetToken())
 	return nil
 }
 

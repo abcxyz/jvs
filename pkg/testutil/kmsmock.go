@@ -101,7 +101,7 @@ func (s *MockKeyManagementServer) GetCryptoKeyVersion(ctx context.Context, req *
 		return nil, s.Err
 	}
 	return &kmspb.CryptoKeyVersion{
-		Name:  req.Name,
+		Name:  req.GetName(),
 		State: kmspb.CryptoKeyVersion_ENABLED,
 	}, nil
 }
@@ -110,7 +110,7 @@ func (s *MockKeyManagementServer) AsymmetricSign(ctx context.Context, req *kmspb
 	s.reqMu.Lock()
 	defer s.reqMu.Unlock()
 	s.Reqs = append(s.Reqs, req)
-	sig, err := ecdsa.SignASN1(rand.Reader, s.PrivateKey, req.Digest.GetSha256())
+	sig, err := ecdsa.SignASN1(rand.Reader, s.PrivateKey, req.GetDigest().GetSha256())
 	if err != nil {
 		return nil, s.Err
 	}
@@ -158,7 +158,7 @@ func (s *MockKeyManagementServer) UpdateCryptoKey(ctx context.Context, req *kmsp
 	s.reqMu.Lock()
 	defer s.reqMu.Unlock()
 	s.Reqs = append(s.Reqs, req)
-	s.Labels = req.CryptoKey.Labels
+	s.Labels = req.GetCryptoKey().GetLabels()
 
 	return &kmspb.CryptoKey{}, nil
 }
