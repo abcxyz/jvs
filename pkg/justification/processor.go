@@ -151,35 +151,35 @@ func (p *Processor) getPrimarySigner(ctx context.Context) (*signerWithID, error)
 // If the request fails validation, it returns full error messages with codes.InvalidArgument.
 func (p *Processor) runValidations(ctx context.Context, req *jvspb.CreateJustificationRequest) error {
 	logger := logging.FromContext(ctx)
-	if len(req.Justifications) < 1 {
+	if len(req.GetJustifications()) < 1 {
 		return status.Errorf(codes.InvalidArgument, "failed to validate request: no justifications specified")
 	}
 
 	var validationErr, internalErr error
 
 	var justificationsLength int
-	for _, j := range req.Justifications {
-		justificationsLength += len(j.Category) + len(j.Value)
+	for _, j := range req.GetJustifications() {
+		justificationsLength += len(j.GetCategory()) + len(j.GetValue())
 
-		v, ok := p.validators[j.Category]
+		v, ok := p.validators[j.GetCategory()]
 		if !ok {
-			validationErr = errors.Join(validationErr, fmt.Errorf("category %q is not supported", j.Category))
+			validationErr = errors.Join(validationErr, fmt.Errorf("category %q is not supported", j.GetCategory()))
 			continue
 		}
 		resp, verr := v.Validate(ctx, &jvspb.ValidateJustificationRequest{
 			Justification: j,
 		})
 		if verr != nil {
-			internalErr = errors.Join(internalErr, fmt.Errorf("unexpected error from validator %q: %w", j.Category, verr))
+			internalErr = errors.Join(internalErr, fmt.Errorf("unexpected error from validator %q: %w", j.GetCategory(), verr))
 			continue
 		}
 
-		if !resp.Valid {
+		if !resp.GetValid() {
 			validationErr = errors.Join(validationErr,
-				fmt.Errorf("failed validation criteria with error %v and warning %v", resp.Error, resp.Warning))
+				fmt.Errorf("failed validation criteria with error %v and warning %v", resp.GetError(), resp.GetWarning()))
 		}
 
-		j.Annotation = resp.Annotation
+		j.Annotation = resp.GetAnnotation()
 	}
 
 	// This isn't perfect, but it's the easiest place to get "close" to limiting
@@ -190,7 +190,7 @@ func (p *Processor) runValidations(ctx context.Context, req *jvspb.CreateJustifi
 	}
 
 	var audiencesLength int
-	for _, v := range req.Audiences {
+	for _, v := range req.GetAudiences() {
 		audiencesLength += len(v)
 	}
 	if got, max := audiencesLength, 1_000; got > max {
@@ -218,24 +218,24 @@ func (p *Processor) runValidations(ctx context.Context, req *jvspb.CreateJustifi
 // createToken is an internal helper for testing that builds an unsigned jwt
 // token from the request.
 func (p *Processor) createToken(ctx context.Context, requestor string, req *jvspb.CreateJustificationRequest, now time.Time) (jwt.Token, error) {
-	ttl, err := computeTTL(req.Ttl.AsDuration(), p.config.DefaultTTL, p.config.MaxTTL)
+	ttl, err := computeTTL(req.GetTtl().AsDuration(), p.config.DefaultTTL, p.config.MaxTTL)
 	if err != nil {
 		return nil, fmt.Errorf("failed to compute ttl: %w", err)
 	}
 
 	id := uuid.New().String()
 	exp := now.Add(ttl)
-	justs := req.Justifications
+	justs := req.GetJustifications()
 	iss := p.config.Issuer
 
 	// Use audiences in the request if provided.
-	aud := req.Audiences
+	aud := req.GetAudiences()
 	if len(aud) == 0 {
 		aud = []string{DefaultAudience}
 	}
 
 	// If no subject was given, default to the caller's identity.
-	subject := req.Subject
+	subject := req.GetSubject()
 	if subject == "" {
 		subject = requestor
 	}

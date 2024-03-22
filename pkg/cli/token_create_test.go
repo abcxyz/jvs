@@ -249,13 +249,13 @@ func (j *fakeJVS) CreateJustification(ctx context.Context, req *jvspb.CreateJust
 		Issuer(Issuer).
 		JwtID("test-jwt").
 		NotBefore(now).
-		Subject(req.Subject).
+		Subject(req.GetSubject()).
 		Build()
 	if err != nil {
 		return nil, fmt.Errorf("failed to create token: %w", err)
 	}
 
-	if err := jvspb.SetJustifications(token, req.Justifications); err != nil {
+	if err := jvspb.SetJustifications(token, req.GetJustifications()); err != nil {
 		return nil, fmt.Errorf("failed to set justifications: %w", err)
 	}
 

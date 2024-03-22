@@ -186,7 +186,7 @@ func TestDetermineActions(t *testing.T) {
 			versions: []*kmspb.CryptoKeyVersion{
 				oldEnabledKey,
 			},
-			primary: oldEnabledKey.Name,
+			primary: oldEnabledKey.GetName(),
 			wantActions: []*actionTuple{
 				{ActionCreateNew, nil},
 			},
@@ -197,7 +197,7 @@ func TestDetermineActions(t *testing.T) {
 				oldEnabledKey,
 				newEnabledKey2,
 			},
-			primary:     oldEnabledKey.Name,
+			primary:     oldEnabledKey.GetName(),
 			wantActions: []*actionTuple{},
 		},
 		{
@@ -206,7 +206,7 @@ func TestDetermineActions(t *testing.T) {
 				oldEnabledKey,
 				newEnabledKey,
 			},
-			primary: newEnabledKey.Name,
+			primary: newEnabledKey.GetName(),
 			wantActions: []*actionTuple{
 				{ActionDisable, oldEnabledKey},
 			},
@@ -217,7 +217,7 @@ func TestDetermineActions(t *testing.T) {
 				oldEnabledKey,
 				newEnabledKey,
 			},
-			primary: oldEnabledKey.Name,
+			primary: oldEnabledKey.GetName(),
 			wantActions: []*actionTuple{
 				{ActionPromote, newEnabledKey},
 			},
@@ -229,7 +229,7 @@ func TestDetermineActions(t *testing.T) {
 				newEnabledKey,
 				newEnabledKey2,
 			},
-			primary:     oldEnabledKey.Name,
+			primary:     oldEnabledKey.GetName(),
 			wantActions: []*actionTuple{},
 		},
 		{
@@ -239,7 +239,7 @@ func TestDetermineActions(t *testing.T) {
 				oldEnabledKey,
 				newEnabledKey,
 			},
-			primary: oldEnabledKey2.Name,
+			primary: oldEnabledKey2.GetName(),
 			wantActions: []*actionTuple{
 				{ActionPromote, newEnabledKey},
 			},
@@ -251,7 +251,7 @@ func TestDetermineActions(t *testing.T) {
 				newEnabledKey,
 				oldEnabledKey2,
 			},
-			primary: oldEnabledKey.Name,
+			primary: oldEnabledKey.GetName(),
 			wantActions: []*actionTuple{
 				{ActionDisable, oldEnabledKey2},
 				{ActionPromote, newEnabledKey},
@@ -266,7 +266,7 @@ func TestDetermineActions(t *testing.T) {
 				newDisabledKey,
 				oldDestroyedKey,
 			},
-			primary: newEnabledKey.Name,
+			primary: newEnabledKey.GetName(),
 			wantActions: []*actionTuple{
 				{ActionDisable, oldEnabledKey},
 				{ActionDestroy, oldDisabledKey},
