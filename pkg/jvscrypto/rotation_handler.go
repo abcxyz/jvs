@@ -129,7 +129,7 @@ func (h *RotationHandler) determineActions(ctx context.Context, vers []*kmspb.Cr
 
 	for _, ver := range vers {
 		logger.DebugContext(ctx, "checking version", "version", ver)
-		if primaryName != "" && ver.Name == primaryName {
+		if primaryName != "" && ver.GetName() == primaryName {
 			primary = ver
 			break
 		}
@@ -140,7 +140,7 @@ func (h *RotationHandler) determineActions(ctx context.Context, vers []*kmspb.Cr
 		newerVers = vers
 	} else {
 		for _, ver := range vers {
-			if ver.Name == primaryName {
+			if ver.GetName() == primaryName {
 				continue
 			}
 			if createdBefore(ver, primary) {
@@ -162,7 +162,7 @@ func (h *RotationHandler) determineActions(ctx context.Context, vers []*kmspb.Cr
 }
 
 func createdBefore(ver1, ver2 *kmspb.CryptoKeyVersion) bool {
-	return ver1.CreateTime.AsTime().Before(ver2.CreateTime.AsTime())
+	return ver1.GetCreateTime().AsTime().Before(ver2.GetCreateTime().AsTime())
 }
 
 // Determine actions for non-primary enabled versions.
@@ -196,7 +196,7 @@ func newestEnabledVer(vers []*kmspb.CryptoKeyVersion) *kmspb.CryptoKeyVersion {
 	var newestTime time.Time
 
 	for _, ver := range vers {
-		if ver.State != kmspb.CryptoKeyVersion_ENABLED {
+		if ver.GetState() != kmspb.CryptoKeyVersion_ENABLED {
 			continue
 		}
 		if newest == nil || ver.CreateTime.AsTime().After(newestTime) {

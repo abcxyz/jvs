@@ -42,7 +42,7 @@ func GetPrimary(ctx context.Context, kms *kms.KeyManagementClient, key string) (
 	if err != nil {
 		return "", fmt.Errorf("issue while getting key from KMS: %w", err)
 	}
-	if primary, ok := response.Labels[PrimaryKey]; ok {
+	if primary, ok := response.GetLabels()[PrimaryKey]; ok {
 		primary = strings.TrimPrefix(primary, PrimaryLabelPrefix)
 		return fmt.Sprintf("%s/cryptoKeyVersions/%s", key, primary), nil
 	}
@@ -65,7 +65,7 @@ func SetPrimary(ctx context.Context, kms *kms.KeyManagementClient, key, versionN
 		return err
 	}
 	// update label
-	labels := response.Labels
+	labels := response.GetLabels()
 	if labels == nil {
 		labels = make(map[string]string)
 	}
@@ -120,7 +120,7 @@ func CryptoKeyVersionsFor(ctx context.Context, client *kms.KeyManagementClient, 
 				if err != nil {
 					return nil, fmt.Errorf("failed to get key version for %s: %w", parentKey, err)
 				}
-				keyVersions = append(keyVersions, keyVersion.Name)
+				keyVersions = append(keyVersions, keyVersion.GetName())
 			}
 			return keyVersions, nil
 		}); err != nil {
@@ -173,7 +173,7 @@ func PublicKeysFor(ctx context.Context, client *kms.KeyManagementClient, keyVers
 				return nil, fmt.Errorf("failed to get public key for key version %s: %w", keyVersion, err)
 			}
 
-			publicKey, _, err := jwk.DecodePEM([]byte(publicKeyResp.Pem))
+			publicKey, _, err := jwk.DecodePEM([]byte(publicKeyResp.GetPem()))
 			if err != nil {
 				return nil, fmt.Errorf("failed to decode pem for key version %s: %w", keyVersion, err)
 			}
