@@ -363,7 +363,7 @@ func (h *RotationHandler) performDisable(ctx context.Context, ver *kmspb.CryptoK
 	// Make a copy to modify
 	newVerState := ver
 
-	logger.InfoContext(ctx, "disabling key version", "versionName", ver.GetName())
+	logger.InfoContext(ctx, "disabling key version", "version_name", ver.GetName())
 	newVerState.State = kmspb.CryptoKeyVersion_DISABLED
 	var messageType *kmspb.CryptoKeyVersion
 	mask, err := fieldmaskpb.New(messageType, "state")
@@ -382,7 +382,7 @@ func (h *RotationHandler) performDisable(ctx context.Context, ver *kmspb.CryptoK
 
 func (h *RotationHandler) performDestroy(ctx context.Context, ver *kmspb.CryptoKeyVersion) error {
 	logger := logging.FromContext(ctx)
-	logger.InfoContext(ctx, "destroying key version", "versionName", ver.GetName())
+	logger.InfoContext(ctx, "destroying key version", "version_name", ver.GetName())
 	destroyReq := &kmspb.DestroyCryptoKeyVersionRequest{
 		Name: ver.GetName(),
 	}
