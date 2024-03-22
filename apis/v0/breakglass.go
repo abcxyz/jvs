@@ -99,8 +99,8 @@ func ParseBreakglassToken(ctx context.Context, tokenStr string) (jwt.Token, erro
 
 	explanation := ""
 	for _, justification := range justifications {
-		if justification.Category == breakglassJustificationCategory {
-			explanation = justification.Value
+		if justification.GetCategory() == breakglassJustificationCategory {
+			explanation = justification.GetValue()
 			break
 		}
 	}
