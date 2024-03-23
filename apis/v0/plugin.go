@@ -63,7 +63,7 @@ type ExplanationValidator struct{}
 
 // Validate only checks if the input is not empty.
 func (v *ExplanationValidator) Validate(_ context.Context, req *ValidateJustificationRequest) (*ValidateJustificationResponse, error) {
-	if req.Justification == nil || req.Justification.Value == "" {
+	if req.GetJustification().GetValue() == "" {
 		return &ValidateJustificationResponse{
 			Valid: false,
 			Error: []string{"explanation cannot be empty"},
