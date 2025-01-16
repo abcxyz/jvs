@@ -48,6 +48,8 @@ jobs:
     uses: 'abcxyz/pkg/.github/workflows/java-lint.yml@main' # ratchet:exclude
     with:
       java_version: '11'
+      google_java_format_version: '1.18.1'
+      java_distribution: 'adopt'
 
   go-test:
     uses: 'abcxyz/pkg/.github/workflows/go-test.yml@main' # ratchet:exclude

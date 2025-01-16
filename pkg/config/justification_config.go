@@ -72,9 +72,9 @@ func (cfg *JustificationConfig) Validate() (merr error) {
 			got))
 	}
 
-	if def, max := cfg.DefaultTTL, cfg.MaxTTL; def > max {
+	if def, maximum := cfg.DefaultTTL, cfg.MaxTTL; def > maximum {
 		merr = errors.Join(merr, fmt.Errorf("default ttl (%s) must be less than or equal to the max ttl (%s)",
-			timeutil.HumanDuration(def), timeutil.HumanDuration(max)))
+			timeutil.HumanDuration(def), timeutil.HumanDuration(maximum)))
 	}
 
 	return
