@@ -103,8 +103,6 @@ func CryptoKeyVersionsFor(ctx context.Context, client *kms.KeyManagementClient, 
 	// Accumulate all the key versions for all provided keys.
 	versionsWorker := workerpool.New[[]string](nil)
 	for _, parentKey := range parentKeys {
-		parentKey := parentKey
-
 		if err := versionsWorker.Do(ctx, func() ([]string, error) {
 			it := client.ListCryptoKeyVersions(ctx, &kmspb.ListCryptoKeyVersionsRequest{
 				Parent: parentKey,
@@ -163,8 +161,6 @@ func PublicKeysFor(ctx context.Context, client *kms.KeyManagementClient, keyVers
 
 	publicKeysWorker := workerpool.New[*keyPair](nil)
 	for _, keyVersion := range keyVersions {
-		keyVersion := keyVersion
-
 		if err := publicKeysWorker.Do(ctx, func() (*keyPair, error) {
 			publicKeyResp, err := client.GetPublicKey(ctx, &kmspb.GetPublicKeyRequest{
 				Name: keyVersion,
