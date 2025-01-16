@@ -244,7 +244,7 @@ func (c *TokenCreateCommand) Run(ctx context.Context, args []string) error {
 		return err
 	}
 
-	conn, err := grpc.Dial(c.flagServer, dialOpts...)
+	conn, err := grpc.NewClient(c.flagServer, dialOpts...)
 	if err != nil {
 		return fmt.Errorf("failed to connect to JVS service: %w", err)
 	}

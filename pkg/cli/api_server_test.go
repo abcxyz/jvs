@@ -102,7 +102,7 @@ func TestAPIServerCommand(t *testing.T) {
 				}
 			}()
 
-			conn, err := grpc.Dial(srv.Addr(),
+			conn, err := grpc.NewClient(srv.Addr(),
 				grpc.WithTransportCredentials(insecure.NewCredentials()))
 			if err != nil {
 				t.Fatal(err)
