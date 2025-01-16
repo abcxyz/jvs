@@ -184,18 +184,18 @@ func (p *Processor) runValidations(ctx context.Context, req *jvspb.CreateJustifi
 
 	// This isn't perfect, but it's the easiest place to get "close" to limiting
 	// the size.
-	if got, max := justificationsLength, 4_000; got > max {
+	if got, maximum := justificationsLength, 4_000; got > maximum {
 		validationErr = errors.Join(validationErr, fmt.Errorf("justification size (%d bytes) must be less than %d bytes",
-			got, max))
+			got, maximum))
 	}
 
 	var audiencesLength int
 	for _, v := range req.GetAudiences() {
 		audiencesLength += len(v)
 	}
-	if got, max := audiencesLength, 1_000; got > max {
+	if got, maximum := audiencesLength, 1_000; got > maximum {
 		validationErr = errors.Join(validationErr, fmt.Errorf("audiences size (%d bytes) must be less than %d bytes",
-			got, max))
+			got, maximum))
 	}
 
 	// In case of internal errors, a standard internal error message will be shown to the user,
@@ -268,14 +268,14 @@ func (p *Processor) createToken(ctx context.Context, requestor string, req *jvsp
 // default TTL, and maximum configured TTL. If the requested TTL is greater than
 // the maximum TTL, it returns an error. If the requested TTL is 0, it returns
 // the default TTL.
-func computeTTL(req, def, max time.Duration) (time.Duration, error) {
+func computeTTL(req, def, maximum time.Duration) (time.Duration, error) {
 	if req <= 0 {
 		return def, nil
 	}
 
-	if req > max {
+	if req > maximum {
 		return 0, fmt.Errorf("requested ttl (%s) cannot be greater than max tll (%s)",
-			timeutil.HumanDuration(req), timeutil.HumanDuration(max))
+			timeutil.HumanDuration(req), timeutil.HumanDuration(maximum))
 	}
 
 	return req, nil
