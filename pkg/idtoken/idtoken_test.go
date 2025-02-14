@@ -15,7 +15,6 @@
 package idtoken
 
 import (
-	"context"
 	"fmt"
 	"net/url"
 	"os"
@@ -100,7 +99,7 @@ func TestIDTokenFromDefaultTokenSource(t *testing.T) {
 func TestFromDefaultCredentials(t *testing.T) {
 	t.Parallel()
 
-	ctx := context.Background()
+	ctx := t.Context()
 
 	if os.Getenv("MANUAL_TEST") == "" {
 		t.Skip("Skip manual test; set env var MANUAL_TEST to enable")

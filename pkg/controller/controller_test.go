@@ -59,7 +59,7 @@ type testValidateFormParam struct {
 func TestHandlePopup(t *testing.T) {
 	t.Parallel()
 
-	ctx := context.Background()
+	ctx := t.Context()
 
 	cases := []struct {
 		name        string
@@ -290,7 +290,7 @@ func TestValidateForm(t *testing.T) {
 		},
 	})
 
-	controller, err := New(context.Background(), nil, p, []string{})
+	controller, err := New(t.Context(), nil, p, []string{})
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -528,7 +528,7 @@ func TestGetCatagoriesDisplayData(t *testing.T) {
 		t.Run(tc.name, func(t *testing.T) {
 			t.Parallel()
 
-			gotRes, err := catagoriesDisplayData(context.Background(), tc.validators)
+			gotRes, err := catagoriesDisplayData(t.Context(), tc.validators)
 			if diff := testutil.DiffErrString(err, tc.wantErr); diff != "" {
 				t.Errorf("Unexpected err: %s", diff)
 			}

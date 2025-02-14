@@ -15,7 +15,6 @@
 package cli
 
 import (
-	"context"
 	"crypto/ecdsa"
 	"crypto/elliptic"
 	"crypto/rand"
@@ -43,7 +42,7 @@ import (
 func TestNewValidateCmd(t *testing.T) {
 	t.Parallel()
 
-	ctx := logging.WithLogger(context.Background(), logging.TestLogger(t))
+	ctx := logging.WithLogger(t.Context(), logging.TestLogger(t))
 
 	// Setup jwks server
 	privateKey, err := ecdsa.GenerateKey(elliptic.P256(), rand.Reader)

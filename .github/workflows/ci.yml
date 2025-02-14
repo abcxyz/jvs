@@ -83,6 +83,9 @@ jobs:
 
   build:
     uses: './.github/workflows/build.yml'
+    permissions:
+      contents: 'read'
+      id-token: 'write'
     with:
       # version is the same as `${UNIQUE_ID}`, but there's no way to reference
       # the "env" context from above in reusable workflows[1].

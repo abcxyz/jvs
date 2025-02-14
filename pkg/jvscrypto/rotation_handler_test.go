@@ -17,7 +17,6 @@
 package jvscrypto
 
 import (
-	"context"
 	"fmt"
 	"testing"
 	"time"
@@ -93,7 +92,7 @@ func TestGetKeyNameFromVersion(t *testing.T) {
 func TestDetermineActions(t *testing.T) {
 	t.Parallel()
 
-	ctx := logging.WithLogger(context.Background(), logging.TestLogger(t))
+	ctx := logging.WithLogger(t.Context(), logging.TestLogger(t))
 
 	keyTTL, err := time.ParseDuration("240h") // 10 days
 	if err != nil {
@@ -275,7 +274,7 @@ func TestDetermineActions(t *testing.T) {
 	for _, tc := range cases {
 		t.Run(tc.name, func(t *testing.T) {
 			t.Parallel()
-			ctx := context.Background()
+			ctx := t.Context()
 			output, err := handler.determineActions(ctx, tc.versions, tc.primary, curTime)
 
 			if diff := cmp.Diff(tc.wantActions, output, protocmp.Transform()); diff != "" {
@@ -465,7 +464,7 @@ func TestPerformActions(t *testing.T) {
 		t.Run(tc.name, func(t *testing.T) {
 			t.Parallel()
 
-			ctx := logging.WithLogger(context.Background(), logging.TestLogger(t))
+			ctx := logging.WithLogger(t.Context(), logging.TestLogger(t))
 
 			mockKeyManagement := testutil.NewMockKeyManagementServer(parent, versionName, tc.priorPrimary)
 			mockKeyManagement.Err = tc.serverErr

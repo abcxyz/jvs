@@ -15,7 +15,6 @@
 package v0
 
 import (
-	context "context"
 	"testing"
 	"time"
 
@@ -30,7 +29,7 @@ import (
 func TestCreateBreakglassToken(t *testing.T) {
 	t.Parallel()
 
-	ctx := context.Background()
+	ctx := t.Context()
 
 	cases := []struct {
 		name  string
@@ -93,7 +92,7 @@ func TestCreateBreakglassToken(t *testing.T) {
 func TestParseBreakglassToken(t *testing.T) {
 	t.Parallel()
 
-	ctx := context.Background()
+	ctx := t.Context()
 
 	breakglassToken := testTokenBuilder(t, jwt.NewBuilder())
 	if err := SetJustifications(breakglassToken, []*Justification{

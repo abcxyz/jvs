@@ -151,6 +151,9 @@ jobs:
 
   build:
     uses: './.github/workflows/build.yml'
+    permissions:
+      contents: 'read'
+      id-token: 'write'
     needs:
       - 'create-release'
     with:
