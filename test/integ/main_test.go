@@ -141,7 +141,7 @@ func TestAPIAndPublicKeyService(t *testing.T) {
 		t.Run(tc.name, func(t *testing.T) {
 			t.Parallel()
 
-			ctx := context.Background()
+			ctx := t.Context()
 
 			var createCmd cli.TokenCreateCommand
 			_, stdout, _ := createCmd.Pipe()
@@ -188,7 +188,7 @@ func TestUIServiceHealthCheck(t *testing.T) {
 
 	healthCheckPath := "/health"
 
-	ctx := context.Background()
+	ctx := t.Context()
 
 	uri := cfg.UIServiceAddr + healthCheckPath
 
@@ -200,7 +200,7 @@ func TestCertRotatorHealthCheck(t *testing.T) {
 
 	healthCheckPath := "/health"
 
-	ctx := context.Background()
+	ctx := t.Context()
 
 	uri := cfg.CertRotatorServiceAddr + healthCheckPath
 

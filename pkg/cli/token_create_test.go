@@ -38,7 +38,7 @@ import (
 func TestTokenCreateCommand(t *testing.T) {
 	t.Parallel()
 
-	ctx := logging.WithLogger(context.Background(), logging.TestLogger(t))
+	ctx := logging.WithLogger(t.Context(), logging.TestLogger(t))
 
 	now := time.Unix(0, 0).UTC()
 

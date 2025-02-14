@@ -393,7 +393,7 @@ func TestCreateToken(t *testing.T) {
 		t.Run(tc.name, func(t *testing.T) {
 			t.Parallel()
 
-			ctx := logging.WithLogger(context.Background(), logging.TestLogger(t))
+			ctx := logging.WithLogger(t.Context(), logging.TestLogger(t))
 			now := time.Now().UTC()
 
 			var clientOpt option.ClientOption

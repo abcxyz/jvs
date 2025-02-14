@@ -16,7 +16,6 @@ package v0
 
 import (
 	"bytes"
-	"context"
 	"testing"
 	"time"
 
@@ -28,7 +27,7 @@ import (
 
 func TestLoadJVSConfig(t *testing.T) {
 	t.Parallel()
-	ctx := context.Background()
+	ctx := t.Context()
 
 	tests := []struct {
 		name       string

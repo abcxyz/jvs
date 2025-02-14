@@ -77,7 +77,7 @@ func NewServerConfig(tb testing.TB, port string, allowlist []string, devMode boo
 	tb.Helper()
 
 	logger := logging.TestLogger(tb)
-	ctx := logging.WithLogger(context.Background(), logger)
+	ctx := logging.WithLogger(tb.Context(), logger)
 
 	key := "projects/[PROJECT]/locations/[LOCATION]/keyRings/[KEY_RING]/cryptoKeys/[CRYPTO_KEY]"
 	version := key + "/cryptoKeyVersions/[VERSION]"

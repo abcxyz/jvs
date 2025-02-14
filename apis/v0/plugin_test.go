@@ -15,7 +15,6 @@
 package v0
 
 import (
-	"context"
 	"testing"
 
 	"github.com/google/go-cmp/cmp"
@@ -60,7 +59,7 @@ func TestExplanationValidator(t *testing.T) {
 		t.Run(tc.name, func(t *testing.T) {
 			t.Parallel()
 
-			gotResp, err := DefaultJustificationValidator.Validate(context.Background(), tc.req)
+			gotResp, err := DefaultJustificationValidator.Validate(t.Context(), tc.req)
 			if err != nil {
 				t.Fatal(err)
 			}
@@ -94,7 +93,7 @@ func TestGetUIDataInValidator(t *testing.T) {
 		t.Run(tc.name, func(t *testing.T) {
 			t.Parallel()
 
-			gotResp, err := DefaultJustificationValidator.GetUIData(context.Background(), tc.req)
+			gotResp, err := DefaultJustificationValidator.GetUIData(t.Context(), tc.req)
 			if err != nil {
 				t.Fatal(err)
 			}
