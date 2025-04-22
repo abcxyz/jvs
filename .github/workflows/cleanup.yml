@@ -41,9 +41,9 @@ jobs:
 
       - name: 'Remove old Cloud Run revisions'
         env:
-          SERVICES: 'jvs-api-4527 jvs-cert-rotator-e04a jvs-public-key-f22e jvs-ui-8ab7'
+          TARGET_SERVICES: 'jvs-api-4527 jvs-cert-rotator-e04a jvs-public-key-f22e jvs-ui-8ab7'
         run: |-
-          for SERVICE in ${SERVICES}; do
+          for SERVICE in ${TARGET_SERVICES}; do
             echo "🧹 Cleaning up revisions for ${SERVICE}..."
 
             REVISIONS=$(gcloud run revisions list \
@@ -56,7 +56,7 @@ jobs:
 
             IFS=$'\n'; for NAME in $REVISIONS; do
               echo "Deleting ${NAME}..."
-              gcloud run revisions delete ${NAME} \
+              gcloud run revisions delete "${NAME}" \
                 --quiet \
                 --verbosity="warning" \
                 --no-user-output-enabled \

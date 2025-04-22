@@ -32,18 +32,6 @@ env:
   UNIQUE_ID: '${{ github.workflow }}-${{ github.run_id }}-${{ github.run_attempt }}'
 
 jobs:
-  terraform-lint:
-    uses: 'abcxyz/actions/.github/workflows/terraform-lint.yml@main' # ratchet:exclude
-    with:
-      directory: 'terraform'
-      terraform_version: '1.3'
-
-  yaml-lint:
-    uses: 'abcxyz/actions/.github/workflows/yaml-lint.yml@main' # ratchet:exclude
-
-  go-lint:
-    uses: 'abcxyz/actions/.github/workflows/go-lint.yml@main' # ratchet:exclude
-
   java-lint:
     uses: 'abcxyz/actions/.github/workflows/java-lint.yml@main' # ratchet:exclude
     with:
@@ -124,9 +112,9 @@ jobs:
         env:
           CONTAINER_REGISTRY: '${{ vars.AUTOPUSH_CONTAINER_REGISTRY }}'
           PROJECT_ID: '${{ vars.PROJECT_ID }}'
-          SERVICES: '${{ env.API_SERVICE_NAME }} ${{ env.CERT_ROTATOR_SERVICE_NAME }} ${{ env.PUBLIC_KEY_SERVICE_NAME }} ${{ env.UI_SERVICE_NAME }}'
+          TARGET_SERVICES: '${{ env.API_SERVICE_NAME }} ${{ env.CERT_ROTATOR_SERVICE_NAME }} ${{ env.PUBLIC_KEY_SERVICE_NAME }} ${{ env.UI_SERVICE_NAME }}'
         run: |-
-          for SERVICE in ${SERVICES}; do
+          for SERVICE in ${TARGET_SERVICES}; do
             echo "Updating ${SERVICE}..."
             gcloud run services update "${SERVICE}" \
               --quiet \
