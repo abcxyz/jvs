@@ -119,8 +119,6 @@ jobs:
       ##############
       JAVA_LINT_JAVA_VERSION: |-
         ${{ vars.JAVA_LINT_JAVA_VERSION }}
-      JAVA_LINT_JAVA_DISTRIBUTION: |-
-        ${{ vars.JAVA_LINT_JAVA_VERSION || 'zulu' }}
       JAVA_LINT_GOOGLE_JAVA_FORMAT_VERSION: |-
         ${{ vars.JAVA_LINT_GOOGLE_JAVA_FORMAT_VERSION || '1.25.2' }}
       JAVA_LINT_DIRECTORY: |-
@@ -166,7 +164,7 @@ jobs:
       - name: '[JAVA] Lint Java'
         if: |
           matrix.lint-target == 'java'
-        uses: 'abcxyz/actions/.github/actions/lint-java@6d37410a75a97ae77e0fad24d5db3b5108f99b38' # ratchet:exclude
+        uses: 'abcxyz/actions/.github/actions/lint-java@5d4c1e1314647d1d9ace49a1857cee719c4ff875' # ratchet:exclude
         with:
           java_version: '${{ env.JAVA_LINT_JAVA_VERSION }}'
           java_version_file: '.java-version'
