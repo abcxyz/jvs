@@ -166,7 +166,7 @@ jobs:
       - name: '[JAVA] Lint Java'
         if: |
           matrix.lint-target == 'java'
-        uses: 'abcxyz/actions/.github/actions/lint-java@dbfb984ce74226598a423eb4e22eec8c42f1e990' # ratchet:exclude
+        uses: 'abcxyz/actions/.github/actions/lint-java@6d37410a75a97ae77e0fad24d5db3b5108f99b38' # ratchet:exclude
         with:
           java_version: '${{ env.JAVA_LINT_JAVA_VERSION }}'
           java_version_file: '.java-version'
