@@ -49,6 +49,9 @@ jobs:
       id-token: 'write'
     steps:
       - uses: 'actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683' # ratchet:actions/checkout@v4
+      - name: 'TEST JAVA'
+        run: |
+          mvn help:evaluate -Dexpression=maven.compiler.release -q -DforceStdout
 
       - uses: 'actions/setup-java@7a6d8a8234af8eb26422e24e3006232cccaa061b' # ratchet:actions/setup-java@v4
         with:
