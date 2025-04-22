@@ -117,10 +117,6 @@ jobs:
       ##############
       ## JAVA ######
       ##############
-      JAVA_LINT_JAVA_VERSION: |-
-        ${{ vars.JAVA_LINT_JAVA_VERSION }}
-      JAVA_LINT_GOOGLE_JAVA_FORMAT_VERSION: |-
-        ${{ vars.JAVA_LINT_GOOGLE_JAVA_FORMAT_VERSION || '1.18.1' }}
       JAVA_LINT_DIRECTORY: |-
         ${{ vars.JAVA_LINT_DIRECTORY || '.' }}
       ##############

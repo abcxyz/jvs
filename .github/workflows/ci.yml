@@ -32,13 +32,6 @@ env:
   UNIQUE_ID: '${{ github.workflow }}-${{ github.run_id }}-${{ github.run_attempt }}'
 
 jobs:
-  java-lint:
-    uses: 'abcxyz/actions/.github/workflows/java-lint.yml@main' # ratchet:exclude
-    with:
-      java_version: '11'
-      google_java_format_version: '1.18.1'
-      java_distribution: 'adopt'
-
   go-test:
     uses: 'abcxyz/actions/.github/workflows/go-test.yml@main' # ratchet:exclude
 
@@ -49,15 +42,8 @@ jobs:
       id-token: 'write'
     steps:
       - uses: 'actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683' # ratchet:actions/checkout@v4
-      - name: 'TEST JAVA'
-        run: |
-          echo "PROJECT_VERSION: $(mvn help:evaluate -Dexpression=project.version -q -DforceStdout)"
-          echo "MAVEN_COMPILER_RELEASE: $(mvn help:evaluate -Dexpression=maven.compiler.release -q -DforceStdout)"
 
-      - uses: 'actions/setup-java@7a6d8a8234af8eb26422e24e3006232cccaa061b' # ratchet:actions/setup-java@v4
-        with:
-          java-version: '11'
-          distribution: 'adopt'
+      - uses: 'abcxyz/actions/.github/actions/setup-java-strict@09ff15858f2515a21985c660d771f48bfef514b6' # ratchet:exclude
 
       # We don't actually need to authenticate here, but the Artifact Regsitry
       # Wagon[1] expects authentication and infinitely retries if it does not
