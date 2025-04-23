@@ -104,7 +104,7 @@ jobs:
     # see https://docs.github.com/en/actions/using-github-hosted-runners/about-github-hosted-runners/about-github-hosted-runners#standard-github-hosted-runners-for-public-repositories;
     # due to https://github.com/google/google-java-format/issues/1072.
     runs-on: |-
-      ${{ matrix.lint-target == 'java' && 'ubuntu-20.04' || vars.LINT_RUNS_ON || 'ubuntu-latest' }}
+      ${{ matrix.lint-target == 'java' && 'ubuntu-22.04' || vars.LINT_RUNS_ON || 'ubuntu-latest' }}
     needs:
       - 'init'
     if: |
