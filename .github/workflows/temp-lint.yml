@@ -100,11 +100,6 @@ jobs:
           echo "lint-targets=${LINT_TARGETS}" >> "${GITHUB_OUTPUT}"
 
   lint:
-    # JAVA-ONLY: Use "oldest" available ubuntu-* instead of -latest,
-    # see https://docs.github.com/en/actions/using-github-hosted-runners/about-github-hosted-runners/about-github-hosted-runners#standard-github-hosted-runners-for-public-repositories;
-    # due to https://github.com/google/google-java-format/issues/1072.
-    # runs-on: |-
-    #   ${{ matrix.lint-target == 'java' && 'ubuntu-22.04' || vars.LINT_RUNS_ON || 'ubuntu-latest' }}
     runs-on: |-
       ${{ vars.LINT_RUNS_ON || 'ubuntu-latest' }}
     needs:
@@ -162,60 +157,58 @@ jobs:
         with:
           fetch-depth: 1 # shallow clone
 
-      # - name: '[JAVA] Lint Java'
+      - name: '[JAVA] Lint Java'
+        if: |
+          matrix.lint-target == 'java'
+        uses: 'abcxyz/actions/.github/actions/lint-java@2cfd890b77f5e08c6bb06672822143ae4bba1357' # ratchet:exclude
+        with:
+          directory: '${{ env.JAVA_LINT_DIRECTORY }}'
+          github_token: '${{ secrets.GITHUB_TOKEN }}'
+
+      # - name: 'Set up GraalVM ${{ matrix.java }}'
+      #   uses: 'graalvm/setup-graalvm@v1'
       #   if: |
       #     matrix.lint-target == 'java'
-      #   uses: 'abcxyz/actions/.github/actions/lint-java@d797e613ed067a9c50ef6e16a342c5649a4e450f' # ratchet:exclude
       #   with:
-      #     directory: '${{ env.JAVA_LINT_DIRECTORY }}'
-      #     github_token: '${{ secrets.GITHUB_TOKEN }}'
-      #     # java_version_file: '.java-version'
-      #     # google_java_format_version_file: '.java-version-google-format'
+      #     java-version: '21'
+      #     distribution: 'graalvm-community'
+      #     github-token: '${{ secrets.GITHUB_TOKEN }}'
+      #     native-image-job-reports: 'true'
+      #     cache: 'maven'
 
-      - name: 'Set up GraalVM ${{ matrix.java }}'
-        uses: 'graalvm/setup-graalvm@v1'
-        if: |
-          matrix.lint-target == 'java'
-        with:
-          java-version: '21'
-          distribution: 'graalvm-community'
-          github-token: '${{ secrets.GITHUB_TOKEN }}'
-          native-image-job-reports: 'true'
-          cache: 'maven'
+      # - name: 'Download google-java-format'
+      #   shell: 'bash'
+      #   env:
+      #     GOOGLE_JAVA_FORMAT_VERSION: '1.25.2'
+      #   if: |
+      #     matrix.lint-target == 'java'
+      #   run: |-
+      #     BIN="${{ runner.tool_cache }}/google-java-format-${GOOGLE_JAVA_FORMAT_VERSION}"
 
-      - name: 'Download google-java-format'
-        shell: 'bash'
-        env:
-          GOOGLE_JAVA_FORMAT_VERSION: '1.25.2'
-        if: |
-          matrix.lint-target == 'java'
-        run: |-
-          BIN="${{ runner.tool_cache }}/google-java-format-${GOOGLE_JAVA_FORMAT_VERSION}"
+      #     if [[ -x "${BIN}" ]]; then
+      #       echo "Already installed!"
+      #     else
+      #       curl -sLfo "${BIN}" \
+      #         "https://github.com/google/google-java-format/releases/download/v${GOOGLE_JAVA_FORMAT_VERSION}/google-java-format_linux-x86-64"
+      #       chmod +x "${BIN}"
+      #     fi
 
-          if [[ -x "${BIN}" ]]; then
-            echo "Already installed!"
-          else
-            curl -sLfo "${BIN}" \
-              "https://github.com/google/google-java-format/releases/download/v${GOOGLE_JAVA_FORMAT_VERSION}/google-java-format_linux-x86-64"
-            chmod +x "${BIN}"
-          fi
+      # - name: 'Check formatting'
+      #   shell: 'bash'
+      #   working-directory: '.'
+      #   if: |
+      #     matrix.lint-target == 'java'
+      #   env:
+      #     GOOGLE_JAVA_FORMAT_VERSION: '1.25.2'
+      #   run: |-
+      #     shopt -s globstar
+      #     "${{ runner.tool_cache }}/google-java-format-${GOOGLE_JAVA_FORMAT_VERSION}" -i **/*.java
 
-      - name: 'Check formatting'
-        shell: 'bash'
-        working-directory: '.'
-        if: |
-          matrix.lint-target == 'java'
-        env:
-          GOOGLE_JAVA_FORMAT_VERSION: '1.25.2'
-        run: |-
-          shopt -s globstar
-          "${{ runner.tool_cache }}/google-java-format-${GOOGLE_JAVA_FORMAT_VERSION}" -i **/*.java
-
-          if [ -n "$(git status -s -uall)" ]; then
-            echo "::error title=Java formatting::Detected unformatted Java"
-            git -c color.ui=always diff
-            exit 1
-          fi
+      #     if [ -n "$(git status -s -uall)" ]; then
+      #       echo "::error title=Java formatting::Detected unformatted Java"
+      #       git -c color.ui=always diff
+      #       exit 1
+      #     fi
 
       - name: '[JAVASCRIPT] Lint Javascript'
         if: |
