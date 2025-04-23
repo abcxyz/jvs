@@ -163,6 +163,7 @@ jobs:
         uses: 'abcxyz/actions/.github/actions/lint-java@5b3604716ded0308e085ea2691dee135f43a6eda' # ratchet:exclude
         with:
           directory: '${{ env.JAVA_LINT_DIRECTORY }}'
+        secrets: 'inherit'
           # java_version_file: '.java-version'
           # google_java_format_version_file: '.java-version-google-format'
 
