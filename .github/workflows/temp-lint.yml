@@ -103,8 +103,10 @@ jobs:
     # JAVA-ONLY: Use "oldest" available ubuntu-* instead of -latest,
     # see https://docs.github.com/en/actions/using-github-hosted-runners/about-github-hosted-runners/about-github-hosted-runners#standard-github-hosted-runners-for-public-repositories;
     # due to https://github.com/google/google-java-format/issues/1072.
+    # runs-on: |-
+    #   ${{ matrix.lint-target == 'java' && 'ubuntu-22.04' || vars.LINT_RUNS_ON || 'ubuntu-latest' }}
     runs-on: |-
-      ${{ matrix.lint-target == 'java' && 'ubuntu-22.04' || vars.LINT_RUNS_ON || 'ubuntu-latest' }}
+      ${{ vars.LINT_RUNS_ON || 'ubuntu-latest' }}
     needs:
       - 'init'
     if: |
