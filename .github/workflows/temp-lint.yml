@@ -160,7 +160,7 @@ jobs:
       - name: '[JAVA] Lint Java'
         if: |
           matrix.lint-target == 'java'
-        uses: 'abcxyz/actions/.github/actions/lint-java@2cfd890b77f5e08c6bb06672822143ae4bba1357' # ratchet:exclude
+        uses: 'abcxyz/actions/.github/actions/lint-java@51e106a25a9ab6530ba23f2067e4ee71930aa40f' # ratchet:exclude
         with:
           directory: '${{ env.JAVA_LINT_DIRECTORY }}'
           github_token: '${{ secrets.GITHUB_TOKEN }}'
