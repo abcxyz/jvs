@@ -207,7 +207,7 @@ jobs:
           GOOGLE_JAVA_FORMAT_VERSION: '1.25.2'
         run: |-
           shopt -s globstar
-          "./${{ runner.tool_cache }}/google-java-format-${GOOGLE_JAVA_FORMAT_VERSION}" -i **/*.java
+          "${{ runner.tool_cache }}/google-java-format-${GOOGLE_JAVA_FORMAT_VERSION}" -i **/*.java
 
           if [ -n "$(git status -s -uall)" ]; then
             echo "::error title=Java formatting::Detected unformatted Java"
