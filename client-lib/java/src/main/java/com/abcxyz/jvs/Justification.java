@@ -16,9 +16,9 @@
 
 package com.abcxyz.jvs;
 
+import lombok.AllArgsConstructor;
 import com.fasterxml.jackson.databind.annotation.JsonDeserialize;
 import lombok.AccessLevel;
-import lombok.AllArgsConstructor;
 import lombok.Data;
 
 @Data
