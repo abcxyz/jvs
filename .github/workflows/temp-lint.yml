@@ -165,51 +165,6 @@ jobs:
           directory: '${{ env.JAVA_LINT_DIRECTORY }}'
           github_token: '${{ secrets.GITHUB_TOKEN }}'
 
-      # - name: 'Set up GraalVM ${{ matrix.java }}'
-      #   uses: 'graalvm/setup-graalvm@v1'
-      #   if: |
-      #     matrix.lint-target == 'java'
-      #   with:
-      #     java-version: '21'
-      #     distribution: 'graalvm-community'
-      #     github-token: '${{ secrets.GITHUB_TOKEN }}'
-      #     native-image-job-reports: 'true'
-      #     cache: 'maven'
-
-      # - name: 'Download google-java-format'
-      #   shell: 'bash'
-      #   env:
-      #     GOOGLE_JAVA_FORMAT_VERSION: '1.25.2'
-      #   if: |
-      #     matrix.lint-target == 'java'
-      #   run: |-
-      #     BIN="${{ runner.tool_cache }}/google-java-format-${GOOGLE_JAVA_FORMAT_VERSION}"
-
-      #     if [[ -x "${BIN}" ]]; then
-      #       echo "Already installed!"
-      #     else
-      #       curl -sLfo "${BIN}" \
-      #         "https://github.com/google/google-java-format/releases/download/v${GOOGLE_JAVA_FORMAT_VERSION}/google-java-format_linux-x86-64"
-      #       chmod +x "${BIN}"
-      #     fi
-
-      # - name: 'Check formatting'
-      #   shell: 'bash'
-      #   working-directory: '.'
-      #   if: |
-      #     matrix.lint-target == 'java'
-      #   env:
-      #     GOOGLE_JAVA_FORMAT_VERSION: '1.25.2'
-      #   run: |-
-      #     shopt -s globstar
-      #     "${{ runner.tool_cache }}/google-java-format-${GOOGLE_JAVA_FORMAT_VERSION}" -i **/*.java
-
-      #     if [ -n "$(git status -s -uall)" ]; then
-      #       echo "::error title=Java formatting::Detected unformatted Java"
-      #       git -c color.ui=always diff
-      #       exit 1
-      #     fi
-
       - name: '[JAVASCRIPT] Lint Javascript'
         if: |
           matrix.lint-target == 'javascript'
