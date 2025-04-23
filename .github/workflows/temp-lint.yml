@@ -194,8 +194,8 @@ jobs:
             echo "Already installed!"
           else
             curl -sLfo "${BIN}" \
-              https://github.com/google/google-java-format/releases/download/v{GOOGLE_JAVA_FORMAT_VERSION}/google-java-format_linux-x86-64
-            # chmod +x "${BIN}"
+              "https://github.com/google/google-java-format/releases/download/v${GOOGLE_JAVA_FORMAT_VERSION}/google-java-format_linux-x86-64"
+            chmod +x "${BIN}"
           fi
 
       - name: 'Check formatting'
