@@ -133,10 +133,7 @@ jobs:
     steps:
       - uses: 'actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683' # ratchet:actions/checkout@v4
 
-      - uses: 'actions/setup-java@7a6d8a8234af8eb26422e24e3006232cccaa061b' # ratchet:actions/setup-java@v4
-        with:
-          java-version: '11'
-          distribution: 'adopt'
+      - uses: 'abcxyz/actions/.github/actions/setup-java-strict@main' # ratchet:exclude
 
       - uses: 'google-github-actions/auth@6fc4af4b145ae7821d527454aa9bd537d1f2dc5f' # ratchet:google-github-actions/auth@v2
         with:
@@ -147,7 +144,7 @@ jobs:
         env:
           RELEASE_VERSION: '${{ needs.create-release.outputs.version }}'
         run: |-
-          mvn --no-transfer-progress --batch-mode clean flatten:flatten deploy -Drevision=${RELEASE_VERSION}
+          mvn --no-transfer-progress --batch-mode clean flatten:flatten deploy -Drevision="${RELEASE_VERSION}"
 
   build:
     uses: './.github/workflows/build.yml'
@@ -198,7 +195,7 @@ jobs:
         run: |-
           cd dist/
 
-          for BINARY in $(find * -type f); do
+          while IFS= read -r -d '' BINARY; do
             chmod +x "${BINARY}"
 
             FOLDER="$(basename "${BINARY}" ".exe")"
@@ -214,12 +211,11 @@ jobs:
 
             (zip -9 -o -m -r -q "${FOLDER}.zip" "${FOLDER}" && \
               rm -rf "${FOLDER}") &
-          done
+          done <   <(find . -type f -printf '%P\0')
           wait
 
-          FILES="$(find * -name '*.zip')"
-          sha256sum ${FILES} > SHA256SUMS
-          sha512sum ${FILES} > SHA512SUMS
+          find . \( -name '*.zip' \) -type f -printf '%P\0' | xargs -0 sha256sum > SHA256SUMS
+          find . \( -name '*.zip' \) -type f -printf '%P\0' | xargs -0 sha512sum > SHA512SUMS
 
       - name: 'Upload binaries'
         env:
@@ -227,8 +223,8 @@ jobs:
           RELEASE_VERSION: 'v${{ needs.create-release.outputs.version }}'
           REPO: '${{ github.repository }}'
         run: |-
-          FILES="$(find ./dist -type f)"
-          gh release upload "${RELEASE_VERSION}" ${FILES} \
+          mapfile -t FILES < <(find ./dist -type f)
+          gh release upload "${RELEASE_VERSION}" "${FILES[@]}" \
             --repo "${REPO}"
 
   publish-containers:
@@ -250,7 +246,7 @@ jobs:
         env:
           VERSION: 'v0.19.0'
         run: |-
-          curl -fsL https://github.com/google/go-containerregistry/releases/download/${VERSION}/go-containerregistry_Linux_x86_64.tar.gz | sudo tar xzf - -C /usr/local/bin crane
+          curl -fsL "https://github.com/google/go-containerregistry/releases/download/${VERSION}/go-containerregistry_Linux_x86_64.tar.gz" | sudo tar xzf - -C /usr/local/bin crane
 
       - uses: 'google-github-actions/auth@6fc4af4b145ae7821d527454aa9bd537d1f2dc5f' # ratchet:google-github-actions/auth@v2
         id: 'auth'
