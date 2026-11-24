@@ -28,7 +28,7 @@ JVS_UI_ALLOWLIST="example.com, foo.bar.com"
 JVS_UI_ALLOWLIST="*"
 ```
 
-Setting `DEV_MODE` to `true` will automatically reload any html files without having to restart the UI server and also bypass any IP validation built within the service. If your calling application is running locally you will be able to bypass the validation without having to set this variable.
+Setting `DEV_MODE` to `true` will automatically reload any html files without having to restart the UI server and permit `http://` origins in addition to `https://`. Origin allowlist enforcement always applies (origins must match `JVS_UI_ALLOWLIST`; local/private IPs are not auto-allowed).
 
 ## Run the JVS UI locally
 

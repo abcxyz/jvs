@@ -97,6 +97,33 @@ func TestHandlePopup(t *testing.T) {
 			allowlist:   []string{"*"},
 			wantResCode: http.StatusBadRequest,
 		},
+		{
+			name:        "post_rejects_query_smuggled_origin",
+			method:      http.MethodPost,
+			path:        "/popup",
+			headers:     http.Header{iapHeaderName: []string{"accounts.google.com:test@email.com"}},
+			queryParam:  &url.Values{"origin": {"https://evil.net?x=.example.com"}},
+			allowlist:   []string{"*.example.com"},
+			wantResCode: http.StatusBadRequest,
+		},
+		{
+			name:        "post_rejects_localhost_not_in_allowlist",
+			method:      http.MethodPost,
+			path:        "/popup",
+			headers:     http.Header{iapHeaderName: []string{"accounts.google.com:test@email.com"}},
+			queryParam:  &url.Values{"origin": {"http://127.0.0.1"}},
+			allowlist:   []string{"example.com"},
+			wantResCode: http.StatusBadRequest,
+		},
+		{
+			name:        "post_rejects_http_in_prod_mode",
+			method:      http.MethodPost,
+			path:        "/popup",
+			headers:     http.Header{iapHeaderName: []string{"accounts.google.com:test@email.com"}},
+			queryParam:  &url.Values{"origin": {"http://app.example.com"}},
+			allowlist:   []string{"*.example.com"},
+			wantResCode: http.StatusBadRequest,
+		},
 	}
 
 	for _, tc := range cases {
@@ -132,15 +159,17 @@ func TestValidateOrigin(t *testing.T) {
 	t.Parallel()
 
 	cases := []struct {
-		name      string
-		origin    string
-		allowlist []string
-		wantRes   bool
-		wantErr   string
+		name          string
+		origin        string
+		allowlist     []string
+		devMode       bool
+		wantRes       bool
+		wantCanonical string
+		wantErr       string
 	}{
 		{
 			name:      "no_allowlist",
-			origin:    "foo",
+			origin:    "https://foo.com",
 			allowlist: []string{},
 			wantRes:   false,
 		},
@@ -159,52 +188,256 @@ func TestValidateOrigin(t *testing.T) {
 			wantErr:   "origin was not provided",
 		},
 		{
+			name:      "missing_scheme_rejected",
+			origin:    "foo.com",
+			allowlist: []string{"foo.com"},
+			wantRes:   false,
+		},
+		{
 			name:      "origin_domain_no_match",
-			origin:    "bar.com",
+			origin:    "https://bar.com",
 			allowlist: []string{"foo.com"},
 			wantRes:   false,
 		},
 		{
 			name:      "origin_subdomain_no_match",
-			origin:    "go.foo.com",
+			origin:    "https://go.foo.com",
 			allowlist: []string{"bar.com", "baz.com"},
 			wantRes:   false,
 		},
 		{
-			name:      "origin_match_asterisk",
-			origin:    "foo.com",
+			name:          "origin_match_asterisk",
+			origin:        "https://foo.com",
+			allowlist:     []string{"*"},
+			wantRes:       true,
+			wantCanonical: "https://foo.com",
+		},
+		{
+			name:      "asterisk_origin_rejected_even_with_wildcard_allowlist",
+			origin:    "*",
 			allowlist: []string{"*"},
-			wantRes:   true,
+			wantRes:   false,
 		},
 		{
-			name:      "subdomain_origin_match",
-			origin:    "go.foo.com",
-			allowlist: []string{"bar.com", "foo.com"},
-			wantRes:   true,
+			name:          "subdomain_origin_match",
+			origin:        "https://go.foo.com",
+			allowlist:     []string{"bar.com", "foo.com"},
+			wantRes:       true,
+			wantCanonical: "https://go.foo.com",
 		},
 		{
-			name:      "domain_origin_match",
-			origin:    "foo.com",
-			allowlist: []string{"bar.com", "foo.com"},
-			wantRes:   true,
+			name:          "domain_origin_match",
+			origin:        "https://foo.com",
+			allowlist:     []string{"bar.com", "foo.com"},
+			wantRes:       true,
+			wantCanonical: "https://foo.com",
 		},
 		{
-			name:      "localhost_origin",
+			name:          "wildcard_subdomain_match",
+			origin:        "https://app.example.com",
+			allowlist:     []string{"*.example.com"},
+			wantRes:       true,
+			wantCanonical: "https://app.example.com",
+		},
+		{
+			name:          "wildcard_nested_subdomain_match",
+			origin:        "https://a.b.example.com",
+			allowlist:     []string{"*.example.com"},
+			wantRes:       true,
+			wantCanonical: "https://a.b.example.com",
+		},
+		{
+			name:      "wildcard_does_not_match_apex",
+			origin:    "https://example.com",
+			allowlist: []string{"*.example.com"},
+			wantRes:   false,
+		},
+		{
+			name:      "suffix_without_dot_boundary_rejected",
+			origin:    "https://evilexample.com",
+			allowlist: []string{"example.com", "*.example.com"},
+			wantRes:   false,
+		},
+		{
+			name:          "port_suffix_allowed_on_matched_domain",
+			origin:        "https://example.com:8443",
+			allowlist:     []string{"example.com"},
+			wantRes:       true,
+			wantCanonical: "https://example.com:8443",
+		},
+		{
+			name:          "port_suffix_allowed_on_wildcard_domain",
+			origin:        "https://app.example.com:8443",
+			allowlist:     []string{"*.example.com"},
+			wantRes:       true,
+			wantCanonical: "https://app.example.com:8443",
+		},
+		{
+			name:          "uppercase_scheme_and_host_canonicalized",
+			origin:        "HTTPS://App.Example.COM:8443",
+			allowlist:     []string{"*.example.com"},
+			wantRes:       true,
+			wantCanonical: "https://app.example.com:8443",
+		},
+		{
+			name:      "http_rejected_in_prod",
+			origin:    "http://app.example.com",
+			allowlist: []string{"*.example.com"},
+			devMode:   false,
+			wantRes:   false,
+		},
+		{
+			name:          "http_allowed_in_dev_mode_when_allowlisted",
+			origin:        "http://app.example.com:8080",
+			allowlist:     []string{"*.example.com"},
+			devMode:       true,
+			wantRes:       true,
+			wantCanonical: "http://app.example.com:8080",
+		},
+		{
+			name:      "http_rejected_in_dev_mode_when_not_allowlisted",
+			origin:    "http://evil.net",
+			allowlist: []string{"*.example.com"},
+			devMode:   true,
+			wantRes:   false,
+		},
+		{
+			name:      "non_http_scheme_rejected",
+			origin:    "javascript://example.com",
+			allowlist: []string{"example.com", "*"},
+			devMode:   true,
+			wantRes:   false,
+		},
+		{
+			name:      "localhost_not_auto_allowed",
+			origin:    "https://localhost",
+			allowlist: []string{"example.com"},
+			wantRes:   false,
+		},
+		{
+			name:      "http_localhost_not_auto_allowed",
 			origin:    "http://localhost",
 			allowlist: []string{"example.com"},
-			wantRes:   true,
+			wantRes:   false,
 		},
 		{
-			name:      "local_ip_origin",
-			origin:    "http://127.0.0.1",
+			name:      "local_ip_not_auto_allowed",
+			origin:    "https://127.0.0.1",
 			allowlist: []string{"example.com"},
-			wantRes:   true,
+			wantRes:   false,
 		},
 		{
-			name:      "private_ip_origin",
-			origin:    "http://10.0.0.1",
+			name:      "private_ip_not_auto_allowed",
+			origin:    "https://10.0.0.1",
 			allowlist: []string{"example.com"},
-			wantRes:   true,
+			wantRes:   false,
+		},
+		{
+			name:          "explicitly_allowlisted_localhost_in_dev_mode",
+			origin:        "http://localhost:3000",
+			allowlist:     []string{"localhost"},
+			devMode:       true,
+			wantRes:       true,
+			wantCanonical: "http://localhost:3000",
+		},
+		{
+			name:          "explicitly_allowlisted_ip_literal",
+			origin:        "https://127.0.0.1:8443",
+			allowlist:     []string{"127.0.0.1"},
+			wantRes:       true,
+			wantCanonical: "https://127.0.0.1:8443",
+		},
+		{
+			name:          "explicitly_allowlisted_ipv6_literal",
+			origin:        "https://[::1]:8443",
+			allowlist:     []string{"::1"},
+			wantRes:       true,
+			wantCanonical: "https://[::1]:8443",
+		},
+		{
+			name:      "query_string_suffix_smuggling_rejected",
+			origin:    "https://evil.net?x=.example.com",
+			allowlist: []string{"*.example.com"},
+			wantRes:   false,
+		},
+		{
+			name:      "fragment_suffix_smuggling_rejected",
+			origin:    "https://evil.net#.example.com",
+			allowlist: []string{"*.example.com"},
+			wantRes:   false,
+		},
+		{
+			name:      "empty_trailing_query_rejected",
+			origin:    "https://example.com?",
+			allowlist: []string{"example.com"},
+			wantRes:   false,
+		},
+		{
+			name:      "empty_trailing_fragment_rejected",
+			origin:    "https://example.com#",
+			allowlist: []string{"example.com"},
+			wantRes:   false,
+		},
+		{
+			name:      "path_component_rejected",
+			origin:    "https://example.com/path",
+			allowlist: []string{"example.com"},
+			wantRes:   false,
+		},
+		{
+			name:      "trailing_slash_rejected",
+			origin:    "https://example.com/",
+			allowlist: []string{"example.com"},
+			wantRes:   false,
+		},
+		{
+			name:      "userinfo_prefix_rejected",
+			origin:    "https://allowed.example.com@evil.net",
+			allowlist: []string{"*.example.com"},
+			wantRes:   false,
+		},
+		{
+			name:      "userinfo_target_rejected",
+			origin:    "https://user@example.com",
+			allowlist: []string{"example.com"},
+			wantRes:   false,
+		},
+		{
+			name:      "trailing_dot_origin_rejected",
+			origin:    "https://example.com.",
+			allowlist: []string{"example.com"},
+			wantRes:   false,
+		},
+		{
+			name:      "trailing_dot_allowlist_entry_rejected",
+			origin:    "https://evil.net",
+			allowlist: []string{"example.com."},
+			wantRes:   false,
+		},
+		{
+			name:      "invalid_port_rejected",
+			origin:    "https://example.com:99999",
+			allowlist: []string{"example.com"},
+			wantRes:   false,
+		},
+		{
+			name:      "leading_zero_port_rejected",
+			origin:    "https://example.com:08443",
+			allowlist: []string{"example.com"},
+			wantRes:   false,
+		},
+		{
+			name:      "empty_port_rejected",
+			origin:    "https://example.com:",
+			allowlist: []string{"example.com"},
+			wantRes:   false,
+		},
+		{
+			name:          "unresolvable_allowlisted_host_succeeds_without_dns",
+			origin:        "https://nonexistent.invalid.example.com",
+			allowlist:     []string{"*.example.com"},
+			wantRes:       true,
+			wantCanonical: "https://nonexistent.invalid.example.com",
 		},
 	}
 
@@ -212,59 +445,15 @@ func TestValidateOrigin(t *testing.T) {
 		t.Run(tc.name, func(t *testing.T) {
 			t.Parallel()
 
-			gotRes, err := validateOrigin(tc.origin, tc.allowlist)
+			gotCanonical, gotRes, err := validateOrigin(tc.origin, tc.allowlist, tc.devMode)
 			if diff := testutil.DiffErrString(err, tc.wantErr); diff != "" {
 				t.Errorf("Unexpected err: %s", diff)
 			}
 			if diff := cmp.Diff(tc.wantRes, gotRes); diff != "" {
 				t.Errorf("Failed validating (-want,+got):\n%s", diff)
 			}
-		})
-	}
-}
-
-func TestValidateLocalIp(t *testing.T) {
-	t.Parallel()
-
-	cases := []struct {
-		name   string
-		origin string
-		want   bool
-	}{
-		{
-			name:   "no_origin",
-			origin: "",
-			want:   false,
-		},
-		{
-			name:   "missing_protocol",
-			origin: "localhost",
-			want:   false,
-		},
-		{
-			name:   "localhost_origin",
-			origin: "http://localhost",
-			want:   true,
-		},
-		{
-			name:   "local_ip_origin",
-			origin: "http://127.0.0.1",
-			want:   true,
-		},
-		{
-			name:   "non_local_ip_origin",
-			origin: "google.com",
-			want:   false,
-		},
-	}
-
-	for _, tc := range cases {
-		t.Run(tc.name, func(t *testing.T) {
-			t.Parallel()
-
-			got, _ := validateLocalIP(tc.origin)
-			if diff := cmp.Diff(tc.want, got); diff != "" {
-				t.Errorf("Failed validating (-want,+got):\n%s", diff)
+			if diff := cmp.Diff(tc.wantCanonical, gotCanonical); diff != "" {
+				t.Errorf("Unexpected canonical origin (-want,+got):\n%s", diff)
 			}
 		})
 	}

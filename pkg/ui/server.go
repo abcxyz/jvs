@@ -52,6 +52,7 @@ func NewServer(ctx context.Context, uiCfg *config.UIServiceConfig, p *justificat
 	if err != nil {
 		return nil, fmt.Errorf("failed to create controller: %w", err)
 	}
+	uic.WithDevMode(uiCfg.DevMode)
 
 	return &Server{
 		c:      uic,

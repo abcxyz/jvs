@@ -150,6 +150,57 @@ func TestUIServiceConfig_Validate(t *testing.T) {
 			},
 			wantErr: "asterisk(*) must be exclusive, no other domains allowed",
 		},
+		{
+			name: "invalid_allowlist_trailing_dot",
+			cfg: &UIServiceConfig{
+				JustificationConfig: &JustificationConfig{
+					ProjectID:          "example-project",
+					Port:               "8080",
+					KeyName:            "fake/key",
+					SignerCacheTimeout: 5 * time.Minute,
+					Issuer:             "jvs.abcxyz.dev",
+					PluginDir:          "/var/jvs/pluginsDir",
+					DefaultTTL:         15 * time.Minute,
+					MaxTTL:             4 * time.Hour,
+				},
+				Allowlist: []string{"example.com."},
+			},
+			wantErr: `invalid allowlist entry "example.com."`,
+		},
+		{
+			name: "invalid_allowlist_scheme",
+			cfg: &UIServiceConfig{
+				JustificationConfig: &JustificationConfig{
+					ProjectID:          "example-project",
+					Port:               "8080",
+					KeyName:            "fake/key",
+					SignerCacheTimeout: 5 * time.Minute,
+					Issuer:             "jvs.abcxyz.dev",
+					PluginDir:          "/var/jvs/pluginsDir",
+					DefaultTTL:         15 * time.Minute,
+					MaxTTL:             4 * time.Hour,
+				},
+				Allowlist: []string{"https://example.com"},
+			},
+			wantErr: `invalid allowlist entry "https://example.com"`,
+		},
+		{
+			name: "invalid_allowlist_single_label_wildcard",
+			cfg: &UIServiceConfig{
+				JustificationConfig: &JustificationConfig{
+					ProjectID:          "example-project",
+					Port:               "8080",
+					KeyName:            "fake/key",
+					SignerCacheTimeout: 5 * time.Minute,
+					Issuer:             "jvs.abcxyz.dev",
+					PluginDir:          "/var/jvs/pluginsDir",
+					DefaultTTL:         15 * time.Minute,
+					MaxTTL:             4 * time.Hour,
+				},
+				Allowlist: []string{"*.com"},
+			},
+			wantErr: `invalid allowlist entry "*.com"`,
+		},
 	}
 
 	for _, tc := range cases {

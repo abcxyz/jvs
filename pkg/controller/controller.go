@@ -21,6 +21,7 @@ import (
 	"net/http"
 	"net/url"
 	"sort"
+	"strconv"
 	"strings"
 	"time"
 
@@ -29,6 +30,7 @@ import (
 
 	jvspb "github.com/abcxyz/jvs/apis/v0"
 	"github.com/abcxyz/jvs/internal/project"
+	"github.com/abcxyz/jvs/pkg/config"
 	"github.com/abcxyz/jvs/pkg/justification"
 	"github.com/abcxyz/pkg/renderer"
 )
@@ -49,6 +51,7 @@ type Controller struct {
 	p                   *justification.Processor
 	allowlist           []string
 	categoryDisplayData map[string]*jvspb.UIData
+	devMode             bool
 }
 
 // Content defines the displayable parts of the token retrieval form.
@@ -104,7 +107,14 @@ func New(ctx context.Context, h *renderer.Renderer, p *justification.Processor, 
 		p:                   p,
 		allowlist:           allowlist,
 		categoryDisplayData: categories,
+		devMode:             project.DevMode(),
 	}, nil
+}
+
+// WithDevMode configures whether development mode (allowing http:// origins) is enabled.
+func (c *Controller) WithDevMode(devMode bool) *Controller {
+	c.devMode = devMode
+	return c
 }
 
 func (c *Controller) HandleHealth() http.Handler {
@@ -154,8 +164,8 @@ func (c *Controller) handlePopupPost(w http.ResponseWriter, r *http.Request) {
 	}
 
 	// 1. Check if the origin is part of the allowlist
-	origin := r.FormValue("origin")
-	if validOrigin, err := validateOrigin(origin, c.allowlist); err != nil || !validOrigin {
+	canonicalOrigin, validOrigin, err := validateOrigin(formDetails.Origin, c.allowlist, c.devMode)
+	if err != nil || !validOrigin {
 		var m string
 		if err != nil {
 			m = err.Error()
@@ -166,6 +176,7 @@ func (c *Controller) handlePopupPost(w http.ResponseWriter, r *http.Request) {
 		c.renderBadRequest(w, m)
 		return
 	}
+	formDetails.Origin = canonicalOrigin
 
 	// 2. Validate input
 	if !c.validateForm(formDetails) {
@@ -207,66 +218,117 @@ func (c *Controller) handlePopupPost(w http.ResponseWriter, r *http.Request) {
 	c.h.RenderHTML(w, "success.html", successDetails)
 }
 
-// Checks the origin parameter against all entries in the allow list.
-func validateOrigin(originParam string, allowlist []string) (bool, error) {
+// validateOrigin parses originParam as a strict web origin (scheme://host[:port]),
+// enforces https (or http/https in devMode), rejects userinfo/path/query/fragment components,
+// and matches the parsed hostname against allowlist without performing DNS resolution.
+func validateOrigin(originParam string, allowlist []string, devMode bool) (string, bool, error) {
 	if len(originParam) == 0 {
-		return false, fmt.Errorf("origin was not provided")
+		return "", false, fmt.Errorf("origin was not provided")
 	}
 
-	// Check if origin is localhost or private ip
-	validIP, err := validateLocalIP(originParam)
-	if err != nil {
-		return false, err
-	}
-
-	// either local development or all origins are allowed
-	if validIP || (len(allowlist) == 1 && allowlist[0] == "*") {
-		return true, nil
-	}
-
-	originSplit := strings.Split(originParam, ".")
-
-	for _, domain := range allowlist {
-		domainSplit := strings.Split(domain, ".")
-
-		// this domain is longer than the origin, skip over it
-		if len(domainSplit) > len(originSplit) {
-			continue
-		}
-
-		// compare the origin and current domain from right to left
-		for i, j := len(domainSplit)-1, len(originSplit)-1; i >= 0 && j >= 0; i, j = i-1, j-1 {
-			// not a wildcard reference and no match, proceed to the next domain candidate in the allow list
-			if domainSplit[i] != "*" && domainSplit[i] != originSplit[j] {
-				break
-			}
-
-			if i == 0 {
-				return true, nil
-			}
-		}
-	}
-
-	return false, nil
-}
-
-func validateLocalIP(originParam string) (bool, error) {
-	if project.DevMode() {
-		return true, nil
+	// Reject raw query/fragment delimiters (including empty trailing "?" or "#"),
+	// backslashes, and whitespace/control characters before url.Parse.
+	if strings.ContainsAny(originParam, "?#\\\r\n\t ") {
+		return "", false, nil
 	}
 
 	u, err := url.Parse(originParam)
 	if err != nil {
-		return false, fmt.Errorf("unable to parse url: %w", err)
+		return "", false, fmt.Errorf("unable to parse url: %w", err)
 	}
 
-	ipAddr, err := net.ResolveIPAddr("ip", u.Hostname())
-	if err != nil {
-		return false, fmt.Errorf("unable to resolve IP Address: %w", err)
+	scheme := strings.ToLower(u.Scheme)
+	if scheme != "https" && (!devMode || scheme != "http") {
+		return "", false, nil
 	}
 
-	parsedIP := net.ParseIP(ipAddr.IP.String())
-	return (parsedIP.IsLoopback() || parsedIP.IsPrivate()), nil
+	if u.Opaque != "" || u.User != nil || u.Host == "" ||
+		u.Path != "" || u.RawPath != "" ||
+		u.RawQuery != "" || u.ForceQuery ||
+		u.Fragment != "" || u.RawFragment != "" ||
+		strings.HasSuffix(u.Host, ":") {
+		return "", false, nil
+	}
+
+	port := u.Port()
+	if port != "" {
+		if !isValidPort(port) {
+			return "", false, nil
+		}
+	}
+
+	host := strings.ToLower(u.Hostname())
+	hostIP := net.ParseIP(host)
+	if hostIP == nil && !config.IsValidHostname(host) {
+		return "", false, nil
+	}
+
+	canonicalHost := host
+	if port != "" {
+		canonicalHost = net.JoinHostPort(host, port)
+	} else if strings.Contains(host, ":") {
+		canonicalHost = "[" + host + "]"
+	}
+	canonicalOrigin := scheme + "://" + canonicalHost
+
+	if len(allowlist) == 1 && strings.TrimSpace(allowlist[0]) == "*" {
+		return canonicalOrigin, true, nil
+	}
+
+	for _, entry := range allowlist {
+		if matchAllowlistEntry(host, hostIP, entry) {
+			return canonicalOrigin, true, nil
+		}
+	}
+
+	return "", false, nil
+}
+
+func isValidPort(port string) bool {
+	if port == "" || len(port) > 5 || port[0] == '0' {
+		return false
+	}
+	for i := 0; i < len(port); i++ {
+		if port[i] < '0' || port[i] > '9' {
+			return false
+		}
+	}
+	n, err := strconv.Atoi(port)
+	return err == nil && n >= 1 && n <= 65535
+}
+
+func matchAllowlistEntry(host string, hostIP net.IP, rawEntry string) bool {
+	entry := strings.ToLower(strings.TrimSpace(rawEntry))
+	if entry == "" || entry == "*" {
+		return false
+	}
+
+	if entryIP := net.ParseIP(entry); entryIP != nil {
+		return hostIP != nil && hostIP.Equal(entryIP)
+	}
+
+	// Non-IP allowlist entries must be valid domains or wildcard domains (*.example.com).
+	if err := config.ValidateAllowlistEntry(entry); err != nil {
+		return false
+	}
+	if hostIP != nil {
+		return false
+	}
+
+	if strings.HasPrefix(entry, "*.") {
+		base := strings.TrimPrefix(entry, "*.")
+		return strings.HasSuffix(host, "."+base) && len(host) > len(base)+1
+	}
+
+	if host == entry {
+		return true
+	}
+	// Multi-label domain entries also permit subdomains on a dot boundary.
+	if strings.Contains(entry, ".") && strings.HasSuffix(host, "."+entry) {
+		return true
+	}
+
+	return false
 }
 
 func (c *Controller) validateForm(formDetails *FormDetails) bool {
